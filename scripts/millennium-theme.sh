@@ -60,7 +60,7 @@ if [[ -z "$COMMAND" ]]; then
   exit 1
 fi
 
-if [[ "$COMMAND" != "list" && -z "$ARG" ]]; then
+if [[ "$COMMAND" != "list" && "$COMMAND" != "update" && -z "$ARG" ]]; then
   echo -e "${RED}Error: Argument required for command '${COMMAND}'.${NC}" >&2
   exit 1
 fi
@@ -97,6 +97,116 @@ execute() {
   else
     "$@"
   fi
+}
+
+update_single_theme() {
+  local theme_name="$1"
+  local target_dir="${SKINS_DIR}/${theme_name}"
+  local meta_file="${target_dir}/metadata.json"
+  
+  if [[ ! -d "$target_dir" ]]; then
+    echo -e "${RED}Error: Theme '${theme_name}' is not installed.${NC}" >&2
+    return 1
+  fi
+  
+  if [[ ! -f "$meta_file" ]]; then
+    echo -e "${YELLOW}Theme '${theme_name}' does not have GitHub metadata. Skipping.${NC}"
+    return 0
+  fi
+  
+  local owner
+  local repo
+  owner=$(python3 -c "import json; print(json.load(open('$meta_file')).get('owner', ''))" 2>/dev/null || true)
+  repo=$(python3 -c "import json; print(json.load(open('$meta_file')).get('repo', ''))" 2>/dev/null || true)
+  
+  if [[ -z "$owner" || -z "$repo" ]]; then
+    echo -e "${RED}Error: Invalid metadata format in ${meta_file}.${NC}" >&2
+    return 1
+  fi
+  
+  echo -e "Checking updates for theme '${theme_name}' (${owner}/${repo})..."
+  
+  local CURL_HEADERS=()
+  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+    CURL_HEADERS+=("-H" "Authorization: token $GITHUB_TOKEN")
+  fi
+  
+  local COMMIT=""
+  if command -v jq &>/dev/null; then
+    COMMIT=$(curl -fsSL --retry 3 --retry-delay 2 "${CURL_HEADERS[@]}" "https://api.github.com/repos/${owner}/${repo}/commits" | jq -r '.[0].sha' || true)
+  else
+    COMMIT=$(python3 -c "
+import urllib.request, json, os
+try:
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    token = os.environ.get('GITHUB_TOKEN')
+    if token:
+        headers['Authorization'] = f'token {token}'
+    req = urllib.request.Request('https://api.github.com/repos/${owner}/${repo}/commits', headers=headers)
+    with urllib.request.urlopen(req) as response:
+        print(json.loads(response.read().decode())[0].get('sha', ''))
+except Exception:
+    pass
+" || true)
+  fi
+  
+  if [[ -z "$COMMIT" ]]; then
+    echo -e "${RED}Error: Could not retrieve latest commit info from GitHub.${NC}" >&2
+    return 1
+  fi
+  
+  local current_commit
+  current_commit=$(python3 -c "import json; print(json.load(open('$meta_file')).get('commit', ''))" 2>/dev/null || true)
+  if [[ "$current_commit" == "$COMMIT" ]]; then
+    echo -e "${GREEN}Theme '${theme_name}' is already up to date.${NC}"
+    return 0
+  fi
+  
+  echo -e "New commit found: ${COMMIT:0:7}. Updating..."
+  if [[ "$DRY_RUN" == "true" ]]; then
+    echo -e "${YELLOW}[DRY RUN] Would update theme '${theme_name}' to commit ${COMMIT}${NC}"
+  else
+    local TMP
+    TMP="$(mktemp -d)"
+    local theme_tmp="${target_dir}.tmp"
+    local theme_bak="${target_dir}.bak"
+    
+    rm -rf "$theme_tmp" "$theme_bak"
+    
+    if ! curl -fsSL "${CURL_HEADERS[@]}" --retry 3 --retry-delay 2 "https://github.com/${owner}/${repo}/archive/${COMMIT}.zip" -o "$TMP/theme.zip"; then
+      echo -e "${RED}Error: Failed to download theme package.${NC}" >&2
+      rm -rf "$TMP"
+      return 1
+    fi
+    
+    unzip -q "$TMP/theme.zip" -d "$TMP" || [[ $? -le 2 ]]
+    if [[ ! -d "$TMP/${repo}-${COMMIT}" ]]; then
+      echo -e "${RED}Error: Failed to extract theme archive.${NC}" >&2
+      rm -rf "$TMP"
+      return 1
+    fi
+    
+    mkdir -p "$theme_tmp"
+    cp -a "$TMP/${repo}-${COMMIT}/." "$theme_tmp/"
+    
+    cat > "$theme_tmp/metadata.json" <<EOF
+{
+    "commit": "${COMMIT}",
+    "owner": "${owner}",
+    "repo": "${repo}"
+}
+EOF
+    
+    chown -R "${RUNNING_USER}:${RUNNING_USER}" "$theme_tmp"
+    
+    mv "$target_dir" "$theme_bak"
+    mv "$theme_tmp" "$target_dir"
+    rm -rf "$theme_bak"
+    rm -rf "$TMP"
+    
+    echo -e "${GREEN}Successfully updated theme '${theme_name}' to commit ${COMMIT:0:7}!${NC}"
+  fi
+  return 0
 }
 
 # --- Command Execution ---
@@ -235,100 +345,27 @@ fi
 
 # 4. UPDATE COMMAND
 if [[ "$COMMAND" == "update" ]]; then
-  target_dir="${SKINS_DIR}/${ARG}"
-  if [[ ! -d "$target_dir" ]]; then
-    echo -e "${RED}Error: Theme '${ARG}' is not installed.${NC}" >&2
-    exit 1
-  fi
-  
-  meta_file="${target_dir}/metadata.json"
-  if [[ ! -f "$meta_file" ]]; then
-    echo -e "${RED}Error: Theme '${ARG}' does not have GitHub metadata. Cannot update automatically.${NC}" >&2
-    exit 1
-  fi
-  
-  owner=$(python3 -c "import json; print(json.load(open('$meta_file')).get('owner', ''))" 2>/dev/null || true)
-  repo=$(python3 -c "import json; print(json.load(open('$meta_file')).get('repo', ''))" 2>/dev/null || true)
-  
-  if [[ -z "$owner" || -z "$repo" ]]; then
-    echo -e "${RED}Error: Invalid metadata format in ${meta_file}.${NC}" >&2
-    exit 1
-  fi
-  
-  echo -e "Checking updates for theme '${ARG}' (${owner}/${repo})...."
-  
-  CURL_HEADERS=()
-  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-    CURL_HEADERS+=("-H" "Authorization: token $GITHUB_TOKEN")
-  fi
-  
-  COMMIT=""
-  if command -v jq &>/dev/null; then
-    COMMIT=$(curl -fsSL --retry 3 --retry-delay 2 "${CURL_HEADERS[@]}" "https://api.github.com/repos/${owner}/${repo}/commits" | jq -r '.[0].sha' || true)
-  else
-    COMMIT=$(python3 -c "
-import urllib.request, json, os
-try:
-    headers = {'User-Agent': 'Mozilla/5.0'}
-    token = os.environ.get('GITHUB_TOKEN')
-    if token:
-        headers['Authorization'] = f'token {token}'
-    req = urllib.request.Request('https://api.github.com/repos/${owner}/${repo}/commits', headers=headers)
-    with urllib.request.urlopen(req) as response:
-        print(json.loads(response.read().decode())[0].get('sha', ''))
-except Exception:
-    pass
-" || true)
-  fi
-  
-  if [[ -z "$COMMIT" ]]; then
-    echo -e "${RED}Error: Could not retrieve latest commit info from GitHub.${NC}" >&2
-    exit 1
-  fi
-  
-  current_commit=$(python3 -c "import json; print(json.load(open('$meta_file')).get('commit', ''))" 2>/dev/null || true)
-  if [[ "$current_commit" == "$COMMIT" ]]; then
-    echo -e "${GREEN}Theme '${ARG}' is already up to date.${NC}"
-    exit 0
-  fi
-  
-  echo -e "New commit found: ${COMMIT:0:7}. Updating..."
-  if [[ "$DRY_RUN" == "true" ]]; then
-    echo -e "${YELLOW}[DRY RUN] Would update theme '${ARG}' to commit ${COMMIT}${NC}"
-  else
-    TMP="$(mktemp -d)"
-    trap 'rm -rf "$TMP"' EXIT INT TERM
-    
-    curl -fsSL "${CURL_HEADERS[@]}" --retry 3 --retry-delay 2 "https://github.com/${owner}/${repo}/archive/${COMMIT}.zip" -o "$TMP/theme.zip"
-    
-    unzip -q "$TMP/theme.zip" -d "$TMP" || [[ $? -le 2 ]]
-    if [[ ! -d "$TMP/${repo}-${COMMIT}" ]]; then
-      echo -e "${RED}Error: Failed to extract theme archive.${NC}" >&2
-      exit 1
+  if [[ -z "$ARG" || "$ARG" == "--all" || "$ARG" == "-a" ]]; then
+    echo -e "${BLUE}=== Updating All Installed Themes ===${NC}"
+    if [[ ! -d "$SKINS_DIR" ]]; then
+      echo "No themes skins directory found at ${SKINS_DIR}."
+      exit 0
     fi
     
-    theme_tmp="${target_dir}.tmp"
-    theme_bak="${target_dir}.bak"
+    found_any=false
+    for dir in "$SKINS_DIR"/*; do
+      [[ -d "$dir" ]] || continue
+      found_any=true
+      theme_name=$(basename "$dir")
+      update_single_theme "$theme_name" || true
+      echo ""
+    done
     
-    rm -rf "$theme_tmp" "$theme_bak"
-    mkdir -p "$theme_tmp"
-    cp -a "$TMP/${repo}-${COMMIT}/." "$theme_tmp/"
-    
-    cat > "$theme_tmp/metadata.json" <<EOF
-{
-    "commit": "${COMMIT}",
-    "owner": "${owner}",
-    "repo": "${repo}"
-}
-EOF
-    
-    chown -R "${RUNNING_USER}:${RUNNING_USER}" "$theme_tmp"
-    
-    mv "$target_dir" "$theme_bak"
-    mv "$theme_tmp" "$target_dir"
-    rm -rf "$theme_bak"
-    
-    echo -e "${GREEN}Successfully updated theme '${ARG}' to commit ${COMMIT:0:7}!${NC}"
+    if [[ "$found_any" == "false" ]]; then
+      echo "No themes installed."
+    fi
+  else
+    update_single_theme "$ARG"
   fi
   exit 0
 fi
