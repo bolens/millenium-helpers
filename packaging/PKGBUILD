@@ -19,7 +19,7 @@ install=millennium-helpers.install
 source=("git+${url}.git"
         "millennium-helpers.sudoers")
 sha256sums=('SKIP'
-            'a56d6abbd4469f78106cb6828cd2ce674e6b6d7883f7e9e5476ecc09f2e4ffe9')
+            '91bf3f1f069e53cf74bbe6ef43fe20553336cb69f5014294fefee5de77d4ec7d')
 
 pkgver() {
   cd "${srcdir}/${_pkgname}"
@@ -41,16 +41,17 @@ package() {
   install -m755 scripts/millennium-purge.sh "${pkgdir}/usr/bin/millennium-purge"
   install -m755 scripts/millennium-diag.sh "${pkgdir}/usr/bin/millennium-diag"
   install -m755 scripts/millennium-theme.sh "${pkgdir}/usr/bin/millennium-theme"
+  install -m755 scripts/millennium-mcp.py "${pkgdir}/usr/bin/millennium-mcp"
 
   # Install Bash completions
   install -Dm644 completions/bash/millennium-helpers "${pkgdir}/usr/share/bash-completion/completions/millennium-helpers"
-  for script in millennium-repair millennium-upgrade-beta millennium-upgrade-stable millennium-schedule millennium-purge millennium-diag millennium-theme; do
+  for script in millennium-repair millennium-upgrade-beta millennium-upgrade-stable millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp; do
     ln -sf millennium-helpers "${pkgdir}/usr/share/bash-completion/completions/${script}"
   done
 
   # Install Zsh completions
   install -Dm644 completions/zsh/_millennium-helpers "${pkgdir}/usr/share/zsh/site-functions/_millennium-helpers"
-  for script in millennium-repair millennium-upgrade-beta millennium-upgrade-stable millennium-schedule millennium-purge millennium-diag millennium-theme; do
+  for script in millennium-repair millennium-upgrade-beta millennium-upgrade-stable millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp; do
     ln -sf _millennium-helpers "${pkgdir}/usr/share/zsh/site-functions/_${script}"
   done
 

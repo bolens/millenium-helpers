@@ -132,7 +132,8 @@ If you prefer to remove all files and configurations manually, execute the follo
               /usr/local/bin/millennium-schedule \
               /usr/local/bin/millennium-purge \
               /usr/local/bin/millennium-diag \
-              /usr/local/bin/millennium-theme
+              /usr/local/bin/millennium-theme \
+              /usr/local/bin/millennium-mcp
    ```
 
 3. **Remove the passwordless sudoers rules**:
@@ -150,7 +151,8 @@ If you prefer to remove all files and configurations manually, execute the follo
               /usr/share/bash-completion/completions/millennium-schedule \
               /usr/share/bash-completion/completions/millennium-purge \
               /usr/share/bash-completion/completions/millennium-diag \
-              /usr/share/bash-completion/completions/millennium-theme
+              /usr/share/bash-completion/completions/millennium-theme \
+              /usr/share/bash-completion/completions/millennium-mcp
 
    # Zsh completions & symlinks
    sudo rm -f /usr/share/zsh/site-functions/_millennium-helpers \
@@ -160,7 +162,8 @@ If you prefer to remove all files and configurations manually, execute the follo
               /usr/share/zsh/site-functions/_millennium-schedule \
               /usr/share/zsh/site-functions/_millennium-purge \
               /usr/share/zsh/site-functions/_millennium-diag \
-              /usr/share/zsh/site-functions/_millennium-theme
+              /usr/share/zsh/site-functions/_millennium-theme \
+              /usr/share/zsh/site-functions/_millennium-mcp
 
    # Fish completions
    sudo rm -f /usr/share/fish/vendor_completions.d/millennium-repair.fish \
@@ -266,6 +269,20 @@ Runs a comprehensive system-wide health check on your Millennium setup. It repor
 
 ### 8. [scripts/millennium-theme.sh](scripts/millennium-theme.sh) (`millennium-theme`)
 A fully-featured skin/theme manager CLI. It allows listing installed themes, installing new ones directly from GitHub repositories (branch-agnostic), checking/installing theme updates, and removing skin directories.
+
+### 9. [scripts/millennium-mcp.py](scripts/millennium-mcp.py) (`millennium-mcp`)
+A zero-dependency Model Context Protocol (MCP) server. Exposes the entire suite of Millennium helper scripts as native AI tools to coding assistants (like Cursor, Windsurf, Claude Desktop, or Antigravity), allowing them to dynamically run diagnostics, manage themes, apply repairs, and perform upgrades directly.
+
+To add `millennium-mcp` to your Claude Desktop config (e.g. `~/.config/Claude/claude_desktop_config.json`) or Cursor/Windsurf MCP settings:
+```json
+{
+  "mcpServers": {
+    "millennium-helpers": {
+      "command": "millennium-mcp"
+    }
+  }
+}
+```
 
 ---
 
