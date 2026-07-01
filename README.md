@@ -4,6 +4,27 @@ A set of utility scripts for managing, repairing, upgrading, and scheduling upda
 
 ---
 
+## Table of Contents
+
+- [Features](#features)
+- [Installation & Setup](#installation--setup)
+  - [Prerequisites](#prerequisites)
+  - [Step 1: Install System-Wide](#step-1-install-system-wide)
+  - [Step 2: Enable the Daily Auto-Updater Timer](#step-2-enable-the-daily-auto-updater-timer)
+- [Features](#features)
+- [Management Commands](#management-commands)
+  - [Uninstall All Helper Scripts](#uninstall-all-helper-scripts)
+- [Environment Variables](#environment-variables)
+- [Dry-Run Mode](#dry-run-mode)
+- [Shell Autocompletions](#shell-autocompletions)
+  - [Activating Nushell Completions](#activating-nushell-completions)
+- [Script Overview](#script-overview)
+- [Troubleshooting & FAQ](#troubleshooting--faq)
+- [Security Design](#security-design)
+- [License](#license)
+
+---
+
 ## Features
 
 - **Automated Installation & Uninstallation**: Installs the helper tools system-wide into `/usr/local/bin` and configures autocompletions.
@@ -153,6 +174,18 @@ If you prefer to remove all files and configurations manually, execute the follo
 
 ---
 
+## Environment Variables
+
+The helper scripts respect the following environment variables if defined:
+
+| Variable | Description |
+| --- | --- |
+| `GITHUB_TOKEN` | Optional. A GitHub Personal Access Token (PAT) used to authenticate API requests. Highly recommended to define if you perform updates frequently to prevent triggering GitHub rate limits. |
+| `XDG_CONFIG_HOME` | Optional. Dynamically resolved to locate your user configuration files. Defaults to `~/.config`. |
+| `XDG_DATA_HOME` | Optional. Dynamically resolved to locate your local user data files. Defaults to `~/.local/share`. |
+
+---
+
 ## Dry-Run Mode
 
 All scripts support a Dry-Run mode (`--dry-run` or `-d`) to preview file copies, configuration generation, permissions fixes, and timer commands without actually writing any changes or modifying the system state:
@@ -224,6 +257,35 @@ De-registers Millennium from all local Steam users and completely purges its fil
 
 ### 7. [scripts/millennium-diag.sh](scripts/millennium-diag.sh) (`millennium-diag`)
 Runs a comprehensive system-wide health check on your Millennium setup. It reports the running status of Steam, the installed version of Millennium, the integrity of local user client overrides (including Flatpak sandboxes), auto-update timers, and systemd lingering configurations.
+
+---
+
+## Troubleshooting & FAQ
+
+### Steam shows a blank/black screen after upgrading Millennium
+This is usually caused by outdated CEF cached files. Run the repair utility to fix local permissions and clear Steam's htmlcache:
+```bash
+sudo millennium-repair
+```
+
+### The background timer is not running updates
+1. Check the timer status:
+   ```bash
+   millennium-schedule status
+   ```
+2. Verify that passwordless sudo is configured correctly. Run `sudo -n -l` as your normal user and verify that `/usr/local/bin/millennium-upgrade-stable` (and beta) are listed under `NOPASSWD`.
+3. If you want the updates to run even when you are logged out of your session, make sure to enable user lingering:
+   ```bash
+   loginctl enable-linger $USER
+   ```
+
+### Custom Steam Install Paths (Flatpak / Custom Mounts)
+The scripts automatically scan multiple paths:
+- `~/.local/share/Steam` (Standard native Steam)
+- `~/.steam/steam`
+- `~/.steam/root`
+- `~/.var/app/com.valvesoftware.Steam/.local/share/Steam` (Flatpak Steam)
+If you have a custom Steam library installation path, ensure it has a symbolic link pointing to one of these standard locations.
 
 ---
 
