@@ -81,9 +81,81 @@ failure_handler() {
 }
 trap 'failure_handler' ERR
 
+# Detect if Steam is running and handle it
+RELAUNCH_STEAM=false
+WAS_FLATPAK=false
+EXPORT_DISPLAY=""
+EXPORT_XAUTHORITY=""
+EXPORT_DBUS=""
+EXPORT_WAYLAND=""
+EXPORT_RUNTIME=""
+
+RUNNING_USER="${SUDO_USER:-$USER}"
+USER_HOME="$(getent passwd "$RUNNING_USER" | cut -d: -f6)"
+
+is_game_running() {
+  local game_running=false
+  for environ_file in /proc/[0-9]*/environ; do
+    [[ -f "$environ_file" ]] || continue
+    local pid_dir
+    pid_dir="$(dirname "$environ_file")"
+    local pid="${pid_dir##*/}"
+    [[ "$pid" =~ ^[0-9]+$ ]] || continue
+    local comm
+    comm=$(cat "/proc/${pid}/comm" 2>/dev/null || true)
+    [[ "$comm" == "steam" || "$comm" == "steamwebhelper" ]] && continue
+    if { tr '\0' '\n' < "$environ_file"; } 2>/dev/null | grep -q "^SteamAppId=[1-9]"; then
+      game_running=true
+      break
+    fi
+  done
+  [[ "$game_running" == "true" ]]
+}
+
 if pgrep -x steam >/dev/null 2>&1; then
-  echo "Close Steam first." >&2
-  exit 1
+  if is_game_running; then
+    echo "Error: A Steam game is currently running. Upgrade cannot proceed while a game is active." >&2
+    exit 1
+  fi
+
+  echo "Steam is currently running. Closing Steam gracefully to apply update..."
+  
+  if command -v flatpak &>/dev/null && runuser -l "$RUNNING_USER" -c "flatpak ps" 2>/dev/null | grep -q "com.valvesoftware.Steam"; then
+    WAS_FLATPAK=true
+  fi
+
+  steam_pid=$(pgrep -x steam | head -n 1 || true)
+  if [[ -n "$steam_pid" ]]; then
+    steam_env=$(tr '\0' '\n' < "/proc/${steam_pid}/environ" 2>/dev/null || true)
+    EXPORT_DISPLAY=$(echo "$steam_env" | grep "^DISPLAY=" | head -n 1 || true)
+    EXPORT_XAUTHORITY=$(echo "$steam_env" | grep "^XAUTHORITY=" | head -n 1 || true)
+    EXPORT_DBUS=$(echo "$steam_env" | grep "^DBUS_SESSION_BUS_ADDRESS=" | head -n 1 || true)
+    EXPORT_WAYLAND=$(echo "$steam_env" | grep "^WAYLAND_DISPLAY=" | head -n 1 || true)
+    EXPORT_RUNTIME=$(echo "$steam_env" | grep "^XDG_RUNTIME_DIR=" | head -n 1 || true)
+  fi
+
+  if [[ "$DRY_RUN" == "false" ]]; then
+    if [[ "$WAS_FLATPAK" == "true" ]]; then
+      runuser -l "$RUNNING_USER" -c "flatpak run com.valvesoftware.Steam -shutdown" || true
+    elif command -v steam &>/dev/null; then
+      runuser -l "$RUNNING_USER" -c "steam -shutdown" || true
+    elif [[ -x "${USER_HOME}/.local/bin/steam" ]]; then
+      runuser -l "$RUNNING_USER" -c "${USER_HOME}/.local/bin/steam -shutdown" || true
+    fi
+
+    timeout=30
+    while pgrep -x steam >/dev/null && [[ $timeout -gt 0 ]]; do
+      sleep 1
+      ((timeout--))
+    done
+
+    if pgrep -x steam >/dev/null; then
+      echo "Steam did not close gracefully. Force killing..." >&2
+      killall -9 steam steamwebhelper 2>/dev/null || true
+    fi
+    echo "Steam closed successfully."
+  fi
+  RELAUNCH_STEAM=true
 fi
 
 if [[ "$DRY_RUN" == "true" ]]; then
@@ -251,6 +323,25 @@ if [[ "$DRY_RUN" == "true" ]]; then
 else
   echo "Installed Millennium v${VER} stable."
   send_notification "Millennium Updated" "Successfully updated to Millennium v${VER} (stable)."
-  echo "Start Steam with: ~/.local/bin/steam"
   echo "Note: Settings may still fail on Steam public beta until Millennium issue #790 is fixed."
+fi
+
+if [[ "$RELAUNCH_STEAM" == "true" && "$DRY_RUN" == "false" ]]; then
+  echo "Relaunching Steam..."
+  env_prefix=""
+  [[ -n "${EXPORT_DISPLAY:-}" ]] && env_prefix+="${EXPORT_DISPLAY} "
+  [[ -n "${EXPORT_XAUTHORITY:-}" ]] && env_prefix+="${EXPORT_XAUTHORITY} "
+  [[ -n "${EXPORT_DBUS:-}" ]] && env_prefix+="${EXPORT_DBUS} "
+  [[ -n "${EXPORT_WAYLAND:-}" ]] && env_prefix+="${EXPORT_WAYLAND} "
+  [[ -n "${EXPORT_RUNTIME:-}" ]] && env_prefix+="${EXPORT_RUNTIME} "
+
+  if [[ "$WAS_FLATPAK" == "true" ]]; then
+    runuser "$RUNNING_USER" -c "${env_prefix}flatpak run com.valvesoftware.Steam >/dev/null 2>&1 &"
+  else
+    if command -v steam &>/dev/null; then
+      runuser "$RUNNING_USER" -c "${env_prefix}steam >/dev/null 2>&1 &"
+    elif [[ -x "${USER_HOME}/.local/bin/steam" ]]; then
+      runuser "$RUNNING_USER" -c "${env_prefix}${USER_HOME}/.local/bin/steam >/dev/null 2>&1 &"
+    fi
+  fi
 fi
