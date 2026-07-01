@@ -131,7 +131,8 @@ If you prefer to remove all files and configurations manually, execute the follo
               /usr/local/bin/millennium-upgrade-stable \
               /usr/local/bin/millennium-schedule \
               /usr/local/bin/millennium-purge \
-              /usr/local/bin/millennium-diag
+              /usr/local/bin/millennium-diag \
+              /usr/local/bin/millennium-theme
    ```
 
 3. **Remove the passwordless sudoers rules**:
@@ -148,7 +149,8 @@ If you prefer to remove all files and configurations manually, execute the follo
               /usr/share/bash-completion/completions/millennium-upgrade-stable \
               /usr/share/bash-completion/completions/millennium-schedule \
               /usr/share/bash-completion/completions/millennium-purge \
-              /usr/share/bash-completion/completions/millennium-diag
+              /usr/share/bash-completion/completions/millennium-diag \
+              /usr/share/bash-completion/completions/millennium-theme
 
    # Zsh completions & symlinks
    sudo rm -f /usr/share/zsh/site-functions/_millennium-helpers \
@@ -157,7 +159,8 @@ If you prefer to remove all files and configurations manually, execute the follo
               /usr/share/zsh/site-functions/_millennium-upgrade-stable \
               /usr/share/zsh/site-functions/_millennium-schedule \
               /usr/share/zsh/site-functions/_millennium-purge \
-              /usr/share/zsh/site-functions/_millennium-diag
+              /usr/share/zsh/site-functions/_millennium-diag \
+              /usr/share/zsh/site-functions/_millennium-theme
 
    # Fish completions
    sudo rm -f /usr/share/fish/vendor_completions.d/millennium-repair.fish \
@@ -165,7 +168,8 @@ If you prefer to remove all files and configurations manually, execute the follo
               /usr/share/fish/vendor_completions.d/millennium-upgrade-stable.fish \
               /usr/share/fish/vendor_completions.d/millennium-schedule.fish \
               /usr/share/fish/vendor_completions.d/millennium-purge.fish \
-              /usr/share/fish/vendor_completions.d/millennium-diag.fish
+              /usr/share/fish/vendor_completions.d/millennium-diag.fish \
+              /usr/share/fish/vendor_completions.d/millennium-theme.fish
 
    # Nushell completions
    sudo rm -f /usr/share/nushell/completions/millennium-helpers.nu \
@@ -259,6 +263,9 @@ De-registers Millennium from all local Steam users and completely purges its fil
 
 ### 7. [scripts/millennium-diag.sh](scripts/millennium-diag.sh) (`millennium-diag`)
 Runs a comprehensive system-wide health check on your Millennium setup. It reports the running status of Steam, the installed version of Millennium, the integrity of local user client overrides (including Flatpak sandboxes), auto-update timers, and systemd lingering configurations.
+
+### 8. [scripts/millennium-theme.sh](scripts/millennium-theme.sh) (`millennium-theme`)
+A fully-featured skin/theme manager CLI. It allows listing installed themes, installing new ones directly from GitHub repositories (branch-agnostic), checking/installing theme updates, and removing skin directories.
 
 ---
 
