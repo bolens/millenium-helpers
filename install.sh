@@ -35,6 +35,7 @@ Options:
   -d, --dry-run      Perform dry-run without copying files or configuring sudoers
   -i, --install      Perform installation
   -u, --uninstall    Perform uninstallation
+  -p, --purge        During uninstall, also purge all Millennium client files/hooks
   -h, --help         Show this help message
 EOF
 }
@@ -50,6 +51,7 @@ check_root() {
 # Parse arguments
 ACTION="install"
 DRY_RUN=false
+PURGE_REQUESTED=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -59,6 +61,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     uninstall|-u|--uninstall)
       ACTION="uninstall"
+      shift
+      ;;
+    -p|--purge)
+      PURGE_REQUESTED=true
       shift
       ;;
     -d|--dry-run)
@@ -293,6 +299,28 @@ uninstall_completions() {
 }
 
 uninstall_scripts() {
+  local purge_all=false
+  if [[ "$PURGE_REQUESTED" == "true" ]]; then
+    purge_all=true
+  elif [[ -t 0 ]]; then
+    # Print menu and read response if in interactive terminal
+    echo -e "${YELLOW}Millennium Client Cleanup:${NC}"
+    read -rp "Would you also like to completely purge all Millennium binaries, Steam hooks, and themes? [y/N]: " resp
+    if [[ "$resp" =~ ^[Yy]$ ]]; then
+      purge_all=true
+    fi
+  fi
+
+  if [[ "$purge_all" == "true" ]]; then
+    local purge_script="${SCRIPT_DIR}/scripts/millennium-purge.sh"
+    if [[ -f "$purge_script" ]]; then
+      echo -e "${YELLOW}Invoking Millennium purge script...${NC}"
+      local dry_flag=""
+      [[ "$DRY_RUN" == "true" ]] && dry_flag="--dry-run"
+      execute "$purge_script" $dry_flag
+    fi
+  fi
+
   echo -e "${BLUE}Uninstalling Millennium helper scripts from ${TARGET_DIR}...${NC}"
   
   local removed_any=false
