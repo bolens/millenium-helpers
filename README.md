@@ -4,6 +4,13 @@ A set of utility scripts for managing, repairing, upgrading, and scheduling upda
 
 ## Installation & Setup
 
+### Prerequisites
+
+These scripts require standard Linux shell utilities to be available on your system path:
+- `curl`, `tar`, `awk`, `sha256sum`, `unzip` (for downloads, extraction, and verification)
+- `sudo` and `visudo` (for passwordless elevation checks)
+- `systemd` (for daily background auto-update scheduling)
+
 ### Step 1: Install System-Wide
 Clone this repository and run the installer:
 ```bash
@@ -140,3 +147,9 @@ This setup achieves this securely using **Option A**:
 2. A drop-in rule is created at `/etc/sudoers.d/millennium-helpers`.
 3. Sudo allows passwordless execution of only `/usr/local/bin/millennium-upgrade-stable` and `/usr/local/bin/millennium-upgrade-beta`.
 4. Because the files in `/usr/local/bin/` cannot be modified by your unprivileged user account, this configuration is completely secure and cannot be exploited for local privilege escalation.
+
+---
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
