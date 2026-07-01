@@ -10,6 +10,13 @@ for cmd in curl unzip; do
   fi
 done
 
+# Text color formatting
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
 SKIP_THEME=false
 DRY_RUN=false
 while [[ $# -gt 0 ]]; do
@@ -28,6 +35,12 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+if [[ "$DRY_RUN" == "false" ]] && [[ "$(id -u)" -ne 0 ]]; then
+  echo -e "${RED}Error: This script must be run with sudo to fix file ownership and link hooks.${NC}" >&2
+  echo -e "Please run: sudo $0 $*" >&2
+  exit 1
+fi
 
 USER_NAME="${SUDO_USER:-$USER}"
 USER_HOME="$(getent passwd "$USER_NAME" | cut -d: -f6)"
