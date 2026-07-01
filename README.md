@@ -2,6 +2,19 @@
 
 A set of utility scripts for managing, repairing, upgrading, and scheduling updates for the [Millennium](https://github.com/SteamClientHomebrew/Millennium) Steam Client homebrew hook on Linux.
 
+---
+
+## Features
+
+- **Automated Installation & Uninstallation**: Installs the helper tools system-wide into `/usr/local/bin` and configures autocompletions.
+- **Daily Automated Update Scheduler**: Configures a user-level systemd timer and service to run updates daily in the background.
+- **Secure by Design**: Utilizes `/etc/sudoers.d/` drop-in configuration to grant limited passwordless privilege escalation specifically for the updater binaries without introducing privilege escalation vectors.
+- **Support for Multiple Release Channels**: Easily switch between `stable` and `beta` updates.
+- **Repair Utility**: Cross-distro and Flatpak-resilient ownership correction, cache purging, and theme refreshing from repository metadata.
+- **Diagnostic Tool**: Thorough health checks, version verification, self-repair mechanisms, and update status analysis.
+
+---
+
 ## Installation & Setup
 
 ### Prerequisites
@@ -33,16 +46,6 @@ millennium-schedule enable
 ```bash
 millennium-schedule enable beta
 ```
-
----
-
-## Features
-
-- **Automated Installation & Uninstallation**: Installs the helper tools system-wide into `/usr/local/bin`.
-- **Daily Automated Update Scheduler**: Configures a user-level systemd timer and service to run updates daily in the background.
-- **Secure by Design**: Utilizes `/etc/sudoers.d/` drop-in configuration to grant limited passwordless privilege escalation specifically for the updater binaries without introducing privilege escalation vectors.
-- **Support for Multiple Release Channels**: Easily switch between `stable` and `beta` updates.
-- **Repair Utility**: Ownership correction, cache purging, and theme refreshing.
 
 ---
 
@@ -170,6 +173,24 @@ millennium-diag doctor --dry-run
 
 ---
 
+## Shell Autocompletions
+
+The installer automatically deploys shell autocompletion configurations for:
+
+- **Bash**: Copied to `/usr/share/bash-completion/completions/` (supports auto-loading for all scripts).
+- **Zsh**: Copied to `/usr/share/zsh/site-functions/` (auto-loaded; requires `compinit` in `~/.zshrc`).
+- **Fish**: Copied to `/usr/share/fish/vendor_completions.d/`.
+- **Nushell**: Copied to `/usr/share/nushell/completions/` or `/usr/local/share/nushell/completions/`.
+
+### Activating Nushell Completions
+To load completions in Nushell, add the following line to your `~/.config/nushell/config.nu`:
+```nushell
+use /usr/share/nushell/completions/millennium-helpers.nu *
+```
+*(Use `/usr/local/share/nushell/completions/millennium-helpers.nu *` if installed under `/usr/local`.)*
+
+---
+
 ## Script Overview
 
 ### 1. [install.sh](install.sh)
@@ -177,8 +198,10 @@ The master installer. It copies all helper scripts to `/usr/local/bin`, sets per
 
 ### 2. [scripts/millennium-repair.sh](scripts/millennium-repair.sh) (`millennium-repair`)
 Fixes issues with the Steam theme or settings panel.
-- **Offline Resilient**: Automatically detects if the network is down and skips the SpaceTheme download, allowing you to fix local file permissions, caches, and bootstrap links offline.
-- **Skip Theme Option**: Pass `-s` or `--skip-theme` to skip downloading the SpaceTheme explicitly.
+- **XDG & Flatpak Compliant**: Dynamically resolves custom `$XDG_CONFIG_HOME` and `$XDG_DATA_HOME` variables, and loops over Flatpak candidates.
+- **Dynamic Active Theme Fetch**: Reads the active theme from the user's config and, if it contains repository metadata, downloads and performs an atomic directory swap with the latest commit from its GitHub source.
+- **Offline Resilient**: Skips network downloads automatically when offline to allow correcting permissions and hook links locally.
+- **Skip Theme Option**: Pass `-s` or `--skip-theme` to bypass theme downloading explicitly.
 - Fixes directory permissions and ownership for Millennium config folders.
 - Purges the Steam `htmlcache`.
 - Re-links bootstrap files (`libXtst.so.6`) for Steam client library hooking.
@@ -201,24 +224,6 @@ De-registers Millennium from all local Steam users and completely purges its fil
 
 ### 7. [scripts/millennium-diag.sh](scripts/millennium-diag.sh) (`millennium-diag`)
 Runs a comprehensive system-wide health check on your Millennium setup. It reports the running status of Steam, the installed version of Millennium, the integrity of local user client overrides (including Flatpak sandboxes), auto-update timers, and systemd lingering configurations.
-
----
-
-## Shell Autocompletions
-
-The installer automatically deploys shell autocompletion configurations for:
-
-- **Bash**: Copied to `/usr/share/bash-completion/completions/` (supports auto-loading for all scripts).
-- **Zsh**: Copied to `/usr/share/zsh/site-functions/` (auto-loaded; requires `compinit` in `~/.zshrc`).
-- **Fish**: Copied to `/usr/share/fish/vendor_completions.d/`.
-- **Nushell**: Copied to `/usr/share/nushell/completions/` or `/usr/local/share/nushell/completions/`.
-
-### Activating Nushell Completions
-To load completions in Nushell, add the following line to your `~/.config/nushell/config.nu`:
-```nushell
-use /usr/share/nushell/completions/millennium-helpers.nu *
-```
-*(Use `/usr/local/share/nushell/completions/millennium-helpers.nu *` if installed under `/usr/local`.)*
 
 ---
 
