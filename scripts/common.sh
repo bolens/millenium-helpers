@@ -154,13 +154,71 @@ except Exception:
   fi
 }
 
+# Computes a safe, per-user path for the temporary steam-relaunch state
+# file. This intentionally avoids world-writable /tmp: the file is written
+# and later `source`d (potentially while running as root on behalf of
+# another user), so placing it under a private, per-user directory prevents
+# other local users from pre-planting a symlink at a predictable path
+# (a classic /tmp TOCTOU privilege-escalation vector).
+relaunch_state_file() {
+  local target_user="$1"
+  local target_home
+  target_home="$(getent passwd "$target_user" | cut -d: -f6)"
+  if [[ -z "$target_home" ]]; then
+    # Should not happen in practice (caller already validated the user
+    # exists), but fail safe rather than falling back to /tmp.
+    echo ""
+    return 1
+  fi
+
+  local state_dir
+  if [[ "$(id -un)" == "$target_user" && -n "${XDG_STATE_HOME:-}" ]]; then
+    state_dir="${XDG_STATE_HOME}/millennium-helpers"
+  else
+    state_dir="${target_home}/.local/state/millennium-helpers"
+  fi
+  echo "${state_dir}/relaunch.env"
+}
+
+# Creates (or re-secures) the directory that will hold the relaunch state
+# file, ensuring it is owned by the target user and not group/world
+# writable, so other local users cannot plant a symlink inside it.
+_prepare_relaunch_state_dir() {
+  local target_user="$1"
+  local state_file="$2"
+  local state_dir
+  state_dir="$(dirname "$state_file")"
+  mkdir -p "$state_dir"
+  chmod 700 "$state_dir"
+  if [[ "$(id -u)" -eq 0 && "$(id -un)" != "$target_user" ]]; then
+    chown "$target_user":"$target_user" "$state_dir"
+  fi
+}
+
+# Validates that a relaunch state file is safe to source: it must exist,
+# must not be a symlink (never follow one, in case an attacker won a race
+# before the directory was locked down), and must be owned by the target
+# user (or root).
+_is_safe_relaunch_state_file() {
+  local target_user="$1"
+  local state_file="$2"
+  [[ -n "$state_file" ]] || return 1
+  [[ -e "$state_file" ]] || return 1
+  [[ -L "$state_file" ]] && return 1
+  [[ -f "$state_file" ]] || return 1
+  local owner
+  owner="$(stat -c '%U' "$state_file" 2>/dev/null || true)"
+  [[ -z "$owner" || "$owner" == "$target_user" || "$owner" == "root" ]]
+}
+
 relaunch_steam() {
   local target_user="$1"
   local user_home
   user_home="$(getent passwd "$target_user" | cut -d: -f6)"
-  local state_file="/tmp/millennium-relaunch-${target_user}"
+  local state_file
+  state_file="$(relaunch_state_file "$target_user")"
 
-  if [[ ! -f "$state_file" ]]; then
+  if ! _is_safe_relaunch_state_file "$target_user" "$state_file"; then
     return 0
   fi
 
@@ -206,8 +264,10 @@ is_game_running() {
 
 capture_steam_env() {
   local target_user="$1"
-  local state_file="$2"
-  
+  local state_file
+  state_file="$(relaunch_state_file "$target_user")"
+  _prepare_relaunch_state_dir "$target_user" "$state_file"
+
   local was_flatpak=false
   if command -v flatpak &>/dev/null && flatpak ps 2>/dev/null | grep -q "com.valvesoftware.Steam"; then
     was_flatpak=true
@@ -215,9 +275,15 @@ capture_steam_env() {
   
   local steam_pid
   steam_pid=$(pgrep -x steam | head -n 1 || true)
-  
-  mkdir -p "$(dirname "$state_file")"
-  rm -f "$state_file"
+
+  # Write to a fresh temp file in the same (now-locked-down) directory and
+  # atomically rename it into place, rather than rm+append into the final
+  # path. rename(2) replaces the destination path itself without following
+  # a symlink there, closing the /tmp-style TOCTOU window this file used to
+  # be exposed to.
+  local tmp_file
+  tmp_file="$(mktemp "${state_file}.XXXXXX")"
+  chmod 600 "$tmp_file"
   
   if [[ -n "$steam_pid" ]]; then
     local steam_env
@@ -227,7 +293,7 @@ capture_steam_env() {
     for var in DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS WAYLAND_DISPLAY XDG_RUNTIME_DIR XDG_SESSION_TYPE XDG_CURRENT_DESKTOP; do
       val=$(echo "$steam_env" | grep "^${var}=" | cut -d= -f2- | head -n 1 || true)
       if [[ -n "$val" ]]; then
-        echo "export ${var}='${val}'" >> "$state_file"
+        echo "export ${var}='${val}'" >> "$tmp_file"
       fi
     done
     
@@ -243,11 +309,16 @@ except Exception:
     pass
 " "$steam_pid" 2>/dev/null || true)
     
-    echo "export STEAM_ARGS=\"${steam_args}\"" >> "$state_file"
-    echo "export WAS_FLATPAK='${was_flatpak}'" >> "$state_file"
+    echo "export STEAM_ARGS=\"${steam_args}\"" >> "$tmp_file"
+    echo "export WAS_FLATPAK='${was_flatpak}'" >> "$tmp_file"
   else
-    echo "export WAS_FLATPAK='${was_flatpak}'" >> "$state_file"
+    echo "export WAS_FLATPAK='${was_flatpak}'" >> "$tmp_file"
   fi
+
+  if [[ "$(id -u)" -eq 0 && "$(id -un)" != "$target_user" ]]; then
+    chown "$target_user":"$target_user" "$tmp_file"
+  fi
+  mv -f "$tmp_file" "$state_file"
 }
 
 close_steam_gracefully() {
@@ -287,9 +358,10 @@ send_notification() {
   local target_user="${3:-${SUDO_USER:-$(id -un)}}"
   
   if [[ "$target_user" != "root" ]] && command -v notify-send &>/dev/null; then
-    local state_file="/tmp/millennium-relaunch-${target_user}"
+    local state_file
+    state_file="$(relaunch_state_file "$target_user")"
     local env_prefix=""
-    if [[ -f "$state_file" ]]; then
+    if _is_safe_relaunch_state_file "$target_user" "$state_file"; then
       local display_val wayland_val dbus_val runtime_val
       display_val=$(grep "^export DISPLAY=" "$state_file" | cut -d\' -f2 || true)
       wayland_val=$(grep "^export WAYLAND_DISPLAY=" "$state_file" | cut -d\' -f2 || true)

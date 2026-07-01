@@ -72,6 +72,7 @@ jobs:
           - tests/behavioral/test_repair.sh
           - tests/behavioral/test_upgrade.sh
           - tests/behavioral/test_diag.sh
+          - tests/behavioral/test_mcp.sh
         include:
           - distro: debian
             image: debian:12

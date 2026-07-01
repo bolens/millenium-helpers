@@ -111,11 +111,46 @@ fi
 
 SKINS_DIR="${STEAM_DIR}/steamui/skins"
 
+# Rejects theme/repo path components that could escape SKINS_DIR: empty,
+# ".", "..", or containing an embedded "/" (a legitimate theme or repo name
+# is always a single path segment). Without this, an install/remove/update
+# argument like "x/../../../../tmp/evil-theme" would resolve outside of
+# SKINS_DIR, letting the caller (including the MCP theme tool, which passes
+# this argument through unchecked) write or delete arbitrary files the
+# invoking user can access.
+_sanitize_theme_component() {
+  local value="$1"
+  local label="$2"
+  if [[ -z "$value" || "$value" == "." || "$value" == ".." || "$value" == */* ]]; then
+    echo -e "${RED}Error: Invalid ${label} '${value}'.${NC}" >&2
+    exit 1
+  fi
+}
+
+# Defense-in-depth on top of _sanitize_theme_component: canonicalizes the
+# candidate theme directory and verifies it still resolves inside SKINS_DIR
+# before any mkdir/cp/rm touches it (guards against SKINS_DIR itself
+# containing an unexpected symlink).
+_resolve_theme_dir() {
+  local component="$1"
+  local candidate="${SKINS_DIR}/${component}"
+  local resolved resolved_skins
+  resolved="$(realpath -m -- "$candidate")"
+  resolved_skins="$(realpath -m -- "$SKINS_DIR")"
+  if [[ "$resolved" != "$resolved_skins" && "$resolved" != "${resolved_skins}/"* ]]; then
+    echo -e "${RED}Error: Resolved theme path '${resolved}' escapes the skins directory.${NC}" >&2
+    exit 1
+  fi
+  echo "$resolved"
+}
+
 # execute resolved from common.sh
 
 update_single_theme() {
   local theme_name="$1"
-  local target_dir="${SKINS_DIR}/${theme_name}"
+  _sanitize_theme_component "$theme_name" "theme name"
+  local target_dir
+  target_dir="$(_resolve_theme_dir "$theme_name")"
   local meta_file="${target_dir}/metadata.json"
   
   if [[ ! -d "$target_dir" ]]; then
@@ -299,6 +334,8 @@ if [[ "$COMMAND" == "install" ]]; then
   
   owner="${ARG%%/*}"
   repo="${ARG#*/}"
+  _sanitize_theme_component "$owner" "theme owner"
+  _sanitize_theme_component "$repo" "theme repo"
 
   echo -e "Resolving repository: ${owner}/${repo}..."
 
@@ -309,7 +346,7 @@ if [[ "$COMMAND" == "install" ]]; then
     exit 1
   fi
 
-  target_dir="${SKINS_DIR}/${repo}"
+  target_dir="$(_resolve_theme_dir "$repo")"
 
   if [[ -d "$target_dir" ]]; then
     echo -e "${YELLOW}Warning: Theme directory '${repo}' already exists. Use update instead.${NC}" >&2
@@ -353,7 +390,8 @@ fi
 
 # 3. REMOVE COMMAND
 if [[ "$COMMAND" == "remove" ]]; then
-  target_dir="${SKINS_DIR}/${ARG}"
+  _sanitize_theme_component "$ARG" "theme name"
+  target_dir="$(_resolve_theme_dir "$ARG")"
   if [[ ! -d "$target_dir" ]]; then
     echo -e "${RED}Error: Theme '${ARG}' is not installed.${NC}" >&2
     exit 1

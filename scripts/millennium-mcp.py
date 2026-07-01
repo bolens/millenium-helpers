@@ -8,6 +8,26 @@ import json
 import subprocess
 import shutil
 
+# Hard upper bound on how long any single underlying millennium-* command is
+# allowed to run. The server processes one JSON-RPC request at a time on a
+# single thread, so a hung child process (e.g. a stalled network download)
+# would otherwise freeze the entire MCP server for every subsequent tool
+# call from the AI client with no way to recover short of killing it.
+DEFAULT_TIMEOUT_SECONDS = 300
+LONG_TIMEOUT_SECONDS = 600
+
+# Server-side allow-lists mirroring the "enum" values declared in
+# get_tools_list(). The declared schema is documentation only as far as an
+# MCP client is concerned -- nothing stops a client (or a prompt-injected/
+# hallucinating model) from sending an arbitrary string for "action" or
+# "channel". Without validating here, that string is passed straight
+# through to the underlying shell script, which can expose internal-only
+# subcommands (e.g. millennium-schedule's "pre-update"/"post-update", which
+# close/relaunch Steam outside of the normal enable/disable flow).
+VALID_THEME_ACTIONS = {"list", "install", "remove", "update"}
+VALID_SCHEDULE_ACTIONS = {"enable", "disable", "status"}
+VALID_CHANNELS = {"stable", "beta"}
+
 # Logs go to stderr so they don't corrupt the JSON-RPC stdin/stdout transport
 def log(msg):
     sys.stderr.write(f"[MCP LOG] {msg}\n")
@@ -114,7 +134,7 @@ def find_executable(cmd):
             return full_path
     return shutil.which(cmd)
 
-def run_cmd(args, run_as_root=False):
+def run_cmd(args, run_as_root=False, timeout=DEFAULT_TIMEOUT_SECONDS):
     executable = find_executable(args[0])
     if not executable:
         return {"isError": True, "content": [{"type": "text", "text": f"Error: Command '{args[0]}' not found on system."}]}
@@ -125,7 +145,7 @@ def run_cmd(args, run_as_root=False):
         
     try:
         log(f"Executing: {' '.join(cmd_args)}")
-        res = subprocess.run(cmd_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        res = subprocess.run(cmd_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=timeout)
         combined_output = ""
         if res.stdout:
             combined_output += res.stdout
@@ -140,6 +160,12 @@ def run_cmd(args, run_as_root=False):
                 }
             ],
             "isError": res.returncode != 0
+        }
+    except subprocess.TimeoutExpired:
+        log(f"Command timed out after {timeout}s: {' '.join(cmd_args)}")
+        return {
+            "isError": True,
+            "content": [{"type": "text", "text": f"Error: Command '{' '.join(args)}' timed out after {timeout} seconds and was terminated."}]
         }
     except Exception as e:
         return {
@@ -161,7 +187,10 @@ def handle_tool_call(tool_name, arguments):
         action = arguments.get("action")
         theme = arguments.get("theme")
         all_themes = arguments.get("all", False)
-        
+
+        if action not in VALID_THEME_ACTIONS:
+            return {"isError": True, "content": [{"type": "text", "text": f"Error: invalid action '{action}'. Must be one of: {', '.join(sorted(VALID_THEME_ACTIONS))}."}]}
+
         args = ["millennium-theme", action]
         if action == "list":
             args.append("--json")
@@ -174,21 +203,28 @@ def handle_tool_call(tool_name, arguments):
                 args.append("--all")
             elif theme:
                 args.append(theme)
-        return run_cmd(args)
+        return run_cmd(args, timeout=LONG_TIMEOUT_SECONDS)
         
     elif tool_name == "millennium_upgrade":
         channel = arguments.get("channel", "stable")
+        if channel not in VALID_CHANNELS:
+            return {"isError": True, "content": [{"type": "text", "text": f"Error: invalid channel '{channel}'. Must be one of: {', '.join(sorted(VALID_CHANNELS))}."}]}
         if channel == "beta":
             args = ["millennium-upgrade-beta"]
         else:
             args = ["millennium-upgrade-stable"]
-        return run_cmd(args, run_as_root=True)
+        return run_cmd(args, run_as_root=True, timeout=LONG_TIMEOUT_SECONDS)
         
     elif tool_name == "millennium_schedule":
         action = arguments.get("action")
         channel = arguments.get("channel")
         cron = arguments.get("cron", False)
-        
+
+        if action not in VALID_SCHEDULE_ACTIONS:
+            return {"isError": True, "content": [{"type": "text", "text": f"Error: invalid action '{action}'. Must be one of: {', '.join(sorted(VALID_SCHEDULE_ACTIONS))}."}]}
+        if channel is not None and channel not in VALID_CHANNELS:
+            return {"isError": True, "content": [{"type": "text", "text": f"Error: invalid channel '{channel}'. Must be one of: {', '.join(sorted(VALID_CHANNELS))}."}]}
+
         args = ["millennium-schedule", action]
         if action == "enable" and channel:
             args.append(channel)
@@ -197,10 +233,10 @@ def handle_tool_call(tool_name, arguments):
         return run_cmd(args)
         
     elif tool_name == "millennium_repair":
-        return run_cmd(["millennium-repair"], run_as_root=True)
+        return run_cmd(["millennium-repair"], run_as_root=True, timeout=LONG_TIMEOUT_SECONDS)
         
     elif tool_name == "millennium_purge":
-        return run_cmd(["millennium-purge"], run_as_root=True)
+        return run_cmd(["millennium-purge"], run_as_root=True, timeout=LONG_TIMEOUT_SECONDS)
         
     else:
         return {

@@ -105,7 +105,7 @@ if pgrep -x steam >/dev/null 2>&1; then
   echo "Steam is currently running. Closing Steam gracefully to apply update..."
   
   # Capture env and command line arguments
-  capture_steam_env "$RUNNING_USER" "/tmp/millennium-relaunch-${RUNNING_USER}"
+  capture_steam_env "$RUNNING_USER"
 
   if [[ "$DRY_RUN" == "false" ]]; then
     close_steam_gracefully "$RUNNING_USER"
