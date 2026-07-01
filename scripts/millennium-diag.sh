@@ -135,9 +135,13 @@ fi
 echo -n "Millennium Binary Version: "
 if [[ -f "/usr/lib/millennium/version.txt" ]]; then
   # Verify .so files and integrity check
-  if [[ ! -f "/usr/lib/millennium/libmillennium_bootstrap_x86.so" || ! -f "/usr/lib/millennium/libmillennium_bootstrap_hhx64.so" ]]; then
+  if [[ ! -f "/usr/lib/millennium/libmillennium_bootstrap_x86.so" || \
+        ! -f "/usr/lib/millennium/libmillennium_bootstrap_hhx64.so" || \
+        ! -f "/usr/lib/millennium/libmillennium_x86.so" || \
+        ! -f "/usr/lib/millennium/libmillennium_hhx64.so" || \
+        ! -f "/usr/lib/millennium/libmillennium_pvs64" ]]; then
     BINARIES_OK=false
-    echo -e "${RED}Corrupted (shared libraries are missing)${NC}"
+    echo -e "${RED}Corrupted (core libraries or wrapper binaries are missing)${NC}"
   elif [[ ! -f "/usr/lib/millennium/checksums.txt" ]]; then
     BINARIES_OK=false
     echo -e "${RED}Corrupted (missing integrity manifest /usr/lib/millennium/checksums.txt)${NC}"

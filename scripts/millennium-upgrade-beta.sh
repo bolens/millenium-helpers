@@ -170,7 +170,7 @@ else
   chmod 644 "$dest_tmp/version.txt"
   
   # Generate cryptographic integrity manifest
-  (cd "$dest_tmp" && sha256sum libmillennium_bootstrap_x86.so libmillennium_bootstrap_hhx64.so > checksums.txt)
+  (cd "$dest_tmp" && sha256sum libmillennium_bootstrap_x86.so libmillennium_bootstrap_hhx64.so libmillennium_x86.so libmillennium_hhx64.so libmillennium_pvs64 > checksums.txt)
   chmod 644 "$dest_tmp/checksums.txt"
 
   if [[ -d "$dest_dir" ]]; then
