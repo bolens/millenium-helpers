@@ -19,6 +19,6 @@ pkgbase = millennium-helpers-git
 	source = git+https://github.com/bolens/millenium-helpers.git
 	source = millennium-helpers.sudoers
 	sha256sums = SKIP
-	sha256sums = SKIP
+	sha256sums = a56d6abbd4469f78106cb6828cd2ce674e6b6d7883f7e9e5476ecc09f2e4ffe9
 
 pkgname = millennium-helpers-git
