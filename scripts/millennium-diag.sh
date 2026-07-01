@@ -209,7 +209,12 @@ fi
 
 # 4. Check Sudoers Authorization
 echo -n "Sudoers Passwordless Update Authorization: "
-if sudo -n -l 2>/dev/null | grep -qE "NOPASSWD.*(millennium-upgrade-stable|ALL)"; then
+check_cmd="sudo -n -l"
+if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" ]]; then
+  check_cmd="sudo -U $RUNNING_USER -n -l"
+fi
+
+if eval "$check_cmd" 2>/dev/null | grep -qE "NOPASSWD.*(millennium-upgrade-stable|ALL)"; then
   echo -e "${GREEN}Active & Verified${NC}"
 else
   SUDOERS_OK=false
