@@ -30,6 +30,7 @@ Commands:
   remove [theme-name]   Uninstall/remove an installed theme
 
 Options:
+  --json                Output list command results in structured JSON format
   -d, --dry-run         Perform a dry-run (simulates operations without modifying files)
   -h, --help            Show this help message
 EOF
@@ -38,16 +39,21 @@ EOF
 COMMAND=""
 ARG=""
 DRY_RUN=false
+OUTPUT_JSON=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     list|install|update|remove)
       COMMAND="$1"
       shift
-      if [[ "$COMMAND" != "list" && $# -gt 0 ]]; then
+      if [[ "$COMMAND" != "list" && $# -gt 0 && "$1" != -* ]]; then
         ARG="$1"
         shift
       fi
+      ;;
+    --json)
+      OUTPUT_JSON=true
+      shift
       ;;
     -d|--dry-run)
       DRY_RUN=true
@@ -225,17 +231,33 @@ EOF
 
 # 1. LIST COMMAND
 if [[ "$COMMAND" == "list" ]]; then
-  echo -e "${BLUE}=== Installed Millennium Themes ===${NC}"
+  if [[ "$OUTPUT_JSON" == "false" ]]; then
+    echo -e "${BLUE}=== Installed Millennium Themes ===${NC}"
+  fi
   if [[ ! -d "$SKINS_DIR" ]]; then
-    echo "No themes skins directory found at ${SKINS_DIR}."
+    if [[ "$OUTPUT_JSON" == "true" ]]; then
+      echo "[]"
+    else
+      echo "No themes skins directory found at ${SKINS_DIR}."
+    fi
     exit 0
   fi
   
   found=false
+  first=true
+  if [[ "$OUTPUT_JSON" == "true" ]]; then
+    printf "["
+  fi
+  
   for dir in "$SKINS_DIR"/*; do
     [[ -d "$dir" ]] || continue
     theme_name=$(basename "$dir")
     found=true
+    
+    owner=""
+    repo=""
+    commit=""
+    type="local"
     
     # Read metadata if exists
     meta_file="${dir}/metadata.json"
@@ -254,14 +276,32 @@ except Exception:
       repo="${rest%%:*}"
       commit="${rest#*:}"
       if [[ -n "$owner" && -n "$repo" ]]; then
-        echo -e "  - ${GREEN}${theme_name}${NC} (${owner}/${repo} @ ${commit:0:7})"
-        continue
+        type="github"
       fi
     fi
-    echo -e "  - ${GREEN}${theme_name}${NC} (Local / Manual Installation)"
+    
+    if [[ "$OUTPUT_JSON" == "true" ]]; then
+      if [[ "$first" == "false" ]]; then
+        printf ","
+      fi
+      first=false
+      if [[ "$type" == "github" ]]; then
+        printf '{"name":"%s","owner":"%s","repo":"%s","commit":"%s","type":"github"}' "$theme_name" "$owner" "$repo" "$commit"
+      else
+        printf '{"name":"%s","type":"local"}' "$theme_name"
+      fi
+    else
+      if [[ "$type" == "github" ]]; then
+        echo -e "  - ${GREEN}${theme_name}${NC} (${owner}/${repo} @ ${commit:0:7})"
+      else
+        echo -e "  - ${GREEN}${theme_name}${NC} (Local / Manual Installation)"
+      fi
+    fi
   done
   
-  if [[ "$found" == "false" ]]; then
+  if [[ "$OUTPUT_JSON" == "true" ]]; then
+    echo "]"
+  elif [[ "$found" == "false" ]]; then
     echo "No themes installed."
   fi
   exit 0

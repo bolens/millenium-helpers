@@ -3,4 +3,5 @@ complete -c millennium-theme -f -a 'install' -d 'Install a theme from GitHub (ow
 complete -c millennium-theme -f -a 'update' -d 'Update an installed theme'
 complete -c millennium-theme -f -a 'remove' -d 'Remove an installed theme'
 complete -c millennium-theme -s d -l dry-run -d 'Simulation mode'
+complete -c millennium-theme -l json -d 'Output list command results in structured JSON format'
 complete -c millennium-theme -s h -l help -d 'Show help message'

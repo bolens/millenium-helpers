@@ -39,6 +39,7 @@ _millennium_helpers() {
         '1:subcommand:(list install remove update)' \
         '2:theme:_files' \
         '--all[Update all themes]' \
+        '--json[Output list command results in structured JSON format]' \
         {-d,--dry-run}'[Simulation mode]' \
         {-h,--help}'[Show help message]'
       ;;
