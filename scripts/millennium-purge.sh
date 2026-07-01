@@ -29,9 +29,35 @@ if [[ "$DRY_RUN" == "false" ]] && [[ "$(id -u)" -ne 0 ]]; then
   exit 1
 fi
 
-if pgrep -x steam >/dev/null 2>&1; then
-  echo -e "${RED}Error: Close Steam completely before purging Millennium.${NC}" >&2
+# Source shared helpers
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COMMON_SH="${SCRIPT_DIR}/common.sh"
+if [[ ! -f "$COMMON_SH" ]]; then
+  COMMON_SH="/usr/local/lib/millennium-helpers/common.sh"
+  if [[ -f "/usr/lib/millennium-helpers/common.sh" ]]; then
+    COMMON_SH="/usr/lib/millennium-helpers/common.sh"
+  fi
+fi
+if [[ -f "$COMMON_SH" ]]; then
+  # shellcheck disable=SC1090
+  source "$COMMON_SH"
+else
+  echo -e "${RED}Error: Shared helper library not found.${NC}" >&2
   exit 1
+fi
+
+RUNNING_USER="${SUDO_USER:-$USER}"
+
+if pgrep -x steam >/dev/null 2>&1; then
+  if is_game_running; then
+    echo -e "${RED}Error: A Steam game is currently running. Purging cannot proceed while a game is active.${NC}" >&2
+    exit 1
+  fi
+
+  echo "Steam is currently running. Closing Steam gracefully to apply purge..."
+  if [[ "$DRY_RUN" == "false" ]]; then
+    close_steam_gracefully "$RUNNING_USER"
+  fi
 fi
 
 if [[ "$DRY_RUN" == "true" ]]; then
