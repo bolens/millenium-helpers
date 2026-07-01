@@ -82,6 +82,7 @@ TIMER_ACTIVE=true
 LINGER_OK=true
 SCRIPTS_UP_TO_DATE=true
 PERMISSIONS_OK=true
+SKINS_DIR_OK=true
 
 SYSTEMD_BOOTED=false
 if [[ -d /run/systemd/system ]]; then
@@ -90,6 +91,7 @@ fi
 
 out_of_date_scripts=()
 unwritable_dirs=()
+missing_skins_dirs=()
 TMP_SCRIPTS=""
 
 UTILITIES=(
@@ -356,6 +358,8 @@ for steam_dir in "${USER_HOME}/.local/share/Steam" "${USER_HOME}/.steam/steam" "
         echo -e "${RED}Parent Not Writable${NC} (Owned by: ${parent_owner})"
       else
         echo -e "${YELLOW}Missing (parent is writable, will be created automatically)${NC}"
+        SKINS_DIR_OK=false
+        missing_skins_dirs+=("$skins_dir")
       fi
     else
       echo -e "${RED}Steam Directory Missing${NC}"
@@ -488,7 +492,7 @@ if [[ "$COMMAND" == "doctor" ]]; then
   echo -e "\n${BLUE}=== Running Millennium Doctor (Automatic Repairs) ===${NC}"
   
   # Check if anything needs fixing
-  if [[ "$BINARIES_OK" == true && "$HOOKS_OK" == true && "$FLATPAK_OK" == true && "$SUDOERS_OK" == true && "$TIMER_ACTIVE" == true && "$LINGER_OK" == true && "$SCRIPTS_UP_TO_DATE" == true && "$PERMISSIONS_OK" == true ]]; then
+  if [[ "$BINARIES_OK" == true && "$HOOKS_OK" == true && "$FLATPAK_OK" == true && "$SUDOERS_OK" == true && "$TIMER_ACTIVE" == true && "$LINGER_OK" == true && "$SCRIPTS_UP_TO_DATE" == true && "$PERMISSIONS_OK" == true && "$SKINS_DIR_OK" == true ]]; then
     echo -e "${GREEN}No issues detected. Your Millennium installation is healthy!${NC}"
     exit 0
   fi
@@ -652,6 +656,21 @@ if [[ "$COMMAND" == "doctor" ]]; then
       else
         echo -e "${RED}Error: Root privileges are required to fix ownership of ${dir}.${NC}" >&2
         echo -e "Please re-run the doctor with sudo: ${YELLOW}sudo millennium-diag doctor${NC}" >&2
+      fi
+    done
+  fi
+
+  # Issue 9: Missing skins directories
+  if [[ "${#missing_skins_dirs[@]}" -gt 0 ]]; then
+    echo -e "\n${YELLOW}[DOCTOR] Creating missing skins directories...${NC}"
+    for dir in "${missing_skins_dirs[@]}"; do
+      echo "Creating directory: ${dir}"
+      if [[ "$DRY_RUN" == "false" ]]; then
+        execute mkdir -p "$dir"
+        if [[ "$(id -u)" -eq 0 ]]; then
+          execute chown "${RUNNING_USER}:${RUNNING_USER}" "$dir"
+        fi
+        execute chmod 755 "$dir"
       fi
     done
   fi
