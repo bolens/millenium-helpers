@@ -1,0 +1,45 @@
+name: Completions Syntax Check
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  completions:
+    name: Validate shell completions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install zsh and fish
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq zsh fish
+
+      - name: Install Nushell
+        uses: hustcer/setup-nu@v3
+        with:
+          version: 'latest'
+
+      - name: Bash completion (syntax + source)
+        run: |
+          bash -n completions/bash/millennium-helpers
+          bash -c "source completions/bash/millennium-helpers"
+
+      - name: Zsh completion (syntax + source)
+        run: |
+          zsh -n completions/zsh/_millennium-helpers
+          zsh -c "autoload -U compinit && compinit -u && source completions/zsh/_millennium-helpers"
+
+      - name: Fish completions (syntax check)
+        run: |
+          for f in completions/fish/*.fish; do
+            echo "Checking $f"
+            fish -n "$f"
+          done
+
+      - name: Nushell completion (source check)
+        run: nu -c "source completions/nushell/millennium-helpers.nu"
