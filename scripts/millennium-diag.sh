@@ -139,6 +139,12 @@ fi
 
 # --- Logs Viewer Execution ---
 if [[ "$COMMAND" == "logs" ]]; then
+  if [[ -f "${USER_HOME}/.local/share/millennium-helpers/updater.log" ]]; then
+    echo -e "${BLUE}=== Millennium Background Auto-Updater Logs ===${NC}"
+    tail -n 50 "${USER_HOME}/.local/share/millennium-helpers/updater.log"
+    echo -e "\n"
+  fi
+
   echo -e "${BLUE}=== Millennium & Steam WebHelper Logs ===${NC}"
   
   # Find latest log files

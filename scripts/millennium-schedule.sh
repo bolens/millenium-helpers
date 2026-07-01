@@ -136,10 +136,7 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStartPre=${sched_self} pre-update
-ExecStart=/usr/bin/sudo -n ${script_file}
-ExecStart=-${theme_cmd} update
-ExecStopPost=${sched_self} post-update
+ExecStart=/bin/bash -c 'mkdir -p "${USER_HOME}/.local/share/millennium-helpers" && { "${sched_self}" pre-update && /usr/bin/sudo -n "${script_file}" && "${theme_cmd}" update && "${sched_self}" post-update; } >> "${USER_HOME}/.local/share/millennium-helpers/updater.log" 2>&1'
 EOF
 
   echo -e "${BLUE}Creating systemd user timer file...${NC}"
@@ -325,7 +322,7 @@ enable_cron() {
   local theme_cmd
   theme_cmd=$(resolve_helper_path "millennium-theme")
 
-  local cron_cmd="0 2 * * * sleep \$(python3 -c 'import random; print(random.randint(0, 3600))') && ${sched_self} pre-update && { /usr/bin/sudo -n ${script_file} && ${theme_cmd} update; ${sched_self} post-update; }"
+  local cron_cmd="0 2 * * * sleep \$(python3 -c 'import random; print(random.randint(0, 3600))') && mkdir -p ${USER_HOME}/.local/share/millennium-helpers && { ${sched_self} pre-update && /usr/bin/sudo -n ${script_file} && ${theme_cmd} update && ${sched_self} post-update; } >> ${USER_HOME}/.local/share/millennium-helpers/updater.log 2>&1"
   
   echo -e "${BLUE}Configuring daily crontab job for user ${RUNNING_USER}...${NC}"
   
