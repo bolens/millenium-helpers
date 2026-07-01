@@ -139,9 +139,10 @@ fi
 
 # --- Logs Viewer Execution ---
 if [[ "$COMMAND" == "logs" ]]; then
-  if [[ -f "${USER_HOME}/.local/share/millennium-helpers/updater.log" ]]; then
+  state_dir="${XDG_STATE_HOME:-$USER_HOME/.local/state}/millennium-helpers"
+  if [[ -f "${state_dir}/updater.log" ]]; then
     echo -e "${BLUE}=== Millennium Background Auto-Updater Logs ===${NC}"
-    tail -n 50 "${USER_HOME}/.local/share/millennium-helpers/updater.log"
+    tail -n 50 "${state_dir}/updater.log"
     echo -e "\n"
   fi
 
