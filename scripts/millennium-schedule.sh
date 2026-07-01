@@ -289,14 +289,33 @@ pre_update() {
   fi
   
   local was_flatpak=false
-  local was_running=false
+  local state_file="/tmp/millennium-relaunch-${RUNNING_USER}"
+  rm -f "$state_file"
   
   if pgrep -x steam >/dev/null; then
-    was_running=true
     if command -v flatpak &>/dev/null && flatpak ps | grep -q "com.valvesoftware.Steam"; then
       was_flatpak=true
     fi
     
+    # Extract desktop environment variables from the running Steam process
+    local steam_pid
+    steam_pid=$(pgrep -x steam | head -n 1 || true)
+    if [[ -n "$steam_pid" ]]; then
+      local steam_env
+      steam_env=$(tr '\0' '\n' < "/proc/${steam_pid}/environ" 2>/dev/null || true)
+      
+      local val
+      for var in DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS WAYLAND_DISPLAY XDG_RUNTIME_DIR XDG_SESSION_TYPE XDG_CURRENT_DESKTOP; do
+        val=$(echo "$steam_env" | grep "^${var}=" | cut -d= -f2- | head -n 1 || true)
+        if [[ -n "$val" ]]; then
+          echo "export ${var}='${val}'" >> "$state_file"
+        fi
+      done
+      echo "export WAS_FLATPAK='${was_flatpak}'" >> "$state_file"
+    else
+      echo "export WAS_FLATPAK='${was_flatpak}'" >> "$state_file"
+    fi
+
     echo "Steam is running. Closing gracefully..."
     if [[ "$was_flatpak" == "true" ]]; then
       flatpak run com.valvesoftware.Steam -shutdown || true
@@ -317,12 +336,6 @@ pre_update() {
       killall -9 steam steamwebhelper 2>/dev/null || true
     fi
   fi
-  
-  local state_file="/tmp/millennium-relaunch-${RUNNING_USER}"
-  rm -f "$state_file"
-  if [[ "$was_running" == "true" ]]; then
-    echo "was_flatpak=${was_flatpak}" > "$state_file"
-  fi
   exit 0
 }
 
@@ -340,14 +353,13 @@ post_update() {
   fi
   
   if [[ -f "$state_file" ]]; then
-    local was_flatpak=false
-    if grep -q "was_flatpak=true" "$state_file"; then
-      was_flatpak=true
-    fi
+    # Source saved environment variables (sets DISPLAY, WAYLAND_DISPLAY, etc.)
+    # shellcheck disable=SC1090
+    source "$state_file"
     rm -f "$state_file"
     
     echo "Millennium update succeeded. Relaunching Steam..."
-    if [[ "$was_flatpak" == "true" ]]; then
+    if [[ "${WAS_FLATPAK:-false}" == "true" ]]; then
       flatpak run com.valvesoftware.Steam >/dev/null 2>&1 &
     else
       if command -v steam &>/dev/null; then

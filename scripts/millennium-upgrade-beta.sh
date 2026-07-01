@@ -89,6 +89,8 @@ EXPORT_XAUTHORITY=""
 EXPORT_DBUS=""
 EXPORT_WAYLAND=""
 EXPORT_RUNTIME=""
+EXPORT_SESSION_TYPE=""
+EXPORT_DESKTOP=""
 
 RUNNING_USER="${SUDO_USER:-$USER}"
 USER_HOME="$(getent passwd "$RUNNING_USER" | cut -d: -f6)"
@@ -132,6 +134,8 @@ if pgrep -x steam >/dev/null 2>&1; then
     EXPORT_DBUS=$(echo "$steam_env" | grep "^DBUS_SESSION_BUS_ADDRESS=" | head -n 1 || true)
     EXPORT_WAYLAND=$(echo "$steam_env" | grep "^WAYLAND_DISPLAY=" | head -n 1 || true)
     EXPORT_RUNTIME=$(echo "$steam_env" | grep "^XDG_RUNTIME_DIR=" | head -n 1 || true)
+    EXPORT_SESSION_TYPE=$(echo "$steam_env" | grep "^XDG_SESSION_TYPE=" | head -n 1 || true)
+    EXPORT_DESKTOP=$(echo "$steam_env" | grep "^XDG_CURRENT_DESKTOP=" | head -n 1 || true)
   fi
 
   if [[ "$DRY_RUN" == "false" ]]; then
@@ -337,6 +341,8 @@ if [[ "$RELAUNCH_STEAM" == "true" && "$DRY_RUN" == "false" ]]; then
   [[ -n "${EXPORT_DBUS:-}" ]] && env_prefix+="${EXPORT_DBUS} "
   [[ -n "${EXPORT_WAYLAND:-}" ]] && env_prefix+="${EXPORT_WAYLAND} "
   [[ -n "${EXPORT_RUNTIME:-}" ]] && env_prefix+="${EXPORT_RUNTIME} "
+  [[ -n "${EXPORT_SESSION_TYPE:-}" ]] && env_prefix+="${EXPORT_SESSION_TYPE} "
+  [[ -n "${EXPORT_DESKTOP:-}" ]] && env_prefix+="${EXPORT_DESKTOP} "
 
   if [[ "$WAS_FLATPAK" == "true" ]]; then
     runuser "$RUNNING_USER" -c "${env_prefix}flatpak run com.valvesoftware.Steam >/dev/null 2>&1 &"
