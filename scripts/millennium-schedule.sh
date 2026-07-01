@@ -255,7 +255,7 @@ pre_update() {
   if pgrep -x steam >/dev/null; then
     log_info "Steam is running. Closing Steam gracefully to perform upgrades..."
     # Capture env
-    capture_steam_env "$RUNNING_USER" "/tmp/millennium-relaunch-${RUNNING_USER}"
+    capture_steam_env "$RUNNING_USER"
     
     # Close Steam
     close_steam_gracefully "$RUNNING_USER"
@@ -268,7 +268,8 @@ pre_update() {
 
 post_update() {
   log_info "Initiating post-update checks and verification..."
-  local state_file="/tmp/millennium-relaunch-${RUNNING_USER}"
+  local state_file
+  state_file="$(relaunch_state_file "$RUNNING_USER")"
   local diag_path
   diag_path=$(resolve_helper_path "millennium-diag")
   
@@ -279,7 +280,7 @@ post_update() {
   fi
   
   log_info "Diagnostics verification passed successfully."
-  if [[ -f "$state_file" ]]; then
+  if _is_safe_relaunch_state_file "$RUNNING_USER" "$state_file"; then
     # Source saved environment variables (sets DISPLAY, WAYLAND_DISPLAY, STEAM_ARGS, WAS_FLATPAK, etc.)
     # shellcheck disable=SC1090
     source "$state_file"

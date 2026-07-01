@@ -677,7 +677,7 @@ if [[ "$COMMAND" == "doctor" ]]; then
     echo -e "${YELLOW}Steam is currently running and must be closed to apply repairs to hooks/binaries.${NC}"
     
     # Capture env and command line arguments
-    capture_steam_env "$RUNNING_USER" "/tmp/millennium-relaunch-${RUNNING_USER}"
+    capture_steam_env "$RUNNING_USER"
     
     # Close Steam gracefully
     if [[ "$DRY_RUN" == "false" ]]; then
@@ -866,20 +866,11 @@ if [[ "$COMMAND" == "doctor" ]]; then
 
   if [[ "$relaunch_steam_after_doctor" == "true" ]]; then
     echo -e "\n${GREEN}Relaunching Steam...${NC}"
-    
-    # Source saved environment variables (sets DISPLAY, WAYLAND_DISPLAY, STEAM_ARGS, WAS_FLATPAK, etc.)
-    # shellcheck disable=SC1090
-    source "/tmp/millennium-relaunch-${RUNNING_USER}"
-    rm -f "/tmp/millennium-relaunch-${RUNNING_USER}"
 
-    if [[ "${WAS_FLATPAK:-false}" == "true" ]]; then
-      execute runuser "$RUNNING_USER" -c "flatpak run com.valvesoftware.Steam ${STEAM_ARGS} >/dev/null 2>&1 &"
+    if [[ "$DRY_RUN" == "true" ]]; then
+      execute relaunch_steam "$RUNNING_USER"
     else
-      if command -v steam &>/dev/null; then
-        execute runuser "$RUNNING_USER" -c "steam ${STEAM_ARGS} >/dev/null 2>&1 &"
-      elif [[ -x "${USER_HOME}/.local/bin/steam" ]]; then
-        execute runuser "$RUNNING_USER" -c "${USER_HOME}/.local/bin/steam ${STEAM_ARGS} >/dev/null 2>&1 &"
-      fi
+      relaunch_steam "$RUNNING_USER"
     fi
   fi
 fi

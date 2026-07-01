@@ -127,6 +127,17 @@ assert_failure "$rc" "millennium-theme install fails cleanly when the GitHub API
 assert_contains "$out" "Error" "millennium-theme install reports an error when it cannot resolve the latest commit"
 rm -f "${MOCK_BIN}/curl" "${MOCK_BIN}/jq"
 
+# --- install: path traversal in the repo component is rejected ---
+
+mock_cmd "jq" 'read -r _; echo "abcdef0123456789abcdef0123456789abcdef01"'
+mock_cmd "curl" 'echo "{}"'
+out=$(run_theme install "someowner/../../../../tmp/evil-theme" --dry-run 2>&1)
+rc=$?
+assert_failure "$rc" "millennium-theme install rejects a repo component containing path traversal"
+assert_contains "$out" "Invalid" "millennium-theme install explains the repo component is invalid"
+assert_file_not_exists "/tmp/evil-theme" "millennium-theme install does not create a directory outside SKINS_DIR"
+rm -f "${MOCK_BIN}/curl" "${MOCK_BIN}/jq"
+
 # --- remove: nonexistent theme ---
 
 out=$(run_theme remove "NoSuchTheme" 2>&1)
@@ -141,6 +152,17 @@ rc=$?
 assert_success "$rc" "millennium-theme remove --dry-run exits 0 for an existing theme"
 assert_contains "$out" "DRY RUN" "millennium-theme remove --dry-run announces dry-run mode"
 assert_file_exists "${FAKE_HOME}/.local/share/Steam/steamui/skins/GithubTheme" "millennium-theme remove --dry-run does not actually delete the theme directory"
+
+# --- remove: path traversal in the theme name is rejected ---
+
+CANARY_FILE="$(mktemp)"
+echo "do not delete me" > "$CANARY_FILE"
+out=$(run_theme remove "../../../../..${CANARY_FILE}" 2>&1)
+rc=$?
+assert_failure "$rc" "millennium-theme remove rejects a theme name containing path traversal"
+assert_contains "$out" "Invalid" "millennium-theme remove explains the theme name is invalid"
+assert_file_exists "$CANARY_FILE" "millennium-theme remove does not delete a file outside SKINS_DIR"
+rm -f "$CANARY_FILE"
 
 # --- update: nonexistent theme ---
 

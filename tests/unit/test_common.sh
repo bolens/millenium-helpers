@@ -149,26 +149,39 @@ else
   assert_equals "false" "false" "is_game_running returns false when no game process exists"
 fi
 
-# --- relaunch_steam() ---
+# --- relaunch_state_file() / relaunch_steam() / capture_steam_env() ---
+#
+# capture_steam_env/relaunch_steam now derive the state file path from the
+# target user's home directory (via relaunch_state_file()) rather than
+# accepting a caller-supplied path, and store it under
+# <home>/.local/state/millennium-helpers/relaunch.env instead of predictable
+# world-writable /tmp paths (closing a symlink-race privilege-escalation
+# vector). Point the mocked "getent" user's home at a throwaway temp dir so
+# these tests can exercise the real code path without touching /home.
 
-mock_cmd "getent" 'echo "testuser:x:1000:1000::/home/testuser:/bin/bash"'
+# Ownership of the state file is checked against the target user before it
+# is sourced, so these tests use the real invoking user as the "target
+# user" (mirroring the real non-root self-service call path, e.g.
+# millennium-schedule.sh's pre/post-update hooks, where target_user is
+# always the invoking user).
+test_relaunch_user="$(id -un)"
+relaunch_test_home=$(mktemp -d)
+mock_cmd "getent" 'echo "'"${test_relaunch_user}"':x:1000:1000::'"${relaunch_test_home}"':/bin/bash"'
 mock_cmd "runuser" 'echo "runuser called: $*" >> "'"${MOCK_BIN}"'/runuser.calls"'
 
-state_dir=$(mktemp -d)
+expected_state_file="${relaunch_test_home}/.local/state/millennium-helpers/relaunch.env"
 
 # No state file -> no-op, must not error and must not call runuser
 rm -f "${MOCK_BIN}/runuser.calls"
-HOME_BACKUP_STATE_FILE="/tmp/millennium-relaunch-relaunch-test-user-missing"
-rm -f "$HOME_BACKUP_STATE_FILE"
+rm -f "$expected_state_file"
 out=$(relaunch_steam "relaunch-test-user-missing" 2>&1)
 rc=$?
 assert_success "$rc" "relaunch_steam exits 0 when no state file exists"
 assert_equals "" "$out" "relaunch_steam produces no output when no state file exists (silent no-op)"
 
 # With a state file present (native, non-flatpak) -> should invoke runuser with steam
-test_relaunch_user="relaunch-test-user"
-real_state_file="/tmp/millennium-relaunch-${test_relaunch_user}"
-cat > "$real_state_file" << EOF
+mkdir -p "$(dirname "$expected_state_file")"
+cat > "$expected_state_file" << EOF
 export DISPLAY=':1'
 export STEAM_ARGS="-foo -bar"
 export WAS_FLATPAK='false'
@@ -179,16 +192,15 @@ relaunch_steam "$test_relaunch_user" > /tmp/relaunch_stdout.$$ 2>&1
 relaunch_out=$(cat /tmp/relaunch_stdout.$$)
 rm -f /tmp/relaunch_stdout.$$
 assert_contains "$relaunch_out" "Relaunching Steam" "relaunch_steam announces relaunch when a state file exists"
-assert_file_not_exists "$real_state_file" "relaunch_steam removes the state file after use"
+assert_file_not_exists "$expected_state_file" "relaunch_steam removes the state file after use"
 assert_file_exists "${MOCK_BIN}/runuser.calls" "relaunch_steam invokes runuser to relaunch native steam"
 runuser_call=$(cat "${MOCK_BIN}/runuser.calls" 2>/dev/null || true)
 assert_contains "$runuser_call" "$test_relaunch_user" "relaunch_steam's runuser call targets the correct user"
 assert_contains "$runuser_call" "steam" "relaunch_steam's runuser call launches steam"
-rm -f "${MOCK_BIN}/steam" "${MOCK_BIN}/runuser.calls" "$real_state_file"
+rm -f "${MOCK_BIN}/steam" "${MOCK_BIN}/runuser.calls"
 
 # With WAS_FLATPAK=true -> should invoke flatpak run instead of steam
-real_state_file2="/tmp/millennium-relaunch-${test_relaunch_user}"
-cat > "$real_state_file2" << EOF
+cat > "$expected_state_file" << EOF
 export STEAM_ARGS=""
 export WAS_FLATPAK='true'
 EOF
@@ -196,33 +208,42 @@ rm -f "${MOCK_BIN}/runuser.calls"
 relaunch_steam "$test_relaunch_user" > /dev/null 2>&1
 runuser_call=$(cat "${MOCK_BIN}/runuser.calls" 2>/dev/null || true)
 assert_contains "$runuser_call" "flatpak run com.valvesoftware.Steam" "relaunch_steam launches flatpak Steam when WAS_FLATPAK=true"
-rm -f "${MOCK_BIN}/runuser.calls" "$real_state_file2" "${MOCK_BIN}/getent"
+rm -f "${MOCK_BIN}/runuser.calls" "$expected_state_file"
 
-rm -rf "$state_dir"
+# relaunch_steam must refuse to follow a symlink planted at the state file
+# path (defense against a race that pre-dates directory lockdown).
+ln -sf "/etc/hostname" "$expected_state_file"
+symlink_out=$(relaunch_steam "$test_relaunch_user" 2>&1)
+assert_equals "" "$symlink_out" "relaunch_steam silently refuses to source a symlinked state file"
+assert_file_exists "$expected_state_file" "relaunch_steam does not delete an untrusted symlinked state file"
+rm -f "$expected_state_file"
 
 # --- capture_steam_env() ---
 
 # No steam process running (pgrep mocked to find nothing) -> state file records WAS_FLATPAK=false only
 mock_cmd "pgrep" 'exit 1'
 mock_cmd "flatpak" 'exit 1'
-capture_file=$(mktemp -u)
-capture_steam_env "capture-test-user" "$capture_file"
-assert_file_exists "$capture_file" "capture_steam_env creates the state file even with no Steam process"
-capture_contents=$(cat "$capture_file")
+rm -f "$expected_state_file"
+capture_steam_env "$test_relaunch_user"
+assert_file_exists "$expected_state_file" "capture_steam_env creates the state file even with no Steam process"
+capture_dir_perms=$(stat -c '%a' "$(dirname "$expected_state_file")")
+assert_equals "700" "$capture_dir_perms" "capture_steam_env locks the state directory down to mode 700"
+capture_contents=$(cat "$expected_state_file")
 assert_contains "$capture_contents" "WAS_FLATPAK='false'" "capture_steam_env records WAS_FLATPAK=false when Steam/Flatpak aren't running"
 assert_not_contains "$capture_contents" "STEAM_ARGS" "capture_steam_env skips STEAM_ARGS when no Steam process is found"
-rm -f "$capture_file" "${MOCK_BIN}/pgrep" "${MOCK_BIN}/flatpak"
+rm -f "$expected_state_file" "${MOCK_BIN}/pgrep" "${MOCK_BIN}/flatpak"
 
 # Steam process found -> should capture DISPLAY and STEAM_ARGS from /proc/<pid>/environ & cmdline
 fake_pid=$$
 mock_cmd "pgrep" "echo ${fake_pid}"
-capture_file2=$(mktemp -u)
-capture_steam_env "capture-test-user" "$capture_file2"
-assert_file_exists "$capture_file2" "capture_steam_env creates state file when a Steam pid is found"
-capture_contents2=$(cat "$capture_file2")
+capture_steam_env "$test_relaunch_user"
+assert_file_exists "$expected_state_file" "capture_steam_env creates state file when a Steam pid is found"
+capture_contents2=$(cat "$expected_state_file")
 assert_contains "$capture_contents2" "WAS_FLATPAK='false'" "capture_steam_env still records WAS_FLATPAK correctly when Steam is running"
 assert_contains "$capture_contents2" "STEAM_ARGS=" "capture_steam_env records a STEAM_ARGS line when a Steam pid is found"
-rm -f "$capture_file2" "${MOCK_BIN}/pgrep"
+rm -f "$expected_state_file" "${MOCK_BIN}/pgrep"
+rm -rf "$relaunch_test_home"
+rm -f "${MOCK_BIN}/getent"
 
 # --- close_steam_gracefully() ---
 
