@@ -2,6 +2,9 @@
 # Configure systemd user timer for Millennium auto-updates
 set -euo pipefail
 
+RUNNING_USER="${SUDO_USER:-$USER}"
+USER_HOME="$(getent passwd "$RUNNING_USER" | cut -d: -f6)"
+
 # Text color formatting
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -36,7 +39,7 @@ DRY_RUN=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    enable|disable|status)
+    enable|disable|status|pre-update|post-update)
       COMMAND="$1"
       shift
       ;;
@@ -126,6 +129,11 @@ enable_timer() {
     theme_cmd="/usr/bin/millennium-theme"
   fi
 
+  local sched_self="/usr/local/bin/millennium-schedule"
+  if [[ -f "/usr/bin/millennium-schedule" ]]; then
+    sched_self="/usr/bin/millennium-schedule"
+  fi
+
   # Ensure user systemd config directory exists
   execute mkdir -p "$USER_CONFIG_DIR"
 
@@ -138,8 +146,10 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
+ExecStartPre=${sched_self} pre-update
 ExecStart=/usr/bin/sudo -n ${script_file}
 ExecStart=-${theme_cmd} update
+ExecStartPost=${sched_self} post-update
 EOF
 
   echo -e "${BLUE}Creating systemd user timer file...${NC}"
@@ -241,6 +251,102 @@ show_status() {
   fi
 }
 
+pre_update() {
+  local game_running=false
+  for environ_file in /proc/[0-9]*/environ; do
+    [[ -f "$environ_file" && -r "$environ_file" ]] || continue
+    local pid_dir
+    pid_dir="$(dirname "$environ_file")"
+    local pid="${pid_dir##*/}"
+    [[ "$pid" =~ ^[0-9]+$ ]] || continue
+    
+    local comm
+    comm=$(cat "/proc/${pid}/comm" 2>/dev/null || true)
+    [[ "$comm" == "steam" || "$comm" == "steamwebhelper" ]] && continue
+    
+    if { tr '\0' '\n' < "$environ_file"; } 2>/dev/null | grep -q "^SteamAppId=[1-9]"; then
+      game_running=true
+      break
+    fi
+  done
+  
+  if [[ "$game_running" == "true" ]]; then
+    echo "A game is currently running under Steam. Aborting update." >&2
+    exit 75
+  fi
+  
+  local was_flatpak=false
+  local was_running=false
+  
+  if pgrep -x steam >/dev/null; then
+    was_running=true
+    if command -v flatpak &>/dev/null && flatpak ps | grep -q "com.valvesoftware.Steam"; then
+      was_flatpak=true
+    fi
+    
+    echo "Steam is running. Closing gracefully..."
+    if [[ "$was_flatpak" == "true" ]]; then
+      flatpak run com.valvesoftware.Steam -shutdown || true
+    elif command -v steam &>/dev/null; then
+      steam -shutdown || true
+    elif [[ -x "${USER_HOME}/.local/bin/steam" ]]; then
+      "${USER_HOME}/.local/bin/steam" -shutdown || true
+    fi
+    
+    local timeout=30
+    while pgrep -x steam >/dev/null && [[ $timeout -gt 0 ]]; do
+      sleep 1
+      ((timeout--))
+    done
+    
+    if pgrep -x steam >/dev/null; then
+      echo "Steam did not close gracefully. Force killing..." >&2
+      killall -9 steam steamwebhelper 2>/dev/null || true
+    fi
+  fi
+  
+  local state_file="/tmp/millennium-relaunch-${RUNNING_USER}"
+  rm -f "$state_file"
+  if [[ "$was_running" == "true" ]]; then
+    echo "was_flatpak=${was_flatpak}" > "$state_file"
+  fi
+  exit 0
+}
+
+post_update() {
+  local state_file="/tmp/millennium-relaunch-${RUNNING_USER}"
+  local diag_path="/usr/local/bin/millennium-diag"
+  if [[ -f "/usr/bin/millennium-diag" ]]; then
+    diag_path="/usr/bin/millennium-diag"
+  fi
+  
+  if ! "$diag_path" >/dev/null 2>&1; then
+    echo "Millennium update failed verification checks. Relaunch cancelled." >&2
+    rm -f "$state_file"
+    exit 1
+  fi
+  
+  if [[ -f "$state_file" ]]; then
+    local was_flatpak=false
+    if grep -q "was_flatpak=true" "$state_file"; then
+      was_flatpak=true
+    fi
+    rm -f "$state_file"
+    
+    echo "Millennium update succeeded. Relaunching Steam..."
+    if [[ "$was_flatpak" == "true" ]]; then
+      flatpak run com.valvesoftware.Steam &
+    else
+      if command -v steam &>/dev/null; then
+        steam &
+      elif [[ -x "${USER_HOME}/.local/bin/steam" ]]; then
+        "${USER_HOME}/.local/bin/steam" &
+      fi
+    fi
+  fi
+  exit 0
+}
+
 case "$COMMAND" in
   enable)
     enable_timer "${1:-stable}"
@@ -250,5 +356,11 @@ case "$COMMAND" in
     ;;
   status)
     show_status
+    ;;
+  pre-update)
+    pre_update
+    ;;
+  post-update)
+    post_update
     ;;
 esac
