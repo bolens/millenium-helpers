@@ -1,6 +1,6 @@
 # Millennium Helper Scripts
 
-A set of utility scripts for managing, repairing, upgrading, and scheduling updates for the [Millennium](https://github.com/SteamClientHomebrew/Millennium) Steam Client homebrew hook on Linux.
+A set of utility scripts for managing, repairing, upgrading, rolling back, viewing logs, managing themes, and scheduling updates (for both the client and skins) for the [Millennium](https://github.com/SteamClientHomebrew/Millennium) Steam Client homebrew hook on Linux.
 
 ---
 
