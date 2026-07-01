@@ -268,13 +268,22 @@ if [[ "$ONLINE" == "true" ]]; then
   TMP_SCRIPTS=$(mktemp -d)
   trap 'rm -rf "${TMP_SCRIPTS:-}"' EXIT INT TERM
   
+  # Fetch latest commit SHA to bypass raw.githubusercontent.com caching delays
+  LATEST_SHA="main"
+  if feed_data=$(curl -sL "https://github.com/bolens/millenium-helpers/commits/main.atom" 2>/dev/null); then
+    parsed_sha=$(echo "$feed_data" | grep -o 'Commit/[0-9a-f]\{40\}' | head -n 1 | cut -d/ -f2)
+    if [[ -n "$parsed_sha" ]]; then
+      LATEST_SHA="$parsed_sha"
+    fi
+  fi
+
   for item in "${UTILITIES[@]}"; do
     local_cmd="${item%%:*}"
     remote_rel="${item#*:}"
     local_path="/usr/local/bin/${local_cmd}"
     
     if [[ -f "$local_path" ]]; then
-      remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/main/${remote_rel}?t=$(date +%s)"
+      remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/${LATEST_SHA}/${remote_rel}"
       tmp_dest="${TMP_SCRIPTS}/${local_cmd}"
       
       if curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" "$remote_url" -o "$tmp_dest" &>/dev/null; then
@@ -294,7 +303,7 @@ if [[ "$ONLINE" == "true" ]]; then
     else
       echo -e "  - ${local_cmd}: ${RED}Not Installed in /usr/local/bin${NC}"
       SCRIPTS_UP_TO_DATE=false
-      remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/main/${remote_rel}?t=$(date +%s)"
+      remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/${LATEST_SHA}/${remote_rel}"
       tmp_dest="${TMP_SCRIPTS}/${local_cmd}"
       if curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" "$remote_url" -o "$tmp_dest" &>/dev/null; then
         out_of_date_scripts+=("$local_cmd")
