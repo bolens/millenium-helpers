@@ -149,7 +149,7 @@ Type=oneshot
 ExecStartPre=${sched_self} pre-update
 ExecStart=/usr/bin/sudo -n ${script_file}
 ExecStart=-${theme_cmd} update
-ExecStartPost=${sched_self} post-update
+ExecStopPost=${sched_self} post-update
 EOF
 
   echo -e "${BLUE}Creating systemd user timer file...${NC}"
