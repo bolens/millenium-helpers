@@ -43,6 +43,10 @@ package() {
   install -m755 scripts/millennium-theme.sh "${pkgdir}/usr/bin/millennium-theme"
   install -m755 scripts/millennium-mcp.py "${pkgdir}/usr/bin/millennium-mcp"
 
+  # Install shared helper library
+  install -d "${pkgdir}/usr/lib/millennium-helpers"
+  install -m644 scripts/common.sh "${pkgdir}/usr/lib/millennium-helpers/common.sh"
+
   # Install Bash completions
   install -Dm644 completions/bash/millennium-helpers "${pkgdir}/usr/share/bash-completion/completions/millennium-helpers"
   for script in millennium-repair millennium-upgrade-beta millennium-upgrade-stable millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp; do
