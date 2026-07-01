@@ -349,7 +349,16 @@ uninstall_scripts() {
   if [[ "$user_name" != "root" ]]; then
     local user_home
     user_home="$(getent passwd "$user_name" | cut -d: -f6)"
-    local user_systemd_dir="${user_home}/.config/systemd/user"
+    local user_xdg=""
+    if [[ "$(id -u)" -eq 0 ]]; then
+      user_xdg=$(runuser -l "$user_name" -c 'echo "${XDG_CONFIG_HOME:-}"' 2>/dev/null || true)
+    fi
+    local user_systemd_dir
+    if [[ -n "$user_xdg" ]]; then
+      user_systemd_dir="${user_xdg}/systemd/user"
+    else
+      user_systemd_dir="${user_home}/.config/systemd/user"
+    fi
     
     if [[ -d "$user_systemd_dir" || "$DRY_RUN" == "true" ]]; then
       local timer_file="${user_systemd_dir}/millennium-update.timer"

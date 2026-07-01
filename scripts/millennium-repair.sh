@@ -45,8 +45,21 @@ fi
 USER_NAME="${SUDO_USER:-$USER}"
 USER_HOME="$(getent passwd "$USER_NAME" | cut -d: -f6)"
 
+USER_XDG_CONFIG=""
+USER_XDG_DATA=""
+if [[ "$(id -u)" -eq 0 && "$USER_NAME" != "root" ]]; then
+  USER_XDG_CONFIG=$(runuser -l "$USER_NAME" -c 'echo "${XDG_CONFIG_HOME:-}"' 2>/dev/null || true)
+  USER_XDG_DATA=$(runuser -l "$USER_NAME" -c 'echo "${XDG_DATA_HOME:-}"' 2>/dev/null || true)
+fi
+if [[ -z "$USER_XDG_CONFIG" ]]; then
+  USER_XDG_CONFIG="${XDG_CONFIG_HOME:-$USER_HOME/.config}"
+fi
+if [[ -z "$USER_XDG_DATA" ]]; then
+  USER_XDG_DATA="${XDG_DATA_HOME:-$USER_HOME/.local/share}"
+fi
+
 STEAM=""
-for candidate in "${USER_HOME}/.local/share/Steam" "${USER_HOME}/.steam/steam" "${USER_HOME}/.steam/root" "${USER_HOME}/.var/app/com.valvesoftware.Steam/.local/share/Steam"; do
+for candidate in "${USER_XDG_DATA}/Steam" "${USER_HOME}/.local/share/Steam" "${USER_HOME}/.steam/steam" "${USER_HOME}/.steam/root" "${USER_HOME}/.var/app/com.valvesoftware.Steam/.local/share/Steam"; do
   if [[ -d "$candidate" ]]; then
     STEAM="$candidate"
     break
@@ -86,7 +99,14 @@ write_file() {
 
 echo "Fixing ownership..."
 PATHS_TO_CHOWN=()
-for path in "$STEAM/millennium" "$USER_HOME/.local/share/millennium" "$USER_HOME/.config/millennium"; do
+for path in \
+  "$STEAM/millennium" \
+  "${USER_XDG_DATA}/millennium" \
+  "$USER_HOME/.local/share/millennium" \
+  "${USER_XDG_CONFIG}/millennium" \
+  "$USER_HOME/.config/millennium" \
+  "$USER_HOME/.var/app/com.valvesoftware.Steam/config/millennium" \
+  "$USER_HOME/.var/app/com.valvesoftware.Steam/.config/millennium"; do
   if [[ -d "$path" || -f "$path" ]]; then
     PATHS_TO_CHOWN+=("$path")
   fi
@@ -95,16 +115,78 @@ if [[ ${#PATHS_TO_CHOWN[@]} -gt 0 ]]; then
   execute chown -R "$USER_NAME:$USER_NAME" "${PATHS_TO_CHOWN[@]}"
 fi
 
+# Detect the active theme name from Millennium config
+ACTIVE_THEME="Steam"
+CONFIG_JSON=""
+for cand in \
+  "${USER_XDG_CONFIG}/millennium/config.json" \
+  "${USER_HOME}/.config/millennium/config.json" \
+  "${USER_HOME}/.var/app/com.valvesoftware.Steam/config/millennium/config.json" \
+  "${USER_HOME}/.var/app/com.valvesoftware.Steam/.config/millennium/config.json" \
+  "${STEAM}/millennium/config.json" \
+  "${STEAM}/ext/config.json"; do
+  if [[ -f "$cand" ]]; then
+    CONFIG_JSON="$cand"
+    break
+  fi
+done
+
+if [[ -n "$CONFIG_JSON" ]]; then
+  parsed_theme=$(python3 -c "
+import json
+try:
+    with open('$CONFIG_JSON') as f:
+        data = json.load(f)
+        print(data.get('themes', {}).get('activeTheme', 'Steam'))
+except Exception:
+    print('Steam')
+" 2>/dev/null || echo "Steam")
+  if [[ -n "$parsed_theme" ]]; then
+    ACTIVE_THEME="$parsed_theme"
+  fi
+fi
+
+THEME_DIR="$STEAM/millennium/themes/${ACTIVE_THEME}"
+
+# Parse owner and repo from metadata.json if it exists
+OWNER="SpaceTheme"
+REPO="Steam"
+HAS_METADATA=false
+
+METADATA_FILE="${THEME_DIR}/metadata.json"
+if [[ -f "$METADATA_FILE" ]]; then
+  parsed_meta=$(python3 -c "
+import json
+try:
+    with open('$METADATA_FILE') as f:
+        data = json.load(f)
+        print(f\"{data.get('owner', '')}:{data.get('repo', '')}\")
+except Exception:
+    print(':')
+" 2>/dev/null || echo ":")
+  parsed_owner="${parsed_meta%%:*}"
+  parsed_repo="${parsed_meta#*:}"
+  if [[ -n "$parsed_owner" && -n "$parsed_repo" ]]; then
+    OWNER="$parsed_owner"
+    REPO="$parsed_repo"
+    HAS_METADATA=true
+  fi
+fi
+
 REFRESH_THEME=true
-if [[ "$SKIP_THEME" = true ]]; then
+if [[ "$SKIP_THEME" == "true" ]]; then
+  REFRESH_THEME=false
+elif [[ "$ACTIVE_THEME" != "Steam" && "$HAS_METADATA" == "false" ]]; then
+  echo "Active theme '${ACTIVE_THEME}' does not have GitHub metadata. Skipping theme refresh."
   REFRESH_THEME=false
 elif ! curl -sIk "https://github.com" &>/dev/null; then
   echo "Warning: Network is offline. Skipping theme refresh." >&2
   REFRESH_THEME=false
 fi
 
-if [[ "$REFRESH_THEME" = true ]]; then
-  echo "Fetching latest SpaceTheme/Steam commit SHA..."
+if [[ "$REFRESH_THEME" == "true" ]]; then
+  echo "Active Theme Detected: ${ACTIVE_THEME} (${OWNER}/${REPO})"
+  echo "Fetching latest ${OWNER}/${REPO} commit SHA..."
   COMMIT=""
   
   # Configure curl headers for GitHub API
@@ -114,45 +196,48 @@ if [[ "$REFRESH_THEME" = true ]]; then
   fi
 
   if command -v jq &>/dev/null; then
-    COMMIT=$(curl -fsSL "${CURL_HEADERS[@]}" "https://api.github.com/repos/SpaceTheme/Steam/commits/main" | jq -r '.sha' || true)
+    COMMIT=$(curl -fsSL --retry 3 --retry-delay 2 "${CURL_HEADERS[@]}" "https://api.github.com/repos/${OWNER}/${REPO}/commits/main" | jq -r '.sha' || true)
   else
-    COMMIT=$(python3 -c '
+    COMMIT=$(python3 -c "
 import urllib.request, json, os
 try:
-    headers = {"User-Agent": "Mozilla/5.0"}
-    token = os.environ.get("GITHUB_TOKEN")
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    token = os.environ.get('GITHUB_TOKEN')
     if token:
-        headers["Authorization"] = f"token {token}"
-    req = urllib.request.Request("https://api.github.com/repos/SpaceTheme/Steam/commits/main", headers=headers)
+        headers['Authorization'] = f'token {token}'
+    req = urllib.request.Request('https://api.github.com/repos/${OWNER}/${REPO}/commits/main', headers=headers)
     with urllib.request.urlopen(req) as response:
         commit = json.loads(response.read().decode())
-        print(commit.get("sha", ""))
+        print(commit.get('sha', ''))
 except Exception:
     pass
-' || true)
+" || true)
   fi
 
   if [[ -z "$COMMIT" ]]; then
-    COMMIT="9f5b9ea8fabc9cd3c4f46b638d78daa9c3da97dd"
-    echo "Warning: Could not fetch latest commit from GitHub. Falling back to default: $COMMIT" >&2
+    if [[ "$ACTIVE_THEME" == "Steam" ]]; then
+      COMMIT="9f5b9ea8fabc9cd3c4f46b638d78daa9c3da97dd"
+      echo "Warning: Could not fetch latest commit from GitHub. Falling back to default: $COMMIT" >&2
+    else
+      echo "Error: Could not retrieve the latest commit for active theme ${ACTIVE_THEME}." >&2
+      exit 1
+    fi
   fi
   
-  THEME_DIR="$STEAM/millennium/themes/Steam"
-  
   if [[ "$DRY_RUN" == "true" ]]; then
-    echo -e "${YELLOW}[DRY RUN] Would refresh SpaceTheme from GitHub commit: ${COMMIT}${NC}"
+    echo -e "${YELLOW}[DRY RUN] Would refresh active theme from GitHub commit: ${COMMIT}${NC}"
     echo -e "          Target theme folder: ${THEME_DIR}"
   else
     TMP="$(mktemp -d)"
     trap 'rm -rf "$TMP"' EXIT INT TERM
 
-    echo "Refreshing Steam theme..."
-    curl -fsSL "${CURL_HEADERS[@]}" --retry 3 --retry-delay 2 "https://github.com/SpaceTheme/Steam/archive/${COMMIT}.zip" -o "$TMP/theme.zip"
+    echo "Refreshing active theme ${ACTIVE_THEME}..."
+    curl -fsSL "${CURL_HEADERS[@]}" --retry 3 --retry-delay 2 "https://github.com/${OWNER}/${REPO}/archive/${COMMIT}.zip" -o "$TMP/theme.zip"
     
     # Allow unzip to return warnings (exit code <= 2) and verify extraction
     unzip -q "$TMP/theme.zip" -d "$TMP" || [[ $? -le 2 ]]
-    if [[ ! -d "$TMP/Steam-${COMMIT}" ]]; then
-      echo "Error: Failed to extract SpaceTheme archive." >&2
+    if [[ ! -d "$TMP/${REPO}-${COMMIT}" ]]; then
+      echo "Error: Failed to extract theme archive." >&2
       exit 1
     fi
     
@@ -162,13 +247,13 @@ except Exception:
     
     rm -rf "$theme_tmp" "$theme_bak"
     mkdir -p "$theme_tmp"
-    cp -a "$TMP/Steam-${COMMIT}/." "$theme_tmp/"
+    cp -a "$TMP/${REPO}-${COMMIT}/." "$theme_tmp/"
     
     write_file "$theme_tmp/metadata.json" <<EOF
 {
     "commit": "${COMMIT}",
-    "owner": "SpaceTheme",
-    "repo": "Steam"
+    "owner": "${OWNER}",
+    "repo": "${REPO}"
 }
 EOF
     chown -R "$USER_NAME:$USER_NAME" "$theme_tmp"
