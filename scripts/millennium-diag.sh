@@ -529,6 +529,8 @@ if [[ "$COMMAND" == "doctor" ]]; then
     EXPORT_DBUS=""
     EXPORT_WAYLAND=""
     EXPORT_RUNTIME=""
+    EXPORT_SESSION_TYPE=""
+    EXPORT_DESKTOP=""
     steam_pid=$(pgrep -x steam | head -n 1 || true)
     if [[ -n "$steam_pid" ]]; then
       steam_env=$(tr '\0' '\n' < "/proc/${steam_pid}/environ" 2>/dev/null || true)
@@ -537,6 +539,8 @@ if [[ "$COMMAND" == "doctor" ]]; then
       EXPORT_DBUS=$(echo "$steam_env" | grep "^DBUS_SESSION_BUS_ADDRESS=" | head -n 1 || true)
       EXPORT_WAYLAND=$(echo "$steam_env" | grep "^WAYLAND_DISPLAY=" | head -n 1 || true)
       EXPORT_RUNTIME=$(echo "$steam_env" | grep "^XDG_RUNTIME_DIR=" | head -n 1 || true)
+      EXPORT_SESSION_TYPE=$(echo "$steam_env" | grep "^XDG_SESSION_TYPE=" | head -n 1 || true)
+      EXPORT_DESKTOP=$(echo "$steam_env" | grep "^XDG_CURRENT_DESKTOP=" | head -n 1 || true)
     fi
 
     echo -e "${YELLOW}Steam is currently running and must be closed to apply repairs to hooks/binaries.${NC}"
@@ -727,6 +731,8 @@ if [[ "$COMMAND" == "doctor" ]]; then
     [[ -n "${EXPORT_DBUS:-}" ]] && env_prefix+="${EXPORT_DBUS} "
     [[ -n "${EXPORT_WAYLAND:-}" ]] && env_prefix+="${EXPORT_WAYLAND} "
     [[ -n "${EXPORT_RUNTIME:-}" ]] && env_prefix+="${EXPORT_RUNTIME} "
+    [[ -n "${EXPORT_SESSION_TYPE:-}" ]] && env_prefix+="${EXPORT_SESSION_TYPE} "
+    [[ -n "${EXPORT_DESKTOP:-}" ]] && env_prefix+="${EXPORT_DESKTOP} "
 
     if [[ "$was_flatpak" == "true" ]]; then
       execute runuser "$RUNNING_USER" -c "${env_prefix}flatpak run com.valvesoftware.Steam >/dev/null 2>&1 &"
