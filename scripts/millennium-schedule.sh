@@ -23,11 +23,12 @@ show_help() {
 Usage: $(basename "$0") COMMAND [OPTIONS]
 
 Commands:
-  enable [stable|beta]  Enable the daily update user timer (defaults to stable)
-  disable               Disable the update user timer and service
-  status                Show status of the systemd user service and timer
+  enable [stable|beta]  Enable the daily update timer (defaults to stable)
+  disable               Disable the update timer/cron and service
+  status                Show status of the systemd user service and cron job
 
 Options:
+  -c, --cron            Force use of crontab instead of systemd
   -d, --dry-run         Perform dry-run without writing files or changing systemd state
   -h, --help            Show this help message
 EOF
@@ -36,11 +37,24 @@ EOF
 # Parse options and commands
 COMMAND=""
 DRY_RUN=false
+USE_CRON=false
+if [[ ! -d /run/systemd/system ]]; then
+  USE_CRON=true
+fi
+CHANNEL=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     enable|disable|status|pre-update|post-update)
       COMMAND="$1"
+      shift
+      ;;
+    stable|beta)
+      CHANNEL="$1"
+      shift
+      ;;
+    -c|--cron)
+      USE_CRON=true
       shift
       ;;
     -d|--dry-run)
@@ -52,15 +66,9 @@ while [[ $# -gt 0 ]]; do
       exit 0
       ;;
     *)
-      if [[ "$COMMAND" == "enable" && ("$1" == "stable" || "$1" == "beta") ]]; then
-        # Handle positional channel argument
-        # We will parse it in the enable function
-        break
-      else
-        echo -e "${RED}Unknown option: $1${NC}" >&2
-        show_help
-        exit 1
-      fi
+      echo -e "${RED}Unknown option: $1${NC}" >&2
+      show_help
+      exit 1
       ;;
   esac
 done
@@ -249,6 +257,11 @@ show_status() {
   else
     echo -e "${YELLOW}Service is not installed/configured.${NC}"
   fi
+
+  if command -v crontab &>/dev/null; then
+    echo -e "\n${BLUE}=== Millennium Crontab Status ===${NC}"
+    crontab -l 2>/dev/null | grep "millennium-schedule" || echo "No crontab entry configured."
+  fi
 }
 
 pre_update() {
@@ -347,12 +360,105 @@ post_update() {
   exit 0
 }
 
+enable_cron() {
+  local channel="${1:-stable}"
+  local script_file=""
+
+  case "$channel" in
+    stable)
+      if [[ -f "/usr/bin/millennium-upgrade-stable" ]]; then
+        script_file="/usr/bin/millennium-upgrade-stable"
+      else
+        script_file="/usr/local/bin/millennium-upgrade-stable"
+      fi
+      ;;
+    beta)
+      if [[ -f "/usr/bin/millennium-upgrade-beta" ]]; then
+        script_file="/usr/bin/millennium-upgrade-beta"
+      else
+        script_file="/usr/local/bin/millennium-upgrade-beta"
+      fi
+      ;;
+    *)
+      echo -e "${RED}Error: Invalid channel '$channel'. Choose 'stable' or 'beta'.${NC}" >&2
+      exit 1
+      ;;
+  esac
+
+  if ! command -v crontab &>/dev/null; then
+    echo -e "${RED}Error: 'crontab' command not found. Please install a cron daemon (e.g. cronie, fcron).${NC}" >&2
+    exit 1
+  fi
+
+  local sched_self="/usr/local/bin/millennium-schedule"
+  if [[ -f "/usr/bin/millennium-schedule" ]]; then
+    sched_self="/usr/bin/millennium-schedule"
+  fi
+
+  local theme_cmd="/usr/local/bin/millennium-theme"
+  if [[ -f "/usr/bin/millennium-theme" ]]; then
+    theme_cmd="/usr/bin/millennium-theme"
+  fi
+
+  local cron_cmd="0 2 * * * sleep \$(python3 -c 'import random; print(random.randint(0, 3600))') && ${sched_self} pre-update && { /usr/bin/sudo -n ${script_file} && ${theme_cmd} update; ${sched_self} post-update; }"
+  
+  echo -e "${BLUE}Configuring daily crontab job for user ${RUNNING_USER}...${NC}"
+  
+  if [[ "$DRY_RUN" == "true" ]]; then
+    echo -e "${YELLOW}[DRY RUN] Would append to crontab:${NC}\n  ${cron_cmd}"
+  else
+    local current_cron
+    current_cron=$(crontab -l 2>/dev/null || true)
+    local clean_cron
+    clean_cron=$(echo "$current_cron" | grep -v "millennium-schedule" || true)
+    
+    if [[ -n "$clean_cron" ]]; then
+      echo -e "${clean_cron}\n${cron_cmd}" | crontab -
+    else
+      echo -e "${cron_cmd}" | crontab -
+    fi
+    echo -e "${GREEN}Millennium cron job successfully configured to run daily!${NC}"
+  fi
+}
+
+disable_cron() {
+  if ! command -v crontab &>/dev/null; then
+    return 0
+  fi
+  
+  echo -e "${BLUE}Removing crontab entry...${NC}"
+  if [[ "$DRY_RUN" == "true" ]]; then
+    echo -e "${YELLOW}[DRY RUN] Would remove millennium-schedule entries from crontab${NC}"
+  else
+    local current_cron
+    current_cron=$(crontab -l 2>/dev/null || true)
+    
+    if echo "$current_cron" | grep -q "millennium-schedule"; then
+      local clean_cron
+      clean_cron=$(echo "$current_cron" | grep -v "millennium-schedule" || true)
+      if [[ -n "$clean_cron" ]]; then
+        echo "$clean_cron" | crontab -
+      else
+        crontab -r || true
+      fi
+      echo -e "${GREEN}Millennium cron job removed.${NC}"
+    else
+      echo "No cron job found."
+    fi
+  fi
+}
+
 case "$COMMAND" in
   enable)
-    enable_timer "${1:-stable}"
+    if [[ "$USE_CRON" == "true" ]]; then
+      enable_cron "${CHANNEL:-stable}"
+    else
+      enable_timer "${CHANNEL:-stable}"
+    fi
     ;;
   disable)
     disable_timer
+    disable_cron
     ;;
   status)
     show_status
