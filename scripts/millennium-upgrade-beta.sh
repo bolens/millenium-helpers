@@ -89,7 +89,6 @@ failure_handler() {
 trap 'failure_handler' ERR
 
 RUNNING_USER="${SUDO_USER:-$USER}"
-USER_HOME="$(getent passwd "$RUNNING_USER" | cut -d: -f6)"
 
 # Relaunch variables
 
