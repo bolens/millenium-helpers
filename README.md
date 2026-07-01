@@ -18,6 +18,10 @@ sudo ./install.sh
 ```
 
 ### Step 2: Enable the Daily Auto-Updater Timer
+
+> [!NOTE]
+> Always run the scheduling commands as your **normal user** (without `sudo`) so that systemd configures the background timer inside your own user session space.
+
 Choose which channel you would like to run:
 
 **Stable Channel (Default)**:
@@ -142,11 +146,10 @@ Runs a comprehensive system-wide health check on your Millennium setup. It repor
 
 To allow background user-level systemd timers to run updates that modify system directories (like `/usr/lib/millennium/`), the updater scripts must run with root privileges. 
 
-This setup achieves this securely using **Option A**:
-1. Scripts are copied into `/usr/local/bin/` owned by `root:root` and set as write-protected.
-2. A drop-in rule is created at `/etc/sudoers.d/millennium-helpers`.
-3. Sudo allows passwordless execution of only `/usr/local/bin/millennium-upgrade-stable` and `/usr/local/bin/millennium-upgrade-beta`.
-4. Because the files in `/usr/local/bin/` cannot be modified by your unprivileged user account, this configuration is completely secure and cannot be exploited for local privilege escalation.
+This setup achieves this securely:
+1. **Sudoers Autoconfiguration**: During `sudo ./install.sh`, the installer detects the original invoking user (`SUDO_USER`) and automatically configures a secure drop-in file at `/etc/sudoers.d/millennium-helpers`.
+2. **Write-Protected Scripts**: Helper scripts are copied into `/usr/local/bin/` owned by `root:root` with `755` permissions, meaning normal users cannot edit or tamper with them.
+3. **Restricted Sudo Scope**: Sudo permissions are restricted to allow passwordless execution of *only* `/usr/local/bin/millennium-upgrade-stable` and `/usr/local/bin/millennium-upgrade-beta`. Because normal users cannot modify these files, this configuration is completely secure and cannot be exploited for local privilege escalation.
 
 ---
 
