@@ -46,9 +46,13 @@ while [[ $# -gt 0 ]]; do
     list|install|update|remove)
       COMMAND="$1"
       shift
-      if [[ "$COMMAND" != "list" && $# -gt 0 && "$1" != -* ]]; then
-        ARG="$1"
-        shift
+      if [[ "$COMMAND" != "list" && $# -gt 0 ]]; then
+        # -a/--all are valid ARG values for 'update' even though they start
+        # with '-'; anything else starting with '-' is treated as an option.
+        if [[ "$1" != -* || "$1" == "-a" || "$1" == "--all" ]]; then
+          ARG="$1"
+          shift
+        fi
       fi
       ;;
     --json)
@@ -145,41 +149,20 @@ except Exception:
   fi
   
   echo -e "Checking updates for theme '${theme_name}' (${owner}/${repo})..."
-  
-  local CURL_HEADERS=()
-  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-    CURL_HEADERS+=("-H" "Authorization: token $GITHUB_TOKEN")
-  fi
-  
+
   local COMMIT=""
-  if command -v jq &>/dev/null; then
-    COMMIT=$(curl -fsSL --retry 3 --retry-delay 2 "${CURL_HEADERS[@]}" "https://api.github.com/repos/${owner}/${repo}/commits" | jq -r '.[0].sha' || true)
-  else
-    COMMIT=$(python3 -c "
-import urllib.request, json, os
-try:
-    headers = {'User-Agent': 'Mozilla/5.0'}
-    token = os.environ.get('GITHUB_TOKEN')
-    if token:
-        headers['Authorization'] = f'token {token}'
-    req = urllib.request.Request('https://api.github.com/repos/${owner}/${repo}/commits', headers=headers)
-    with urllib.request.urlopen(req) as response:
-        print(json.loads(response.read().decode())[0].get('sha', ''))
-except Exception:
-    pass
-" || true)
-  fi
-  
+  COMMIT=$(fetch_github_commit "$owner" "$repo")
+
   if [[ -z "$COMMIT" ]]; then
     echo -e "${RED}Error: Could not retrieve latest commit info from GitHub.${NC}" >&2
     return 1
   fi
-  
+
   if [[ "$current_commit" == "$COMMIT" ]]; then
     echo -e "${GREEN}Theme '${theme_name}' is already up to date.${NC}"
     return 0
   fi
-  
+
   echo -e "New commit found: ${COMMIT:0:7}. Updating..."
   if [[ "$DRY_RUN" == "true" ]]; then
     echo -e "${YELLOW}[DRY RUN] Would update theme '${theme_name}' to commit ${COMMIT}${NC}"
@@ -188,10 +171,10 @@ except Exception:
     TMP="$(mktemp -d)"
     local theme_tmp="${target_dir}.tmp"
     local theme_bak="${target_dir}.bak"
-    
+
     rm -rf "$theme_tmp" "$theme_bak"
-    
-    if ! curl -fsSL "${CURL_HEADERS[@]}" --retry 3 --retry-delay 2 "https://github.com/${owner}/${repo}/archive/${COMMIT}.zip" -o "$TMP/theme.zip"; then
+
+    if ! curl -fsSL --retry 3 --retry-delay 2 "https://github.com/${owner}/${repo}/archive/${COMMIT}.zip" -o "$TMP/theme.zip"; then
       echo -e "${RED}Error: Failed to download theme package.${NC}" >&2
       rm -rf "$TMP"
       return 1
@@ -316,55 +299,32 @@ if [[ "$COMMAND" == "install" ]]; then
   
   owner="${ARG%%/*}"
   repo="${ARG#*/}"
-  
+
   echo -e "Resolving repository: ${owner}/${repo}..."
-  
-  # Fetch latest commit SHA
-  CURL_HEADERS=()
-  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-    CURL_HEADERS+=("-H" "Authorization: token $GITHUB_TOKEN")
-  fi
-  
-  COMMIT=""
-  if command -v jq &>/dev/null; then
-    COMMIT=$(curl -fsSL --retry 3 --retry-delay 2 "${CURL_HEADERS[@]}" "https://api.github.com/repos/${owner}/${repo}/commits" | jq -r '.[0].sha' || true)
-  else
-    COMMIT=$(python3 -c "
-import urllib.request, json, os
-try:
-    headers = {'User-Agent': 'Mozilla/5.0'}
-    token = os.environ.get('GITHUB_TOKEN')
-    if token:
-        headers['Authorization'] = f'token {token}'
-    req = urllib.request.Request('https://api.github.com/repos/${owner}/${repo}/commits', headers=headers)
-    with urllib.request.urlopen(req) as response:
-        print(json.loads(response.read().decode())[0].get('sha', ''))
-except Exception:
-    pass
-" || true)
-  fi
-  
+
+  COMMIT=$(fetch_github_commit "$owner" "$repo")
+
   if [[ -z "$COMMIT" ]]; then
     echo -e "${RED}Error: Could not retrieve latest commit info for ${owner}/${repo}. Check repository name or internet connection.${NC}" >&2
     exit 1
   fi
-  
+
   target_dir="${SKINS_DIR}/${repo}"
-  
+
   if [[ -d "$target_dir" ]]; then
     echo -e "${YELLOW}Warning: Theme directory '${repo}' already exists. Use update instead.${NC}" >&2
     exit 1
   fi
-  
+
   echo "Downloading theme package..."
   if [[ "$DRY_RUN" == "true" ]]; then
     echo -e "${YELLOW}[DRY RUN] Would install ${owner}/${repo} to ${target_dir}${NC}"
   else
     TMP="$(mktemp -d)"
     trap 'rm -rf "$TMP"' EXIT INT TERM
-    
-    curl -fsSL "${CURL_HEADERS[@]}" --retry 3 --retry-delay 2 "https://github.com/${owner}/${repo}/archive/${COMMIT}.zip" -o "$TMP/theme.zip"
-    
+
+    curl -fsSL --retry 3 --retry-delay 2 "https://github.com/${owner}/${repo}/archive/${COMMIT}.zip" -o "$TMP/theme.zip"
+
     # Extract
     unzip -q "$TMP/theme.zip" -d "$TMP" || [[ $? -le 2 ]]
     if [[ ! -d "$TMP/${repo}-${COMMIT}" ]]; then

@@ -2,16 +2,13 @@
 # Installation/uninstallation script for Millennium helper scripts.
 set -euo pipefail
 
-# Text color formatting
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
 TARGET_DIR="/usr/local/bin"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SUDOERS_FILE="/etc/sudoers.d/millennium-helpers"
+
+# Source shared helpers (color vars, execute, write_file)
+# shellcheck disable=SC1090
+source "${SCRIPT_DIR}/scripts/common.sh"
 
 # Define scripts to manage (format: "source_filename:target_command_name")
 SCRIPTS=(
@@ -45,12 +42,13 @@ EOF
 check_root() {
   if [[ "$DRY_RUN" == "false" ]] && [[ "$(id -u)" -ne 0 ]]; then
     echo -e "${RED}Error: This script must be run with sudo to install system-wide to ${TARGET_DIR}.${NC}" >&2
-    echo -e "Please run: sudo $0 $*" >&2
+    echo -e "Please run: sudo $0 ${ORIGINAL_ARGS[*]}" >&2
     exit 1
   fi
 }
 
 # Parse arguments
+ORIGINAL_ARGS=("$@")
 ACTION="install"
 DRY_RUN=false
 PURGE_REQUESTED=false
@@ -90,24 +88,6 @@ check_root "$ACTION"
 if [[ "$DRY_RUN" == "true" ]]; then
   echo -e "${YELLOW}=== DRY RUN MODE: No changes will be made ===${NC}"
 fi
-
-execute() {
-  if [[ "$DRY_RUN" == "true" ]]; then
-    echo -e "${YELLOW}[DRY RUN] Would run:${NC} $*"
-  else
-    "$@"
-  fi
-}
-
-write_file() {
-  local target="$1"
-  if [[ "$DRY_RUN" == "true" ]]; then
-    echo -e "${YELLOW}[DRY RUN] Would write file: ${target} with contents:${NC}"
-    cat
-  else
-    cat > "$target"
-  fi
-}
 
 install_completions() {
   echo -e "${BLUE}Installing shell autocompletions...${NC}"
