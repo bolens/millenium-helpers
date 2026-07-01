@@ -86,6 +86,14 @@ UTILITIES=(
 RUNNING_USER="${SUDO_USER:-$USER}"
 USER_HOME="$(getent passwd "$RUNNING_USER" | cut -d: -f6)"
 
+sysctl_user() {
+  if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" ]]; then
+    runuser -l "$RUNNING_USER" -c "systemctl --user $*"
+  else
+    systemctl --user "$@"
+  fi
+}
+
 # Find configured update channel
 UPDATE_CHANNEL="stable"
 if [[ -f "/usr/lib/millennium/version.txt" ]]; then
@@ -224,11 +232,11 @@ fi
 # 5. Check Systemd Auto-Update Timer
 echo -n "Systemd Auto-Update Timer: "
 TIMER_PATH="${USER_CONFIG_DIR}/millennium-update.timer"
-if [[ -f "$TIMER_PATH" ]] && systemctl --user is-enabled millennium-update.timer &>/dev/null; then
-  timer_state=$(systemctl --user is-active millennium-update.timer || echo "inactive")
+if [[ -f "$TIMER_PATH" ]] && sysctl_user is-enabled millennium-update.timer &>/dev/null; then
+  timer_state=$(sysctl_user is-active millennium-update.timer || echo "inactive")
   if [[ "$timer_state" == "active" ]]; then
     echo -e "${GREEN}Enabled and Active${NC}"
-    timer_trigger=$(systemctl --user list-timers millennium-update.timer --no-legend | awk '{print $1, $2, $3}')
+    timer_trigger=$(sysctl_user list-timers millennium-update.timer --no-legend | awk '{print $1, $2, $3}')
     echo "  Next Run: ${timer_trigger}"
   else
     TIMER_ACTIVE=false
@@ -392,7 +400,11 @@ if [[ "$COMMAND" == "doctor" ]]; then
   if [[ "$TIMER_ACTIVE" == false ]]; then
     echo -e "\n${YELLOW}[DOCTOR] Enabling and starting daily systemd user timer...${NC}"
     # Re-enable the timer using the configured channel
-    execute /usr/local/bin/millennium-schedule enable "$UPDATE_CHANNEL"
+    if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" ]]; then
+      execute runuser -l "$RUNNING_USER" -c "/usr/local/bin/millennium-schedule enable $UPDATE_CHANNEL"
+    else
+      execute /usr/local/bin/millennium-schedule enable "$UPDATE_CHANNEL"
+    fi
   fi
 
   # Issue 7: Disabled systemd user lingering
