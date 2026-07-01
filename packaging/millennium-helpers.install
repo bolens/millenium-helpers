@@ -1,0 +1,15 @@
+post_install() {
+  echo ":: To enable daily background updates for both the client and themes,"
+  echo "   run the following command as your normal user (non-root):"
+  echo "     millennium-schedule enable stable"
+  echo ""
+  echo ":: Note: Ensure your user is in the 'wheel' group to allow the background"
+  echo "   timer to run the updater scripts via passwordless sudo."
+}
+
+post_upgrade() {
+  echo ":: Millennium helpers package has been upgraded."
+  echo "   If you use the daily systemd auto-updater, run the following command"
+  echo "   as your normal user to regenerate the service file:"
+  echo "     millennium-schedule enable stable"
+}

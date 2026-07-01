@@ -15,6 +15,7 @@ optdepends=(
 makedepends=('git')
 provides=("${_pkgname}")
 conflicts=("${_pkgname}")
+install=millennium-helpers.install
 source=("git+${url}.git"
         "millennium-helpers.sudoers")
 sha256sums=('SKIP'
