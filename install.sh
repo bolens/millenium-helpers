@@ -187,6 +187,15 @@ install_scripts() {
     execute chmod 755 "$dest_path"
   done
 
+  # Copy shared helper library
+  local lib_dir="/usr/local/lib/millennium-helpers"
+  echo "Installing shared helper library to ${lib_dir}..."
+  execute mkdir -p "$lib_dir"
+  execute cp -f "${SCRIPT_DIR}/scripts/common.sh" "${lib_dir}/common.sh"
+  execute chown -R root:root "$lib_dir"
+  execute chmod 755 "$lib_dir"
+  execute chmod 644 "${lib_dir}/common.sh"
+
   install_completions
 
   # Configure passwordless sudoers rules in /etc/sudoers.d/millennium-helpers
@@ -337,6 +346,13 @@ uninstall_scripts() {
       removed_any=true
     fi
   done
+
+  local lib_dir="/usr/local/lib/millennium-helpers"
+  if [[ -d "$lib_dir" || "$DRY_RUN" == "true" ]]; then
+    echo "Removing shared helper library: ${lib_dir}"
+    execute rm -rf "$lib_dir"
+    removed_any=true
+  fi
 
   if [[ -f "$SUDOERS_FILE" || "$DRY_RUN" == "true" ]]; then
     echo "Removing: $SUDOERS_FILE"

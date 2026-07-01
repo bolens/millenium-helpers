@@ -81,39 +81,29 @@ failure_handler() {
 }
 trap 'failure_handler' ERR
 
-# Detect if Steam is running and handle it
-RELAUNCH_STEAM=false
-WAS_FLATPAK=false
-EXPORT_DISPLAY=""
-EXPORT_XAUTHORITY=""
-EXPORT_DBUS=""
-EXPORT_WAYLAND=""
-EXPORT_RUNTIME=""
-EXPORT_SESSION_TYPE=""
-EXPORT_DESKTOP=""
-STEAM_ARGS=""
+
 
 RUNNING_USER="${SUDO_USER:-$USER}"
 USER_HOME="$(getent passwd "$RUNNING_USER" | cut -d: -f6)"
 
-is_game_running() {
-  local game_running=false
-  for environ_file in /proc/[0-9]*/environ; do
-    [[ -f "$environ_file" ]] || continue
-    local pid_dir
-    pid_dir="$(dirname "$environ_file")"
-    local pid="${pid_dir##*/}"
-    [[ "$pid" =~ ^[0-9]+$ ]] || continue
-    local comm
-    comm=$(cat "/proc/${pid}/comm" 2>/dev/null || true)
-    [[ "$comm" == "steam" || "$comm" == "steamwebhelper" ]] && continue
-    if { tr '\0' '\n' < "$environ_file"; } 2>/dev/null | grep -q "^SteamAppId=[1-9]"; then
-      game_running=true
-      break
-    fi
-  done
-  [[ "$game_running" == "true" ]]
-}
+# Source shared helpers
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COMMON_SH="${SCRIPT_DIR}/common.sh"
+if [[ ! -f "$COMMON_SH" ]]; then
+  COMMON_SH="/usr/local/lib/millennium-helpers/common.sh"
+  if [[ -f "/usr/lib/millennium-helpers/common.sh" ]]; then
+    COMMON_SH="/usr/lib/millennium-helpers/common.sh"
+  fi
+fi
+if [[ -f "$COMMON_SH" ]]; then
+  # shellcheck disable=SC1090
+  source "$COMMON_SH"
+else
+  echo -e "${RED}Error: Shared helper library not found.${NC}" >&2
+  exit 1
+fi
+# Detect if Steam is running and handle it
+RELAUNCH_STEAM=false
 
 if pgrep -x steam >/dev/null 2>&1; then
   if is_game_running; then
@@ -123,53 +113,11 @@ if pgrep -x steam >/dev/null 2>&1; then
 
   echo "Steam is currently running. Closing Steam gracefully to apply update..."
   
-  if command -v flatpak &>/dev/null && runuser -l "$RUNNING_USER" -c "flatpak ps" 2>/dev/null | grep -q "com.valvesoftware.Steam"; then
-    WAS_FLATPAK=true
-  fi
-
-  steam_pid=$(pgrep -x steam | head -n 1 || true)
-  if [[ -n "$steam_pid" ]]; then
-    steam_env=$(tr '\0' '\n' < "/proc/${steam_pid}/environ" 2>/dev/null || true)
-    EXPORT_DISPLAY=$(echo "$steam_env" | grep "^DISPLAY=" | head -n 1 || true)
-    EXPORT_XAUTHORITY=$(echo "$steam_env" | grep "^XAUTHORITY=" | head -n 1 || true)
-    EXPORT_DBUS=$(echo "$steam_env" | grep "^DBUS_SESSION_BUS_ADDRESS=" | head -n 1 || true)
-    EXPORT_WAYLAND=$(echo "$steam_env" | grep "^WAYLAND_DISPLAY=" | head -n 1 || true)
-    EXPORT_RUNTIME=$(echo "$steam_env" | grep "^XDG_RUNTIME_DIR=" | head -n 1 || true)
-    EXPORT_SESSION_TYPE=$(echo "$steam_env" | grep "^XDG_SESSION_TYPE=" | head -n 1 || true)
-    EXPORT_DESKTOP=$(echo "$steam_env" | grep "^XDG_CURRENT_DESKTOP=" | head -n 1 || true)
-    
-    STEAM_ARGS=$(python3 -c '
-import sys
-try:
-    with open(f"/proc/{sys.argv[1]}/cmdline", "rb") as f:
-        args = f.read().split(b"\x00")
-        args = [a.decode("utf-8", errors="ignore") for a in args if a][1:]
-        print(" ".join(f"'\''{a}'\''" for a in args))
-except Exception:
-    pass
-' "$steam_pid" 2>/dev/null || true)
-  fi
+  # Capture env and command line arguments
+  capture_steam_env "$RUNNING_USER" "/tmp/millennium-relaunch-${RUNNING_USER}"
 
   if [[ "$DRY_RUN" == "false" ]]; then
-    if [[ "$WAS_FLATPAK" == "true" ]]; then
-      runuser -l "$RUNNING_USER" -c "flatpak run com.valvesoftware.Steam -shutdown" || true
-    elif command -v steam &>/dev/null; then
-      runuser -l "$RUNNING_USER" -c "steam -shutdown" || true
-    elif [[ -x "${USER_HOME}/.local/bin/steam" ]]; then
-      runuser -l "$RUNNING_USER" -c "${USER_HOME}/.local/bin/steam -shutdown" || true
-    fi
-
-    timeout=30
-    while pgrep -x steam >/dev/null && [[ $timeout -gt 0 ]]; do
-      sleep 1
-      ((timeout--))
-    done
-
-    if pgrep -x steam >/dev/null; then
-      echo "Steam did not close gracefully. Force killing..." >&2
-      killall -9 steam steamwebhelper 2>/dev/null || true
-    fi
-    echo "Steam closed successfully."
+    close_steam_gracefully "$RUNNING_USER"
   fi
   RELAUNCH_STEAM=true
 fi
@@ -344,22 +292,19 @@ fi
 
 if [[ "$RELAUNCH_STEAM" == "true" && "$DRY_RUN" == "false" ]]; then
   echo "Relaunching Steam..."
-  env_prefix=""
-  [[ -n "${EXPORT_DISPLAY:-}" ]] && env_prefix+="${EXPORT_DISPLAY} "
-  [[ -n "${EXPORT_XAUTHORITY:-}" ]] && env_prefix+="${EXPORT_XAUTHORITY} "
-  [[ -n "${EXPORT_DBUS:-}" ]] && env_prefix+="${EXPORT_DBUS} "
-  [[ -n "${EXPORT_WAYLAND:-}" ]] && env_prefix+="${EXPORT_WAYLAND} "
-  [[ -n "${EXPORT_RUNTIME:-}" ]] && env_prefix+="${EXPORT_RUNTIME} "
-  [[ -n "${EXPORT_SESSION_TYPE:-}" ]] && env_prefix+="${EXPORT_SESSION_TYPE} "
-  [[ -n "${EXPORT_DESKTOP:-}" ]] && env_prefix+="${EXPORT_DESKTOP} "
+  
+  # Source saved environment variables (sets DISPLAY, WAYLAND_DISPLAY, STEAM_ARGS, WAS_FLATPAK, etc.)
+  # shellcheck disable=SC1090
+  source "/tmp/millennium-relaunch-${RUNNING_USER}"
+  rm -f "/tmp/millennium-relaunch-${RUNNING_USER}"
 
-  if [[ "$WAS_FLATPAK" == "true" ]]; then
-    runuser "$RUNNING_USER" -c "${env_prefix}flatpak run com.valvesoftware.Steam ${STEAM_ARGS} >/dev/null 2>&1 &"
+  if [[ "${WAS_FLATPAK:-false}" == "true" ]]; then
+    runuser "$RUNNING_USER" -c "flatpak run com.valvesoftware.Steam ${STEAM_ARGS} >/dev/null 2>&1 &"
   else
     if command -v steam &>/dev/null; then
-      runuser "$RUNNING_USER" -c "${env_prefix}steam ${STEAM_ARGS} >/dev/null 2>&1 &"
+      runuser "$RUNNING_USER" -c "steam ${STEAM_ARGS} >/dev/null 2>&1 &"
     elif [[ -x "${USER_HOME}/.local/bin/steam" ]]; then
-      runuser "$RUNNING_USER" -c "${env_prefix}${USER_HOME}/.local/bin/steam ${STEAM_ARGS} >/dev/null 2>&1 &"
+      runuser "$RUNNING_USER" -c "${USER_HOME}/.local/bin/steam ${STEAM_ARGS} >/dev/null 2>&1 &"
     fi
   fi
 fi
