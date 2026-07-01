@@ -197,32 +197,7 @@ fi
 if [[ "$REFRESH_THEME" == "true" ]]; then
   echo "Active Theme Detected: ${ACTIVE_THEME} (${OWNER}/${REPO})"
   echo "Fetching latest ${OWNER}/${REPO} commit SHA..."
-  COMMIT=""
-  
-  # Configure curl headers for GitHub API
-  CURL_HEADERS=()
-  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-    CURL_HEADERS+=("-H" "Authorization: token $GITHUB_TOKEN")
-  fi
-
-  if command -v jq &>/dev/null; then
-    COMMIT=$(curl -fsSL --retry 3 --retry-delay 2 "${CURL_HEADERS[@]}" "https://api.github.com/repos/${OWNER}/${REPO}/commits" | jq -r '.[0].sha' || true)
-  else
-    COMMIT=$(python3 -c "
-import urllib.request, json, os
-try:
-    headers = {'User-Agent': 'Mozilla/5.0'}
-    token = os.environ.get('GITHUB_TOKEN')
-    if token:
-        headers['Authorization'] = f'token {token}'
-    req = urllib.request.Request('https://api.github.com/repos/${OWNER}/${REPO}/commits', headers=headers)
-    with urllib.request.urlopen(req) as response:
-        commit_list = json.loads(response.read().decode())
-        print(commit_list[0].get('sha', ''))
-except Exception:
-    pass
-" || true)
-  fi
+  COMMIT=$(fetch_github_commit "$OWNER" "$REPO")
 
   if [[ -z "$COMMIT" ]]; then
     if [[ "$ACTIVE_THEME" == "Steam" ]]; then
@@ -242,7 +217,7 @@ except Exception:
     trap 'rm -rf "$TMP"' EXIT INT TERM
 
     echo "Refreshing active theme ${ACTIVE_THEME}..."
-    curl -fsSL "${CURL_HEADERS[@]}" --retry 3 --retry-delay 2 "https://github.com/${OWNER}/${REPO}/archive/${COMMIT}.zip" -o "$TMP/theme.zip"
+    curl -fsSL --retry 3 --retry-delay 2 "https://github.com/${OWNER}/${REPO}/archive/${COMMIT}.zip" -o "$TMP/theme.zip"
     
     # Allow unzip to return warnings (exit code <= 2) and verify extraction
     unzip -q "$TMP/theme.zip" -d "$TMP" || [[ $? -le 2 ]]
@@ -294,20 +269,5 @@ else
 fi
 
 if [[ "$RELAUNCH_STEAM" == "true" && "$DRY_RUN" == "false" ]]; then
-  echo "Relaunching Steam..."
-  
-  # Source saved environment variables (sets DISPLAY, WAYLAND_DISPLAY, STEAM_ARGS, WAS_FLATPAK, etc.)
-  # shellcheck disable=SC1090
-  source "/tmp/millennium-relaunch-${USER_NAME}"
-  rm -f "/tmp/millennium-relaunch-${USER_NAME}"
-
-  if [[ "${WAS_FLATPAK:-false}" == "true" ]]; then
-    execute runuser "$USER_NAME" -c "flatpak run com.valvesoftware.Steam ${STEAM_ARGS} >/dev/null 2>&1 &"
-  else
-    if command -v steam &>/dev/null; then
-      execute runuser "$USER_NAME" -c "steam ${STEAM_ARGS} >/dev/null 2>&1 &"
-    elif [[ -x "${USER_HOME}/.local/bin/steam" ]]; then
-      execute runuser "$USER_NAME" -c "${USER_HOME}/.local/bin/steam ${STEAM_ARGS} >/dev/null 2>&1 &"
-    fi
-  fi
+  relaunch_steam "$USER_NAME"
 fi

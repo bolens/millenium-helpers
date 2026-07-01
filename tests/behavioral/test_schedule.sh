@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+# Behavioral tests for scripts/millennium-schedule.sh
+set -uo pipefail
+
+TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${TEST_DIR}/../.." && pwd)"
+
+# shellcheck source=../lib/assertions.sh
+source "${TEST_DIR}/../lib/assertions.sh"
+# shellcheck source=../lib/mocks.sh
+source "${TEST_DIR}/../lib/mocks.sh"
+
+SCHEDULE_SH="${REPO_ROOT}/scripts/millennium-schedule.sh"
+
+setup_mock_bin
+trap teardown_mock_bin EXIT
+
+# Isolate systemd user unit files and state dir in a throwaway HOME/XDG dir
+FAKE_XDG_CONFIG=$(mktemp -d)
+export XDG_CONFIG_HOME="$FAKE_XDG_CONFIG"
+
+# Fast stand-ins for the other helper scripts (avoid invoking real, slow tools)
+mock_cmd "millennium-diag" 'exit 0'
+mock_cmd "millennium-theme" 'exit 0'
+mock_cmd "millennium-upgrade-stable" 'exit 0'
+mock_cmd "millennium-upgrade-beta" 'exit 0'
+
+run_schedule() {
+  bash "$SCHEDULE_SH" "$@"
+}
+
+echo -e "${YELLOW}=== Behavioral tests: millennium-schedule.sh ===${NC}"
+
+# --- Help / usage ---
+
+out=$(run_schedule --help 2>&1)
+rc=$?
+assert_success "$rc" "millennium-schedule --help exits 0"
+assert_contains "$out" "enable" "millennium-schedule --help documents the enable command"
+assert_contains "$out" "disable" "millennium-schedule --help documents the disable command"
+assert_contains "$out" "status" "millennium-schedule --help documents the status command"
+
+out=$(run_schedule 2>&1)
+rc=$?
+assert_failure "$rc" "millennium-schedule with no command exits non-zero"
+assert_contains "$out" "Usage:" "millennium-schedule with no command prints usage"
+
+# --- Invalid channel argument ---
+
+out=$(run_schedule enable bogus-channel --dry-run 2>&1)
+rc=$?
+assert_failure "$rc" "millennium-schedule enable rejects an unrecognized channel argument"
+assert_contains "$out" "Unknown option" "millennium-schedule enable reports the unrecognized channel as an unknown option"
+
+# --- enable (systemd path) dry-run ---
+
+out=$(run_schedule enable stable --dry-run 2>&1)
+rc=$?
+assert_success "$rc" "millennium-schedule enable stable --dry-run exits 0"
+assert_contains "$out" "DRY RUN" "millennium-schedule enable --dry-run announces dry-run mode"
+assert_contains "$out" "systemd user service file" "millennium-schedule enable --dry-run mentions creating the systemd service file"
+assert_file_not_exists "${FAKE_XDG_CONFIG}/systemd/user/millennium-update.timer" "millennium-schedule enable --dry-run does not actually write the timer unit file"
+assert_file_not_exists "${FAKE_XDG_CONFIG}/systemd/user/millennium-update.service" "millennium-schedule enable --dry-run does not actually write the service unit file"
+
+# --- enable (cron path) dry-run ---
+
+out=$(run_schedule enable beta --cron --dry-run 2>&1)
+rc=$?
+assert_success "$rc" "millennium-schedule enable beta --cron --dry-run exits 0"
+assert_contains "$out" "DRY RUN" "millennium-schedule enable --cron --dry-run announces dry-run mode"
+assert_contains "$out" "crontab" "millennium-schedule enable --cron --dry-run mentions crontab"
+assert_contains "$out" "millennium-upgrade-beta" "millennium-schedule enable beta --cron --dry-run references the beta upgrade script"
+
+# --- disable dry-run ---
+
+out=$(run_schedule disable --dry-run 2>&1)
+rc=$?
+assert_success "$rc" "millennium-schedule disable --dry-run exits 0"
+assert_contains "$out" "DRY RUN" "millennium-schedule disable --dry-run announces dry-run mode"
+
+# --- status (no timer/service configured) ---
+
+out=$(run_schedule status 2>&1)
+rc=$?
+assert_success "$rc" "millennium-schedule status exits 0 when nothing is configured"
+assert_contains "$out" "not installed/configured" "millennium-schedule status reports the timer as unconfigured"
+
+# --- pre-update: Steam not running ---
+
+mock_cmd "pgrep" 'exit 1'
+out=$(run_schedule pre-update 2>&1)
+rc=$?
+assert_success "$rc" "millennium-schedule pre-update exits 0 when Steam isn't running"
+assert_contains "$out" "not running" "millennium-schedule pre-update reports that Steam is not running"
+rm -f "${MOCK_BIN}/pgrep"
+
+# --- post-update: no saved relaunch state ---
+
+rm -f "/tmp/millennium-relaunch-$(whoami)"
+out=$(run_schedule post-update 2>&1)
+rc=$?
+assert_success "$rc" "millennium-schedule post-update exits 0 with no saved relaunch state (diag mocked to pass)"
+assert_contains "$out" "No saved relaunch state" "millennium-schedule post-update reports no relaunch state was found"
+
+# --- post-update: diagnostics failure aborts relaunch ---
+
+mock_cmd "millennium-diag" 'exit 1'
+out=$(run_schedule post-update 2>&1)
+rc=$?
+assert_failure "$rc" "millennium-schedule post-update exits non-zero when diagnostics fail"
+assert_contains "$out" "failed verification" "millennium-schedule post-update explains the verification failure"
+mock_cmd "millennium-diag" 'exit 0'
+
+rm -rf "$FAKE_XDG_CONFIG"
+
+print_summary

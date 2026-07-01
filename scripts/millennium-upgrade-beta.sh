@@ -136,35 +136,8 @@ check_network() {
 
 check_network
 
-# Configure curl headers for GitHub API
-CURL_HEADERS=()
-if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-  CURL_HEADERS+=("-H" "Authorization: token $GITHUB_TOKEN")
-fi
-
 echo "Fetching latest Millennium beta release tag..."
-TAG=""
-if command -v jq &>/dev/null; then
-  TAG=$(curl -sL "${CURL_HEADERS[@]}" --retry 3 --retry-delay 2 "https://api.github.com/repos/SteamClientHomebrew/Millennium/releases" | jq -r '.[] | select(.prerelease == true and (.tag_name | contains("beta"))) | .tag_name' | head -n 1 || true)
-else
-  TAG=$(python3 -c '
-import urllib.request, json, os
-try:
-    headers = {"User-Agent": "Mozilla/5.0"}
-    token = os.environ.get("GITHUB_TOKEN")
-    if token:
-        headers["Authorization"] = f"token {token}"
-    req = urllib.request.Request("https://api.github.com/repos/SteamClientHomebrew/Millennium/releases", headers=headers)
-    with urllib.request.urlopen(req) as response:
-        releases = json.loads(response.read().decode())
-        for r in releases:
-            if r.get("prerelease") and "beta" in r.get("tag_name", ""):
-                print(r["tag_name"])
-                break
-except Exception:
-    pass
-' || true)
-fi
+TAG=$(fetch_github_latest_beta_tag "SteamClientHomebrew" "Millennium")
 
 if [[ -z "$TAG" || "$TAG" == "null" ]]; then
   echo "Error: Could not retrieve the latest beta version tag from GitHub." >&2
@@ -186,7 +159,7 @@ URL="https://github.com/SteamClientHomebrew/Millennium/releases/download/v${VER}
 SHA_URL="https://github.com/SteamClientHomebrew/Millennium/releases/download/v${VER}/millennium-v${VER}-linux-x86_64.sha256"
 
 echo "Fetching SHA256 checksum for Millennium v${VER}..."
-SHA=$(curl -fsSL "${CURL_HEADERS[@]}" --retry 3 --retry-delay 2 "$SHA_URL" | awk '{print $1}' || true)
+SHA=$(curl -fsSL --retry 3 --retry-delay 2 "$SHA_URL" | awk '{print $1}' || true)
 
 if [[ -z "$SHA" ]]; then
   echo "Error: Could not retrieve the SHA256 checksum for v${VER}." >&2
@@ -202,7 +175,7 @@ else
   trap 'rm -rf "$TMP"' EXIT INT TERM
 
   echo "Downloading Millennium v${VER}..."
-  curl -fL "${CURL_HEADERS[@]}" --retry 3 --retry-delay 2 "$URL" -o "$TMP/$ARCHIVE"
+  curl -fL --retry 3 --retry-delay 2 "$URL" -o "$TMP/$ARCHIVE"
   echo "${SHA}  ${ARCHIVE}" | (cd "$TMP" && sha256sum -c)
 
   echo "Installing to /usr/lib/millennium/..."
@@ -279,20 +252,5 @@ else
 fi
 
 if [[ "$RELAUNCH_STEAM" == "true" && "$DRY_RUN" == "false" ]]; then
-  echo "Relaunching Steam..."
-  
-  # Source saved environment variables (sets DISPLAY, WAYLAND_DISPLAY, STEAM_ARGS, WAS_FLATPAK, etc.)
-  # shellcheck disable=SC1090
-  source "/tmp/millennium-relaunch-${RUNNING_USER}"
-  rm -f "/tmp/millennium-relaunch-${RUNNING_USER}"
-
-  if [[ "${WAS_FLATPAK:-false}" == "true" ]]; then
-    runuser "$RUNNING_USER" -c "flatpak run com.valvesoftware.Steam ${STEAM_ARGS} >/dev/null 2>&1 &"
-  else
-    if command -v steam &>/dev/null; then
-      runuser "$RUNNING_USER" -c "steam ${STEAM_ARGS} >/dev/null 2>&1 &"
-    elif [[ -x "${USER_HOME}/.local/bin/steam" ]]; then
-      runuser "$RUNNING_USER" -c "${USER_HOME}/.local/bin/steam ${STEAM_ARGS} >/dev/null 2>&1 &"
-    fi
-  fi
+  relaunch_steam "$RUNNING_USER"
 fi
