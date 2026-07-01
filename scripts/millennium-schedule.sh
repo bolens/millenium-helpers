@@ -95,10 +95,18 @@ enable_timer() {
 
   case "$channel" in
     stable)
-      script_file="/usr/local/bin/millennium-upgrade-stable"
+      if [[ -f "/usr/bin/millennium-upgrade-stable" ]]; then
+        script_file="/usr/bin/millennium-upgrade-stable"
+      else
+        script_file="/usr/local/bin/millennium-upgrade-stable"
+      fi
       ;;
     beta)
-      script_file="/usr/local/bin/millennium-upgrade-beta"
+      if [[ -f "/usr/bin/millennium-upgrade-beta" ]]; then
+        script_file="/usr/bin/millennium-upgrade-beta"
+      else
+        script_file="/usr/local/bin/millennium-upgrade-beta"
+      fi
       ;;
     *)
       echo -e "${RED}Error: Invalid channel '$channel'. Choose 'stable' or 'beta'.${NC}" >&2
@@ -111,6 +119,11 @@ enable_timer() {
     echo -e "${RED}Error: Installed updater script not found at ${script_file}.${NC}" >&2
     echo -e "${YELLOW}Please run the installer first: sudo ./install.sh${NC}" >&2
     exit 1
+  fi
+
+  local theme_cmd="/usr/local/bin/millennium-theme"
+  if [[ -f "/usr/bin/millennium-theme" ]]; then
+    theme_cmd="/usr/bin/millennium-theme"
   fi
 
   # Ensure user systemd config directory exists
@@ -126,7 +139,7 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/sudo -n ${script_file}
-ExecStart=-/usr/local/bin/millennium-theme update
+ExecStart=-${theme_cmd} update
 EOF
 
   echo -e "${BLUE}Creating systemd user timer file...${NC}"
