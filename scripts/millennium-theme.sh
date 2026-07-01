@@ -2,12 +2,22 @@
 # Millennium Theme CLI Manager
 set -euo pipefail
 
-# Text color formatting
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# Source shared helpers
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COMMON_SH="${SCRIPT_DIR}/common.sh"
+if [[ ! -f "$COMMON_SH" ]]; then
+  COMMON_SH="/usr/local/lib/millennium-helpers/common.sh"
+  if [[ -f "/usr/lib/millennium-helpers/common.sh" ]]; then
+    COMMON_SH="/usr/lib/millennium-helpers/common.sh"
+  fi
+fi
+if [[ -f "$COMMON_SH" ]]; then
+  # shellcheck disable=SC1090
+  source "$COMMON_SH"
+else
+  echo -e "${RED:-}Error: Shared helper library not found." >&2
+  exit 1
+fi
 
 show_help() {
   cat << EOF
@@ -91,13 +101,7 @@ fi
 
 SKINS_DIR="${STEAM_DIR}/steamui/skins"
 
-execute() {
-  if [[ "$DRY_RUN" == "true" ]]; then
-    echo -e "${YELLOW}[DRY RUN] Would run:${NC} $*"
-  else
-    "$@"
-  fi
-}
+# execute resolved from common.sh
 
 update_single_theme() {
   local theme_name="$1"

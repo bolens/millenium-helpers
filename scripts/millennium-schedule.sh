@@ -18,16 +18,9 @@ if [[ -f "$COMMON_SH" ]]; then
   # shellcheck disable=SC1090
   source "$COMMON_SH"
 else
-  echo -e "${RED}Error: Shared helper library not found.${NC}" >&2
+  echo -e "${RED:-}Error: Shared helper library not found." >&2
   exit 1
 fi
-
-# Text color formatting
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
 
 SERVICE_NAME="millennium-update.service"
 TIMER_NAME="millennium-update.timer"
@@ -99,23 +92,7 @@ if [[ "$DRY_RUN" == "true" ]]; then
   echo -e "${YELLOW}=== DRY RUN MODE: No changes will be made ===${NC}"
 fi
 
-execute() {
-  if [[ "$DRY_RUN" == "true" ]]; then
-    echo -e "${YELLOW}[DRY RUN] Would run:${NC} $*"
-  else
-    "$@"
-  fi
-}
-
-write_file() {
-  local target="$1"
-  if [[ "$DRY_RUN" == "true" ]]; then
-    echo -e "${YELLOW}[DRY RUN] Would write file: ${target} with contents:${NC}"
-    cat
-  else
-    cat > "$target"
-  fi
-}
+# execute and write_file resolved from common.sh
 
 enable_timer() {
   local channel="${1:-stable}"
@@ -123,18 +100,10 @@ enable_timer() {
 
   case "$channel" in
     stable)
-      if [[ -f "/usr/bin/millennium-upgrade-stable" ]]; then
-        script_file="/usr/bin/millennium-upgrade-stable"
-      else
-        script_file="/usr/local/bin/millennium-upgrade-stable"
-      fi
+      script_file=$(resolve_helper_path "millennium-upgrade-stable")
       ;;
     beta)
-      if [[ -f "/usr/bin/millennium-upgrade-beta" ]]; then
-        script_file="/usr/bin/millennium-upgrade-beta"
-      else
-        script_file="/usr/local/bin/millennium-upgrade-beta"
-      fi
+      script_file=$(resolve_helper_path "millennium-upgrade-beta")
       ;;
     *)
       echo -e "${RED}Error: Invalid channel '$channel'. Choose 'stable' or 'beta'.${NC}" >&2
@@ -149,15 +118,11 @@ enable_timer() {
     exit 1
   fi
 
-  local theme_cmd="/usr/local/bin/millennium-theme"
-  if [[ -f "/usr/bin/millennium-theme" ]]; then
-    theme_cmd="/usr/bin/millennium-theme"
-  fi
+  local theme_cmd
+  theme_cmd=$(resolve_helper_path "millennium-theme")
 
-  local sched_self="/usr/local/bin/millennium-schedule"
-  if [[ -f "/usr/bin/millennium-schedule" ]]; then
-    sched_self="/usr/bin/millennium-schedule"
-  fi
+  local sched_self
+  sched_self=$(resolve_helper_path "millennium-schedule")
 
   # Ensure user systemd config directory exists
   execute mkdir -p "$USER_CONFIG_DIR"
@@ -300,10 +265,8 @@ pre_update() {
 
 post_update() {
   local state_file="/tmp/millennium-relaunch-${RUNNING_USER}"
-  local diag_path="/usr/local/bin/millennium-diag"
-  if [[ -f "/usr/bin/millennium-diag" ]]; then
-    diag_path="/usr/bin/millennium-diag"
-  fi
+  local diag_path
+  diag_path=$(resolve_helper_path "millennium-diag")
   
   if ! "$diag_path" >/dev/null 2>&1; then
     echo "Millennium update failed verification checks. Relaunch cancelled." >&2
@@ -340,18 +303,10 @@ enable_cron() {
 
   case "$channel" in
     stable)
-      if [[ -f "/usr/bin/millennium-upgrade-stable" ]]; then
-        script_file="/usr/bin/millennium-upgrade-stable"
-      else
-        script_file="/usr/local/bin/millennium-upgrade-stable"
-      fi
+      script_file=$(resolve_helper_path "millennium-upgrade-stable")
       ;;
     beta)
-      if [[ -f "/usr/bin/millennium-upgrade-beta" ]]; then
-        script_file="/usr/bin/millennium-upgrade-beta"
-      else
-        script_file="/usr/local/bin/millennium-upgrade-beta"
-      fi
+      script_file=$(resolve_helper_path "millennium-upgrade-beta")
       ;;
     *)
       echo -e "${RED}Error: Invalid channel '$channel'. Choose 'stable' or 'beta'.${NC}" >&2
@@ -364,15 +319,11 @@ enable_cron() {
     exit 1
   fi
 
-  local sched_self="/usr/local/bin/millennium-schedule"
-  if [[ -f "/usr/bin/millennium-schedule" ]]; then
-    sched_self="/usr/bin/millennium-schedule"
-  fi
+  local sched_self
+  sched_self=$(resolve_helper_path "millennium-schedule")
 
-  local theme_cmd="/usr/local/bin/millennium-theme"
-  if [[ -f "/usr/bin/millennium-theme" ]]; then
-    theme_cmd="/usr/bin/millennium-theme"
-  fi
+  local theme_cmd
+  theme_cmd=$(resolve_helper_path "millennium-theme")
 
   local cron_cmd="0 2 * * * sleep \$(python3 -c 'import random; print(random.randint(0, 3600))') && ${sched_self} pre-update && { /usr/bin/sudo -n ${script_file} && ${theme_cmd} update; ${sched_self} post-update; }"
   
