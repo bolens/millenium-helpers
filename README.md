@@ -2,50 +2,6 @@
 
 A set of utility scripts for managing, repairing, upgrading, and scheduling updates for the [Millennium](https://github.com/SteamClientHomebrew/Millennium) Steam Client homebrew hook on Linux.
 
-## Features
-
-- **Automated Installation & Uninstallation**: Installs the helper tools system-wide into `/usr/local/bin`.
-- **Daily Automated Update Scheduler**: Configures a user-level systemd timer and service to run updates daily in the background.
-- **Secure by Design**: Utilizes `/etc/sudoers.d/` drop-in configuration to grant limited passwordless privilege escalation specifically for the updater binaries without introducing privilege escalation vectors.
-- **Support for Multiple Release Channels**: Easily switch between `stable` and `beta` updates.
-- **Repair Utility**: Ownership correction, cache purging, and theme refreshing.
-
----
-
-## Script Overview
-
-### 1. [install.sh](install.sh)
-The master installer. It copies all helper scripts to `/usr/local/bin`, sets permissions to `755` (read-only for normal users, owned by root), and automatically configures `/etc/sudoers.d/millennium-helpers` for passwordless execution of the updaters.
-
-### 2. [scripts/millennium-repair.sh](scripts/millennium-repair.sh) (`millennium-repair`)
-Fixes issues with the Steam theme or settings panel.
-- **Offline Resilient**: Automatically detects if the network is down and skips the SpaceTheme download, allowing you to fix local file permissions, caches, and bootstrap links offline.
-- **Skip Theme Option**: Pass `-s` or `--skip-theme` to skip downloading the SpaceTheme explicitly.
-- Fixes directory permissions and ownership for Millennium config folders.
-- Purges the Steam `htmlcache`.
-- Re-links bootstrap files (`libXtst.so.6`) for Steam client library hooking.
-
-### 3. [scripts/millennium-upgrade-stable.sh](scripts/millennium-upgrade-stable.sh) (`millennium-upgrade-stable`)
-Downloads, checksum-validates, and installs the latest stable version of Millennium system-wide.
-- **Smart Bypass**: Reads `/usr/lib/millennium/version.txt` to bypass reinstallation if already up-to-date (saving bandwidth and disk writes).
-- **Force Reinstall**: Run with `-f` or `--force` to reinstall regardless of version.
-
-### 4. [scripts/millennium-upgrade-beta.sh](scripts/millennium-upgrade-beta.sh) (`millennium-upgrade-beta`)
-Downloads, checksum-validates, and installs the latest prerelease/beta version of Millennium system-wide.
-- **Smart Bypass**: Reads `/usr/lib/millennium/version.txt` to bypass reinstallation if already up-to-date.
-- **Force Reinstall**: Run with `-f` or `--force` to reinstall regardless of version.
-
-### 5. [scripts/millennium-schedule.sh](scripts/millennium-schedule.sh) (`millennium-schedule`)
-Manages systemd user-space timers to run daily updates.
-
-### 6. [scripts/millennium-purge.sh](scripts/millennium-purge.sh) (`millennium-purge`)
-De-registers Millennium from all local Steam users and completely purges its files and directories from the system. (Requires `sudo`).
-
-### 7. [scripts/millennium-diag.sh](scripts/millennium-diag.sh) (`millennium-diag`)
-Runs a comprehensive system-wide health check on your Millennium setup. It reports the running status of Steam, the installed version of Millennium, the integrity of local user client overrides (including Flatpak sandboxes), auto-update timers, and systemd lingering configurations.
-
----
-
 ## Installation & Setup
 
 ### Step 1: Install System-Wide
@@ -66,6 +22,16 @@ millennium-schedule enable
 ```bash
 millennium-schedule enable beta
 ```
+
+---
+
+## Features
+
+- **Automated Installation & Uninstallation**: Installs the helper tools system-wide into `/usr/local/bin`.
+- **Daily Automated Update Scheduler**: Configures a user-level systemd timer and service to run updates daily in the background.
+- **Secure by Design**: Utilizes `/etc/sudoers.d/` drop-in configuration to grant limited passwordless privilege escalation specifically for the updater binaries without introducing privilege escalation vectors.
+- **Support for Multiple Release Channels**: Easily switch between `stable` and `beta` updates.
+- **Repair Utility**: Ownership correction, cache purging, and theme refreshing.
 
 ---
 
@@ -128,6 +94,40 @@ sudo millennium-repair --dry-run
 # Preview doctor/auto-repair changes
 millennium-diag doctor --dry-run
 ```
+
+---
+
+## Script Overview
+
+### 1. [install.sh](install.sh)
+The master installer. It copies all helper scripts to `/usr/local/bin`, sets permissions to `755` (read-only for normal users, owned by root), and automatically configures `/etc/sudoers.d/millennium-helpers` for passwordless execution of the updaters.
+
+### 2. [scripts/millennium-repair.sh](scripts/millennium-repair.sh) (`millennium-repair`)
+Fixes issues with the Steam theme or settings panel.
+- **Offline Resilient**: Automatically detects if the network is down and skips the SpaceTheme download, allowing you to fix local file permissions, caches, and bootstrap links offline.
+- **Skip Theme Option**: Pass `-s` or `--skip-theme` to skip downloading the SpaceTheme explicitly.
+- Fixes directory permissions and ownership for Millennium config folders.
+- Purges the Steam `htmlcache`.
+- Re-links bootstrap files (`libXtst.so.6`) for Steam client library hooking.
+
+### 3. [scripts/millennium-upgrade-stable.sh](scripts/millennium-upgrade-stable.sh) (`millennium-upgrade-stable`)
+Downloads, checksum-validates, and installs the latest stable version of Millennium system-wide.
+- **Smart Bypass**: Reads `/usr/lib/millennium/version.txt` to bypass reinstallation if already up-to-date (saving bandwidth and disk writes).
+- **Force Reinstall**: Run with `-f` or `--force` to reinstall regardless of version.
+
+### 4. [scripts/millennium-upgrade-beta.sh](scripts/millennium-upgrade-beta.sh) (`millennium-upgrade-beta`)
+Downloads, checksum-validates, and installs the latest prerelease/beta version of Millennium system-wide.
+- **Smart Bypass**: Reads `/usr/lib/millennium/version.txt` to bypass reinstallation if already up-to-date.
+- **Force Reinstall**: Run with `-f` or `--force` to reinstall regardless of version.
+
+### 5. [scripts/millennium-schedule.sh](scripts/millennium-schedule.sh) (`millennium-schedule`)
+Manages systemd user-space timers to run daily updates.
+
+### 6. [scripts/millennium-purge.sh](scripts/millennium-purge.sh) (`millennium-purge`)
+De-registers Millennium from all local Steam users and completely purges its files and directories from the system. (Requires `sudo`).
+
+### 7. [scripts/millennium-diag.sh](scripts/millennium-diag.sh) (`millennium-diag`)
+Runs a comprehensive system-wide health check on your Millennium setup. It reports the running status of Steam, the installed version of Millennium, the integrity of local user client overrides (including Flatpak sandboxes), auto-update timers, and systemd lingering configurations.
 
 ---
 
