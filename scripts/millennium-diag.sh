@@ -531,6 +531,7 @@ if [[ "$COMMAND" == "doctor" ]]; then
     EXPORT_RUNTIME=""
     EXPORT_SESSION_TYPE=""
     EXPORT_DESKTOP=""
+    STEAM_ARGS=""
     steam_pid=$(pgrep -x steam | head -n 1 || true)
     if [[ -n "$steam_pid" ]]; then
       steam_env=$(tr '\0' '\n' < "/proc/${steam_pid}/environ" 2>/dev/null || true)
@@ -541,6 +542,17 @@ if [[ "$COMMAND" == "doctor" ]]; then
       EXPORT_RUNTIME=$(echo "$steam_env" | grep "^XDG_RUNTIME_DIR=" | head -n 1 || true)
       EXPORT_SESSION_TYPE=$(echo "$steam_env" | grep "^XDG_SESSION_TYPE=" | head -n 1 || true)
       EXPORT_DESKTOP=$(echo "$steam_env" | grep "^XDG_CURRENT_DESKTOP=" | head -n 1 || true)
+      
+      STEAM_ARGS=$(python3 -c '
+import sys
+try:
+    with open(f"/proc/{sys.argv[1]}/cmdline", "rb") as f:
+        args = f.read().split(b"\x00")
+        args = [a.decode("utf-8", errors="ignore") for a in args if a][1:]
+        print(" ".join(f"'\''{a}'\''" for a in args))
+except Exception:
+    pass
+' "$steam_pid" 2>/dev/null || true)
     fi
 
     echo -e "${YELLOW}Steam is currently running and must be closed to apply repairs to hooks/binaries.${NC}"
@@ -735,12 +747,12 @@ if [[ "$COMMAND" == "doctor" ]]; then
     [[ -n "${EXPORT_DESKTOP:-}" ]] && env_prefix+="${EXPORT_DESKTOP} "
 
     if [[ "$was_flatpak" == "true" ]]; then
-      execute runuser "$RUNNING_USER" -c "${env_prefix}flatpak run com.valvesoftware.Steam >/dev/null 2>&1 &"
+      execute runuser "$RUNNING_USER" -c "${env_prefix}flatpak run com.valvesoftware.Steam ${STEAM_ARGS} >/dev/null 2>&1 &"
     else
       if command -v steam &>/dev/null; then
-        execute runuser "$RUNNING_USER" -c "${env_prefix}steam >/dev/null 2>&1 &"
+        execute runuser "$RUNNING_USER" -c "${env_prefix}steam ${STEAM_ARGS} >/dev/null 2>&1 &"
       elif [[ -x "${USER_HOME}/.local/bin/steam" ]]; then
-        execute runuser "$RUNNING_USER" -c "${env_prefix}${USER_HOME}/.local/bin/steam >/dev/null 2>&1 &"
+        execute runuser "$RUNNING_USER" -c "${env_prefix}${USER_HOME}/.local/bin/steam ${STEAM_ARGS} >/dev/null 2>&1 &"
       fi
     fi
   fi

@@ -91,6 +91,7 @@ EXPORT_WAYLAND=""
 EXPORT_RUNTIME=""
 EXPORT_SESSION_TYPE=""
 EXPORT_DESKTOP=""
+STEAM_ARGS=""
 
 RUNNING_USER="${SUDO_USER:-$USER}"
 USER_HOME="$(getent passwd "$RUNNING_USER" | cut -d: -f6)"
@@ -136,6 +137,17 @@ if pgrep -x steam >/dev/null 2>&1; then
     EXPORT_RUNTIME=$(echo "$steam_env" | grep "^XDG_RUNTIME_DIR=" | head -n 1 || true)
     EXPORT_SESSION_TYPE=$(echo "$steam_env" | grep "^XDG_SESSION_TYPE=" | head -n 1 || true)
     EXPORT_DESKTOP=$(echo "$steam_env" | grep "^XDG_CURRENT_DESKTOP=" | head -n 1 || true)
+    
+    STEAM_ARGS=$(python3 -c '
+import sys
+try:
+    with open(f"/proc/{sys.argv[1]}/cmdline", "rb") as f:
+        args = f.read().split(b"\x00")
+        args = [a.decode("utf-8", errors="ignore") for a in args if a][1:]
+        print(" ".join(f"'\''{a}'\''" for a in args))
+except Exception:
+    pass
+' "$steam_pid" 2>/dev/null || true)
   fi
 
   if [[ "$DRY_RUN" == "false" ]]; then
@@ -342,12 +354,12 @@ if [[ "$RELAUNCH_STEAM" == "true" && "$DRY_RUN" == "false" ]]; then
   [[ -n "${EXPORT_DESKTOP:-}" ]] && env_prefix+="${EXPORT_DESKTOP} "
 
   if [[ "$WAS_FLATPAK" == "true" ]]; then
-    runuser "$RUNNING_USER" -c "${env_prefix}flatpak run com.valvesoftware.Steam >/dev/null 2>&1 &"
+    runuser "$RUNNING_USER" -c "${env_prefix}flatpak run com.valvesoftware.Steam ${STEAM_ARGS} >/dev/null 2>&1 &"
   else
     if command -v steam &>/dev/null; then
-      runuser "$RUNNING_USER" -c "${env_prefix}steam >/dev/null 2>&1 &"
+      runuser "$RUNNING_USER" -c "${env_prefix}steam ${STEAM_ARGS} >/dev/null 2>&1 &"
     elif [[ -x "${USER_HOME}/.local/bin/steam" ]]; then
-      runuser "$RUNNING_USER" -c "${env_prefix}${USER_HOME}/.local/bin/steam >/dev/null 2>&1 &"
+      runuser "$RUNNING_USER" -c "${env_prefix}${USER_HOME}/.local/bin/steam ${STEAM_ARGS} >/dev/null 2>&1 &"
     fi
   fi
 fi
