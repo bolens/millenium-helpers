@@ -39,16 +39,6 @@ if [[ "$DRY_RUN" == "false" ]] && [[ "$(id -u)" -ne 0 ]]; then
   exit 1
 fi
 
-send_notification() {
-  local title="$1"
-  local msg="$2"
-  local user_name="${SUDO_USER:-$USER}"
-  
-  if [[ "$user_name" != "root" ]] && command -v notify-send &>/dev/null; then
-    runuser -l "$user_name" -c "DISPLAY=:0 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/\$(id -u)/bus notify-send '$title' '$msg'" &>/dev/null || true
-  fi
-}
-
 # --- Rollback Execution ---
 if [[ "$ROLLBACK" == "true" ]]; then
   dest_dir="/usr/lib/millennium"
