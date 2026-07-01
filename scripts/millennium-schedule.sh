@@ -124,6 +124,8 @@ enable_timer() {
   local sched_self
   sched_self=$(resolve_helper_path "millennium-schedule")
 
+  local state_dir="${XDG_STATE_HOME:-$USER_HOME/.local/state}/millennium-helpers"
+
   # Ensure user systemd config directory exists
   execute mkdir -p "$USER_CONFIG_DIR"
 
@@ -136,7 +138,7 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/bin/bash -c 'mkdir -p "${USER_HOME}/.local/share/millennium-helpers" && { "${sched_self}" pre-update && /usr/bin/sudo -n "${script_file}" && "${theme_cmd}" update && "${sched_self}" post-update; } >> "${USER_HOME}/.local/share/millennium-helpers/updater.log" 2>&1'
+ExecStart=/bin/bash -c 'mkdir -p "${state_dir}" && { "${sched_self}" pre-update && /usr/bin/sudo -n "${script_file}" && "${theme_cmd}" update && "${sched_self}" post-update; } >> "${state_dir}/updater.log" 2>&1'
 EOF
 
   echo -e "${BLUE}Creating systemd user timer file...${NC}"
@@ -322,7 +324,8 @@ enable_cron() {
   local theme_cmd
   theme_cmd=$(resolve_helper_path "millennium-theme")
 
-  local cron_cmd="0 2 * * * sleep \$(python3 -c 'import random; print(random.randint(0, 3600))') && mkdir -p ${USER_HOME}/.local/share/millennium-helpers && { ${sched_self} pre-update && /usr/bin/sudo -n ${script_file} && ${theme_cmd} update && ${sched_self} post-update; } >> ${USER_HOME}/.local/share/millennium-helpers/updater.log 2>&1"
+  local state_dir="${XDG_STATE_HOME:-$USER_HOME/.local/state}/millennium-helpers"
+  local cron_cmd="0 2 * * * sleep \$(python3 -c 'import random; print(random.randint(0, 3600))') && mkdir -p ${state_dir} && { ${sched_self} pre-update && /usr/bin/sudo -n ${script_file} && ${theme_cmd} update && ${sched_self} post-update; } >> ${state_dir}/updater.log 2>&1"
   
   echo -e "${BLUE}Configuring daily crontab job for user ${RUNNING_USER}...${NC}"
   
