@@ -30,6 +30,7 @@ _millennium_helpers() {
     millennium-diag)
       _arguments \
         '1:subcommand:(doctor --fix)' \
+        '--force[Force all doctor repairs even if system is healthy]' \
         {-d,--dry-run}'[Simulation mode]' \
         {-h,--help}'[Show help message]'
       ;;

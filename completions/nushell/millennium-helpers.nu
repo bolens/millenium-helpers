@@ -44,6 +44,7 @@ export extern "millennium-purge" [
 # Diagnostics utility for Millennium environment
 export extern "millennium-diag" [
   action?: string@"_millennium_diag_actions" # Run diagnostics doctor automatically
+  --force        # Force all doctor repairs even if system is healthy
   --dry-run(-d)  # Simulation mode
   --help(-h)     # Show help message
 ]
