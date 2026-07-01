@@ -165,7 +165,7 @@ else
   
   rm -rf "$dest_tmp" "$dest_bak"
   mkdir -p "$dest_tmp"
-  install -m755 "$TMP/usr/lib/millennium/"*.so "$dest_tmp/"
+  find "$TMP/usr/lib/millennium/" -type f -exec install -m755 -t "$dest_tmp/" {} +
   echo "${VER}" > "$dest_tmp/version.txt"
   chmod 644 "$dest_tmp/version.txt"
   
