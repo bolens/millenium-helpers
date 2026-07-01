@@ -197,7 +197,7 @@ if [[ "$REFRESH_THEME" == "true" ]]; then
   fi
 
   if command -v jq &>/dev/null; then
-    COMMIT=$(curl -fsSL --retry 3 --retry-delay 2 "${CURL_HEADERS[@]}" "https://api.github.com/repos/${OWNER}/${REPO}/commits/main" | jq -r '.sha' || true)
+    COMMIT=$(curl -fsSL --retry 3 --retry-delay 2 "${CURL_HEADERS[@]}" "https://api.github.com/repos/${OWNER}/${REPO}/commits" | jq -r '.[0].sha' || true)
   else
     COMMIT=$(python3 -c "
 import urllib.request, json, os
@@ -206,10 +206,10 @@ try:
     token = os.environ.get('GITHUB_TOKEN')
     if token:
         headers['Authorization'] = f'token {token}'
-    req = urllib.request.Request('https://api.github.com/repos/${OWNER}/${REPO}/commits/main', headers=headers)
+    req = urllib.request.Request('https://api.github.com/repos/${OWNER}/${REPO}/commits', headers=headers)
     with urllib.request.urlopen(req) as response:
-        commit = json.loads(response.read().decode())
-        print(commit.get('sha', ''))
+        commit_list = json.loads(response.read().decode())
+        print(commit_list[0].get('sha', ''))
 except Exception:
     pass
 " || true)

@@ -1,0 +1,6 @@
+complete -c millennium-theme -f -a 'list' -d 'List installed themes'
+complete -c millennium-theme -f -a 'install' -d 'Install a theme from GitHub (owner/repo)'
+complete -c millennium-theme -f -a 'update' -d 'Update an installed theme'
+complete -c millennium-theme -f -a 'remove' -d 'Remove an installed theme'
+complete -c millennium-theme -s d -l dry-run -d 'Simulation mode'
+complete -c millennium-theme -s h -l help -d 'Show help message'

@@ -21,6 +21,7 @@ SCRIPTS=(
   "scripts/millennium-schedule.sh:millennium-schedule"
   "scripts/millennium-purge.sh:millennium-purge"
   "scripts/millennium-diag.sh:millennium-diag"
+  "scripts/millennium-theme.sh:millennium-theme"
 )
 
 show_help() {

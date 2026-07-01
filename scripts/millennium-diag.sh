@@ -94,6 +94,7 @@ UTILITIES=(
   "millennium-schedule:scripts/millennium-schedule.sh"
   "millennium-purge:scripts/millennium-purge.sh"
   "millennium-diag:scripts/millennium-diag.sh"
+  "millennium-theme:scripts/millennium-theme.sh"
 )
 
 RUNNING_USER="${SUDO_USER:-$USER}"
