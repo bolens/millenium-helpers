@@ -83,6 +83,11 @@ LINGER_OK=true
 SCRIPTS_UP_TO_DATE=true
 PERMISSIONS_OK=true
 
+SYSTEMD_BOOTED=false
+if [[ -d /run/systemd/system ]]; then
+  SYSTEMD_BOOTED=true
+fi
+
 out_of_date_scripts=()
 unwritable_dirs=()
 TMP_SCRIPTS=""
@@ -373,31 +378,46 @@ else
   echo -e "${RED}Not Configured / Unauthorized${NC}"
 fi
 
-# 5. Check Systemd Auto-Update Timer
-echo -n "Systemd Auto-Update Timer: "
-TIMER_PATH="${USER_CONFIG_DIR}/millennium-update.timer"
-if [[ -f "$TIMER_PATH" ]] && sysctl_user is-enabled millennium-update.timer &>/dev/null; then
-  timer_state=$(sysctl_user is-active millennium-update.timer || echo "inactive")
-  if [[ "$timer_state" == "active" ]]; then
-    echo -e "${GREEN}Enabled and Active${NC}"
-    timer_trigger=$(sysctl_user list-timers millennium-update.timer --no-legend | awk '{print $1, $2, $3}')
-    echo "  Next Run: ${timer_trigger}"
+# 5. Check Update Scheduler Status
+if [[ "$SYSTEMD_BOOTED" == "true" ]]; then
+  echo -n "Systemd Auto-Update Timer: "
+  TIMER_PATH="${USER_CONFIG_DIR}/millennium-update.timer"
+  if [[ -f "$TIMER_PATH" ]] && sysctl_user is-enabled millennium-update.timer &>/dev/null; then
+    timer_state=$(sysctl_user is-active millennium-update.timer || echo "inactive")
+    if [[ "$timer_state" == "active" ]]; then
+      echo -e "${GREEN}Enabled and Active${NC}"
+      timer_trigger=$(sysctl_user list-timers millennium-update.timer --no-legend | awk '{print $1, $2, $3}')
+      echo "  Next Run: ${timer_trigger}"
+    else
+      TIMER_ACTIVE=false
+      echo -e "${YELLOW}Enabled but Inactive (timer is sleeping)${NC}"
+    fi
   else
     TIMER_ACTIVE=false
-    echo -e "${YELLOW}Enabled but Inactive (timer is sleeping)${NC}"
+    echo -e "${RED}Disabled / Not Scheduled${NC}"
+  fi
+
+  # 6. Check Systemd User Lingering status
+  echo -n "Systemd User Lingering: "
+  if [[ -f "/var/lib/systemd/linger/${RUNNING_USER}" ]]; then
+    echo -e "${GREEN}Enabled${NC}"
+  else
+    LINGER_OK=false
+    echo -e "${YELLOW}Disabled (Updates will only trigger when user is logged in)${NC}"
   fi
 else
-  TIMER_ACTIVE=false
-  echo -e "${RED}Disabled / Not Scheduled${NC}"
-fi
-
-# 6. Check Systemd User Lingering status
-echo -n "Systemd User Lingering: "
-if [[ -f "/var/lib/systemd/linger/${RUNNING_USER}" ]]; then
-  echo -e "${GREEN}Enabled${NC}"
-else
-  LINGER_OK=false
-  echo -e "${YELLOW}Disabled (Updates will only trigger when user is logged in)${NC}"
+  echo -n "Cron Auto-Update Scheduler: "
+  if command -v crontab &>/dev/null; then
+    if crontab -l 2>/dev/null | grep -q "millennium-schedule"; then
+      echo -e "${GREEN}Enabled and Active (Crontab entry configured)${NC}"
+    else
+      TIMER_ACTIVE=false
+      echo -e "${RED}Disabled / Not Scheduled${NC}"
+    fi
+  else
+    TIMER_ACTIVE=false
+    echo -e "${RED}Disabled (No 'crontab' utility found)${NC}"
+  fi
 fi
 
 # 7. Check for Helper Script Updates
@@ -562,23 +582,32 @@ if [[ "$COMMAND" == "doctor" ]]; then
     echo -e "  ${YELLOW}sudo ./install.sh${NC} (from your cloned repository)"
   fi
 
-  # Issue 6: Stopped systemd auto-update timer
+  # Issue 6: Stopped systemd auto-update timer / cron job
   if [[ "$TIMER_ACTIVE" == false ]]; then
-    echo -e "\n${YELLOW}[DOCTOR] Enabling and starting daily systemd user timer...${NC}"
     sched_path="/usr/local/bin/millennium-schedule"
     if [[ -f "/usr/bin/millennium-schedule" ]]; then
       sched_path="/usr/bin/millennium-schedule"
     fi
-    # Re-enable the timer using the configured channel
-    if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" ]]; then
-      execute runuser -l "$RUNNING_USER" -c "${sched_path} enable $UPDATE_CHANNEL"
+    if [[ "$SYSTEMD_BOOTED" == "true" ]]; then
+      echo -e "\n${YELLOW}[DOCTOR] Enabling and starting daily systemd user timer...${NC}"
+      # Re-enable the timer using the configured channel
+      if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" ]]; then
+        execute runuser -l "$RUNNING_USER" -c "${sched_path} enable $UPDATE_CHANNEL"
+      else
+        execute "${sched_path}" enable "$UPDATE_CHANNEL"
+      fi
     else
-      execute "${sched_path}" enable "$UPDATE_CHANNEL"
+      echo -e "\n${YELLOW}[DOCTOR] Enabling daily cron update job...${NC}"
+      if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" ]]; then
+        execute runuser -l "$RUNNING_USER" -c "${sched_path} enable $UPDATE_CHANNEL --cron"
+      else
+        execute "${sched_path}" enable "$UPDATE_CHANNEL" --cron
+      fi
     fi
   fi
 
-  # Issue 7: Disabled systemd user lingering
-  if [[ "$LINGER_OK" == false ]]; then
+  # Issue 7: Disabled systemd user lingering (Only on systemd booted)
+  if [[ "$SYSTEMD_BOOTED" == "true" && "$LINGER_OK" == false ]]; then
     echo -e "\n${YELLOW}[DOCTOR] Enabling systemd user lingering to run updates in the background...${NC}"
     execute loginctl enable-linger "${RUNNING_USER}"
   fi
