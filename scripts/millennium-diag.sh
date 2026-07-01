@@ -31,6 +31,7 @@ Commands:
 Options:
   -f, --fix     Alias for the 'doctor' command
   --force       Force all doctor repairs even if system is healthy
+  --json        Output diagnostics report in structured JSON format
   -l, --follow  Follow (tail -f) real-time log output
   -d, --dry-run Perform a dry-run (simulates doctor repairs without modifying anything)
   -h, --help    Show this help message
@@ -41,6 +42,7 @@ COMMAND=""
 DRY_RUN=false
 FOLLOW_LOGS=false
 FORCE_REPAIR=false
+OUTPUT_JSON=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -54,6 +56,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --force)
       FORCE_REPAIR=true
+      shift
+      ;;
+    --json)
+      OUTPUT_JSON=true
       shift
       ;;
     -l|--follow)
@@ -203,6 +209,11 @@ else
   if [[ -f "$SERVICE_PATH" ]] && grep -q "upgrade-beta" "$SERVICE_PATH" 2>/dev/null; then
     UPDATE_CHANNEL="beta"
   fi
+fi
+
+if [[ "$OUTPUT_JSON" == "true" ]]; then
+  exec 3>&1
+  exec 1>/dev/null
 fi
 
 echo -e "${BLUE}=== Millennium Diagnostics Report ===${NC}\n"
@@ -602,6 +613,28 @@ for symlink_item in "${COMPLETION_SYMLINKS[@]}"; do
 done
 
 # is_game_running is now sourced from common.sh
+
+if [[ "$OUTPUT_JSON" == "true" ]]; then
+  exec 1>&3
+  exec 3>&-
+  cat <<EOF
+{
+  "steam_running": ${STEAM_RUNNING},
+  "binaries_ok": ${BINARIES_OK},
+  "hooks_ok": ${HOOKS_OK},
+  "flatpak_ok": ${FLATPAK_OK},
+  "sudoers_ok": ${SUDOERS_OK},
+  "timer_active": ${TIMER_ACTIVE},
+  "linger_ok": ${LINGER_OK},
+  "scripts_up_to_date": ${SCRIPTS_UP_TO_DATE},
+  "permissions_ok": ${PERMISSIONS_OK},
+  "skins_dir_ok": ${SKINS_DIR_OK},
+  "completions_ok": ${COMPLETIONS_OK},
+  "update_channel": "${UPDATE_CHANNEL}"
+}
+EOF
+  exit 0
+fi
 
 # --- Doctor / Auto-Repair Execution ---
 if [[ "$COMMAND" == "doctor" ]]; then

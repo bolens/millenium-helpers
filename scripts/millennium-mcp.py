@@ -153,6 +153,8 @@ def handle_tool_call(tool_name, arguments):
         args = ["millennium-diag"]
         if doctor:
             args.append("doctor")
+        else:
+            args.append("--json")
         return run_cmd(args, run_as_root=doctor)
         
     elif tool_name == "millennium_theme":

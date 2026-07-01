@@ -45,6 +45,7 @@ export extern "millennium-purge" [
 export extern "millennium-diag" [
   action?: string@"_millennium_diag_actions" # Run diagnostics doctor automatically
   --force        # Force all doctor repairs even if system is healthy
+  --json         # Output diagnostics report in structured JSON format
   --dry-run(-d)  # Simulation mode
   --help(-h)     # Show help message
 ]
