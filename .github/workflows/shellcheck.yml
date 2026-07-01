@@ -1,0 +1,21 @@
+name: ShellCheck Linting
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  shellcheck:
+    name: Run ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Run ShellCheck Lint
+        uses: ludeeus/action-shellcheck@master
+        with:
+          ignore_paths: >-
+            completions/
