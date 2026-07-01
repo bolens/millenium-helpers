@@ -1,4 +1,4 @@
-#compdef millennium-repair millennium-upgrade-beta millennium-upgrade-stable millennium-schedule millennium-purge millennium-diag
+#compdef millennium-repair millennium-upgrade-beta millennium-upgrade-stable millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp
 
 _millennium_helpers() {
   local curcontext="$curcontext" state line
@@ -31,6 +31,18 @@ _millennium_helpers() {
       _arguments \
         '1:subcommand:(doctor --fix)' \
         {-d,--dry-run}'[Simulation mode]' \
+        {-h,--help}'[Show help message]'
+      ;;
+    millennium-theme)
+      _arguments \
+        '1:subcommand:(list install remove update)' \
+        '2:theme:_files' \
+        '--all[Update all themes]' \
+        {-d,--dry-run}'[Simulation mode]' \
+        {-h,--help}'[Show help message]'
+      ;;
+    millennium-mcp)
+      _arguments \
         {-h,--help}'[Show help message]'
       ;;
   esac

@@ -51,3 +51,22 @@ export extern "millennium-diag" [
 def _millennium_diag_actions [] {
   [ "doctor", "--fix" ]
 }
+
+# Manage Millennium skins and themes
+export extern "millennium-theme" [
+  action?: string@"_millennium_theme_actions" # Theme action (list, install, remove, update)
+  theme?: string # Theme name or GitHub repository URL
+  --all  # Update all themes (only applicable if action is update)
+  --dry-run(-d)  # Simulation mode
+  --help(-h)     # Show help message
+]
+
+def _millennium_theme_actions [] {
+  [ "list", "install", "remove", "update" ]
+}
+
+# Run Model Context Protocol (MCP) server
+export extern "millennium-mcp" [
+  --help(-h)     # Show help message
+]
+
