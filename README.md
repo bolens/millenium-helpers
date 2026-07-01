@@ -81,10 +81,72 @@ sudo millennium-purge
 ```
 
 ### Uninstall All Helper Scripts
-Remove the binaries and the `/etc/sudoers.d/` drop-in file:
+
+**Option A: Automated Uninstall (Recommended)**
+Remove the binaries, systemd timers, sudoers rules, and shell completions automatically:
 ```bash
 sudo ./install.sh uninstall
 ```
+
+**Option B: Manual Uninstall**
+If you prefer to remove all files and configurations manually, execute the following commands:
+
+1. **Disable and remove the daily update systemd user timer**:
+   ```bash
+   systemctl --user disable --now millennium-update.timer
+   systemctl --user stop millennium-update.service
+   rm -f ${XDG_CONFIG_HOME:-~/.config}/systemd/user/millennium-update.timer \
+         ${XDG_CONFIG_HOME:-~/.config}/systemd/user/millennium-update.service
+   systemctl --user daemon-reload
+   ```
+
+2. **Remove the script binaries from `/usr/local/bin`**:
+   ```bash
+   sudo rm -f /usr/local/bin/millennium-repair \
+              /usr/local/bin/millennium-upgrade-beta \
+              /usr/local/bin/millennium-upgrade-stable \
+              /usr/local/bin/millennium-schedule \
+              /usr/local/bin/millennium-purge \
+              /usr/local/bin/millennium-diag
+   ```
+
+3. **Remove the passwordless sudoers rules**:
+   ```bash
+   sudo rm -f /etc/sudoers.d/millennium-helpers
+   ```
+
+4. **Remove shell autocompletion configurations**:
+   ```bash
+   # Bash completions & symlinks
+   sudo rm -f /usr/share/bash-completion/completions/millennium-helpers \
+              /usr/share/bash-completion/completions/millennium-repair \
+              /usr/share/bash-completion/completions/millennium-upgrade-beta \
+              /usr/share/bash-completion/completions/millennium-upgrade-stable \
+              /usr/share/bash-completion/completions/millennium-schedule \
+              /usr/share/bash-completion/completions/millennium-purge \
+              /usr/share/bash-completion/completions/millennium-diag
+
+   # Zsh completions & symlinks
+   sudo rm -f /usr/share/zsh/site-functions/_millennium-helpers \
+              /usr/share/zsh/site-functions/_millennium-repair \
+              /usr/share/zsh/site-functions/_millennium-upgrade-beta \
+              /usr/share/zsh/site-functions/_millennium-upgrade-stable \
+              /usr/share/zsh/site-functions/_millennium-schedule \
+              /usr/share/zsh/site-functions/_millennium-purge \
+              /usr/share/zsh/site-functions/_millennium-diag
+
+   # Fish completions
+   sudo rm -f /usr/share/fish/vendor_completions.d/millennium-repair.fish \
+              /usr/share/fish/vendor_completions.d/millennium-upgrade-beta.fish \
+              /usr/share/fish/vendor_completions.d/millennium-upgrade-stable.fish \
+              /usr/share/fish/vendor_completions.d/millennium-schedule.fish \
+              /usr/share/fish/vendor_completions.d/millennium-purge.fish \
+              /usr/share/fish/vendor_completions.d/millennium-diag.fish
+
+   # Nushell completions
+   sudo rm -f /usr/share/nushell/completions/millennium-helpers.nu \
+              /usr/local/share/nushell/completions/millennium-helpers.nu
+   ```
 
 ---
 
