@@ -49,8 +49,8 @@ millennium-schedule enable beta
 millennium-diag
 ```
 
-### Run Doctor (Auto-Repair Broken Installs)
-Scan your setup for any broken hooks, missing directories, or stopped timers, and fix them automatically:
+### Run Doctor (Auto-Repair & Self-Update)
+Scan your setup for any broken hooks, missing directories, stopped timers, or out-of-date helper scripts, and automatically repair/self-update them:
 ```bash
 millennium-diag doctor
 ```
