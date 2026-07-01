@@ -69,6 +69,19 @@ FLATPAK_OK=true
 SUDOERS_OK=true
 TIMER_ACTIVE=true
 LINGER_OK=true
+SCRIPTS_UP_TO_DATE=true
+
+out_of_date_scripts=()
+TMP_SCRIPTS=""
+
+UTILITIES=(
+  "millennium-repair:scripts/millennium-repair.sh"
+  "millennium-upgrade-beta:scripts/millennium-upgrade-beta.sh"
+  "millennium-upgrade-stable:scripts/millennium-upgrade-stable.sh"
+  "millennium-schedule:scripts/millennium-schedule.sh"
+  "millennium-purge:scripts/millennium-purge.sh"
+  "millennium-diag:scripts/millennium-diag.sh"
+)
 
 # Find configured update channel (checks systemd service file if it exists)
 UPDATE_CHANNEL="stable"
@@ -220,31 +233,101 @@ else
   echo -e "${YELLOW}Disabled (Updates will only trigger when user is logged in)${NC}"
 fi
 
+# 7. Check for Helper Script Updates
+echo -e "\nHelper Scripts Update Status:"
+# Check internet connectivity
+ONLINE=false
+if curl -sIk "https://github.com" &>/dev/null; then
+  ONLINE=true
+fi
+
+if [[ "$ONLINE" == "true" ]]; then
+  TMP_SCRIPTS=$(mktemp -d)
+  trap 'rm -rf "${TMP_SCRIPTS:-}"' EXIT INT TERM
+  
+  for item in "${UTILITIES[@]}"; do
+    local_cmd="${item%%:*}"
+    remote_rel="${item#*:}"
+    local_path="/usr/local/bin/${local_cmd}"
+    
+    if [[ -f "$local_path" ]]; then
+      remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/main/${remote_rel}"
+      tmp_dest="${TMP_SCRIPTS}/${local_cmd}"
+      
+      if curl -fsSL "$remote_url" -o "$tmp_dest" &>/dev/null; then
+        local_sha=$(sha256sum "$local_path" | awk '{print $1}')
+        remote_sha=$(sha256sum "$tmp_dest" | awk '{print $1}')
+        
+        if [[ "$local_sha" != "$remote_sha" ]]; then
+          SCRIPTS_UP_TO_DATE=false
+          out_of_date_scripts+=("$local_cmd")
+          echo -e "  - ${local_cmd}: ${RED}Out of date${NC}"
+        else
+          echo -e "  - ${local_cmd}: ${GREEN}Up to date${NC}"
+        fi
+      else
+        echo -e "  - ${local_cmd}: ${YELLOW}Unable to check (HTTP download failed)${NC}"
+      fi
+    else
+      echo -e "  - ${local_cmd}: ${RED}Not Installed in /usr/local/bin${NC}"
+      SCRIPTS_UP_TO_DATE=false
+      remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/main/${remote_rel}"
+      tmp_dest="${TMP_SCRIPTS}/${local_cmd}"
+      if curl -fsSL "$remote_url" -o "$tmp_dest" &>/dev/null; then
+        out_of_date_scripts+=("$local_cmd")
+      fi
+    fi
+  done
+else
+  echo -e "  ${YELLOW}System is offline. Skipping update checks for helper scripts.${NC}"
+fi
+
 
 # --- Doctor / Auto-Repair Execution ---
 if [[ "$COMMAND" == "doctor" ]]; then
   echo -e "\n${BLUE}=== Running Millennium Doctor (Automatic Repairs) ===${NC}"
   
   # Check if anything needs fixing
-  if [[ "$BINARIES_OK" == true && "$HOOKS_OK" == true && "$FLATPAK_OK" == true && "$SUDOERS_OK" == true && "$TIMER_ACTIVE" == true && "$LINGER_OK" == true ]]; then
+  if [[ "$BINARIES_OK" == true && "$HOOKS_OK" == true && "$FLATPAK_OK" == true && "$SUDOERS_OK" == true && "$TIMER_ACTIVE" == true && "$LINGER_OK" == true && "$SCRIPTS_UP_TO_DATE" == true ]]; then
     echo -e "${GREEN}No issues detected. Your Millennium installation is healthy!${NC}"
     exit 0
   fi
 
-  # Require Steam closed for any updates/repairs
-  if [[ "$STEAM_RUNNING" == true ]]; then
-    echo -e "${RED}Error: Steam is currently running. Please close Steam completely before applying repairs.${NC}" >&2
+  # Require Steam closed for any updates/repairs (only if binary or hook modifications are pending)
+  if [[ "$STEAM_RUNNING" == true ]] && [[ "$BINARIES_OK" == false || "$HOOKS_OK" == false ]]; then
+    echo -e "${RED}Error: Steam is currently running. Please close Steam completely before applying repairs to hooks or binaries.${NC}" >&2
     exit 1
   fi
 
-  # Issue 1: Missing or corrupted binaries
+  # Issue 1: Out of date helper scripts (do this first so repairs run on new code)
+  if [[ "$SCRIPTS_UP_TO_DATE" == false ]]; then
+    echo -e "\n${YELLOW}[DOCTOR] Updating helper scripts...${NC}"
+    if [[ "$(id -u)" -ne 0 ]]; then
+      echo -e "${RED}Error: Root privileges are required to update scripts in /usr/local/bin.${NC}" >&2
+      echo -e "Please re-run the doctor with sudo: ${YELLOW}sudo millennium-diag doctor${NC}" >&2
+    else
+      for cmd_name in "${out_of_date_scripts[@]:-}"; do
+        [[ -n "$cmd_name" ]] || continue
+        tmp_src="${TMP_SCRIPTS}/${cmd_name}"
+        dest_path="/usr/local/bin/${cmd_name}"
+        if [[ -f "$tmp_src" ]]; then
+          echo "Updating script: ${dest_path}"
+          execute install -m755 "$tmp_src" "$dest_path"
+          execute chown root:root "$dest_path"
+        fi
+      done
+      echo -e "${GREEN}Helper scripts successfully updated!${NC}"
+    fi
+  fi
+
+  # Issue 2: Missing or corrupted binaries
   if [[ "$BINARIES_OK" == false ]]; then
     echo -e "\n${YELLOW}[DOCTOR] Repairing Millennium binaries...${NC}"
     echo -e "Invoking updater on the '${UPDATE_CHANNEL}' channel with force reinstall:"
     execute sudo "/usr/local/bin/millennium-upgrade-${UPDATE_CHANNEL}" --force
   fi
 
-  # Issue 2: Missing or broken hooks
+  # Issue 3: Missing or broken hooks
   if [[ "$HOOKS_OK" == false ]]; then
     echo -e "\n${YELLOW}[DOCTOR] Repairing bootstrap hooks for Steam...${NC}"
     
@@ -277,27 +360,27 @@ if [[ "$COMMAND" == "doctor" ]]; then
     done
   fi
 
-  # Issue 3: Missing Flatpak sandbox override
+  # Issue 4: Missing Flatpak sandbox override
   if [[ "$FLATPAK_OK" == false ]]; then
     echo -e "\n${YELLOW}[DOCTOR] Granting Flatpak Steam permission to access Millennium directory...${NC}"
     execute flatpak override --user --filesystem=/usr/lib/millennium com.valvesoftware.Steam
   fi
 
-  # Issue 4: Missing or invalid Sudoers drop-in
+  # Issue 5: Missing or invalid Sudoers drop-in
   if [[ "$SUDOERS_OK" == false ]]; then
     echo -e "\n${YELLOW}[DOCTOR] Sudoers drop-in configuration is missing or unauthorized.${NC}"
     echo -e "You must re-run the installer to set up the secure drop-in rules:"
     echo -e "  ${YELLOW}sudo ./install.sh${NC} (from your cloned repository)"
   fi
 
-  # Issue 5: Stopped systemd auto-update timer
+  # Issue 6: Stopped systemd auto-update timer
   if [[ "$TIMER_ACTIVE" == false ]]; then
     echo -e "\n${YELLOW}[DOCTOR] Enabling and starting daily systemd user timer...${NC}"
     # Re-enable the timer using the configured channel
     execute /usr/local/bin/millennium-schedule enable "$UPDATE_CHANNEL"
   fi
 
-  # Issue 6: Disabled systemd user lingering
+  # Issue 7: Disabled systemd user lingering
   if [[ "$LINGER_OK" == false ]]; then
     echo -e "\n${YELLOW}[DOCTOR] Enabling systemd user lingering to run updates in the background...${NC}"
     execute loginctl enable-linger "${USER}"
