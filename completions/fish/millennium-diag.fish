@@ -2,4 +2,5 @@ complete -c millennium-diag -f -a 'doctor' -d 'Run doctor to automatically repai
 complete -c millennium-diag -f -a '--fix' -d 'Run doctor to automatically repair issues'
 complete -c millennium-diag -s d -l dry-run -d 'Simulation mode'
 complete -c millennium-diag -l force -d 'Force all doctor repairs even if system is healthy'
+complete -c millennium-diag -l json -d 'Output diagnostics report in structured JSON format'
 complete -c millennium-diag -s h -l help -d 'Show help message'

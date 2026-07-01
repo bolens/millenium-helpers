@@ -31,6 +31,7 @@ _millennium_helpers() {
       _arguments \
         '1:subcommand:(doctor --fix)' \
         '--force[Force all doctor repairs even if system is healthy]' \
+        '--json[Output diagnostics report in structured JSON format]' \
         {-d,--dry-run}'[Simulation mode]' \
         {-h,--help}'[Show help message]'
       ;;
