@@ -1,0 +1,5 @@
+complete -c millennium-schedule -f -a 'enable' -d 'Enable daily auto-updater'
+complete -c millennium-schedule -f -a 'disable' -d 'Disable daily auto-updater'
+complete -c millennium-schedule -f -a 'status' -d 'Check scheduler status'
+complete -c millennium-schedule -f -n '__fish_seen_subcommand_from enable' -a 'stable beta' -d 'Select update channel'
+complete -c millennium-schedule -s h -l help -d 'Show help message'

@@ -142,6 +142,24 @@ Runs a comprehensive system-wide health check on your Millennium setup. It repor
 
 ---
 
+## Shell Autocompletions
+
+The installer automatically deploys shell autocompletion configurations for:
+
+- **Bash**: Copied to `/usr/share/bash-completion/completions/` (supports auto-loading for all scripts).
+- **Zsh**: Copied to `/usr/share/zsh/site-functions/` (auto-loaded; requires `compinit` in `~/.zshrc`).
+- **Fish**: Copied to `/usr/share/fish/vendor_completions.d/`.
+- **Nushell**: Copied to `/usr/share/nushell/completions/` or `/usr/local/share/nushell/completions/`.
+
+### Activating Nushell Completions
+To load completions in Nushell, add the following line to your `~/.config/nushell/config.nu`:
+```nushell
+use /usr/share/nushell/completions/millennium-helpers.nu *
+```
+*(Use `/usr/local/share/nushell/completions/millennium-helpers.nu *` if installed under `/usr/local`.)*
+
+---
+
 ## Security Design
 
 To allow background user-level systemd timers to run updates that modify system directories (like `/usr/lib/millennium/`), the updater scripts must run with root privileges. 

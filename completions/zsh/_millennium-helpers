@@ -1,0 +1,39 @@
+#compdef millennium-repair millennium-upgrade-beta millennium-upgrade-stable millennium-schedule millennium-purge millennium-diag
+
+_millennium_helpers() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+
+  case "$service" in
+    millennium-repair)
+      _arguments \
+        {-d,--dry-run}'[Simulation mode]' \
+        {-h,--help}'[Show help message]'
+      ;;
+    millennium-upgrade-beta|millennium-upgrade-stable)
+      _arguments \
+        {-f,--force}'[Force reinstall]' \
+        {-d,--dry-run}'[Simulation mode]' \
+        {-h,--help}'[Show help message]'
+      ;;
+    millennium-schedule)
+      _arguments \
+        '1:subcommand:(enable disable status)' \
+        '2:channel:(stable beta)' \
+        {-h,--help}'[Show help message]'
+      ;;
+    millennium-purge)
+      _arguments \
+        {-d,--dry-run}'[Simulation mode]' \
+        {-h,--help}'[Show help message]'
+      ;;
+    millennium-diag)
+      _arguments \
+        '1:subcommand:(doctor --fix)' \
+        {-d,--dry-run}'[Simulation mode]' \
+        {-h,--help}'[Show help message]'
+      ;;
+  esac
+}
+
+_millennium_helpers "$@"

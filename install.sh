@@ -101,6 +101,63 @@ write_file() {
   fi
 }
 
+install_completions() {
+  echo -e "${BLUE}Installing shell autocompletions...${NC}"
+
+  # 1. Bash Completions
+  local bash_dir="/usr/share/bash-completion/completions"
+  if [[ -d "$bash_dir" || "$DRY_RUN" == "true" ]]; then
+    echo "Installing Bash completions..."
+    execute mkdir -p "$bash_dir"
+    execute cp -f "${SCRIPT_DIR}/completions/bash/millennium-helpers" "$bash_dir/millennium-helpers"
+    execute chmod 644 "$bash_dir/millennium-helpers"
+    execute chown root:root "$bash_dir/millennium-helpers"
+    for item in "${SCRIPTS[@]}"; do
+      local dest="${item#*:}"
+      execute ln -sf "millennium-helpers" "${bash_dir}/${dest}"
+    done
+  fi
+
+  # 2. Zsh Completions
+  local zsh_dir="/usr/share/zsh/site-functions"
+  if [[ -d "$zsh_dir" || "$DRY_RUN" == "true" ]]; then
+    echo "Installing Zsh completions..."
+    execute mkdir -p "$zsh_dir"
+    execute cp -f "${SCRIPT_DIR}/completions/zsh/_millennium-helpers" "$zsh_dir/_millennium-helpers"
+    execute chmod 644 "$zsh_dir/_millennium-helpers"
+    execute chown root:root "$zsh_dir/_millennium-helpers"
+    for item in "${SCRIPTS[@]}"; do
+      local dest="${item#*:}"
+      execute ln -sf "_millennium-helpers" "${zsh_dir}/_${dest}"
+    done
+  fi
+
+  # 3. Fish Completions
+  local fish_dir="/usr/share/fish/vendor_completions.d"
+  if [[ -d "$fish_dir" || "$DRY_RUN" == "true" ]]; then
+    echo "Installing Fish completions..."
+    execute mkdir -p "$fish_dir"
+    for file in "${SCRIPT_DIR}/completions/fish/"*.fish; do
+      [[ -f "$file" ]] || continue
+      execute cp -f "$file" "$fish_dir/"
+      execute chmod 644 "${fish_dir}/$(basename "$file")"
+      execute chown root:root "${fish_dir}/$(basename "$file")"
+    done
+  fi
+
+  # 4. Nushell Completions
+  for base_dir in "/usr/share" "/usr/local/share"; do
+    local cand_dir="${base_dir}/nushell/completions"
+    if [[ -d "${base_dir}/nushell" || "$DRY_RUN" == "true" ]]; then
+      echo "Installing Nushell completions to ${cand_dir}..."
+      execute mkdir -p "$cand_dir"
+      execute cp -f "${SCRIPT_DIR}/completions/nushell/millennium-helpers.nu" "$cand_dir/millennium-helpers.nu"
+      execute chmod 644 "$cand_dir/millennium-helpers.nu"
+      execute chown root:root "$cand_dir/millennium-helpers.nu"
+    fi
+  done
+}
+
 install_scripts() {
   echo -e "${BLUE}Installing Millennium helper scripts to ${TARGET_DIR}...${NC}"
 
@@ -121,6 +178,8 @@ install_scripts() {
     execute chown root:root "$dest_path"
     execute chmod 755 "$dest_path"
   done
+
+  install_completions
 
   # Configure passwordless sudoers rules in /etc/sudoers.d/millennium-helpers
   local user_name="${SUDO_USER:-$USER}"
@@ -192,6 +251,47 @@ EOF
   fi
 }
 
+uninstall_completions() {
+  echo -e "${BLUE}Uninstalling shell autocompletions...${NC}"
+
+  # 1. Bash Completions
+  local bash_dir="/usr/share/bash-completion/completions"
+  if [[ -d "$bash_dir" || "$DRY_RUN" == "true" ]]; then
+    execute rm -f "$bash_dir/millennium-helpers"
+    for item in "${SCRIPTS[@]}"; do
+      local dest="${item#*:}"
+      execute rm -f "${bash_dir}/${dest}"
+    done
+  fi
+
+  # 2. Zsh Completions
+  local zsh_dir="/usr/share/zsh/site-functions"
+  if [[ -d "$zsh_dir" || "$DRY_RUN" == "true" ]]; then
+    execute rm -f "$zsh_dir/_millennium-helpers"
+    for item in "${SCRIPTS[@]}"; do
+      local dest="${item#*:}"
+      execute rm -f "${zsh_dir}/_${dest}"
+    done
+  fi
+
+  # 3. Fish Completions
+  local fish_dir="/usr/share/fish/vendor_completions.d"
+  if [[ -d "$fish_dir" || "$DRY_RUN" == "true" ]]; then
+    for item in "${SCRIPTS[@]}"; do
+      local dest="${item#*:}"
+      execute rm -f "${fish_dir}/${dest}.fish"
+    done
+  fi
+
+  # 4. Nushell Completions
+  for base_dir in "/usr/share" "/usr/local/share"; do
+    local cand_dir="${base_dir}/nushell/completions"
+    if [[ -d "$cand_dir" || "$DRY_RUN" == "true" ]]; then
+      execute rm -f "${cand_dir}/millennium-helpers.nu"
+    fi
+  done
+}
+
 uninstall_scripts() {
   echo -e "${BLUE}Uninstalling Millennium helper scripts from ${TARGET_DIR}...${NC}"
   
@@ -212,6 +312,9 @@ uninstall_scripts() {
     execute rm -f "$SUDOERS_FILE"
     removed_any=true
   fi
+
+  uninstall_completions
+  removed_any=true
 
   # Clean up systemd user timers/services for the invoking user
   local user_name="${SUDO_USER:-$USER}"
