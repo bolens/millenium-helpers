@@ -1,0 +1,5 @@
+# ShellCheck Configuration File
+# https://github.com/koalaman/shellcheck/wiki/Ignore
+
+# Disable warnings about following sourced files that are dynamically resolved at runtime
+disable=SC1090,SC1091
