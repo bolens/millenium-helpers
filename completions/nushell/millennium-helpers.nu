@@ -58,6 +58,7 @@ export extern "millennium-theme" [
   action?: string@"_millennium_theme_actions" # Theme action (list, install, remove, update)
   theme?: string # Theme name or GitHub repository URL
   --all  # Update all themes (only applicable if action is update)
+  --json # Output list command results in structured JSON format
   --dry-run(-d)  # Simulation mode
   --help(-h)     # Show help message
 ]

@@ -270,7 +270,7 @@ De-registers Millennium from all local Steam users and completely purges its fil
 Runs a comprehensive system-wide health check on your Millennium setup. It reports the running status of Steam, the installed version of Millennium, the integrity of local user client overrides (including Flatpak sandboxes), auto-update timers, and systemd lingering configurations.
 
 ### 8. [scripts/millennium-theme.sh](scripts/millennium-theme.sh) (`millennium-theme`)
-A fully-featured skin/theme manager CLI. It allows listing installed themes, installing new ones directly from GitHub repositories (branch-agnostic), checking/installing theme updates, and removing skin directories.
+A fully-featured skin/theme manager CLI. It allows listing installed themes (with optional `--json` structured formatting), installing new ones directly from GitHub repositories (branch-agnostic), checking/installing theme updates, and removing skin directories.
 
 ### 9. [scripts/millennium-mcp.py](scripts/millennium-mcp.py) (`millennium-mcp`)
 A zero-dependency Model Context Protocol (MCP) server. Exposes the entire suite of Millennium helper scripts as native AI tools to coding assistants (like Claude Desktop, Cursor, Windsurf, or Antigravity), allowing them to dynamically run diagnostics, manage themes, apply repairs, and perform upgrades directly.

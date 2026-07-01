@@ -161,7 +161,9 @@ def handle_tool_call(tool_name, arguments):
         all_themes = arguments.get("all", False)
         
         args = ["millennium-theme", action]
-        if action in ["install", "remove"]:
+        if action == "list":
+            args.append("--json")
+        elif action in ["install", "remove"]:
             if not theme:
                 return {"isError": True, "content": [{"type": "text", "text": "Error: theme name/URL is required for install/remove actions."}]}
             args.append(theme)
