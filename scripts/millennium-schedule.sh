@@ -5,6 +5,23 @@ set -euo pipefail
 RUNNING_USER="${SUDO_USER:-$USER}"
 USER_HOME="$(getent passwd "$RUNNING_USER" | cut -d: -f6)"
 
+# Source shared helpers
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COMMON_SH="${SCRIPT_DIR}/common.sh"
+if [[ ! -f "$COMMON_SH" ]]; then
+  COMMON_SH="/usr/local/lib/millennium-helpers/common.sh"
+  if [[ -f "/usr/lib/millennium-helpers/common.sh" ]]; then
+    COMMON_SH="/usr/lib/millennium-helpers/common.sh"
+  fi
+fi
+if [[ -f "$COMMON_SH" ]]; then
+  # shellcheck disable=SC1090
+  source "$COMMON_SH"
+else
+  echo -e "${RED}Error: Shared helper library not found.${NC}" >&2
+  exit 1
+fi
+
 # Text color formatting
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -265,76 +282,18 @@ show_status() {
 }
 
 pre_update() {
-  local game_running=false
-  for environ_file in /proc/[0-9]*/environ; do
-    [[ -f "$environ_file" && -r "$environ_file" ]] || continue
-    local pid_dir
-    pid_dir="$(dirname "$environ_file")"
-    local pid="${pid_dir##*/}"
-    [[ "$pid" =~ ^[0-9]+$ ]] || continue
-    
-    local comm
-    comm=$(cat "/proc/${pid}/comm" 2>/dev/null || true)
-    [[ "$comm" == "steam" || "$comm" == "steamwebhelper" ]] && continue
-    
-    if { tr '\0' '\n' < "$environ_file"; } 2>/dev/null | grep -q "^SteamAppId=[1-9]"; then
-      game_running=true
-      break
-    fi
-  done
-  
-  if [[ "$game_running" == "true" ]]; then
+  if is_game_running; then
     echo "A game is currently running under Steam. Aborting update." >&2
     exit 75
   fi
   
-  local was_flatpak=false
-  local state_file="/tmp/millennium-relaunch-${RUNNING_USER}"
-  rm -f "$state_file"
-  
   if pgrep -x steam >/dev/null; then
-    if command -v flatpak &>/dev/null && flatpak ps | grep -q "com.valvesoftware.Steam"; then
-      was_flatpak=true
-    fi
-    
-    # Extract desktop environment variables from the running Steam process
-    local steam_pid
-    steam_pid=$(pgrep -x steam | head -n 1 || true)
-    if [[ -n "$steam_pid" ]]; then
-      local steam_env
-      steam_env=$(tr '\0' '\n' < "/proc/${steam_pid}/environ" 2>/dev/null || true)
-      
-      local val
-      for var in DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS WAYLAND_DISPLAY XDG_RUNTIME_DIR XDG_SESSION_TYPE XDG_CURRENT_DESKTOP; do
-        val=$(echo "$steam_env" | grep "^${var}=" | cut -d= -f2- | head -n 1 || true)
-        if [[ -n "$val" ]]; then
-          echo "export ${var}='${val}'" >> "$state_file"
-        fi
-      done
-      echo "export WAS_FLATPAK='${was_flatpak}'" >> "$state_file"
-    else
-      echo "export WAS_FLATPAK='${was_flatpak}'" >> "$state_file"
-    fi
-
     echo "Steam is running. Closing gracefully..."
-    if [[ "$was_flatpak" == "true" ]]; then
-      flatpak run com.valvesoftware.Steam -shutdown || true
-    elif command -v steam &>/dev/null; then
-      steam -shutdown || true
-    elif [[ -x "${USER_HOME}/.local/bin/steam" ]]; then
-      "${USER_HOME}/.local/bin/steam" -shutdown || true
-    fi
+    # Capture env
+    capture_steam_env "$RUNNING_USER" "/tmp/millennium-relaunch-${RUNNING_USER}"
     
-    local timeout=30
-    while pgrep -x steam >/dev/null && [[ $timeout -gt 0 ]]; do
-      sleep 1
-      ((timeout--))
-    done
-    
-    if pgrep -x steam >/dev/null; then
-      echo "Steam did not close gracefully. Force killing..." >&2
-      killall -9 steam steamwebhelper 2>/dev/null || true
-    fi
+    # Close Steam
+    close_steam_gracefully "$RUNNING_USER"
   fi
   exit 0
 }
@@ -353,19 +312,22 @@ post_update() {
   fi
   
   if [[ -f "$state_file" ]]; then
-    # Source saved environment variables (sets DISPLAY, WAYLAND_DISPLAY, etc.)
+    # Source saved environment variables (sets DISPLAY, WAYLAND_DISPLAY, STEAM_ARGS, WAS_FLATPAK, etc.)
     # shellcheck disable=SC1090
     source "$state_file"
     rm -f "$state_file"
     
     echo "Millennium update succeeded. Relaunching Steam..."
     if [[ "${WAS_FLATPAK:-false}" == "true" ]]; then
-      flatpak run com.valvesoftware.Steam >/dev/null 2>&1 &
+      # shellcheck disable=SC2086
+      flatpak run com.valvesoftware.Steam ${STEAM_ARGS} >/dev/null 2>&1 &
     else
       if command -v steam &>/dev/null; then
-        steam >/dev/null 2>&1 &
+        # shellcheck disable=SC2086
+        steam ${STEAM_ARGS} >/dev/null 2>&1 &
       elif [[ -x "${USER_HOME}/.local/bin/steam" ]]; then
-        "${USER_HOME}/.local/bin/steam" >/dev/null 2>&1 &
+        # shellcheck disable=SC2086
+        "${USER_HOME}/.local/bin/steam" ${STEAM_ARGS} >/dev/null 2>&1 &
       fi
     fi
   fi
