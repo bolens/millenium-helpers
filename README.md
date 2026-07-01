@@ -80,9 +80,11 @@ millennium-diag
 ### Run Doctor (Auto-Repair & Self-Update)
 Scan your setup for any broken hooks, missing directories, stopped timers, or out-of-date helper scripts, and automatically repair/self-update them:
 ```bash
-millennium-diag doctor
+millennium-diag doctor [--force]
 ```
 *(Or alias `millennium-diag --fix` or `millennium-diag -f`)*
+
+Use the `--force` option to force-run all repairs, permissions adjustments, and completion file updates even if the system is reported healthy.
 
 ### Check Update Scheduler Status
 ```bash
@@ -299,7 +301,7 @@ sudo millennium-repair
    ```bash
    millennium-schedule status
    ```
-2. Verify that passwordless sudo is configured correctly. Run `sudo -n -l` as your normal user and verify that `/usr/local/bin/millennium-upgrade-stable` (and beta) are listed under `NOPASSWD`.
+2. Verify that passwordless sudo is configured correctly. Run `sudo -n -l` as your normal user and verify that `/usr/local/bin/millennium-upgrade-stable`, beta, and `/usr/local/bin/millennium-repair` are listed under `NOPASSWD`.
 3. If you want the updates to run even when you are logged out of your session, make sure to enable user lingering:
    ```bash
    loginctl enable-linger $USER
@@ -322,7 +324,7 @@ To allow background user-level systemd timers to run updates that modify system 
 This setup achieves this securely:
 1. **Sudoers Autoconfiguration**: During `sudo ./install.sh`, the installer detects the original invoking user (`SUDO_USER`) and automatically configures a secure drop-in file at `/etc/sudoers.d/millennium-helpers`.
 2. **Write-Protected Scripts**: Helper scripts are copied into `/usr/local/bin/` owned by `root:root` with `755` permissions, meaning normal users cannot edit or tamper with them.
-3. **Restricted Sudo Scope**: Sudo permissions are restricted to allow passwordless execution of *only* `/usr/local/bin/millennium-upgrade-stable` and `/usr/local/bin/millennium-upgrade-beta`. Because normal users cannot modify these files, this configuration is completely secure and cannot be exploited for local privilege escalation.
+3. **Restricted Sudo Scope**: Sudo permissions are restricted to allow passwordless execution of *only* `/usr/local/bin/millennium-upgrade-stable`, `/usr/local/bin/millennium-upgrade-beta`, `/usr/local/bin/millennium-repair`, and `/usr/local/bin/millennium-diag` (doctor mode) / `/usr/local/bin/millennium-purge`. Because normal users cannot modify these files, this configuration is completely secure and cannot be exploited for local privilege escalation.
 
 ---
 
