@@ -330,37 +330,63 @@ uninstall_completions() {
   # 1. Bash Completions
   local bash_dir="/usr/share/bash-completion/completions"
   if [[ -d "$bash_dir" || "$DRY_RUN" == "true" ]]; then
-    execute rm -f "$bash_dir/millennium-helpers"
+    printf "Removing Bash completions... "
+    local remove_ok=true
+    execute rm -f "$bash_dir/millennium-helpers" || remove_ok=false
     for item in "${SCRIPTS[@]}"; do
       local dest="${item#*:}"
-      execute rm -f "${bash_dir}/${dest}"
+      execute rm -f "${bash_dir}/${dest}" || remove_ok=false
     done
+    if [[ "$remove_ok" == "true" ]]; then
+      echo -e "${GREEN}OK${NC}"
+    else
+      echo -e "${RED}FAIL${NC}"
+    fi
   fi
 
   # 2. Zsh Completions
   local zsh_dir="/usr/share/zsh/site-functions"
   if [[ -d "$zsh_dir" || "$DRY_RUN" == "true" ]]; then
-    execute rm -f "$zsh_dir/_millennium-helpers"
+    printf "Removing Zsh completions... "
+    local remove_ok=true
+    execute rm -f "$zsh_dir/_millennium-helpers" || remove_ok=false
     for item in "${SCRIPTS[@]}"; do
       local dest="${item#*:}"
-      execute rm -f "${zsh_dir}/_${dest}"
+      execute rm -f "${zsh_dir}/_${dest}" || remove_ok=false
     done
+    if [[ "$remove_ok" == "true" ]]; then
+      echo -e "${GREEN}OK${NC}"
+    else
+      echo -e "${RED}FAIL${NC}"
+    fi
   fi
 
   # 3. Fish Completions
   local fish_dir="/usr/share/fish/vendor_completions.d"
   if [[ -d "$fish_dir" || "$DRY_RUN" == "true" ]]; then
+    printf "Removing Fish completions... "
+    local remove_ok=true
     for item in "${SCRIPTS[@]}"; do
       local dest="${item#*:}"
-      execute rm -f "${fish_dir}/${dest}.fish"
+      execute rm -f "${fish_dir}/${dest}.fish" || remove_ok=false
     done
+    if [[ "$remove_ok" == "true" ]]; then
+      echo -e "${GREEN}OK${NC}"
+    else
+      echo -e "${RED}FAIL${NC}"
+    fi
   fi
 
   # 4. Nushell Completions
   for base_dir in "/usr/share" "/usr/local/share"; do
     local cand_dir="${base_dir}/nushell/completions"
     if [[ -d "$cand_dir" || "$DRY_RUN" == "true" ]]; then
-      execute rm -f "${cand_dir}/millennium-helpers.nu"
+      printf "Removing Nushell completions from %s... " "${cand_dir}"
+      if execute rm -f "${cand_dir}/millennium-helpers.nu"; then
+        echo -e "${GREEN}OK${NC}"
+      else
+        echo -e "${RED}FAIL${NC}"
+      fi
     fi
   done
 }
@@ -396,23 +422,35 @@ uninstall_scripts() {
     local dest_path="${TARGET_DIR}/${dest}"
 
     if [[ -f "$dest_path" || "$DRY_RUN" == "true" ]]; then
-      echo "Removing: $dest_path"
-      execute rm -f "$dest_path"
-      removed_any=true
+      printf "Removing: %s... " "$dest_path"
+      if execute rm -f "$dest_path"; then
+        echo -e "${GREEN}OK${NC}"
+        removed_any=true
+      else
+        echo -e "${RED}FAIL${NC}"
+      fi
     fi
   done
 
   local lib_dir="/usr/local/lib/millennium-helpers"
   if [[ -d "$lib_dir" || "$DRY_RUN" == "true" ]]; then
-    echo "Removing shared helper library: ${lib_dir}"
-    execute rm -rf "$lib_dir"
-    removed_any=true
+    printf "Removing shared helper library: %s... " "${lib_dir}"
+    if execute rm -rf "$lib_dir"; then
+      echo -e "${GREEN}OK${NC}"
+      removed_any=true
+    else
+      echo -e "${RED}FAIL${NC}"
+    fi
   fi
 
   if [[ -f "$SUDOERS_FILE" || "$DRY_RUN" == "true" ]]; then
-    echo "Removing: $SUDOERS_FILE"
-    execute rm -f "$SUDOERS_FILE"
-    removed_any=true
+    printf "Removing: %s... " "$SUDOERS_FILE"
+    if execute rm -f "$SUDOERS_FILE"; then
+      echo -e "${GREEN}OK${NC}"
+      removed_any=true
+    else
+      echo -e "${RED}FAIL${NC}"
+    fi
   fi
 
   uninstall_completions
