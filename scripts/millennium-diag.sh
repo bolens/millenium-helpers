@@ -102,6 +102,7 @@ UTILITIES=(
   "millennium-purge:scripts/millennium-purge.sh"
   "millennium-diag:scripts/millennium-diag.sh"
   "millennium-theme:scripts/millennium-theme.sh"
+  "millennium-mcp:scripts/millennium-mcp.py"
 )
 
 RUNNING_USER="${SUDO_USER:-$USER}"
