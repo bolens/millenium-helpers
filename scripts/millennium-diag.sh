@@ -432,7 +432,13 @@ if [[ "$ONLINE" == "true" ]]; then
   TMP_SCRIPTS=$(mktemp -d)
   trap 'rm -rf "${TMP_SCRIPTS:-}"' EXIT INT TERM
   
-  local_ts=$(date +%s)
+  LATEST_SHA="main"
+  if api_data=$(curl -sL --retry 3 --retry-delay 2 "https://api.github.com/repos/bolens/millenium-helpers/commits/main" 2>/dev/null); then
+    parsed_sha=$(echo "$api_data" | grep -m 1 '"sha":' | cut -d'"' -f4 || true)
+    if [[ "$parsed_sha" =~ ^[0-9a-f]{40}$ ]]; then
+      LATEST_SHA="$parsed_sha"
+    fi
+  fi
 
   for item in "${UTILITIES[@]}"; do
     local_cmd="${item%%:*}"
@@ -445,7 +451,7 @@ if [[ "$ONLINE" == "true" ]]; then
     fi
     
     if [[ -n "$local_path" ]]; then
-      remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/main/${remote_rel}?t=${local_ts}"
+      remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/${LATEST_SHA}/${remote_rel}"
       tmp_dest="${TMP_SCRIPTS}/${local_cmd}"
       
       if curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" --retry 3 --retry-delay 2 "$remote_url" -o "$tmp_dest" &>/dev/null; then
@@ -465,7 +471,7 @@ if [[ "$ONLINE" == "true" ]]; then
     else
       echo -e "  - ${local_cmd}: ${RED}Not Installed${NC}"
       SCRIPTS_UP_TO_DATE=false
-      remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/main/${remote_rel}?t=${local_ts}"
+      remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/${LATEST_SHA}/${remote_rel}"
       tmp_dest="${TMP_SCRIPTS}/${local_cmd}"
       if curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" --retry 3 --retry-delay 2 "$remote_url" -o "$tmp_dest" &>/dev/null; then
         out_of_date_scripts+=("$local_cmd")
