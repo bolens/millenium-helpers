@@ -115,53 +115,91 @@ install_completions() {
   # 1. Bash Completions
   local bash_dir="/usr/share/bash-completion/completions"
   if [[ -d "$bash_dir" || "$DRY_RUN" == "true" ]]; then
-    echo "Installing Bash completions..."
-    execute mkdir -p "$bash_dir"
-    execute cp -f "${SCRIPT_DIR}/completions/bash/millennium-helpers" "$bash_dir/millennium-helpers"
-    execute chmod 644 "$bash_dir/millennium-helpers"
-    execute chown root:root "$bash_dir/millennium-helpers"
-    for item in "${SCRIPTS[@]}"; do
-      local dest="${item#*:}"
-      execute ln -sf "millennium-helpers" "${bash_dir}/${dest}"
-    done
+    printf "Installing Bash completions... "
+    if execute mkdir -p "$bash_dir" && \
+       execute cp -f "${SCRIPT_DIR}/completions/bash/millennium-helpers" "$bash_dir/millennium-helpers" && \
+       execute chmod 644 "$bash_dir/millennium-helpers" && \
+       execute chown root:root "$bash_dir/millennium-helpers"; then
+      local symlinks_ok=true
+      for item in "${SCRIPTS[@]}"; do
+        local dest="${item#*:}"
+        execute ln -sf "millennium-helpers" "${bash_dir}/${dest}" || symlinks_ok=false
+      done
+      if [[ "$symlinks_ok" == "true" ]]; then
+        echo -e "${GREEN}OK${NC}"
+      else
+        echo -e "${RED}FAIL (symlinks)${NC}"
+        exit 1
+      fi
+    else
+      echo -e "${RED}FAIL${NC}"
+      exit 1
+    fi
   fi
 
   # 2. Zsh Completions
   local zsh_dir="/usr/share/zsh/site-functions"
   if [[ -d "$zsh_dir" || "$DRY_RUN" == "true" ]]; then
-    echo "Installing Zsh completions..."
-    execute mkdir -p "$zsh_dir"
-    execute cp -f "${SCRIPT_DIR}/completions/zsh/_millennium-helpers" "$zsh_dir/_millennium-helpers"
-    execute chmod 644 "$zsh_dir/_millennium-helpers"
-    execute chown root:root "$zsh_dir/_millennium-helpers"
-    for item in "${SCRIPTS[@]}"; do
-      local dest="${item#*:}"
-      execute ln -sf "_millennium-helpers" "${zsh_dir}/_${dest}"
-    done
+    printf "Installing Zsh completions... "
+    if execute mkdir -p "$zsh_dir" && \
+       execute cp -f "${SCRIPT_DIR}/completions/zsh/_millennium-helpers" "$zsh_dir/_millennium-helpers" && \
+       execute chmod 644 "$zsh_dir/_millennium-helpers" && \
+       execute chown root:root "$zsh_dir/_millennium-helpers"; then
+      local symlinks_ok=true
+      for item in "${SCRIPTS[@]}"; do
+        local dest="${item#*:}"
+        execute ln -sf "_millennium-helpers" "${zsh_dir}/_${dest}" || symlinks_ok=false
+      done
+      if [[ "$symlinks_ok" == "true" ]]; then
+        echo -e "${GREEN}OK${NC}"
+      else
+        echo -e "${RED}FAIL (symlinks)${NC}"
+        exit 1
+      fi
+    else
+      echo -e "${RED}FAIL${NC}"
+      exit 1
+    fi
   fi
 
   # 3. Fish Completions
   local fish_dir="/usr/share/fish/vendor_completions.d"
   if [[ -d "$fish_dir" || "$DRY_RUN" == "true" ]]; then
-    echo "Installing Fish completions..."
-    execute mkdir -p "$fish_dir"
-    for file in "${SCRIPT_DIR}/completions/fish/"*.fish; do
-      [[ -f "$file" ]] || continue
-      execute cp -f "$file" "$fish_dir/"
-      execute chmod 644 "${fish_dir}/$(basename "$file")"
-      execute chown root:root "${fish_dir}/$(basename "$file")"
-    done
+    printf "Installing Fish completions... "
+    local fish_ok=true
+    execute mkdir -p "$fish_dir" || fish_ok=false
+    if [[ "$fish_ok" == "true" ]]; then
+      for file in "${SCRIPT_DIR}/completions/fish/"*.fish; do
+        [[ -f "$file" ]] || continue
+        if ! (execute cp -f "$file" "$fish_dir/" && \
+              execute chmod 644 "${fish_dir}/$(basename "$file")" && \
+              execute chown root:root "${fish_dir}/$(basename "$file")"); then
+          fish_ok=false
+        fi
+      done
+    fi
+    if [[ "$fish_ok" == "true" ]]; then
+      echo -e "${GREEN}OK${NC}"
+    else
+      echo -e "${RED}FAIL${NC}"
+      exit 1
+    fi
   fi
 
   # 4. Nushell Completions
   for base_dir in "/usr/share" "/usr/local/share"; do
     local cand_dir="${base_dir}/nushell/completions"
     if [[ -d "${base_dir}/nushell" || "$DRY_RUN" == "true" ]]; then
-      echo "Installing Nushell completions to ${cand_dir}..."
-      execute mkdir -p "$cand_dir"
-      execute cp -f "${SCRIPT_DIR}/completions/nushell/millennium-helpers.nu" "$cand_dir/millennium-helpers.nu"
-      execute chmod 644 "$cand_dir/millennium-helpers.nu"
-      execute chown root:root "$cand_dir/millennium-helpers.nu"
+      printf "Installing Nushell completions to %s... " "${cand_dir}"
+      if execute mkdir -p "$cand_dir" && \
+         execute cp -f "${SCRIPT_DIR}/completions/nushell/millennium-helpers.nu" "$cand_dir/millennium-helpers.nu" && \
+         execute chmod 644 "$cand_dir/millennium-helpers.nu" && \
+         execute chown root:root "$cand_dir/millennium-helpers.nu"; then
+        echo -e "${GREEN}OK${NC}"
+      else
+        echo -e "${RED}FAIL${NC}"
+        exit 1
+      fi
     fi
   done
 }
@@ -181,61 +219,78 @@ install_scripts() {
     fi
 
     # Copy script, set ownership to root, and make executable (755)
-    echo "Installing: $dest_path"
-    execute cp -f "$src_path" "$dest_path"
-    execute chown root:root "$dest_path"
-    execute chmod 755 "$dest_path"
+    printf "Installing: %s... " "$dest_path"
+    if execute cp -f "$src_path" "$dest_path" && \
+       execute chown root:root "$dest_path" && \
+       execute chmod 755 "$dest_path"; then
+      echo -e "${GREEN}OK${NC}"
+    else
+      echo -e "${RED}FAIL${NC}"
+      exit 1
+    fi
   done
 
   # Copy shared helper library
   local lib_dir="/usr/local/lib/millennium-helpers"
-  echo "Installing shared helper library to ${lib_dir}..."
-  execute mkdir -p "$lib_dir"
-  execute cp -f "${SCRIPT_DIR}/scripts/common.sh" "${lib_dir}/common.sh"
-  execute chown -R root:root "$lib_dir"
-  execute chmod 755 "$lib_dir"
-  execute chmod 644 "${lib_dir}/common.sh"
+  printf "Installing shared helper library to %s... " "${lib_dir}/common.sh"
+  if execute mkdir -p "$lib_dir" && \
+     execute cp -f "${SCRIPT_DIR}/scripts/common.sh" "${lib_dir}/common.sh" && \
+     execute chown -R root:root "$lib_dir" && \
+     execute chmod 755 "$lib_dir" && \
+     execute chmod 644 "${lib_dir}/common.sh"; then
+    echo -e "${GREEN}OK${NC}"
+  else
+    echo -e "${RED}FAIL${NC}"
+    exit 1
+  fi
 
   install_completions
 
   # Configure passwordless sudoers rules in /etc/sudoers.d/millennium-helpers
   local user_name="${SUDO_USER:-$USER}"
   if [[ "$user_name" != "root" ]]; then
-    echo -e "${BLUE}Configuring passwordless sudo rule in ${SUDOERS_FILE}...${NC}"
+    printf "Configuring passwordless sudo rule in %s... " "${SUDOERS_FILE}"
+    
+    local sudo_ok=true
     
     # Ensure target directory exists and has secure permissions
     local sudoers_d_dir
     sudoers_d_dir="$(dirname "$SUDOERS_FILE")"
     if [[ "$DRY_RUN" == "false" && ! -d "$sudoers_d_dir" ]]; then
-      mkdir -p "$sudoers_d_dir"
-      chmod 750 "$sudoers_d_dir"
-      chown root:root "$sudoers_d_dir"
+      mkdir -p "$sudoers_d_dir" || sudo_ok=false
+      chmod 750 "$sudoers_d_dir" || sudo_ok=false
+      chown root:root "$sudoers_d_dir" || sudo_ok=false
     elif [[ "$DRY_RUN" == "true" ]]; then
-      echo -e "${YELLOW}[DRY RUN] Would ensure directory exists with 750 permissions:${NC} ${sudoers_d_dir}"
+      echo -e "\n${YELLOW}[DRY RUN] Would ensure directory exists with 750 permissions:${NC} ${sudoers_d_dir}"
     fi
 
-    write_file "$SUDOERS_FILE" << EOF
+    if [[ "$sudo_ok" == "true" ]]; then
+      write_file "$SUDOERS_FILE" << EOF &>/dev/null || sudo_ok=false
 # Automatically generated by Millennium helpers installer. Do not edit manually.
 ${user_name} ALL=(ALL) NOPASSWD: /usr/local/bin/millennium-upgrade-stable, /usr/local/bin/millennium-upgrade-beta, /usr/local/bin/millennium-diag, /usr/local/bin/millennium-purge, /usr/local/bin/millennium-repair
 EOF
-    
-    execute chmod 440 "$SUDOERS_FILE"
-    execute chown root:root "$SUDOERS_FILE"
+      
+      execute chmod 440 "$SUDOERS_FILE" || sudo_ok=false
+      execute chown root:root "$SUDOERS_FILE" || sudo_ok=false
 
-    # Validate sudoers configuration with visudo
-    if [[ "$DRY_RUN" == "false" ]]; then
-      if visudo -cf "$SUDOERS_FILE" &>/dev/null; then
-        echo "Sudoers drop-in validated successfully."
-        if command -v restorecon &>/dev/null; then
-          restorecon "$SUDOERS_FILE" || true
+      # Validate sudoers configuration with visudo
+      if [[ "$DRY_RUN" == "false" ]]; then
+        if visudo -cf "$SUDOERS_FILE" &>/dev/null; then
+          if command -v restorecon &>/dev/null; then
+            restorecon "$SUDOERS_FILE" || true
+          fi
+        else
+          sudo_ok=false
+          rm -f "$SUDOERS_FILE"
         fi
-      else
-        echo -e "${RED}Error: Generated sudoers file is invalid. Reverting changes...${NC}" >&2
-        rm -f "$SUDOERS_FILE"
-        exit 1
       fi
+    fi
+    
+    if [[ "$sudo_ok" == "true" ]]; then
+      echo -e "${GREEN}OK${NC}"
     else
-      echo -e "${YELLOW}[DRY RUN] Would validate sudoers file with visudo${NC}"
+      echo -e "${RED}FAIL${NC}"
+      exit 1
     fi
   else
     echo -e "${YELLOW}Running as root directly. Skipping passwordless sudo configuration.${NC}"
