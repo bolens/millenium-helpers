@@ -158,9 +158,6 @@ else
   echo "Installing to /usr/lib/millennium/..."
   tar -xzf "$TMP/$ARCHIVE" -C "$TMP"
   
-  # Generate cryptographic integrity manifest
-  (cd "$TMP/usr/lib/millennium" && sha256sum libmillennium_bootstrap_x86.so libmillennium_bootstrap_hhx64.so > checksums.txt)
-
   # Atomic directory swap
   dest_dir="/usr/lib/millennium"
   dest_tmp="${dest_dir}.tmp"
@@ -169,8 +166,12 @@ else
   rm -rf "$dest_tmp" "$dest_bak"
   mkdir -p "$dest_tmp"
   install -m755 "$TMP/usr/lib/millennium/"*.so "$dest_tmp/"
-  install -m644 "$TMP/usr/lib/millennium/version.txt" "$dest_tmp/"
-  install -m644 "$TMP/usr/lib/millennium/checksums.txt" "$dest_tmp/"
+  echo "${VER}" > "$dest_tmp/version.txt"
+  chmod 644 "$dest_tmp/version.txt"
+  
+  # Generate cryptographic integrity manifest
+  (cd "$dest_tmp" && sha256sum libmillennium_bootstrap_x86.so libmillennium_bootstrap_hhx64.so > checksums.txt)
+  chmod 644 "$dest_tmp/checksums.txt"
 
   if [[ -d "$dest_dir" ]]; then
     mv "$dest_dir" "$dest_bak"
