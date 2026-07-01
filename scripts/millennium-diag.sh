@@ -197,19 +197,13 @@ if [[ "$found_steam" == false ]]; then
   echo -e "  ${RED}No Steam directories detected for the current user.${NC}"
 fi
 
-# 4. Check Sudoers Drop-in
-echo -n "Sudoers Drop-in (/etc/sudoers.d/millennium-helpers): "
-if [[ -f "/etc/sudoers.d/millennium-helpers" ]]; then
-  # Verify if passwordless sudo is active for the current user
-  if sudo -n -l 2>/dev/null | grep -qE "NOPASSWD.*(millennium-upgrade-stable|ALL)"; then
-    echo -e "${GREEN}Active & Verified${NC}"
-  else
-    SUDOERS_OK=false
-    echo -e "${YELLOW}Installed but unauthorized (does not match current user privileges)${NC}"
-  fi
+# 4. Check Sudoers Authorization
+echo -n "Sudoers Passwordless Update Authorization: "
+if sudo -n -l 2>/dev/null | grep -qE "NOPASSWD.*(millennium-upgrade-stable|ALL)"; then
+  echo -e "${GREEN}Active & Verified${NC}"
 else
   SUDOERS_OK=false
-  echo -e "${RED}Not Configured${NC}"
+  echo -e "${RED}Not Configured / Unauthorized${NC}"
 fi
 
 # 5. Check Systemd Auto-Update Timer
