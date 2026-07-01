@@ -30,6 +30,7 @@ Commands:
 
 Options:
   -f, --fix     Alias for the 'doctor' command
+  --force       Force all doctor repairs even if system is healthy
   -l, --follow  Follow (tail -f) real-time log output
   -d, --dry-run Perform a dry-run (simulates doctor repairs without modifying anything)
   -h, --help    Show this help message
@@ -39,6 +40,7 @@ EOF
 COMMAND=""
 DRY_RUN=false
 FOLLOW_LOGS=false
+FORCE_REPAIR=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -48,6 +50,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     logs)
       COMMAND="logs"
+      shift
+      ;;
+    --force)
+      FORCE_REPAIR=true
       shift
       ;;
     -l|--follow)
@@ -602,9 +608,22 @@ if [[ "$COMMAND" == "doctor" ]]; then
   echo -e "\n${BLUE}=== Running Millennium Doctor (Automatic Repairs) ===${NC}"
   
   # Check if anything needs fixing
-  if [[ "$BINARIES_OK" == true && "$HOOKS_OK" == true && "$FLATPAK_OK" == true && "$SUDOERS_OK" == true && "$TIMER_ACTIVE" == true && "$LINGER_OK" == true && "$SCRIPTS_UP_TO_DATE" == true && "$PERMISSIONS_OK" == true && "$SKINS_DIR_OK" == true && "$COMPLETIONS_OK" == true ]]; then
-    echo -e "${GREEN}No issues detected. Your Millennium installation is healthy!${NC}"
-    exit 0
+  # Check if anything needs fixing
+  if [[ "$FORCE_REPAIR" != "true" ]]; then
+    if [[ "$BINARIES_OK" == true && "$HOOKS_OK" == true && "$FLATPAK_OK" == true && "$SUDOERS_OK" == true && "$TIMER_ACTIVE" == true && "$LINGER_OK" == true && "$SCRIPTS_UP_TO_DATE" == true && "$PERMISSIONS_OK" == true && "$SKINS_DIR_OK" == true && "$COMPLETIONS_OK" == true ]]; then
+      echo -e "${GREEN}No issues detected. Your Millennium installation is healthy!${NC}"
+      exit 0
+    fi
+  else
+    echo -e "${YELLOW}Force option specified. Forcing all doctor repairs...${NC}"
+    BINARIES_OK=false
+    HOOKS_OK=false
+    FLATPAK_OK=false
+    TIMER_ACTIVE=false
+    LINGER_OK=false
+    SCRIPTS_UP_TO_DATE=false
+    PERMISSIONS_OK=false
+    COMPLETIONS_OK=false
   fi
 
   # Require Steam closed for any updates/repairs (only if binary or hook modifications are pending)

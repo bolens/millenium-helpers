@@ -53,7 +53,7 @@ complete -F _millennium_purge_comp millennium-purge
 _millennium_diag_comp() {
   COMPREPLY=()
   local cur="${COMP_WORDS[COMP_CWORD]}"
-  local opts="doctor --fix -d --dry-run -h --help"
+  local opts="doctor --fix --force -d --dry-run -h --help"
   COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
   return 0
 }
