@@ -83,7 +83,7 @@ getent passwd | while IFS=: read -r _ _ uid _ _ home _; do
       if [[ "$DRY_RUN" == "true" ]]; then
         echo -e "${YELLOW}[DRY RUN] Would remove all files in:${NC} ${cache_dir}/"
       else
-        rm -rf "${cache_dir}/"*
+        rm -rf "${cache_dir:?}/"*
       fi
     fi
   done

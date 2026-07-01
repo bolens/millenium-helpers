@@ -87,6 +87,7 @@ RUNNING_USER="${SUDO_USER:-$USER}"
 USER_HOME="$(getent passwd "$RUNNING_USER" | cut -d: -f6)"
 USER_CONFIG_DIR=""
 if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" ]]; then
+  # shellcheck disable=SC2016
   user_xdg=$(runuser -l "$RUNNING_USER" -c 'echo "${XDG_CONFIG_HOME:-}"' 2>/dev/null || true)
   if [[ -n "$user_xdg" ]]; then
     USER_CONFIG_DIR="${user_xdg}/systemd/user"
