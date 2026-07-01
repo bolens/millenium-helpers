@@ -144,8 +144,8 @@ except Exception:
     fi
     
     # Atomic theme directory swap
-    local theme_tmp="${THEME_DIR}.tmp"
-    local theme_bak="${THEME_DIR}.bak"
+    theme_tmp="${THEME_DIR}.tmp"
+    theme_bak="${THEME_DIR}.bak"
     
     rm -rf "$theme_tmp" "$theme_bak"
     mkdir -p "$theme_tmp"

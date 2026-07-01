@@ -57,9 +57,8 @@ getent passwd | while IFS=: read -r _ _ uid _ _ home _; do
     [[ -d "$steam_dir" ]] || continue
     
     # Check and remove 32-bit bootstrap hook
-    local hook32="${steam_dir}/ubuntu12_32/libXtst.so.6"
+    hook32="${steam_dir}/ubuntu12_32/libXtst.so.6"
     if [[ -L "$hook32" ]]; then
-      local target
       target=$(readlink "$hook32")
       if [[ "$target" == *"/usr/lib/millennium"* ]]; then
         echo "Removing 32-bit hook: $hook32"
@@ -68,9 +67,8 @@ getent passwd | while IFS=: read -r _ _ uid _ _ home _; do
     fi
     
     # Check and remove 64-bit bootstrap hook
-    local hook64="${steam_dir}/ubuntu12_64/libXtst.so.6"
+    hook64="${steam_dir}/ubuntu12_64/libXtst.so.6"
     if [[ -L "$hook64" ]]; then
-      local target
       target=$(readlink "$hook64")
       if [[ "$target" == *"/usr/lib/millennium"* ]]; then
         echo "Removing 64-bit hook: $hook64"
@@ -79,7 +77,7 @@ getent passwd | while IFS=: read -r _ _ uid _ _ home _; do
     fi
 
     # Clear htmlcache to ensure vanilla Steam starts cleanly
-    local cache_dir="${steam_dir}/config/htmlcache"
+    cache_dir="${steam_dir}/config/htmlcache"
     if [[ -d "$cache_dir" ]]; then
       echo "Clearing Steam htmlcache: $cache_dir"
       if [[ "$DRY_RUN" == "true" ]]; then
