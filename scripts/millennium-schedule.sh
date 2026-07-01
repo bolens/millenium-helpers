@@ -125,7 +125,7 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/sudo ${script_file}
+ExecStart=/usr/bin/sudo -n ${script_file}
 EOF
 
   echo -e "${BLUE}Creating systemd user timer file...${NC}"
