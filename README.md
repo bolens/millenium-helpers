@@ -76,6 +76,13 @@ millennium-schedule enable beta
 millennium-diag
 ```
 
+### Run Doctor (Auto-Repair Broken Installs)
+Scan your setup for any broken hooks, missing directories, or stopped timers, and fix them automatically:
+```bash
+millennium-diag doctor
+```
+*(Or alias `millennium-diag --fix` or `millennium-diag -f`)*
+
 ### Check Update Scheduler Status
 ```bash
 millennium-schedule status
@@ -100,6 +107,26 @@ sudo millennium-purge
 Remove the binaries and the `/etc/sudoers.d/` drop-in file:
 ```bash
 sudo ./install.sh uninstall
+```
+
+---
+
+## Dry-Run Mode
+
+All scripts support a Dry-Run mode (`--dry-run` or `-d`) to preview file copies, configuration generation, permissions fixes, and timer commands without actually writing any changes or modifying the system state:
+
+```bash
+# Preview the installation
+./install.sh --dry-run
+
+# Preview a stable version upgrade
+sudo millennium-upgrade-stable --dry-run
+
+# Preview repair operations
+sudo millennium-repair --dry-run
+
+# Preview doctor/auto-repair changes
+millennium-diag doctor --dry-run
 ```
 
 ---
