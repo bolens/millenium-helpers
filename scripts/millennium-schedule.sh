@@ -119,13 +119,14 @@ enable_timer() {
   echo -e "${BLUE}Creating systemd user service file...${NC}"
   write_file "$SERVICE_PATH" << EOF
 [Unit]
-Description=Auto-update Millennium client (${channel})
+Description=Auto-update Millennium client (${channel}) and themes
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/sudo -n ${script_file}
+ExecStart=-/usr/local/bin/millennium-theme update
 EOF
 
   echo -e "${BLUE}Creating systemd user timer file...${NC}"
