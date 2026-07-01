@@ -273,9 +273,24 @@ Runs a comprehensive system-wide health check on your Millennium setup. It repor
 A fully-featured skin/theme manager CLI. It allows listing installed themes, installing new ones directly from GitHub repositories (branch-agnostic), checking/installing theme updates, and removing skin directories.
 
 ### 9. [scripts/millennium-mcp.py](scripts/millennium-mcp.py) (`millennium-mcp`)
-A zero-dependency Model Context Protocol (MCP) server. Exposes the entire suite of Millennium helper scripts as native AI tools to coding assistants (like Cursor, Windsurf, Claude Desktop, or Antigravity), allowing them to dynamically run diagnostics, manage themes, apply repairs, and perform upgrades directly.
+A zero-dependency Model Context Protocol (MCP) server. Exposes the entire suite of Millennium helper scripts as native AI tools to coding assistants (like Claude Desktop, Cursor, Windsurf, or Antigravity), allowing them to dynamically run diagnostics, manage themes, apply repairs, and perform upgrades directly.
 
-To add `millennium-mcp` to your Claude Desktop config (e.g. `~/.config/Claude/claude_desktop_config.json`) or Cursor/Windsurf MCP settings:
+#### Exposed MCP Tools
+
+| Tool Name | Description | Parameters |
+| --- | --- | --- |
+| `millennium_diag` | Runs read-only diagnostics or applies auto-repairs in doctor mode. | `doctor` (boolean, optional): set `true` to auto-repair. |
+| `millennium_theme` | Manages theme/skin directories (list, install, remove, update). | `action` (string, required): `list`, `install`, `remove`, `update`. <br> `theme` (string, optional): repo or name. <br> `all` (boolean, optional): update all themes. |
+| `millennium_upgrade` | Upgrades the Millennium client system-wide. | `channel` (string, optional): `stable` (default) or `beta`. |
+| `millennium_schedule` | Manages background auto-update timers. | `action` (string, required): `enable`, `disable`, `status`. <br> `channel` (string, optional): `stable` or `beta`. <br> `cron` (boolean, optional): force crontab. |
+| `millennium_repair` | Runs system-wide permissions and symlink repairs. | None. |
+| `millennium_purge` | Completely uninstalls all Millennium client hooks and files. | None. |
+
+#### Configuration Example
+
+To enable these tools in your AI assistant, add `millennium-mcp` to your configuration file:
+
+**Claude Desktop** (`~/.config/Claude/claude_desktop_config.json`):
 ```json
 {
   "mcpServers": {
@@ -285,6 +300,12 @@ To add `millennium-mcp` to your Claude Desktop config (e.g. `~/.config/Claude/cl
   }
 }
 ```
+
+**Cursor / Windsurf**:
+Go to Settings -> Features -> MCP, click **+ Add New MCP Server**, and configure:
+- **Name**: `millennium-helpers`
+- **Type**: `command`
+- **Command**: `millennium-mcp`
 
 ---
 
