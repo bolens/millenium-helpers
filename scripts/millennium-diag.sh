@@ -83,12 +83,20 @@ UTILITIES=(
   "millennium-diag:scripts/millennium-diag.sh"
 )
 
-# Find configured update channel (checks systemd service file if it exists)
+# Find configured update channel
 UPDATE_CHANNEL="stable"
-USER_CONFIG_DIR="${HOME}/.config/systemd/user"
-SERVICE_PATH="${USER_CONFIG_DIR}/millennium-update.service"
-if [[ -f "$SERVICE_PATH" ]] && grep -q "upgrade-beta" "$SERVICE_PATH" 2>/dev/null; then
-  UPDATE_CHANNEL="beta"
+if [[ -f "/usr/lib/millennium/version.txt" ]]; then
+  version_str=$(cat "/usr/lib/millennium/version.txt")
+  if [[ "$version_str" == *"beta"* ]]; then
+    UPDATE_CHANNEL="beta"
+  fi
+else
+  # Fall back to checking systemd user service file if it exists
+  USER_CONFIG_DIR="${HOME}/.config/systemd/user"
+  SERVICE_PATH="${USER_CONFIG_DIR}/millennium-update.service"
+  if [[ -f "$SERVICE_PATH" ]] && grep -q "upgrade-beta" "$SERVICE_PATH" 2>/dev/null; then
+    UPDATE_CHANNEL="beta"
+  fi
 fi
 
 echo -e "${BLUE}=== Millennium Diagnostics Report ===${NC}\n"
