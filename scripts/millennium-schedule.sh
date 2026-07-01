@@ -348,12 +348,12 @@ post_update() {
     
     echo "Millennium update succeeded. Relaunching Steam..."
     if [[ "$was_flatpak" == "true" ]]; then
-      flatpak run com.valvesoftware.Steam &
+      flatpak run com.valvesoftware.Steam >/dev/null 2>&1 &
     else
       if command -v steam &>/dev/null; then
-        steam &
+        steam >/dev/null 2>&1 &
       elif [[ -x "${USER_HOME}/.local/bin/steam" ]]; then
-        "${USER_HOME}/.local/bin/steam" &
+        "${USER_HOME}/.local/bin/steam" >/dev/null 2>&1 &
       fi
     fi
   fi

@@ -659,12 +659,12 @@ if [[ "$COMMAND" == "doctor" ]]; then
   if [[ "$relaunch_steam_after_doctor" == "true" ]]; then
     echo -e "\n${GREEN}Relaunching Steam...${NC}"
     if [[ "$was_flatpak" == "true" ]]; then
-      execute runuser -l "$RUNNING_USER" -c "flatpak run com.valvesoftware.Steam &"
+      execute runuser -l "$RUNNING_USER" -c "flatpak run com.valvesoftware.Steam >/dev/null 2>&1 &"
     else
       if command -v steam &>/dev/null; then
-        execute runuser -l "$RUNNING_USER" -c "steam &"
+        execute runuser -l "$RUNNING_USER" -c "steam >/dev/null 2>&1 &"
       elif [[ -x "${USER_HOME}/.local/bin/steam" ]]; then
-        execute runuser -l "$RUNNING_USER" -c "${USER_HOME}/.local/bin/steam &"
+        execute runuser -l "$RUNNING_USER" -c "${USER_HOME}/.local/bin/steam >/dev/null 2>&1 &"
       fi
     fi
   fi
