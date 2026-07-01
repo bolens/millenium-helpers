@@ -114,10 +114,20 @@ update_single_theme() {
     return 0
   fi
   
-  local owner
-  local repo
-  owner=$(python3 -c "import json; print(json.load(open('$meta_file')).get('owner', ''))" 2>/dev/null || true)
-  repo=$(python3 -c "import json; print(json.load(open('$meta_file')).get('repo', ''))" 2>/dev/null || true)
+  local parsed_meta
+  parsed_meta=$(python3 -c "
+import json
+try:
+    with open('$meta_file') as f:
+        d = json.load(f)
+        print(f\"{d.get('owner', '')}:{d.get('repo', '')}:{d.get('commit', '')}\")
+except Exception:
+    print('::')
+" 2>/dev/null || echo "::")
+  local owner="${parsed_meta%%:*}"
+  local rest="${parsed_meta#*:}"
+  local repo="${rest%%:*}"
+  local current_commit="${rest#*:}"
   
   if [[ -z "$owner" || -z "$repo" ]]; then
     echo -e "${RED}Error: Invalid metadata format in ${meta_file}.${NC}" >&2
@@ -155,8 +165,6 @@ except Exception:
     return 1
   fi
   
-  local current_commit
-  current_commit=$(python3 -c "import json; print(json.load(open('$meta_file')).get('commit', ''))" 2>/dev/null || true)
   if [[ "$current_commit" == "$COMMIT" ]]; then
     echo -e "${GREEN}Theme '${theme_name}' is already up to date.${NC}"
     return 0
@@ -228,9 +236,19 @@ if [[ "$COMMAND" == "list" ]]; then
     # Read metadata if exists
     meta_file="${dir}/metadata.json"
     if [[ -f "$meta_file" ]]; then
-      owner=$(python3 -c "import json; print(json.load(open('$meta_file')).get('owner', ''))" 2>/dev/null || true)
-      repo=$(python3 -c "import json; print(json.load(open('$meta_file')).get('repo', ''))" 2>/dev/null || true)
-      commit=$(python3 -c "import json; print(json.load(open('$meta_file')).get('commit', ''))" 2>/dev/null || true)
+      parsed_meta=$(python3 -c "
+import json
+try:
+    with open('$meta_file') as f:
+        d = json.load(f)
+        print(f\"{d.get('owner', '')}:{d.get('repo', '')}:{d.get('commit', '')}\")
+except Exception:
+    print('::')
+" 2>/dev/null || echo "::")
+      owner="${parsed_meta%%:*}"
+      rest="${parsed_meta#*:}"
+      repo="${rest%%:*}"
+      commit="${rest#*:}"
       if [[ -n "$owner" && -n "$repo" ]]; then
         echo -e "  - ${GREEN}${theme_name}${NC} (${owner}/${repo} @ ${commit:0:7})"
         continue
