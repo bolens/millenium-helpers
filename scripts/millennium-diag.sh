@@ -266,7 +266,7 @@ if [[ "$ONLINE" == "true" ]]; then
     local_path="/usr/local/bin/${local_cmd}"
     
     if [[ -f "$local_path" ]]; then
-      remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/main/${remote_rel}"
+      remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/main/${remote_rel}?t=$(date +%s)"
       tmp_dest="${TMP_SCRIPTS}/${local_cmd}"
       
       if curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" "$remote_url" -o "$tmp_dest" &>/dev/null; then
@@ -286,7 +286,7 @@ if [[ "$ONLINE" == "true" ]]; then
     else
       echo -e "  - ${local_cmd}: ${RED}Not Installed in /usr/local/bin${NC}"
       SCRIPTS_UP_TO_DATE=false
-      remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/main/${remote_rel}"
+      remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/main/${remote_rel}?t=$(date +%s)"
       tmp_dest="${TMP_SCRIPTS}/${local_cmd}"
       if curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" "$remote_url" -o "$tmp_dest" &>/dev/null; then
         out_of_date_scripts+=("$local_cmd")
