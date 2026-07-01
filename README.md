@@ -309,6 +309,20 @@ This setup achieves this securely:
 
 ---
 
+## Packaging for Arch Linux (AUR)
+
+If you use Arch Linux, you can package and install the helper scripts natively via the provided PKGBUILD recipes in the [packaging/](file:///home/panda/dev/millenium-helpers/packaging/) directory:
+
+- **`millennium-helpers-git`**: Resolves dependencies, installs all executables to `/usr/bin/`, sets up completions, and deploys the passwordless sudoers update rules for the `%wheel` group.
+
+To build and install the package locally:
+```bash
+cd packaging
+makepkg -si
+```
+
+---
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

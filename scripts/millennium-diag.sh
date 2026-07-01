@@ -424,9 +424,14 @@ if [[ "$ONLINE" == "true" ]]; then
   for item in "${UTILITIES[@]}"; do
     local_cmd="${item%%:*}"
     remote_rel="${item#*:}"
-    local_path="/usr/local/bin/${local_cmd}"
+    local_path=""
+    if [[ -f "/usr/bin/${local_cmd}" ]]; then
+      local_path="/usr/bin/${local_cmd}"
+    elif [[ -f "/usr/local/bin/${local_cmd}" ]]; then
+      local_path="/usr/local/bin/${local_cmd}"
+    fi
     
-    if [[ -f "$local_path" ]]; then
+    if [[ -n "$local_path" ]]; then
       remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/${LATEST_SHA}/${remote_rel}"
       tmp_dest="${TMP_SCRIPTS}/${local_cmd}"
       
@@ -445,7 +450,7 @@ if [[ "$ONLINE" == "true" ]]; then
         echo -e "  - ${local_cmd}: ${YELLOW}Unable to check (HTTP download failed)${NC}"
       fi
     else
-      echo -e "  - ${local_cmd}: ${RED}Not Installed in /usr/local/bin${NC}"
+      echo -e "  - ${local_cmd}: ${RED}Not Installed${NC}"
       SCRIPTS_UP_TO_DATE=false
       remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/${LATEST_SHA}/${remote_rel}"
       tmp_dest="${TMP_SCRIPTS}/${local_cmd}"
@@ -479,13 +484,16 @@ if [[ "$COMMAND" == "doctor" ]]; then
   if [[ "$SCRIPTS_UP_TO_DATE" == false ]]; then
     echo -e "\n${YELLOW}[DOCTOR] Updating helper scripts...${NC}"
     if [[ "$(id -u)" -ne 0 ]]; then
-      echo -e "${RED}Error: Root privileges are required to update scripts in /usr/local/bin.${NC}" >&2
-      echo -e "Please re-run the doctor with sudo: ${YELLOW}sudo millennium-diag doctor${NC}" >&2
+      echo -e "${RED}Error: Root privileges are required to update helper scripts.${NC}" >&2
+      echo -e "Please re-run the doctor with sudo: ${YELLOW}sudo $(basename "$0") doctor${NC}" >&2
     else
       for cmd_name in "${out_of_date_scripts[@]:-}"; do
         [[ -n "$cmd_name" ]] || continue
         tmp_src="${TMP_SCRIPTS}/${cmd_name}"
         dest_path="/usr/local/bin/${cmd_name}"
+        if [[ -f "/usr/bin/${cmd_name}" ]]; then
+          dest_path="/usr/bin/${cmd_name}"
+        fi
         if [[ -f "$tmp_src" ]]; then
           echo "Updating script: ${dest_path}"
           execute install -m755 "$tmp_src" "$dest_path"
@@ -500,7 +508,12 @@ if [[ "$COMMAND" == "doctor" ]]; then
   if [[ "$BINARIES_OK" == false ]]; then
     echo -e "\n${YELLOW}[DOCTOR] Repairing Millennium binaries...${NC}"
     echo -e "Invoking updater on the '${UPDATE_CHANNEL}' channel with force reinstall:"
-    execute sudo "/usr/local/bin/millennium-upgrade-${UPDATE_CHANNEL}" --force
+    upgrade_cmd="millennium-upgrade-${UPDATE_CHANNEL}"
+    upgrade_path="/usr/local/bin/${upgrade_cmd}"
+    if [[ -f "/usr/bin/${upgrade_cmd}" ]]; then
+      upgrade_path="/usr/bin/${upgrade_cmd}"
+    fi
+    execute sudo "${upgrade_path}" --force
   fi
 
   # Issue 3: Missing or broken hooks
@@ -552,11 +565,15 @@ if [[ "$COMMAND" == "doctor" ]]; then
   # Issue 6: Stopped systemd auto-update timer
   if [[ "$TIMER_ACTIVE" == false ]]; then
     echo -e "\n${YELLOW}[DOCTOR] Enabling and starting daily systemd user timer...${NC}"
+    sched_path="/usr/local/bin/millennium-schedule"
+    if [[ -f "/usr/bin/millennium-schedule" ]]; then
+      sched_path="/usr/bin/millennium-schedule"
+    fi
     # Re-enable the timer using the configured channel
     if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" ]]; then
-      execute runuser -l "$RUNNING_USER" -c "/usr/local/bin/millennium-schedule enable $UPDATE_CHANNEL"
+      execute runuser -l "$RUNNING_USER" -c "${sched_path} enable $UPDATE_CHANNEL"
     else
-      execute /usr/local/bin/millennium-schedule enable "$UPDATE_CHANNEL"
+      execute "${sched_path}" enable "$UPDATE_CHANNEL"
     fi
   fi
 

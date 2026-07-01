@@ -1,0 +1,70 @@
+# Maintainer: bolens <https://github.com/bolens>
+pkgname=millennium-helpers-git
+_pkgname=millennium-helpers
+pkgver=r46.g6b2068d
+pkgrel=1
+pkgdesc="Utility scripts for managing, repairing, upgrading, rolling back, viewing logs, managing themes, and scheduling updates for Millennium on Linux"
+arch=('any')
+url="https://github.com/bolens/millenium-helpers"
+license=('MIT')
+depends=('bash' 'curl' 'unzip' 'python')
+optdepends=(
+  'jq: enhanced JSON parsing for updates'
+  'systemd: daily update timer scheduler'
+)
+makedepends=('git')
+provides=("${_pkgname}")
+conflicts=("${_pkgname}")
+source=("git+${url}.git"
+        "millennium-helpers.sudoers")
+sha256sums=('SKIP'
+            'SKIP')
+
+pkgver() {
+  cd "${srcdir}/${_pkgname}"
+  printf "r%s.g%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+}
+
+package() {
+  # Install sudoers rule
+  install -Dm440 "${srcdir}/millennium-helpers.sudoers" "${pkgdir}/etc/sudoers.d/millennium-helpers"
+
+  cd "${srcdir}/${_pkgname}"
+
+  # Install scripts
+  install -d "${pkgdir}/usr/bin"
+  install -m755 scripts/millennium-repair.sh "${pkgdir}/usr/bin/millennium-repair"
+  install -m755 scripts/millennium-upgrade-beta.sh "${pkgdir}/usr/bin/millennium-upgrade-beta"
+  install -m755 scripts/millennium-upgrade-stable.sh "${pkgdir}/usr/bin/millennium-upgrade-stable"
+  install -m755 scripts/millennium-schedule.sh "${pkgdir}/usr/bin/millennium-schedule"
+  install -m755 scripts/millennium-purge.sh "${pkgdir}/usr/bin/millennium-purge"
+  install -m755 scripts/millennium-diag.sh "${pkgdir}/usr/bin/millennium-diag"
+  install -m755 scripts/millennium-theme.sh "${pkgdir}/usr/bin/millennium-theme"
+
+  # Install Bash completions
+  install -Dm644 completions/bash/millennium-helpers "${pkgdir}/usr/share/bash-completion/completions/millennium-helpers"
+  for script in millennium-repair millennium-upgrade-beta millennium-upgrade-stable millennium-schedule millennium-purge millennium-diag millennium-theme; do
+    ln -sf millennium-helpers "${pkgdir}/usr/share/bash-completion/completions/${script}"
+  done
+
+  # Install Zsh completions
+  install -Dm644 completions/zsh/_millennium-helpers "${pkgdir}/usr/share/zsh/site-functions/_millennium-helpers"
+  for script in millennium-repair millennium-upgrade-beta millennium-upgrade-stable millennium-schedule millennium-purge millennium-diag millennium-theme; do
+    ln -sf _millennium-helpers "${pkgdir}/usr/share/zsh/site-functions/_${script}"
+  done
+
+  # Install Fish completions
+  install -Dm644 completions/fish/millennium-repair.fish "${pkgdir}/usr/share/fish/vendor_completions.d/millennium-repair.fish"
+  install -Dm644 completions/fish/millennium-upgrade-beta.fish "${pkgdir}/usr/share/fish/vendor_completions.d/millennium-upgrade-beta.fish"
+  install -Dm644 completions/fish/millennium-upgrade-stable.fish "${pkgdir}/usr/share/fish/vendor_completions.d/millennium-upgrade-stable.fish"
+  install -Dm644 completions/fish/millennium-schedule.fish "${pkgdir}/usr/share/fish/vendor_completions.d/millennium-schedule.fish"
+  install -Dm644 completions/fish/millennium-purge.fish "${pkgdir}/usr/share/fish/vendor_completions.d/millennium-purge.fish"
+  install -Dm644 completions/fish/millennium-diag.fish "${pkgdir}/usr/share/fish/vendor_completions.d/millennium-diag.fish"
+  install -Dm644 completions/fish/millennium-theme.fish "${pkgdir}/usr/share/fish/vendor_completions.d/millennium-theme.fish"
+
+  # Install Nushell completions
+  install -Dm644 completions/nushell/millennium-helpers.nu "${pkgdir}/usr/share/nushell/completions/millennium-helpers.nu"
+
+  # Install License
+  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}
