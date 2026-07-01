@@ -19,6 +19,14 @@ trap teardown_mock_bin EXIT
 FAKE_XDG_CONFIG=$(mktemp -d)
 export XDG_CONFIG_HOME="$FAKE_XDG_CONFIG"
 
+# millennium-schedule.sh stores the Steam relaunch state file under the
+# running user's home directory (resolved via getent), not /tmp. Point
+# getent's reported home at a throwaway temp dir so post-update tests don't
+# read/write the real developer $HOME.
+FAKE_RELAUNCH_HOME=$(mktemp -d)
+mock_cmd "getent" 'echo "faketestuser:x:1000:1000::'"${FAKE_RELAUNCH_HOME}"':/bin/bash"'
+EXPECTED_STATE_FILE="${FAKE_RELAUNCH_HOME}/.local/state/millennium-helpers/relaunch.env"
+
 # Fast stand-ins for the other helper scripts (avoid invoking real, slow tools)
 mock_cmd "millennium-diag" 'exit 0'
 mock_cmd "millennium-theme" 'exit 0'
@@ -104,7 +112,7 @@ rm -f "${MOCK_BIN}/pgrep"
 
 # --- post-update: no saved relaunch state ---
 
-rm -f "/tmp/millennium-relaunch-$(whoami)"
+rm -f "$EXPECTED_STATE_FILE"
 out=$(run_schedule post-update 2>&1)
 rc=$?
 assert_success "$rc" "millennium-schedule post-update exits 0 with no saved relaunch state (diag mocked to pass)"
@@ -120,5 +128,6 @@ assert_contains "$out" "failed verification" "millennium-schedule post-update ex
 mock_cmd "millennium-diag" 'exit 0'
 
 rm -rf "$FAKE_XDG_CONFIG"
+rm -rf "$FAKE_RELAUNCH_HOME"
 
 print_summary
