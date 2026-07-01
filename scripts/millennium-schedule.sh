@@ -246,40 +246,46 @@ show_status() {
 }
 
 pre_update() {
+  log_info "Initiating pre-update checks..."
   if is_game_running; then
-    echo "A game is currently running under Steam. Aborting update." >&2
+    log_warn "A game is currently running under Steam. Aborting update run."
     exit 75
   fi
   
   if pgrep -x steam >/dev/null; then
-    echo "Steam is running. Closing gracefully..."
+    log_info "Steam is running. Closing Steam gracefully to perform upgrades..."
     # Capture env
     capture_steam_env "$RUNNING_USER" "/tmp/millennium-relaunch-${RUNNING_USER}"
     
     # Close Steam
     close_steam_gracefully "$RUNNING_USER"
+    log_info "Steam closed successfully."
+  else
+    log_info "Steam is not running. No close required."
   fi
   exit 0
 }
 
 post_update() {
+  log_info "Initiating post-update checks and verification..."
   local state_file="/tmp/millennium-relaunch-${RUNNING_USER}"
   local diag_path
   diag_path=$(resolve_helper_path "millennium-diag")
   
   if ! "$diag_path" >/dev/null 2>&1; then
-    echo "Millennium update failed verification checks. Relaunch cancelled." >&2
+    log_error "Millennium update failed verification checks. Relaunch cancelled."
     rm -f "$state_file"
     exit 1
   fi
   
+  log_info "Diagnostics verification passed successfully."
   if [[ -f "$state_file" ]]; then
     # Source saved environment variables (sets DISPLAY, WAYLAND_DISPLAY, STEAM_ARGS, WAS_FLATPAK, etc.)
     # shellcheck disable=SC1090
     source "$state_file"
     rm -f "$state_file"
     
-    echo "Millennium update succeeded. Relaunching Steam..."
+    log_info "Relaunching Steam client with arguments: ${STEAM_ARGS:-none} (Flatpak: ${WAS_FLATPAK:-false})..."
     if [[ "${WAS_FLATPAK:-false}" == "true" ]]; then
       # shellcheck disable=SC2086
       flatpak run com.valvesoftware.Steam ${STEAM_ARGS} >/dev/null 2>&1 &
@@ -292,6 +298,8 @@ post_update() {
         "${USER_HOME}/.local/bin/steam" ${STEAM_ARGS} >/dev/null 2>&1 &
       fi
     fi
+  else
+    log_info "No saved relaunch state found. Steam will not be restarted."
   fi
   exit 0
 }

@@ -9,6 +9,26 @@ YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+log_msg() {
+  local level="$1"
+  local msg="$2"
+  local timestamp
+  timestamp=$(date +'%Y-%m-%d %H:%M:%S')
+  echo -e "[${timestamp}] [${level}] [$(basename "$0")] ${msg}"
+}
+
+log_info() {
+  log_msg "INFO" "$1"
+}
+
+log_warn() {
+  log_msg "WARN" "$1"
+}
+
+log_error() {
+  log_msg "ERROR" "$1" >&2
+}
+
 execute() {
   if [[ "${DRY_RUN:-false}" == "true" ]]; then
     echo -e "${YELLOW}[DRY RUN] Would run:${NC} $*"
