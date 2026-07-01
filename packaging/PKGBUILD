@@ -7,7 +7,7 @@ pkgdesc="Utility scripts for managing, repairing, upgrading, rolling back, viewi
 arch=('any')
 url="https://github.com/bolens/millenium-helpers"
 license=('MIT')
-depends=('bash' 'curl' 'unzip' 'python')
+depends=('bash' 'curl' 'unzip' 'python' 'sudo')
 optdepends=(
   'jq: enhanced JSON parsing for updates'
   'systemd: daily update timer scheduler'

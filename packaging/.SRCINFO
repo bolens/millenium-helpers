@@ -11,6 +11,7 @@ pkgbase = millennium-helpers-git
 	depends = curl
 	depends = unzip
 	depends = python
+	depends = sudo
 	optdepends = jq: enhanced JSON parsing for updates
 	optdepends = systemd: daily update timer scheduler
 	provides = millennium-helpers
