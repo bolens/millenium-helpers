@@ -243,11 +243,13 @@ Fixes issues with the Steam theme or settings panel.
 Downloads, checksum-validates, and installs the latest stable version of Millennium system-wide.
 - **Smart Bypass**: Reads `/usr/lib/millennium/version.txt` to bypass reinstallation if already up-to-date (saving bandwidth and disk writes).
 - **Force Reinstall**: Run with `-f` or `--force` to reinstall regardless of version.
+- **Rollback Support**: Run with `-r` or `--rollback` to restore the previously installed version instantly.
 
 ### 4. [scripts/millennium-upgrade-beta.sh](scripts/millennium-upgrade-beta.sh) (`millennium-upgrade-beta`)
 Downloads, checksum-validates, and installs the latest prerelease/beta version of Millennium system-wide.
 - **Smart Bypass**: Reads `/usr/lib/millennium/version.txt` to bypass reinstallation if already up-to-date.
 - **Force Reinstall**: Run with `-f` or `--force` to reinstall regardless of version.
+- **Rollback Support**: Run with `-r` or `--rollback` to restore the previously installed version instantly.
 
 ### 5. [scripts/millennium-schedule.sh](scripts/millennium-schedule.sh) (`millennium-schedule`)
 Manages systemd user-space timers to run daily updates.
