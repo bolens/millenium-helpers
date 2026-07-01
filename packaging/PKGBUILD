@@ -63,6 +63,7 @@ package() {
   install -Dm644 completions/fish/millennium-purge.fish "${pkgdir}/usr/share/fish/vendor_completions.d/millennium-purge.fish"
   install -Dm644 completions/fish/millennium-diag.fish "${pkgdir}/usr/share/fish/vendor_completions.d/millennium-diag.fish"
   install -Dm644 completions/fish/millennium-theme.fish "${pkgdir}/usr/share/fish/vendor_completions.d/millennium-theme.fish"
+  install -Dm644 completions/fish/millennium-mcp.fish "${pkgdir}/usr/share/fish/vendor_completions.d/millennium-mcp.fish"
 
   # Install Nushell completions
   install -Dm644 completions/nushell/millennium-helpers.nu "${pkgdir}/usr/share/nushell/completions/millennium-helpers.nu"

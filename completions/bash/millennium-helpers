@@ -58,3 +58,35 @@ _millennium_diag_comp() {
   return 0
 }
 complete -F _millennium_diag_comp millennium-diag
+
+_millennium_theme_comp() {
+  COMPREPLY=()
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+  local prev="${COMP_WORDS[COMP_CWORD-1]}"
+  local subcmds="list install remove update"
+  
+  case "${prev}" in
+    update)
+      COMPREPLY=( $(compgen -W "--all" -- "${cur}") )
+      return 0
+      ;;
+    list|install|remove)
+      COMPREPLY=()
+      return 0
+      ;;
+  esac
+  
+  COMPREPLY=( $(compgen -W "${subcmds} -d --dry-run -h --help" -- "${cur}") )
+  return 0
+}
+complete -F _millennium_theme_comp millennium-theme
+
+_millennium_mcp_comp() {
+  COMPREPLY=()
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+  local opts="-h --help"
+  COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+  return 0
+}
+complete -F _millennium_mcp_comp millennium-mcp
+
