@@ -260,7 +260,7 @@ if [[ "$ONLINE" == "true" ]]; then
       remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/main/${remote_rel}"
       tmp_dest="${TMP_SCRIPTS}/${local_cmd}"
       
-      if curl -fsSL "$remote_url" -o "$tmp_dest" &>/dev/null; then
+      if curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" "$remote_url" -o "$tmp_dest" &>/dev/null; then
         local_sha=$(sha256sum "$local_path" | awk '{print $1}')
         remote_sha=$(sha256sum "$tmp_dest" | awk '{print $1}')
         
@@ -279,7 +279,7 @@ if [[ "$ONLINE" == "true" ]]; then
       SCRIPTS_UP_TO_DATE=false
       remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/main/${remote_rel}"
       tmp_dest="${TMP_SCRIPTS}/${local_cmd}"
-      if curl -fsSL "$remote_url" -o "$tmp_dest" &>/dev/null; then
+      if curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" "$remote_url" -o "$tmp_dest" &>/dev/null; then
         out_of_date_scripts+=("$local_cmd")
       fi
     fi
