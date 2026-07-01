@@ -83,6 +83,7 @@ LINGER_OK=true
 SCRIPTS_UP_TO_DATE=true
 PERMISSIONS_OK=true
 SKINS_DIR_OK=true
+COMPLETIONS_OK=true
 
 SYSTEMD_BOOTED=false
 if [[ -d /run/systemd/system ]]; then
@@ -486,6 +487,112 @@ if [[ "$ONLINE" == "true" ]]; then
 else
   echo -e "  ${YELLOW}System is offline. Skipping update checks for helper scripts.${NC}"
 fi
+# 8. Check Shell Completions Status
+echo -e "\nShell Autocompletions Status:"
+
+# Define paths and their corresponding remote repository locations
+declare -A COMPLETION_FILES=(
+  ["/usr/share/bash-completion/completions/millennium-helpers"]="completions/bash/millennium-helpers"
+  ["/usr/share/zsh/site-functions/_millennium-helpers"]="completions/zsh/_millennium-helpers"
+  ["/usr/share/fish/vendor_completions.d/millennium-repair.fish"]="completions/fish/millennium-repair.fish"
+  ["/usr/share/fish/vendor_completions.d/millennium-upgrade-beta.fish"]="completions/fish/millennium-upgrade-beta.fish"
+  ["/usr/share/fish/vendor_completions.d/millennium-upgrade-stable.fish"]="completions/fish/millennium-upgrade-stable.fish"
+  ["/usr/share/fish/vendor_completions.d/millennium-schedule.fish"]="completions/fish/millennium-schedule.fish"
+  ["/usr/share/fish/vendor_completions.d/millennium-purge.fish"]="completions/fish/millennium-purge.fish"
+  ["/usr/share/fish/vendor_completions.d/millennium-diag.fish"]="completions/fish/millennium-diag.fish"
+  ["/usr/share/fish/vendor_completions.d/millennium-theme.fish"]="completions/fish/millennium-theme.fish"
+  ["/usr/share/fish/vendor_completions.d/millennium-mcp.fish"]="completions/fish/millennium-mcp.fish"
+)
+
+nu_dest=""
+for base_dir in "/usr/share" "/usr/local/share"; do
+  if [[ -d "${base_dir}/nushell/completions" ]]; then
+    nu_dest="${base_dir}/nushell/completions/millennium-helpers.nu"
+    break
+  fi
+done
+if [[ -z "$nu_dest" ]]; then
+  nu_dest="/usr/share/nushell/completions/millennium-helpers.nu"
+fi
+COMPLETION_FILES["$nu_dest"]="completions/nushell/millennium-helpers.nu"
+
+declare -a COMPLETION_SYMLINKS=(
+  "/usr/share/bash-completion/completions/millennium-repair:millennium-helpers"
+  "/usr/share/bash-completion/completions/millennium-upgrade-beta:millennium-helpers"
+  "/usr/share/bash-completion/completions/millennium-upgrade-stable:millennium-helpers"
+  "/usr/share/bash-completion/completions/millennium-schedule:millennium-helpers"
+  "/usr/share/bash-completion/completions/millennium-purge:millennium-helpers"
+  "/usr/share/bash-completion/completions/millennium-diag:millennium-helpers"
+  "/usr/share/bash-completion/completions/millennium-theme:millennium-helpers"
+  "/usr/share/bash-completion/completions/millennium-mcp:millennium-helpers"
+  
+  "/usr/share/zsh/site-functions/_millennium-repair:_millennium-helpers"
+  "/usr/share/zsh/site-functions/_millennium-upgrade-beta:_millennium-helpers"
+  "/usr/share/zsh/site-functions/_millennium-upgrade-stable:_millennium-helpers"
+  "/usr/share/zsh/site-functions/_millennium-schedule:_millennium-helpers"
+  "/usr/share/zsh/site-functions/_millennium-purge:_millennium-helpers"
+  "/usr/share/zsh/site-functions/_millennium-diag:_millennium-helpers"
+  "/usr/share/zsh/site-functions/_millennium-theme:_millennium-helpers"
+  "/usr/share/zsh/site-functions/_millennium-mcp:_millennium-helpers"
+)
+
+missing_completions=()
+out_of_date_completions=()
+
+for local_path in "${!COMPLETION_FILES[@]}"; do
+  remote_rel="${COMPLETION_FILES[$local_path]}"
+  
+  local_dir=$(dirname "$local_path")
+  [[ -d "$local_dir" ]] || continue
+  
+  if [[ ! -f "$local_path" ]]; then
+    COMPLETIONS_OK=false
+    missing_completions+=("$local_path")
+    echo -e "  - $(basename "$local_path"): ${RED}Missing${NC}"
+  elif [[ "${ONLINE:-false}" == "true" ]]; then
+    remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/${LATEST_SHA}/${remote_rel}"
+    tmp_dest="${TMP_SCRIPTS}/comp_$(basename "$local_path")"
+    
+    if curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" --retry 3 --retry-delay 2 "$remote_url" -o "$tmp_dest" &>/dev/null; then
+      local_sha=$(sha256sum "$local_path" | awk '{print $1}')
+      remote_sha=$(sha256sum "$tmp_dest" | awk '{print $1}')
+      if [[ "$local_sha" != "$remote_sha" ]]; then
+        COMPLETIONS_OK=false
+        out_of_date_completions+=("$local_path")
+        echo -e "  - $(basename "$local_path"): ${RED}Out of date${NC}"
+      else
+        echo -e "  - $(basename "$local_path"): ${GREEN}Up to date${NC}"
+      fi
+    else
+      echo -e "  - $(basename "$local_path"): ${YELLOW}Unable to check (HTTP download failed)${NC}"
+    fi
+  else
+    echo -e "  - $(basename "$local_path"): ${GREEN}Present (offline, cannot verify version)${NC}"
+  fi
+done
+
+broken_symlinks=()
+for symlink_item in "${COMPLETION_SYMLINKS[@]}"; do
+  symlink_path="${symlink_item%%:*}"
+  symlink_target="${symlink_item#*:}"
+  
+  symlink_dir=$(dirname "$symlink_path")
+  [[ -d "$symlink_dir" ]] || continue
+  
+  if [[ ! -L "$symlink_path" ]]; then
+    COMPLETIONS_OK=false
+    broken_symlinks+=("$symlink_path:$symlink_target")
+    echo -e "  - $(basename "$symlink_path") symlink: ${RED}Missing/Broken${NC}"
+  else
+    target_resolved=$(readlink "$symlink_path" || true)
+    if [[ "$target_resolved" != "$symlink_target" ]]; then
+      COMPLETIONS_OK=false
+      broken_symlinks+=("$symlink_path:$symlink_target")
+      echo -e "  - $(basename "$symlink_path") symlink: ${RED}Incorrect target (${target_resolved})${NC}"
+    fi
+  fi
+done
+
 is_game_running() {
   local game_running=false
   for environ_file in /proc/[0-9]*/environ; do
@@ -510,7 +617,7 @@ if [[ "$COMMAND" == "doctor" ]]; then
   echo -e "\n${BLUE}=== Running Millennium Doctor (Automatic Repairs) ===${NC}"
   
   # Check if anything needs fixing
-  if [[ "$BINARIES_OK" == true && "$HOOKS_OK" == true && "$FLATPAK_OK" == true && "$SUDOERS_OK" == true && "$TIMER_ACTIVE" == true && "$LINGER_OK" == true && "$SCRIPTS_UP_TO_DATE" == true && "$PERMISSIONS_OK" == true && "$SKINS_DIR_OK" == true ]]; then
+  if [[ "$BINARIES_OK" == true && "$HOOKS_OK" == true && "$FLATPAK_OK" == true && "$SUDOERS_OK" == true && "$TIMER_ACTIVE" == true && "$LINGER_OK" == true && "$SCRIPTS_UP_TO_DATE" == true && "$PERMISSIONS_OK" == true && "$SKINS_DIR_OK" == true && "$COMPLETIONS_OK" == true ]]; then
     echo -e "${GREEN}No issues detected. Your Millennium installation is healthy!${NC}"
     exit 0
   fi
@@ -668,27 +775,24 @@ except Exception:
     echo -e "  ${YELLOW}sudo ./install.sh${NC} (from your cloned repository)"
   fi
 
-  # Issue 6: Stopped systemd auto-update timer / cron job
-  if [[ "$TIMER_ACTIVE" == false ]]; then
-    sched_path="/usr/local/bin/millennium-schedule"
-    if [[ -f "/usr/bin/millennium-schedule" ]]; then
-      sched_path="/usr/bin/millennium-schedule"
-    fi
-    if [[ "$SYSTEMD_BOOTED" == "true" ]]; then
-      echo -e "\n${YELLOW}[DOCTOR] Enabling and starting daily systemd user timer...${NC}"
-      # Re-enable the timer using the configured channel
-      if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" ]]; then
-        execute runuser -l "$RUNNING_USER" -c "${sched_path} enable $UPDATE_CHANNEL"
-      else
-        execute "${sched_path}" enable "$UPDATE_CHANNEL"
-      fi
+  # Issue 6: Ensure daily update timer / cron job is configured and up to date
+  sched_path="/usr/local/bin/millennium-schedule"
+  if [[ -f "/usr/bin/millennium-schedule" ]]; then
+    sched_path="/usr/bin/millennium-schedule"
+  fi
+  if [[ "$SYSTEMD_BOOTED" == "true" ]]; then
+    echo -e "\n${YELLOW}[DOCTOR] Refreshing daily systemd user timer...${NC}"
+    if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" ]]; then
+      execute runuser -l "$RUNNING_USER" -c "${sched_path} enable $UPDATE_CHANNEL"
     else
-      echo -e "\n${YELLOW}[DOCTOR] Enabling daily cron update job...${NC}"
-      if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" ]]; then
-        execute runuser -l "$RUNNING_USER" -c "${sched_path} enable $UPDATE_CHANNEL --cron"
-      else
-        execute "${sched_path}" enable "$UPDATE_CHANNEL" --cron
-      fi
+      execute "${sched_path}" enable "$UPDATE_CHANNEL"
+    fi
+  else
+    echo -e "\n${YELLOW}[DOCTOR] Refreshing daily cron update job...${NC}"
+    if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" ]]; then
+      execute runuser -l "$RUNNING_USER" -c "${sched_path} enable $UPDATE_CHANNEL --cron"
+    else
+      execute "${sched_path}" enable "$UPDATE_CHANNEL" --cron
     fi
   fi
 
@@ -725,6 +829,39 @@ except Exception:
           execute chown "${RUNNING_USER}:${RUNNING_USER}" "$dir"
         fi
         execute chmod 755 "$dir"
+      fi
+    done
+  fi
+
+  # Issue 10: Missing or out-of-date completions
+  if [[ "$COMPLETIONS_OK" == false ]]; then
+    echo -e "\n${YELLOW}[DOCTOR] Repairing shell autocompletions...${NC}"
+    
+    # 1. Restore files
+    for local_path in "${missing_completions[@]:-}" "${out_of_date_completions[@]:-}"; do
+      [[ -n "$local_path" ]] || continue
+      remote_rel="${COMPLETION_FILES[$local_path]}"
+      remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/${LATEST_SHA}/${remote_rel}"
+      echo "Restoring completion file: $local_path"
+      if [[ "$DRY_RUN" == "true" ]]; then
+        echo -e "[DRY RUN] Would download $remote_url to $local_path"
+      else
+        execute curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" --retry 3 --retry-delay 2 "$remote_url" -o "$local_path"
+        execute chmod 644 "$local_path"
+      fi
+    done
+    
+    # 2. Restore symlinks
+    for symlink_item in "${broken_symlinks[@]:-}"; do
+      [[ -n "$symlink_item" ]] || continue
+      symlink_path="${symlink_item%%:*}"
+      symlink_target="${symlink_item#*:}"
+      echo "Restoring symlink: $symlink_path -> $symlink_target"
+      if [[ "$DRY_RUN" == "true" ]]; then
+        echo -e "[DRY RUN] Would link $symlink_path to $symlink_target"
+      else
+        execute rm -f "$symlink_path"
+        execute ln -sf "$symlink_target" "$symlink_path"
       fi
     done
   fi
