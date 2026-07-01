@@ -227,7 +227,7 @@ install_scripts() {
   install_completions
 
   # Configure passwordless sudoers rules in /etc/sudoers.d/millennium-helpers
-  local user_name="${SUDO_USER:-$USER}"
+  local user_name="${SUDO_USER:-$(id -un)}"
   if [[ "$user_name" != "root" ]]; then
     printf "Configuring passwordless sudo rule in %s... " "${SUDOERS_FILE}"
     
@@ -437,7 +437,7 @@ uninstall_scripts() {
   removed_any=true
 
   # Clean up systemd user timers/services for the invoking user
-  local user_name="${SUDO_USER:-$USER}"
+  local user_name="${SUDO_USER:-$(id -un)}"
   if [[ "$user_name" != "root" ]]; then
     local user_home
     user_home="$(getent passwd "$user_name" | cut -d: -f6)"

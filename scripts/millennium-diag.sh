@@ -120,7 +120,7 @@ UTILITIES=(
   "millennium-mcp:scripts/millennium-mcp.py"
 )
 
-RUNNING_USER="${SUDO_USER:-$USER}"
+RUNNING_USER="${SUDO_USER:-$(id -un)}"
 USER_HOME="$(getent passwd "$RUNNING_USER" | cut -d: -f6)"
 USER_CONFIG_DIR=""
 user_xdg=""

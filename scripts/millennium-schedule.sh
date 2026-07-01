@@ -2,7 +2,7 @@
 # Configure systemd user timer for Millennium auto-updates
 set -euo pipefail
 
-RUNNING_USER="${SUDO_USER:-$USER}"
+RUNNING_USER="${SUDO_USER:-$(id -un)}"
 USER_HOME="$(getent passwd "$RUNNING_USER" | cut -d: -f6)"
 
 # Source shared helpers
@@ -183,7 +183,7 @@ EOF
   # Print systemd user lingering tip
   echo -e "\n${GREEN}Systemd User Lingering (Optional):${NC}"
   echo -e "To allow user timers to run in the background even when you are logged out, enable user lingering:"
-  echo -e "  loginctl enable-linger ${USER}"
+  echo -e "  loginctl enable-linger ${RUNNING_USER}"
 
   echo -e "\nYou can check the status of the timer with: millennium-schedule status"
 }

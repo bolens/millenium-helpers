@@ -52,15 +52,23 @@ rc=$?
 assert_failure "$rc" "millennium-schedule enable rejects an unrecognized channel argument"
 assert_contains "$out" "Unknown option" "millennium-schedule enable reports the unrecognized channel as an unknown option"
 
-# --- enable (systemd path) dry-run ---
+# --- enable (no --cron flag): path depends on whether systemd is actually
+# booted on this machine (millennium-schedule.sh auto-detects via
+# /run/systemd/system and silently falls back to cron otherwise, e.g. inside
+# minimal containers used in CI). Branch on the real environment so the test
+# is accurate either way instead of assuming systemd is always available.
 
 out=$(run_schedule enable stable --dry-run 2>&1)
 rc=$?
 assert_success "$rc" "millennium-schedule enable stable --dry-run exits 0"
 assert_contains "$out" "DRY RUN" "millennium-schedule enable --dry-run announces dry-run mode"
-assert_contains "$out" "systemd user service file" "millennium-schedule enable --dry-run mentions creating the systemd service file"
-assert_file_not_exists "${FAKE_XDG_CONFIG}/systemd/user/millennium-update.timer" "millennium-schedule enable --dry-run does not actually write the timer unit file"
-assert_file_not_exists "${FAKE_XDG_CONFIG}/systemd/user/millennium-update.service" "millennium-schedule enable --dry-run does not actually write the service unit file"
+if [[ -d /run/systemd/system ]]; then
+  assert_contains "$out" "systemd user service file" "millennium-schedule enable --dry-run mentions creating the systemd service file"
+  assert_file_not_exists "${FAKE_XDG_CONFIG}/systemd/user/millennium-update.timer" "millennium-schedule enable --dry-run does not actually write the timer unit file"
+  assert_file_not_exists "${FAKE_XDG_CONFIG}/systemd/user/millennium-update.service" "millennium-schedule enable --dry-run does not actually write the service unit file"
+else
+  assert_contains "$out" "crontab" "millennium-schedule enable --dry-run falls back to crontab when systemd is not booted"
+fi
 
 # --- enable (cron path) dry-run ---
 
