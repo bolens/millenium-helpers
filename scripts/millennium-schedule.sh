@@ -11,7 +11,7 @@ NC='\033[0m' # No Color
 
 SERVICE_NAME="millennium-update.service"
 TIMER_NAME="millennium-update.timer"
-USER_CONFIG_DIR="${HOME}/.config/systemd/user"
+USER_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 SERVICE_PATH="${USER_CONFIG_DIR}/${SERVICE_NAME}"
 TIMER_PATH="${USER_CONFIG_DIR}/${TIMER_NAME}"
 

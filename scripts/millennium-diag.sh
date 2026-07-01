@@ -85,7 +85,16 @@ UTILITIES=(
 
 RUNNING_USER="${SUDO_USER:-$USER}"
 USER_HOME="$(getent passwd "$RUNNING_USER" | cut -d: -f6)"
-USER_CONFIG_DIR="${USER_HOME}/.config/systemd/user"
+USER_CONFIG_DIR=""
+if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" ]]; then
+  user_xdg=$(runuser -l "$RUNNING_USER" -c 'echo "${XDG_CONFIG_HOME:-}"' 2>/dev/null || true)
+  if [[ -n "$user_xdg" ]]; then
+    USER_CONFIG_DIR="${user_xdg}/systemd/user"
+  fi
+fi
+if [[ -z "$USER_CONFIG_DIR" ]]; then
+  USER_CONFIG_DIR="${XDG_CONFIG_HOME:-$USER_HOME/.config}/systemd/user"
+fi
 
 sysctl_user() {
   if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" ]]; then
