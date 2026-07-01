@@ -485,7 +485,24 @@ if [[ "$ONLINE" == "true" ]]; then
 else
   echo -e "  ${YELLOW}System is offline. Skipping update checks for helper scripts.${NC}"
 fi
-
+is_game_running() {
+  local game_running=false
+  for environ_file in /proc/[0-9]*/environ; do
+    [[ -f "$environ_file" ]] || continue
+    local pid_dir
+    pid_dir="$(dirname "$environ_file")"
+    local pid="${pid_dir##*/}"
+    [[ "$pid" =~ ^[0-9]+$ ]] || continue
+    local comm
+    comm=$(cat "/proc/${pid}/comm" 2>/dev/null || true)
+    [[ "$comm" == "steam" || "$comm" == "steamwebhelper" ]] && continue
+    if { tr '\0' '\n' < "$environ_file"; } 2>/dev/null | grep -q "^SteamAppId=[1-9]"; then
+      game_running=true
+      break
+    fi
+  done
+  [[ "$game_running" == "true" ]]
+}
 
 # --- Doctor / Auto-Repair Execution ---
 if [[ "$COMMAND" == "doctor" ]]; then
@@ -501,6 +518,10 @@ if [[ "$COMMAND" == "doctor" ]]; then
   relaunch_steam_after_doctor=false
   was_flatpak=false
   if [[ "$STEAM_RUNNING" == true ]] && [[ "$BINARIES_OK" == false || "$HOOKS_OK" == false ]]; then
+    if is_game_running; then
+      echo -e "${RED}Error: A Steam game is currently running. Doctor repairs cannot proceed while a game is active.${NC}" >&2
+      exit 1
+    fi
     echo -e "${YELLOW}Steam is currently running and must be closed to apply repairs to hooks/binaries.${NC}"
     
     if command -v flatpak &>/dev/null && runuser -l "$RUNNING_USER" -c "flatpak ps" 2>/dev/null | grep -q "com.valvesoftware.Steam"; then
