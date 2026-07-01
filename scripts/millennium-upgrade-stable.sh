@@ -187,7 +187,7 @@ getent passwd | while IFS=: read -r _ _ uid _ _ home _; do
   [[ "$uid" -ge 1000 ]] || continue
   
   # Find steam directory for this user
-  local steam_dir=""
+  steam_dir=""
   for cand in "$home/.local/share/Steam" "$home/.steam/steam" "$home/.steam/root" "$home/.var/app/com.valvesoftware.Steam/.local/share/Steam"; do
     if [[ -d "$cand" ]]; then
       steam_dir="$cand"
