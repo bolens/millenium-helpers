@@ -12,6 +12,7 @@ done
 
 FORCE=false
 DRY_RUN=false
+ROLLBACK=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -f|--force)
@@ -20,6 +21,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     -d|--dry-run)
       DRY_RUN=true
+      shift
+      ;;
+    -r|--rollback)
+      ROLLBACK=true
       shift
       ;;
     *)
@@ -43,6 +48,30 @@ send_notification() {
     runuser -l "$user_name" -c "DISPLAY=:0 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/\$(id -u)/bus notify-send '$title' '$msg'" &>/dev/null || true
   fi
 }
+
+# --- Rollback Execution ---
+if [[ "$ROLLBACK" == "true" ]]; then
+  dest_dir="/usr/lib/millennium"
+  dest_bak="${dest_dir}.bak"
+  
+  if [[ ! -d "$dest_bak" ]]; then
+    echo "Error: No backup directory found at ${dest_bak} to roll back to." >&2
+    exit 1
+  fi
+  
+  echo "Rolling back Millennium to the previous version..."
+  if [[ "$DRY_RUN" == "true" ]]; then
+    echo -e "[DRY RUN] Would swap ${dest_dir} with ${dest_bak}"
+  else
+    dest_tmp="${dest_dir}.rollback_tmp"
+    rm -rf "$dest_tmp"
+    mv "$dest_dir" "$dest_tmp"
+    mv "$dest_bak" "$dest_dir"
+    mv "$dest_tmp" "$dest_bak"
+    echo "Rollback successful! Previous version is now active."
+  fi
+  exit 0
+fi
 
 failure_handler() {
   local exit_code=$?
@@ -160,7 +189,7 @@ else
   dest_tmp="${dest_dir}.tmp"
   dest_bak="${dest_dir}.bak"
   
-  rm -rf "$dest_tmp" "$dest_bak"
+  rm -rf "$dest_tmp"
   mkdir -p "$dest_tmp"
   find "$TMP/usr/lib/millennium/" -type f -exec install -m755 -t "$dest_tmp/" {} +
   echo "${VER}" > "$dest_tmp/version.txt"
@@ -170,11 +199,21 @@ else
   (cd "$dest_tmp" && sha256sum libmillennium_bootstrap_x86.so libmillennium_bootstrap_hhx64.so libmillennium_x86.so libmillennium_hhx64.so libmillennium_pvs64 > checksums.txt)
   chmod 644 "$dest_tmp/checksums.txt"
 
+  # Perform swap, keeping previous version in dest_bak
   if [[ -d "$dest_dir" ]]; then
+    rm -rf "$dest_bak"
     mv "$dest_dir" "$dest_bak"
   fi
-  mv "$dest_tmp" "$dest_dir"
-  rm -rf "$dest_bak"
+  
+  if mv "$dest_tmp" "$dest_dir"; then
+    echo "Millennium updated successfully."
+  else
+    echo "Error: Failed to swap directory. Restoring backup..." >&2
+    if [[ -d "$dest_bak" ]]; then
+      mv "$dest_bak" "$dest_dir"
+    fi
+    exit 1
+  fi
 
   if command -v restorecon &>/dev/null; then
     echo "Restoring SELinux contexts for /usr/lib/millennium/..."
