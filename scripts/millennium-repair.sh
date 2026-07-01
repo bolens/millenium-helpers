@@ -143,18 +143,28 @@ except Exception:
       exit 1
     fi
     
-    rm -rf "$THEME_DIR"
-    mkdir -p "$THEME_DIR"
-    cp -a "$TMP/Steam-${COMMIT}/." "$THEME_DIR/"
+    # Atomic theme directory swap
+    local theme_tmp="${THEME_DIR}.tmp"
+    local theme_bak="${THEME_DIR}.bak"
     
-    write_file "$THEME_DIR/metadata.json" <<EOF
+    rm -rf "$theme_tmp" "$theme_bak"
+    mkdir -p "$theme_tmp"
+    cp -a "$TMP/Steam-${COMMIT}/." "$theme_tmp/"
+    
+    write_file "$theme_tmp/metadata.json" <<EOF
 {
     "commit": "${COMMIT}",
     "owner": "SpaceTheme",
     "repo": "Steam"
 }
 EOF
-    chown -R "$USER_NAME:$USER_NAME" "$THEME_DIR"
+    chown -R "$USER_NAME:$USER_NAME" "$theme_tmp"
+
+    if [[ -d "$THEME_DIR" ]]; then
+      mv "$THEME_DIR" "$theme_bak"
+    fi
+    mv "$theme_tmp" "$THEME_DIR"
+    rm -rf "$theme_bak"
   fi
 fi
 
