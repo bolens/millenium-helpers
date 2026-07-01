@@ -102,15 +102,21 @@ else
   echo -e "${YELLOW}Not Running${NC}"
 fi
 
-# 2. Check Installed Millennium version
+# 2. Check Installed Millennium version & integrity
 echo -n "Millennium Binary Version: "
 if [[ -f "/usr/lib/millennium/version.txt" ]]; then
-  # Verify .so files exist
+  # Verify .so files and integrity check
   if [[ ! -f "/usr/lib/millennium/libmillennium_bootstrap_x86.so" || ! -f "/usr/lib/millennium/libmillennium_bootstrap_hhx64.so" ]]; then
     BINARIES_OK=false
-    echo -e "${RED}Corrupted (version file exists but shared libraries are missing)${NC}"
+    echo -e "${RED}Corrupted (shared libraries are missing)${NC}"
+  elif [[ ! -f "/usr/lib/millennium/checksums.txt" ]]; then
+    BINARIES_OK=false
+    echo -e "${RED}Corrupted (missing integrity manifest /usr/lib/millennium/checksums.txt)${NC}"
+  elif ! (cd /usr/lib/millennium && sha256sum -c checksums.txt &>/dev/null); then
+    BINARIES_OK=false
+    echo -e "${RED}Corrupted (cryptographic checksum verification failed!)${NC}"
   else
-    echo -e "${GREEN}v$(cat /usr/lib/millennium/version.txt) (${UPDATE_CHANNEL} channel)${NC}"
+    echo -e "${GREEN}v$(cat /usr/lib/millennium/version.txt) (${UPDATE_CHANNEL} channel) - Verified Healthy${NC}"
   fi
 else
   BINARIES_OK=false
