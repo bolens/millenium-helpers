@@ -1,6 +1,41 @@
 #!/usr/bin/env bash
 # Shared helper functions for the Millennium Helpers suite.
 
+# shellcheck disable=SC2034
+# Text color formatting
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+execute() {
+  if [[ "${DRY_RUN:-false}" == "true" ]]; then
+    echo -e "${YELLOW}[DRY RUN] Would run:${NC} $*"
+  else
+    "$@"
+  fi
+}
+
+write_file() {
+  local target="$1"
+  if [[ "${DRY_RUN:-false}" == "true" ]]; then
+    echo -e "${YELLOW}[DRY RUN] Would write file: ${target} with contents:${NC}"
+    cat
+  else
+    cat > "$target"
+  fi
+}
+
+resolve_helper_path() {
+  local name="$1"
+  if [[ -f "/usr/bin/${name}" ]]; then
+    echo "/usr/bin/${name}"
+  else
+    echo "/usr/local/bin/${name}"
+  fi
+}
+
 is_game_running() {
   local game_running=false
   for environ_file in /proc/[0-9]*/environ; do

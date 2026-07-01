@@ -10,11 +10,22 @@ for cmd in curl unzip; do
   fi
 done
 
-# Text color formatting
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-NC='\033[0m' # No Color
+# Source shared helpers
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COMMON_SH="${SCRIPT_DIR}/common.sh"
+if [[ ! -f "$COMMON_SH" ]]; then
+  COMMON_SH="/usr/local/lib/millennium-helpers/common.sh"
+  if [[ -f "/usr/lib/millennium-helpers/common.sh" ]]; then
+    COMMON_SH="/usr/lib/millennium-helpers/common.sh"
+  fi
+fi
+if [[ -f "$COMMON_SH" ]]; then
+  # shellcheck disable=SC1090
+  source "$COMMON_SH"
+else
+  echo -e "${RED:-}Error: Shared helper library not found." >&2
+  exit 1
+fi
 
 SKIP_THEME=false
 DRY_RUN=false
@@ -43,23 +54,6 @@ fi
 
 USER_NAME="${SUDO_USER:-$USER}"
 USER_HOME="$(getent passwd "$USER_NAME" | cut -d: -f6)"
-
-# Source shared helpers
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-COMMON_SH="${SCRIPT_DIR}/common.sh"
-if [[ ! -f "$COMMON_SH" ]]; then
-  COMMON_SH="/usr/local/lib/millennium-helpers/common.sh"
-  if [[ -f "/usr/lib/millennium-helpers/common.sh" ]]; then
-    COMMON_SH="/usr/lib/millennium-helpers/common.sh"
-  fi
-fi
-if [[ -f "$COMMON_SH" ]]; then
-  # shellcheck disable=SC1090
-  source "$COMMON_SH"
-else
-  echo -e "${RED}Error: Shared helper library not found.${NC}" >&2
-  exit 1
-fi
 
 USER_XDG_CONFIG=""
 USER_XDG_DATA=""
@@ -111,24 +105,7 @@ if [[ "$DRY_RUN" == "true" ]]; then
   echo -e "${YELLOW}=== DRY RUN MODE: No changes will be made ===${NC}"
 fi
 
-# Dry run wrappers
-execute() {
-  if [[ "$DRY_RUN" == "true" ]]; then
-    echo -e "${YELLOW}[DRY RUN] Would run:${NC} $*"
-  else
-    "$@"
-  fi
-}
-
-write_file() {
-  local target="$1"
-  if [[ "$DRY_RUN" == "true" ]]; then
-    echo -e "${YELLOW}[DRY RUN] Would write file: ${target} with contents:${NC}"
-    cat
-  else
-    cat > "$target"
-  fi
-}
+# Dry run wrappers resolved from common.sh
 
 echo "Fixing ownership..."
 PATHS_TO_CHOWN=()

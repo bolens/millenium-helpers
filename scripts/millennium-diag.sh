@@ -2,12 +2,22 @@
 # Diagnostics and status reporter for Millennium helper scripts
 set -euo pipefail
 
-# Text color formatting
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# Source shared helpers
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COMMON_SH="${SCRIPT_DIR}/common.sh"
+if [[ ! -f "$COMMON_SH" ]]; then
+  COMMON_SH="/usr/local/lib/millennium-helpers/common.sh"
+  if [[ -f "/usr/lib/millennium-helpers/common.sh" ]]; then
+    COMMON_SH="/usr/lib/millennium-helpers/common.sh"
+  fi
+fi
+if [[ -f "$COMMON_SH" ]]; then
+  # shellcheck disable=SC1090
+  source "$COMMON_SH"
+else
+  echo -e "${RED:-}Error: Shared helper library not found." >&2
+  exit 1
+fi
 
 show_help() {
   cat << EOF
@@ -60,34 +70,9 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Source shared helpers
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-COMMON_SH="${SCRIPT_DIR}/common.sh"
-if [[ ! -f "$COMMON_SH" ]]; then
-  COMMON_SH="/usr/local/lib/millennium-helpers/common.sh"
-  if [[ -f "/usr/lib/millennium-helpers/common.sh" ]]; then
-    COMMON_SH="/usr/lib/millennium-helpers/common.sh"
-  fi
-fi
-if [[ -f "$COMMON_SH" ]]; then
-  # shellcheck disable=SC1090
-  source "$COMMON_SH"
-else
-  echo -e "${RED}Error: Shared helper library not found.${NC}" >&2
-  exit 1
-fi
-
 if [[ "$DRY_RUN" == "true" ]]; then
   echo -e "${YELLOW}=== DRY RUN MODE: No changes will be made ===${NC}"
 fi
-
-execute() {
-  if [[ "$DRY_RUN" == "true" ]]; then
-    echo -e "${YELLOW}[DRY RUN] Would run:${NC} $*"
-  else
-    "$@"
-  fi
-}
 
 # --- State Variables for Diagnostics ---
 STEAM_RUNNING=false
@@ -727,10 +712,7 @@ if [[ "$COMMAND" == "doctor" ]]; then
   fi
 
   # Issue 6: Ensure daily update timer / cron job is configured and up to date
-  sched_path="/usr/local/bin/millennium-schedule"
-  if [[ -f "/usr/bin/millennium-schedule" ]]; then
-    sched_path="/usr/bin/millennium-schedule"
-  fi
+  sched_path=$(resolve_helper_path "millennium-schedule")
   if [[ "$SYSTEMD_BOOTED" == "true" ]]; then
     echo -e "\n${YELLOW}[DOCTOR] Refreshing daily systemd user timer...${NC}"
     if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" ]]; then

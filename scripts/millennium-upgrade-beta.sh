@@ -2,6 +2,23 @@
 # Install official Millennium v3.3.0-beta.1 to fix settings page React error #130.
 set -euo pipefail
 
+# Source shared helpers
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COMMON_SH="${SCRIPT_DIR}/common.sh"
+if [[ ! -f "$COMMON_SH" ]]; then
+  COMMON_SH="/usr/local/lib/millennium-helpers/common.sh"
+  if [[ -f "/usr/lib/millennium-helpers/common.sh" ]]; then
+    COMMON_SH="/usr/lib/millennium-helpers/common.sh"
+  fi
+fi
+if [[ -f "$COMMON_SH" ]]; then
+  # shellcheck disable=SC1090
+  source "$COMMON_SH"
+else
+  echo -e "${RED:-}Error: Shared helper library not found." >&2
+  exit 1
+fi
+
 # Check dependencies
 for cmd in curl tar awk sha256sum; do
   if ! command -v "$cmd" &>/dev/null; then
@@ -74,22 +91,7 @@ trap 'failure_handler' ERR
 RUNNING_USER="${SUDO_USER:-$USER}"
 USER_HOME="$(getent passwd "$RUNNING_USER" | cut -d: -f6)"
 
-# Source shared helpers
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-COMMON_SH="${SCRIPT_DIR}/common.sh"
-if [[ ! -f "$COMMON_SH" ]]; then
-  COMMON_SH="/usr/local/lib/millennium-helpers/common.sh"
-  if [[ -f "/usr/lib/millennium-helpers/common.sh" ]]; then
-    COMMON_SH="/usr/lib/millennium-helpers/common.sh"
-  fi
-fi
-if [[ -f "$COMMON_SH" ]]; then
-  # shellcheck disable=SC1090
-  source "$COMMON_SH"
-else
-  echo -e "${RED}Error: Shared helper library not found.${NC}" >&2
-  exit 1
-fi
+# Relaunch variables
 
 # Detect if Steam is running and handle it
 RELAUNCH_STEAM=false
@@ -115,13 +117,7 @@ if [[ "$DRY_RUN" == "true" ]]; then
   echo -e "${YELLOW}=== DRY RUN MODE: No changes will be made ===${NC}"
 fi
 
-execute() {
-  if [[ "$DRY_RUN" == "true" ]]; then
-    echo -e "${YELLOW}[DRY RUN] Would run:${NC} $*"
-  else
-    "$@"
-  fi
-}
+# execute resolved from common.sh
 
 check_network() {
   local retries=5

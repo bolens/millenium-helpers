@@ -2,12 +2,22 @@
 # De-register and purge Millennium client from Steam
 set -euo pipefail
 
-# Text color formatting
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# Source shared helpers
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COMMON_SH="${SCRIPT_DIR}/common.sh"
+if [[ ! -f "$COMMON_SH" ]]; then
+  COMMON_SH="/usr/local/lib/millennium-helpers/common.sh"
+  if [[ -f "/usr/lib/millennium-helpers/common.sh" ]]; then
+    COMMON_SH="/usr/lib/millennium-helpers/common.sh"
+  fi
+fi
+if [[ -f "$COMMON_SH" ]]; then
+  # shellcheck disable=SC1090
+  source "$COMMON_SH"
+else
+  echo -e "${RED:-}Error: Shared helper library not found." >&2
+  exit 1
+fi
 
 DRY_RUN=false
 while [[ $# -gt 0 ]]; do
@@ -29,22 +39,7 @@ if [[ "$DRY_RUN" == "false" ]] && [[ "$(id -u)" -ne 0 ]]; then
   exit 1
 fi
 
-# Source shared helpers
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-COMMON_SH="${SCRIPT_DIR}/common.sh"
-if [[ ! -f "$COMMON_SH" ]]; then
-  COMMON_SH="/usr/local/lib/millennium-helpers/common.sh"
-  if [[ -f "/usr/lib/millennium-helpers/common.sh" ]]; then
-    COMMON_SH="/usr/lib/millennium-helpers/common.sh"
-  fi
-fi
-if [[ -f "$COMMON_SH" ]]; then
-  # shellcheck disable=SC1090
-  source "$COMMON_SH"
-else
-  echo -e "${RED}Error: Shared helper library not found.${NC}" >&2
-  exit 1
-fi
+# Helpers loaded
 
 RUNNING_USER="${SUDO_USER:-$USER}"
 
@@ -66,13 +61,7 @@ fi
 
 echo -e "${BLUE}Purging Millennium hooks and files...${NC}"
 
-execute() {
-  if [[ "$DRY_RUN" == "true" ]]; then
-    echo -e "${YELLOW}[DRY RUN] Would run:${NC} $*"
-  else
-    "$@"
-  fi
-}
+# execute resolved from common.sh
 
 # 1. Clean up bootstrap symlinks and htmlcache for all users
 getent passwd | while IFS=: read -r _ _ uid _ _ home _; do
