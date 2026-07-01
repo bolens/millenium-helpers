@@ -1,0 +1,23 @@
+pkgbase = millennium-helpers-git
+	pkgdesc = Utility scripts for managing, repairing, upgrading, rolling back, viewing logs, managing themes, and scheduling updates for Millennium on Linux
+	pkgver = r46.g6b2068d
+	pkgrel = 1
+	url = https://github.com/bolens/millenium-helpers
+	install = millennium-helpers.install
+	arch = any
+	license = MIT
+	makedepends = git
+	depends = bash
+	depends = curl
+	depends = unzip
+	depends = python
+	optdepends = jq: enhanced JSON parsing for updates
+	optdepends = systemd: daily update timer scheduler
+	provides = millennium-helpers
+	conflicts = millennium-helpers
+	source = git+https://github.com/bolens/millenium-helpers.git
+	source = millennium-helpers.sudoers
+	sha256sums = SKIP
+	sha256sums = SKIP
+
+pkgname = millennium-helpers-git
