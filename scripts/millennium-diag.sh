@@ -83,6 +83,9 @@ UTILITIES=(
   "millennium-diag:scripts/millennium-diag.sh"
 )
 
+RUNNING_USER="${SUDO_USER:-$USER}"
+USER_HOME="$(getent passwd "$RUNNING_USER" | cut -d: -f6)"
+
 # Find configured update channel
 UPDATE_CHANNEL="stable"
 if [[ -f "/usr/lib/millennium/version.txt" ]]; then
@@ -92,7 +95,7 @@ if [[ -f "/usr/lib/millennium/version.txt" ]]; then
   fi
 else
   # Fall back to checking systemd user service file if it exists
-  USER_CONFIG_DIR="${HOME}/.config/systemd/user"
+  USER_CONFIG_DIR="${USER_HOME}/.config/systemd/user"
   SERVICE_PATH="${USER_CONFIG_DIR}/millennium-update.service"
   if [[ -f "$SERVICE_PATH" ]] && grep -q "upgrade-beta" "$SERVICE_PATH" 2>/dev/null; then
     UPDATE_CHANNEL="beta"
@@ -132,8 +135,7 @@ else
 fi
 
 # 3. Check Bootstrap Hook Status for Current User
-echo -e "\nBootstrap Hooks (for user ${USER}):"
-USER_HOME="$(getent passwd "$USER" | cut -d: -f6)"
+echo -e "\nBootstrap Hooks (for user ${RUNNING_USER}):"
 found_steam=false
 broken_hooks=()
 missing_hooks=()
@@ -234,7 +236,7 @@ fi
 
 # 6. Check Systemd User Lingering status
 echo -n "Systemd User Lingering: "
-if [[ -f "/var/lib/systemd/linger/${USER}" ]]; then
+if [[ -f "/var/lib/systemd/linger/${RUNNING_USER}" ]]; then
   echo -e "${GREEN}Enabled${NC}"
 else
   LINGER_OK=false
@@ -391,7 +393,7 @@ if [[ "$COMMAND" == "doctor" ]]; then
   # Issue 7: Disabled systemd user lingering
   if [[ "$LINGER_OK" == false ]]; then
     echo -e "\n${YELLOW}[DOCTOR] Enabling systemd user lingering to run updates in the background...${NC}"
-    execute loginctl enable-linger "${USER}"
+    execute loginctl enable-linger "${RUNNING_USER}"
   fi
 
   if [[ "$DRY_RUN" == "true" ]]; then
