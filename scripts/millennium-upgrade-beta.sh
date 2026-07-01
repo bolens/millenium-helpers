@@ -162,9 +162,9 @@ else
   (cd "$TMP/usr/lib/millennium" && sha256sum libmillennium_bootstrap_x86.so libmillennium_bootstrap_hhx64.so > checksums.txt)
 
   # Atomic directory swap
-  local dest_dir="/usr/lib/millennium"
-  local dest_tmp="${dest_dir}.tmp"
-  local dest_bak="${dest_dir}.bak"
+  dest_dir="/usr/lib/millennium"
+  dest_tmp="${dest_dir}.tmp"
+  dest_bak="${dest_dir}.bak"
   
   rm -rf "$dest_tmp" "$dest_bak"
   mkdir -p "$dest_tmp"
