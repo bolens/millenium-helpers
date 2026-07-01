@@ -284,7 +284,7 @@ close_steam_gracefully() {
 send_notification() {
   local title="$1"
   local msg="$2"
-  local target_user="${3:-${SUDO_USER:-$USER}}"
+  local target_user="${3:-${SUDO_USER:-$(id -un)}}"
   
   if [[ "$target_user" != "root" ]] && command -v notify-send &>/dev/null; then
     local state_file="/tmp/millennium-relaunch-${target_user}"

@@ -41,7 +41,7 @@ fi
 
 # Helpers loaded
 
-RUNNING_USER="${SUDO_USER:-$USER}"
+RUNNING_USER="${SUDO_USER:-$(id -un)}"
 
 if pgrep -x steam >/dev/null 2>&1; then
   if is_game_running; then

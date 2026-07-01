@@ -35,12 +35,15 @@ assert_contains "$out" "Purging Millennium hooks" "millennium-purge --dry-run de
 assert_contains "$out" "Dry run completed successfully" "millennium-purge --dry-run reports a successful simulated completion"
 
 # --- Dry-run correctly identifies and would remove a millennium-owned hook symlink ---
+# purge.sh only checks readlink's target STRING for the "/usr/lib/millennium"
+# substring (it never dereferences the symlink), so the target doesn't need to
+# actually exist on disk. We deliberately point at that literal path so the
+# match is genuine and not coincidental with anything already installed on
+# the test machine.
 
 FAKE_HOME=$(mktemp -d)
 mkdir -p "${FAKE_HOME}/.local/share/Steam/ubuntu12_32" "${FAKE_HOME}/.local/share/Steam/ubuntu12_64"
-mkdir -p /tmp/fake-millennium-lib-for-tests
-touch /tmp/fake-millennium-lib-for-tests/libmillennium_bootstrap_x86.so
-ln -sf /tmp/fake-millennium-lib-for-tests/libmillennium_bootstrap_x86.so "${FAKE_HOME}/.local/share/Steam/ubuntu12_32/libXtst.so.6"
+ln -sf "/usr/lib/millennium/libmillennium_bootstrap_x86.so" "${FAKE_HOME}/.local/share/Steam/ubuntu12_32/libXtst.so.6"
 
 mock_cmd "getent" "
 if [[ \"\$1\" == 'passwd' && \$# -eq 1 ]]; then
@@ -55,9 +58,12 @@ out=$(bash "$PURGE_SH" --dry-run 2>&1)
 rc=$?
 assert_success "$rc" "millennium-purge --dry-run exits 0 when a millennium-owned hook is present"
 assert_contains "$out" "Removing 32-bit hook" "millennium-purge --dry-run identifies the millennium-owned 32-bit hook for removal"
-assert_file_exists "${FAKE_HOME}/.local/share/Steam/ubuntu12_32/libXtst.so.6" "millennium-purge --dry-run does not actually remove the symlink"
+# Use -L (symlink presence) rather than assert_file_exists (-e, which follows
+# the link and would report a false negative here since the target is a
+# deliberately non-existent path).
+assert_symlink_exists "${FAKE_HOME}/.local/share/Steam/ubuntu12_32/libXtst.so.6" "millennium-purge --dry-run does not actually remove the symlink"
 
-rm -rf "$FAKE_HOME" /tmp/fake-millennium-lib-for-tests
+rm -rf "$FAKE_HOME"
 
 # --- Game running aborts the purge ---
 

@@ -1,0 +1,120 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # Fast fail-early check: verify every script parses cleanly on all
+  # supported distros before spending time on the (much slower) behavioral
+  # test matrix below.
+  syntax-check:
+    name: Syntax check (${{ matrix.distro }})
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: debian
+            image: debian:12
+          - distro: ubuntu
+            image: ubuntu:24.04
+          - distro: fedora
+            image: fedora:latest
+          - distro: archlinux
+            image: archlinux:latest
+    steps:
+      - name: Install git
+        run: |
+          case "${{ matrix.distro }}" in
+            debian|ubuntu)
+              apt-get update -qq && apt-get install -y -qq git ;;
+            fedora)
+              dnf install -y -q git ;;
+            archlinux)
+              pacman -Sy --noconfirm --quiet git ;;
+          esac
+
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: bash -n all scripts
+        run: |
+          set -e
+          for f in scripts/*.sh install.sh tests/run_tests.sh tests/lib/*.sh tests/unit/*.sh tests/behavioral/*.sh; do
+            echo "Checking $f"
+            bash -n "$f"
+          done
+
+  # Each unit/behavioral test file gets its own job so failures/slow tests in
+  # one script don't block or delay the others, and results come back as soon
+  # as each individual suite finishes rather than after one long sequential
+  # run.
+  test:
+    name: ${{ matrix.suite }} (${{ matrix.distro }})
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        distro: [debian, ubuntu, fedora, archlinux]
+        suite:
+          - tests/unit/test_common.sh
+          - tests/behavioral/test_install.sh
+          - tests/behavioral/test_theme.sh
+          - tests/behavioral/test_schedule.sh
+          - tests/behavioral/test_purge.sh
+          - tests/behavioral/test_repair.sh
+          - tests/behavioral/test_upgrade.sh
+          - tests/behavioral/test_diag.sh
+        include:
+          - distro: debian
+            image: debian:12
+          - distro: ubuntu
+            image: ubuntu:24.04
+          - distro: fedora
+            image: fedora:latest
+          - distro: archlinux
+            image: archlinux:latest
+    steps:
+      - name: Install dependencies (Debian/Ubuntu)
+        if: matrix.distro == 'debian' || matrix.distro == 'ubuntu'
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq \
+            git jq python3 curl unzip tar coreutils procps util-linux \
+            sudo bash cron >/dev/null
+
+      - name: Install dependencies (Fedora)
+        if: matrix.distro == 'fedora'
+        run: |
+          dnf install -y -q \
+            git jq python3 curl unzip tar coreutils procps-ng util-linux \
+            sudo bash cronie shadow-utils
+
+      - name: Install dependencies (Arch)
+        if: matrix.distro == 'archlinux'
+        run: |
+          pacman -Sy --noconfirm --quiet \
+            git jq python curl unzip tar coreutils procps-ng util-linux \
+            sudo bash cronie shadow
+
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Create non-root test user
+        run: |
+          useradd -m testuser
+          chown -R testuser:testuser "$GITHUB_WORKSPACE"
+
+      # Scripts distinguish root vs non-root behavior (e.g. sudo hints,
+      # passwordless-sudo setup being skipped). Running as a regular user
+      # matches how these scripts are used in the real world and exercises
+      # that logic, which running as root (the container default) would skip.
+      - name: Run ${{ matrix.suite }}
+        run: su testuser -c "bash '${{ matrix.suite }}'"

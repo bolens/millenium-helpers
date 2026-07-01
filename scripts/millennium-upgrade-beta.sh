@@ -88,7 +88,7 @@ failure_handler() {
 }
 trap 'failure_handler' ERR
 
-RUNNING_USER="${SUDO_USER:-$USER}"
+RUNNING_USER="${SUDO_USER:-$(id -un)}"
 
 # Relaunch variables
 

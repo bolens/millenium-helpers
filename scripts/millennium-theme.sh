@@ -85,7 +85,7 @@ if [[ "$COMMAND" != "list" && "$COMMAND" != "update" && -z "$ARG" ]]; then
   exit 1
 fi
 
-RUNNING_USER="${SUDO_USER:-$USER}"
+RUNNING_USER="${SUDO_USER:-$(id -un)}"
 USER_HOME="$(getent passwd "$RUNNING_USER" | cut -d: -f6)"
 
 # Find Steam directories

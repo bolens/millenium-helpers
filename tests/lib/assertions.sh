@@ -105,6 +105,15 @@ assert_file_not_exists() {
   fi
 }
 
+assert_symlink_exists() {
+  local path="$1" msg="${2:-Assertion failed}"
+  if [[ -L "$path" ]]; then
+    _report true "$msg"
+  else
+    _report false "$msg" "Expected a symlink to exist at: ${path}"
+  fi
+}
+
 assert_valid_json() {
   local json="$1" msg="${2:-Assertion failed}"
   if echo "$json" | python3 -c "import sys, json; json.load(sys.stdin)" 2>/dev/null; then
