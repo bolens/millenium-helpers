@@ -67,6 +67,7 @@ rm -f "${MOCK_BIN}/jq" "${MOCK_BIN}/curl"
 
 # --- GitHub API failure (but connectivity check succeeds) falls back to the hardcoded default commit ---
 
+# shellcheck disable=SC2016
 mock_cmd "curl" '
 for arg in "$@"; do
   if [[ "$arg" == "https://github.com" ]]; then

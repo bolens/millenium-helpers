@@ -41,6 +41,7 @@ for channel in stable beta; do
   rm -f "${MOCK_BIN}/curl"
 
   # --- GitHub tag fetch failure surfaces a clear error ---
+  # shellcheck disable=SC2016
   mock_cmd "curl" '
 for arg in "$@"; do
   if [[ "$arg" == "https://github.com" ]]; then exit 0; fi
@@ -73,6 +74,7 @@ done
 
 # --- Full happy-path dry-run for stable, with mocked network/tag/checksum ---
 
+# shellcheck disable=SC2016
 mock_cmd "curl" '
 for arg in "$@"; do
   if [[ "$arg" == "https://github.com" ]]; then exit 0; fi

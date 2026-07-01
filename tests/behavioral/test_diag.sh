@@ -54,7 +54,7 @@ else
   /usr/bin/getent \"\$@\"
 fi
 "
-out=$(SUDO_USER= USER=faketestuser bash "$DIAG_SH" logs 2>&1)
+out=$(SUDO_USER='' USER=faketestuser bash "$DIAG_SH" logs 2>&1)
 rc=$?
 assert_failure "$rc" "millennium-diag.sh logs fails when no Steam log files exist for the user"
 assert_contains "$out" "No Steam logs found" "millennium-diag.sh logs explains no logs were found"
@@ -76,7 +76,7 @@ else
   /usr/bin/getent \"\$@\"
 fi
 "
-out=$(SUDO_USER= USER=faketestuser bash "$DIAG_SH" logs 2>&1)
+out=$(SUDO_USER='' USER=faketestuser bash "$DIAG_SH" logs 2>&1)
 rc=$?
 assert_success "$rc" "millennium-diag.sh logs succeeds when a matching Steam log file exists"
 assert_contains "$out" "console-linux.txt" "millennium-diag.sh logs reports which log file it read"

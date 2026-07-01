@@ -155,7 +155,6 @@ mock_cmd "getent" 'echo "testuser:x:1000:1000::/home/testuser:/bin/bash"'
 mock_cmd "runuser" 'echo "runuser called: $*" >> "'"${MOCK_BIN}"'/runuser.calls"'
 
 state_dir=$(mktemp -d)
-state_file="${state_dir}/millennium-relaunch-testuser"
 
 # No state file -> no-op, must not error and must not call runuser
 rm -f "${MOCK_BIN}/runuser.calls"
@@ -246,6 +245,7 @@ send_notification "Title" "Message" "root"
 assert_file_not_exists "${MOCK_BIN}/notify.calls" "send_notification is a no-op for the root user"
 
 # Non-root user with notify-send available -> should invoke it with title/message
+# shellcheck disable=SC2016
 mock_cmd "runuser" '
 shift  # drop -l
 target_user="$1"; shift
