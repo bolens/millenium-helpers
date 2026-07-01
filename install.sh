@@ -193,7 +193,8 @@ install_scripts() {
     echo -e "${BLUE}Configuring passwordless sudo rule in ${SUDOERS_FILE}...${NC}"
     
     # Ensure target directory exists and has secure permissions
-    local sudoers_d_dir="$(dirname "$SUDOERS_FILE")"
+    local sudoers_d_dir
+    sudoers_d_dir="$(dirname "$SUDOERS_FILE")"
     if [[ "$DRY_RUN" == "false" && ! -d "$sudoers_d_dir" ]]; then
       mkdir -p "$sudoers_d_dir"
       chmod 750 "$sudoers_d_dir"
@@ -351,6 +352,7 @@ uninstall_scripts() {
     user_home="$(getent passwd "$user_name" | cut -d: -f6)"
     local user_xdg=""
     if [[ "$(id -u)" -eq 0 ]]; then
+      # shellcheck disable=SC2016
       user_xdg=$(runuser -l "$user_name" -c 'echo "${XDG_CONFIG_HOME:-}"' 2>/dev/null || true)
     fi
     local user_systemd_dir

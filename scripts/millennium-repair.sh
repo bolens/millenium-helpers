@@ -14,7 +14,6 @@ done
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
-BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 SKIP_THEME=false
@@ -48,7 +47,9 @@ USER_HOME="$(getent passwd "$USER_NAME" | cut -d: -f6)"
 USER_XDG_CONFIG=""
 USER_XDG_DATA=""
 if [[ "$(id -u)" -eq 0 && "$USER_NAME" != "root" ]]; then
+  # shellcheck disable=SC2016
   USER_XDG_CONFIG=$(runuser -l "$USER_NAME" -c 'echo "${XDG_CONFIG_HOME:-}"' 2>/dev/null || true)
+  # shellcheck disable=SC2016
   USER_XDG_DATA=$(runuser -l "$USER_NAME" -c 'echo "${XDG_DATA_HOME:-}"' 2>/dev/null || true)
 fi
 if [[ -z "$USER_XDG_CONFIG" ]]; then
