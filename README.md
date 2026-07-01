@@ -38,6 +38,12 @@ Downloads, checksum-validates, and installs the latest prerelease/beta version o
 ### 5. [scripts/millennium-schedule.sh](scripts/millennium-schedule.sh) (`millennium-schedule`)
 Manages systemd user-space timers to run daily updates.
 
+### 6. [scripts/millennium-purge.sh](scripts/millennium-purge.sh) (`millennium-purge`)
+De-registers Millennium from all local Steam users and completely purges its files and directories from the system. (Requires `sudo`).
+
+### 7. [scripts/millennium-diag.sh](scripts/millennium-diag.sh) (`millennium-diag`)
+Runs a comprehensive system-wide health check on your Millennium setup. It reports the running status of Steam, the installed version of Millennium, the integrity of local user client overrides (including Flatpak sandboxes), auto-update timers, and systemd lingering configurations.
+
 ---
 
 ## Installation & Setup
@@ -65,6 +71,11 @@ millennium-schedule enable beta
 
 ## Management Commands
 
+### Check Diagnostics and Health Status
+```bash
+millennium-diag
+```
+
 ### Check Update Scheduler Status
 ```bash
 millennium-schedule status
@@ -78,6 +89,11 @@ millennium-schedule disable
 ### Repair Millennium Installation
 ```bash
 sudo millennium-repair
+```
+
+### Purge/De-register Millennium Client from Steam
+```bash
+sudo millennium-purge
 ```
 
 ### Uninstall All Helper Scripts

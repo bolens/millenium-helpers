@@ -11,10 +11,15 @@ for cmd in curl unzip; do
 done
 
 SKIP_THEME=false
+DRY_RUN=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -s|--skip-theme)
       SKIP_THEME=true
+      shift
+      ;;
+    -d|--dry-run)
+      DRY_RUN=true
       shift
       ;;
     *)
@@ -28,7 +33,7 @@ USER_NAME="${SUDO_USER:-$USER}"
 USER_HOME="$(getent passwd "$USER_NAME" | cut -d: -f6)"
 
 STEAM=""
-for candidate in "${USER_HOME}/.local/share/Steam" "${USER_HOME}/.steam/steam" "${USER_HOME}/.steam/root"; do
+for candidate in "${USER_HOME}/.local/share/Steam" "${USER_HOME}/.steam/steam" "${USER_HOME}/.steam/root" "${USER_HOME}/.var/app/com.valvesoftware.Steam/.local/share/Steam"; do
   if [[ -d "$candidate" ]]; then
     STEAM="$candidate"
     break
@@ -43,6 +48,29 @@ if pgrep -x steam >/dev/null 2>&1; then
   exit 1
 fi
 
+if [[ "$DRY_RUN" == "true" ]]; then
+  echo -e "${YELLOW}=== DRY RUN MODE: No changes will be made ===${NC}"
+fi
+
+# Dry run wrappers
+execute() {
+  if [[ "$DRY_RUN" == "true" ]]; then
+    echo -e "${YELLOW}[DRY RUN] Would run:${NC} $*"
+  else
+    "$@"
+  fi
+}
+
+write_file() {
+  local target="$1"
+  if [[ "$DRY_RUN" == "true" ]]; then
+    echo -e "${YELLOW}[DRY RUN] Would write file: ${target} with contents:${NC}"
+    cat
+  else
+    cat > "$target"
+  fi
+}
+
 echo "Fixing ownership..."
 PATHS_TO_CHOWN=()
 for path in "$STEAM/millennium" "$USER_HOME/.local/share/millennium" "$USER_HOME/.config/millennium"; do
@@ -51,13 +79,13 @@ for path in "$STEAM/millennium" "$USER_HOME/.local/share/millennium" "$USER_HOME
   fi
 done
 if [[ ${#PATHS_TO_CHOWN[@]} -gt 0 ]]; then
-  chown -R "$USER_NAME:$USER_NAME" "${PATHS_TO_CHOWN[@]}"
+  execute chown -R "$USER_NAME:$USER_NAME" "${PATHS_TO_CHOWN[@]}"
 fi
 
 REFRESH_THEME=true
 if [[ "$SKIP_THEME" = true ]]; then
   REFRESH_THEME=false
-elif ! curl -sI "https://github.com" &>/dev/null; then
+elif ! curl -sIk "https://github.com" &>/dev/null; then
   echo "Warning: Network is offline. Skipping theme refresh." >&2
   REFRESH_THEME=false
 fi
@@ -95,38 +123,54 @@ except Exception:
     COMMIT="9f5b9ea8fabc9cd3c4f46b638d78daa9c3da97dd"
     echo "Warning: Could not fetch latest commit from GitHub. Falling back to default: $COMMIT" >&2
   fi
+  
   THEME_DIR="$STEAM/millennium/themes/Steam"
-  TMP="$(mktemp -d)"
-  trap 'rm -rf "$TMP"' EXIT INT TERM
+  
+  if [[ "$DRY_RUN" == "true" ]]; then
+    echo -e "${YELLOW}[DRY RUN] Would refresh SpaceTheme from GitHub commit: ${COMMIT}${NC}"
+    echo -e "          Target theme folder: ${THEME_DIR}"
+  else
+    TMP="$(mktemp -d)"
+    trap 'rm -rf "$TMP"' EXIT INT TERM
 
-  echo "Refreshing Steam theme..."
-  curl -fsSL "${CURL_HEADERS[@]}" "https://github.com/SpaceTheme/Steam/archive/${COMMIT}.zip" -o "$TMP/theme.zip"
-  
-  # Allow unzip to return warnings (exit code <= 2) and verify extraction
-  unzip -q "$TMP/theme.zip" -d "$TMP" || [[ $? -le 2 ]]
-  if [[ ! -d "$TMP/Steam-${COMMIT}" ]]; then
-    echo "Error: Failed to extract SpaceTheme archive." >&2
-    exit 1
-  fi
-  
-  rm -rf "$THEME_DIR"
-  mkdir -p "$THEME_DIR"
-  cp -a "$TMP/Steam-${COMMIT}/." "$THEME_DIR/"
-  cat > "$THEME_DIR/metadata.json" <<EOF
+    echo "Refreshing Steam theme..."
+    curl -fsSL "${CURL_HEADERS[@]}" "https://github.com/SpaceTheme/Steam/archive/${COMMIT}.zip" -o "$TMP/theme.zip"
+    
+    # Allow unzip to return warnings (exit code <= 2) and verify extraction
+    unzip -q "$TMP/theme.zip" -d "$TMP" || [[ $? -le 2 ]]
+    if [[ ! -d "$TMP/Steam-${COMMIT}" ]]; then
+      echo "Error: Failed to extract SpaceTheme archive." >&2
+      exit 1
+    fi
+    
+    rm -rf "$THEME_DIR"
+    mkdir -p "$THEME_DIR"
+    cp -a "$TMP/Steam-${COMMIT}/." "$THEME_DIR/"
+    
+    write_file "$THEME_DIR/metadata.json" <<EOF
 {
     "commit": "${COMMIT}",
     "owner": "SpaceTheme",
     "repo": "Steam"
 }
 EOF
-  chown -R "$USER_NAME:$USER_NAME" "$THEME_DIR"
+    chown -R "$USER_NAME:$USER_NAME" "$THEME_DIR"
+  fi
 fi
 
 echo "Clearing htmlcache..."
-rm -rf "$STEAM/config/htmlcache/"*
+if [[ "$DRY_RUN" == "true" ]]; then
+  echo -e "${YELLOW}[DRY RUN] Would clear htmlcache files in:${NC} ${STEAM}/config/htmlcache/"
+else
+  rm -rf "$STEAM/config/htmlcache/"*
+fi
 
-mkdir -p "$STEAM/ubuntu12_32" "$STEAM/ubuntu12_64"
-ln -sf /usr/lib/millennium/libmillennium_bootstrap_x86.so   "$STEAM/ubuntu12_32/libXtst.so.6"
-ln -sf /usr/lib/millennium/libmillennium_bootstrap_hhx64.so "$STEAM/ubuntu12_64/libXtst.so.6"
+execute mkdir -p "$STEAM/ubuntu12_32" "$STEAM/ubuntu12_64"
+execute ln -sf /usr/lib/millennium/libmillennium_bootstrap_x86.so   "$STEAM/ubuntu12_32/libXtst.so.6"
+execute ln -sf /usr/lib/millennium/libmillennium_bootstrap_hhx64.so "$STEAM/ubuntu12_64/libXtst.so.6"
 
-echo "Done. Start Steam with: ~/.local/bin/steam"
+if [[ "$DRY_RUN" == "true" ]]; then
+  echo -e "${GREEN}Dry run completed successfully!${NC}"
+else
+  echo "Done. Start Steam with: ~/.local/bin/steam"
+fi

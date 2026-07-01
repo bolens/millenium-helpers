@@ -1,0 +1,311 @@
+#!/usr/bin/env bash
+# Diagnostics and status reporter for Millennium helper scripts
+set -euo pipefail
+
+# Text color formatting
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+show_help() {
+  cat << EOF
+Usage: $(basename "$0") [COMMAND] [OPTIONS]
+
+Commands:
+  (None)        Run read-only diagnostics report (default)
+  doctor        Detect and automatically repair partial or broken installations
+
+Options:
+  -f, --fix     Alias for the 'doctor' command
+  -d, --dry-run Perform a dry-run (simulates doctor repairs without modifying anything)
+  -h, --help    Show this help message
+EOF
+}
+
+COMMAND=""
+DRY_RUN=false
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    doctor|--fix|-f)
+      COMMAND="doctor"
+      shift
+      ;;
+    -d|--dry-run)
+      DRY_RUN=true
+      shift
+      ;;
+    -h|--help)
+      show_help
+      exit 0
+      ;;
+    *)
+      echo -e "${RED}Unknown option: $1${NC}" >&2
+      show_help
+      exit 1
+      ;;
+  esac
+done
+
+if [[ "$DRY_RUN" == "true" ]]; then
+  echo -e "${YELLOW}=== DRY RUN MODE: No changes will be made ===${NC}"
+fi
+
+execute() {
+  if [[ "$DRY_RUN" == "true" ]]; then
+    echo -e "${YELLOW}[DRY RUN] Would run:${NC} $*"
+  else
+    "$@"
+  fi
+}
+
+# --- State Variables for Diagnostics ---
+STEAM_RUNNING=false
+BINARIES_OK=true
+HOOKS_OK=true
+FLATPAK_OK=true
+SUDOERS_OK=true
+TIMER_ACTIVE=true
+LINGER_OK=true
+
+# Find configured update channel (checks systemd service file if it exists)
+UPDATE_CHANNEL="stable"
+USER_CONFIG_DIR="${HOME}/.config/systemd/user"
+SERVICE_PATH="${USER_CONFIG_DIR}/millennium-update.service"
+if [[ -f "$SERVICE_PATH" ]] && grep -q "upgrade-beta" "$SERVICE_PATH" 2>/dev/null; then
+  UPDATE_CHANNEL="beta"
+fi
+
+echo -e "${BLUE}=== Millennium Diagnostics Report ===${NC}\n"
+
+# 1. Check Steam Status
+echo -n "Steam Client: "
+if pgrep -x steam >/dev/null 2>&1; then
+  STEAM_RUNNING=true
+  echo -e "${GREEN}Running (PID: $(pgrep -x steam | head -n 1))${NC}"
+else
+  echo -e "${YELLOW}Not Running${NC}"
+fi
+
+# 2. Check Installed Millennium version
+echo -n "Millennium Binary Version: "
+if [[ -f "/usr/lib/millennium/version.txt" ]]; then
+  # Verify .so files exist
+  if [[ ! -f "/usr/lib/millennium/libmillennium_bootstrap_x86.so" || ! -f "/usr/lib/millennium/libmillennium_bootstrap_hhx64.so" ]]; then
+    BINARIES_OK=false
+    echo -e "${RED}Corrupted (version file exists but shared libraries are missing)${NC}"
+  else
+    echo -e "${GREEN}v$(cat /usr/lib/millennium/version.txt) (${UPDATE_CHANNEL} channel)${NC}"
+  fi
+else
+  BINARIES_OK=false
+  echo -e "${RED}Not Installed (missing /usr/lib/millennium/version.txt)${NC}"
+fi
+
+# 3. Check Bootstrap Hook Status for Current User
+echo -e "\nBootstrap Hooks (for user ${USER}):"
+USER_HOME="$(getent passwd "$USER" | cut -d: -f6)"
+found_steam=false
+broken_hooks=()
+missing_hooks=()
+
+for steam_dir in "${USER_HOME}/.local/share/Steam" "${USER_HOME}/.steam/steam" "${USER_HOME}/.steam/root" "${USER_HOME}/.var/app/com.valvesoftware.Steam/.local/share/Steam"; do
+  [[ -d "$steam_dir" ]] || continue
+  found_steam=true
+  
+  # Determine environment type
+  type_env="Native"
+  if [[ "$steam_dir" == *"com.valvesoftware.Steam"* ]]; then
+    type_env="Flatpak"
+  fi
+  
+  echo -e "  Steam path [${type_env}]: ${steam_dir}"
+  
+  for arch in "ubuntu12_32:x86" "ubuntu12_64:hhx64"; do
+    folder="${arch%%:*}"
+    lib_name="${arch#*:}"
+    hook_file="${steam_dir}/${folder}/libXtst.so.6"
+    
+    echo -n "    - ${folder} hook: "
+    if [[ -L "$hook_file" ]]; then
+      target=$(readlink "$hook_file")
+      if [[ "$target" == *"/usr/lib/millennium/libmillennium_bootstrap_${lib_name}.so"* ]]; then
+        if [[ -f "$target" ]]; then
+          echo -e "${GREEN}Active and Verified${NC}"
+        else
+          HOOKS_OK=false
+          broken_hooks+=("${steam_dir}:${folder}:${lib_name}")
+          echo -e "${RED}Broken Symlink${NC} (target does not exist)"
+        fi
+      else
+        echo -e "${YELLOW}Active, but points to custom library:${NC} ${target}"
+      fi
+    elif [[ -f "$hook_file" ]]; then
+      echo -e "${YELLOW}Replaced by a real file (non-symlink)${NC}"
+    else
+      HOOKS_OK=false
+      missing_hooks+=("${steam_dir}:${folder}:${lib_name}")
+      echo -e "${RED}Inactive (missing symlink)${NC}"
+    fi
+  done
+
+  # Flatpak specific checks
+  if [[ "$type_env" == "Flatpak" ]]; then
+    echo -n "    - Flatpak Sandbox Override: "
+    flatpak_user_override="${USER_HOME}/.local/share/flatpak/overrides/com.valvesoftware.Steam"
+    flatpak_sys_override="/var/lib/flatpak/overrides/com.valvesoftware.Steam"
+    has_override=false
+    
+    for override_file in "$flatpak_user_override" "$flatpak_sys_override"; do
+      if [[ -f "$override_file" ]] && grep -q "/usr/lib/millennium" "$override_file" 2>/dev/null; then
+        has_override=true
+        break
+      fi
+    done
+    
+    if [[ "$has_override" == true ]]; then
+      echo -e "${GREEN}Configured (/usr/lib/millennium is visible inside container)${NC}"
+    else
+      FLATPAK_OK=false
+      echo -e "${RED}Missing!${NC}"
+    fi
+  fi
+done
+
+if [[ "$found_steam" == false ]]; then
+  echo -e "  ${RED}No Steam directories detected for the current user.${NC}"
+fi
+
+# 4. Check Sudoers Drop-in
+echo -n "Sudoers Drop-in (/etc/sudoers.d/millennium-helpers): "
+if [[ -f "/etc/sudoers.d/millennium-helpers" ]]; then
+  # Verify if passwordless sudo is active for the current user
+  if sudo -n -l 2>/dev/null | grep -qE "NOPASSWD.*(millennium-upgrade-stable|ALL)"; then
+    echo -e "${GREEN}Active & Verified${NC}"
+  else
+    SUDOERS_OK=false
+    echo -e "${YELLOW}Installed but unauthorized (does not match current user privileges)${NC}"
+  fi
+else
+  SUDOERS_OK=false
+  echo -e "${RED}Not Configured${NC}"
+fi
+
+# 5. Check Systemd Auto-Update Timer
+echo -n "Systemd Auto-Update Timer: "
+TIMER_PATH="${USER_CONFIG_DIR}/millennium-update.timer"
+if [[ -f "$TIMER_PATH" ]] && systemctl --user is-enabled millennium-update.timer &>/dev/null; then
+  timer_state=$(systemctl --user is-active millennium-update.timer || echo "inactive")
+  if [[ "$timer_state" == "active" ]]; then
+    echo -e "${GREEN}Enabled and Active${NC}"
+    timer_trigger=$(systemctl --user list-timers millennium-update.timer --no-legend | awk '{print $1, $2, $3}')
+    echo "  Next Run: ${timer_trigger}"
+  else
+    TIMER_ACTIVE=false
+    echo -e "${YELLOW}Enabled but Inactive (timer is sleeping)${NC}"
+  fi
+else
+  TIMER_ACTIVE=false
+  echo -e "${RED}Disabled / Not Scheduled${NC}"
+fi
+
+# 6. Check Systemd User Lingering status
+echo -n "Systemd User Lingering: "
+if [[ -f "/var/lib/systemd/linger/${USER}" ]]; then
+  echo -e "${GREEN}Enabled${NC}"
+else
+  LINGER_OK=false
+  echo -e "${YELLOW}Disabled (Updates will only trigger when user is logged in)${NC}"
+fi
+
+
+# --- Doctor / Auto-Repair Execution ---
+if [[ "$COMMAND" == "doctor" ]]; then
+  echo -e "\n${BLUE}=== Running Millennium Doctor (Automatic Repairs) ===${NC}"
+  
+  # Check if anything needs fixing
+  if [[ "$BINARIES_OK" == true && "$HOOKS_OK" == true && "$FLATPAK_OK" == true && "$SUDOERS_OK" == true && "$TIMER_ACTIVE" == true && "$LINGER_OK" == true ]]; then
+    echo -e "${GREEN}No issues detected. Your Millennium installation is healthy!${NC}"
+    exit 0
+  fi
+
+  # Require Steam closed for any updates/repairs
+  if [[ "$STEAM_RUNNING" == true ]]; then
+    echo -e "${RED}Error: Steam is currently running. Please close Steam completely before applying repairs.${NC}" >&2
+    exit 1
+  fi
+
+  # Issue 1: Missing or corrupted binaries
+  if [[ "$BINARIES_OK" == false ]]; then
+    echo -e "\n${YELLOW}[DOCTOR] Repairing Millennium binaries...${NC}"
+    echo -e "Invoking updater on the '${UPDATE_CHANNEL}' channel with force reinstall:"
+    execute sudo "/usr/local/bin/millennium-upgrade-${UPDATE_CHANNEL}" --force
+  fi
+
+  # Issue 2: Missing or broken hooks
+  if [[ "$HOOKS_OK" == false ]]; then
+    echo -e "\n${YELLOW}[DOCTOR] Repairing bootstrap hooks for Steam...${NC}"
+    
+    # Process broken symlinks
+    for item in "${broken_hooks[@]:-}"; do
+      [[ -n "$item" ]] || continue
+      sdir="${item%%:*}"
+      folder_arch="${item#*:}"
+      folder="${folder_arch%%:*}"
+      arch="${folder_arch#*:}"
+      hook="${sdir}/${folder}/libXtst.so.6"
+      
+      echo "Fixing broken hook: $hook"
+      execute rm -f "$hook"
+      execute ln -sf "/usr/lib/millennium/libmillennium_bootstrap_${arch}.so" "$hook"
+    done
+
+    # Process missing symlinks
+    for item in "${missing_hooks[@]:-}"; do
+      [[ -n "$item" ]] || continue
+      sdir="${item%%:*}"
+      folder_arch="${item#*:}"
+      folder="${folder_arch%%:*}"
+      arch="${folder_arch#*:}"
+      hook="${sdir}/${folder}/libXtst.so.6"
+      
+      echo "Installing missing hook: $hook"
+      execute mkdir -p "${sdir}/${folder}"
+      execute ln -sf "/usr/lib/millennium/libmillennium_bootstrap_${arch}.so" "$hook"
+    done
+  fi
+
+  # Issue 3: Missing Flatpak sandbox override
+  if [[ "$FLATPAK_OK" == false ]]; then
+    echo -e "\n${YELLOW}[DOCTOR] Granting Flatpak Steam permission to access Millennium directory...${NC}"
+    execute flatpak override --user --filesystem=/usr/lib/millennium com.valvesoftware.Steam
+  fi
+
+  # Issue 4: Missing or invalid Sudoers drop-in
+  if [[ "$SUDOERS_OK" == false ]]; then
+    echo -e "\n${YELLOW}[DOCTOR] Sudoers drop-in configuration is missing or unauthorized.${NC}"
+    echo -e "You must re-run the installer to set up the secure drop-in rules:"
+    echo -e "  ${YELLOW}sudo ./install.sh${NC} (from your cloned repository)"
+  fi
+
+  # Issue 5: Stopped systemd auto-update timer
+  if [[ "$TIMER_ACTIVE" == false ]]; then
+    echo -e "\n${YELLOW}[DOCTOR] Enabling and starting daily systemd user timer...${NC}"
+    # Re-enable the timer using the configured channel
+    execute /usr/local/bin/millennium-schedule enable "$UPDATE_CHANNEL"
+  fi
+
+  # Issue 6: Disabled systemd user lingering
+  if [[ "$LINGER_OK" == false ]]; then
+    echo -e "\n${YELLOW}[DOCTOR] Enabling systemd user lingering to run updates in the background...${NC}"
+    execute loginctl enable-linger "${USER}"
+  fi
+
+  if [[ "$DRY_RUN" == "true" ]]; then
+    echo -e "\n${GREEN}Doctor dry-run simulation finished successfully!${NC}"
+  else
+    echo -e "\n${GREEN}Doctor repairs applied successfully! Re-run diagnostics to verify.${NC}"
+  fi
+fi

@@ -10,7 +10,26 @@ for cmd in curl tar awk sha256sum; do
   fi
 done
 
-if [[ "$(id -u)" -ne 0 ]]; then
+FORCE=false
+DRY_RUN=false
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -f|--force)
+      FORCE=true
+      shift
+      ;;
+    -d|--dry-run)
+      DRY_RUN=true
+      shift
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      exit 1
+      ;;
+  esac
+done
+
+if [[ "$DRY_RUN" == "false" ]] && [[ "$(id -u)" -ne 0 ]]; then
   echo "Run with sudo: sudo $0" >&2
   exit 1
 fi
@@ -27,28 +46,28 @@ send_notification() {
 
 failure_handler() {
   local exit_code=$?
-  send_notification "Millennium Update Failed" "An error occurred during the update process (exit code: $exit_code)."
+  if [[ "$DRY_RUN" == "false" ]]; then
+    send_notification "Millennium Update Failed" "An error occurred during the update process (exit code: $exit_code)."
+  fi
 }
 trap 'failure_handler' ERR
-
-FORCE=false
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    -f|--force)
-      FORCE=true
-      shift
-      ;;
-    *)
-      echo "Unknown option: $1" >&2
-      exit 1
-      ;;
-  esac
-done
 
 if pgrep -x steam >/dev/null 2>&1; then
   echo "Close Steam first." >&2
   exit 1
 fi
+
+if [[ "$DRY_RUN" == "true" ]]; then
+  echo -e "${YELLOW}=== DRY RUN MODE: No changes will be made ===${NC}"
+fi
+
+execute() {
+  if [[ "$DRY_RUN" == "true" ]]; then
+    echo -e "${YELLOW}[DRY RUN] Would run:${NC} $*"
+  else
+    "$@"
+  fi
+}
 
 check_network() {
   local retries=5
@@ -66,9 +85,6 @@ check_network() {
 }
 
 check_network
-
-TMP=$(mktemp -d)
-trap 'rm -rf "$TMP"' EXIT INT TERM
 
 # Configure curl headers for GitHub API
 CURL_HEADERS=()
@@ -124,20 +140,29 @@ if [[ -z "$SHA" ]]; then
   exit 1
 fi
 
-echo "Downloading Millennium v${VER}..."
-curl -fL "${CURL_HEADERS[@]}" "$URL" -o "$TMP/$ARCHIVE"
-echo "${SHA}  ${ARCHIVE}" | (cd "$TMP" && sha256sum -c)
+if [[ "$DRY_RUN" == "true" ]]; then
+  echo -e "${YELLOW}[DRY RUN] Would download archive: ${URL}${NC}"
+  echo -e "${YELLOW}[DRY RUN] Expected SHA256: ${SHA}${NC}"
+  echo -e "${YELLOW}[DRY RUN] Would clear /usr/lib/millennium/* and install new binaries${NC}"
+else
+  TMP=$(mktemp -d)
+  trap 'rm -rf "$TMP"' EXIT INT TERM
 
-echo "Installing to /usr/lib/millennium/..."
-tar -xzf "$TMP/$ARCHIVE" -C "$TMP"
-mkdir -p /usr/lib/millennium
-rm -rf /usr/lib/millennium/*
-install -m755 "$TMP/usr/lib/millennium/"* /usr/lib/millennium/
-echo "${VER}" > /usr/lib/millennium/version.txt
+  echo "Downloading Millennium v${VER}..."
+  curl -fL "${CURL_HEADERS[@]}" "$URL" -o "$TMP/$ARCHIVE"
+  echo "${SHA}  ${ARCHIVE}" | (cd "$TMP" && sha256sum -c)
 
-if command -v restorecon &>/dev/null; then
-  echo "Restoring SELinux contexts for /usr/lib/millennium/..."
-  restorecon -R /usr/lib/millennium/ || true
+  echo "Installing to /usr/lib/millennium/..."
+  tar -xzf "$TMP/$ARCHIVE" -C "$TMP"
+  mkdir -p /usr/lib/millennium
+  rm -rf /usr/lib/millennium/*
+  install -m755 "$TMP/usr/lib/millennium/"* /usr/lib/millennium/
+  echo "${VER}" > /usr/lib/millennium/version.txt
+
+  if command -v restorecon &>/dev/null; then
+    echo "Restoring SELinux contexts for /usr/lib/millennium/..."
+    restorecon -R /usr/lib/millennium/ || true
+  fi
 fi
 
 # Re-link bootstrap hooks for all Steam users (same as pacman post_install)
@@ -154,9 +179,9 @@ getent passwd | while IFS=: read -r _ _ uid _ _ home _; do
   done
   [[ -n "$steam_dir" ]] || continue
   
-  mkdir -p "$steam_dir/ubuntu12_32" "$steam_dir/ubuntu12_64"
-  ln -sf /usr/lib/millennium/libmillennium_bootstrap_x86.so   "$steam_dir/ubuntu12_32/libXtst.so.6"
-  ln -sf /usr/lib/millennium/libmillennium_bootstrap_hhx64.so "$steam_dir/ubuntu12_64/libXtst.so.6"
+  execute mkdir -p "$steam_dir/ubuntu12_32" "$steam_dir/ubuntu12_64"
+  execute ln -sf /usr/lib/millennium/libmillennium_bootstrap_x86.so   "$steam_dir/ubuntu12_32/libXtst.so.6"
+  execute ln -sf /usr/lib/millennium/libmillennium_bootstrap_hhx64.so "$steam_dir/ubuntu12_64/libXtst.so.6"
 
   # Flatpak Steam warning
   if [[ "$steam_dir" == *"com.valvesoftware.Steam"* ]]; then
@@ -165,7 +190,11 @@ getent passwd | while IFS=: read -r _ _ uid _ _ home _; do
   fi
 done
 
-echo "Installed Millennium v${VER} stable."
-send_notification "Millennium Updated" "Successfully updated to Millennium v${VER} (stable)."
-echo "Start Steam with: ~/.local/bin/steam"
-echo "Note: Settings may still fail on Steam public beta until Millennium issue #790 is fixed."
+if [[ "$DRY_RUN" == "true" ]]; then
+  echo -e "${GREEN}Dry run completed successfully!${NC}"
+else
+  echo "Installed Millennium v${VER} stable."
+  send_notification "Millennium Updated" "Successfully updated to Millennium v${VER} (stable)."
+  echo "Start Steam with: ~/.local/bin/steam"
+  echo "Note: Settings may still fail on Steam public beta until Millennium issue #790 is fixed."
+fi
