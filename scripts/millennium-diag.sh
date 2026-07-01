@@ -522,6 +522,18 @@ if [[ "$COMMAND" == "doctor" ]]; then
       echo -e "${RED}Error: A Steam game is currently running. Doctor repairs cannot proceed while a game is active.${NC}" >&2
       exit 1
     fi
+    
+    EXPORT_DISPLAY=""
+    EXPORT_XAUTHORITY=""
+    EXPORT_DBUS=""
+    steam_pid=$(pgrep -x steam | head -n 1 || true)
+    if [[ -n "$steam_pid" ]]; then
+      steam_env=$(tr '\0' '\n' < "/proc/${steam_pid}/environ" 2>/dev/null || true)
+      EXPORT_DISPLAY=$(echo "$steam_env" | grep "^DISPLAY=" | head -n 1 || true)
+      EXPORT_XAUTHORITY=$(echo "$steam_env" | grep "^XAUTHORITY=" | head -n 1 || true)
+      EXPORT_DBUS=$(echo "$steam_env" | grep "^DBUS_SESSION_BUS_ADDRESS=" | head -n 1 || true)
+    fi
+
     echo -e "${YELLOW}Steam is currently running and must be closed to apply repairs to hooks/binaries.${NC}"
     
     if command -v flatpak &>/dev/null && runuser -l "$RUNNING_USER" -c "flatpak ps" 2>/dev/null | grep -q "com.valvesoftware.Steam"; then
@@ -704,13 +716,18 @@ if [[ "$COMMAND" == "doctor" ]]; then
 
   if [[ "$relaunch_steam_after_doctor" == "true" ]]; then
     echo -e "\n${GREEN}Relaunching Steam...${NC}"
+    env_prefix=""
+    [[ -n "${EXPORT_DISPLAY:-}" ]] && env_prefix+="${EXPORT_DISPLAY} "
+    [[ -n "${EXPORT_XAUTHORITY:-}" ]] && env_prefix+="${EXPORT_XAUTHORITY} "
+    [[ -n "${EXPORT_DBUS:-}" ]] && env_prefix+="${EXPORT_DBUS} "
+
     if [[ "$was_flatpak" == "true" ]]; then
-      execute runuser -l "$RUNNING_USER" -c "flatpak run com.valvesoftware.Steam >/dev/null 2>&1 &"
+      execute runuser "$RUNNING_USER" -c "${env_prefix}flatpak run com.valvesoftware.Steam >/dev/null 2>&1 &"
     else
       if command -v steam &>/dev/null; then
-        execute runuser -l "$RUNNING_USER" -c "steam >/dev/null 2>&1 &"
+        execute runuser "$RUNNING_USER" -c "${env_prefix}steam >/dev/null 2>&1 &"
       elif [[ -x "${USER_HOME}/.local/bin/steam" ]]; then
-        execute runuser -l "$RUNNING_USER" -c "${USER_HOME}/.local/bin/steam >/dev/null 2>&1 &"
+        execute runuser "$RUNNING_USER" -c "${env_prefix}${USER_HOME}/.local/bin/steam >/dev/null 2>&1 &"
       fi
     fi
   fi
