@@ -147,7 +147,7 @@ except Exception:
     trap 'rm -rf "$TMP"' EXIT INT TERM
 
     echo "Refreshing Steam theme..."
-    curl -fsSL "${CURL_HEADERS[@]}" "https://github.com/SpaceTheme/Steam/archive/${COMMIT}.zip" -o "$TMP/theme.zip"
+    curl -fsSL "${CURL_HEADERS[@]}" --retry 3 --retry-delay 2 "https://github.com/SpaceTheme/Steam/archive/${COMMIT}.zip" -o "$TMP/theme.zip"
     
     # Allow unzip to return warnings (exit code <= 2) and verify extraction
     unzip -q "$TMP/theme.zip" -d "$TMP" || [[ $? -le 2 ]]

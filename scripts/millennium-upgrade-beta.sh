@@ -95,7 +95,7 @@ fi
 echo "Fetching latest Millennium beta release tag..."
 TAG=""
 if command -v jq &>/dev/null; then
-  TAG=$(curl -sL "${CURL_HEADERS[@]}" "https://api.github.com/repos/SteamClientHomebrew/Millennium/releases" | jq -r '.[] | select(.prerelease == true and (.tag_name | contains("beta"))) | .tag_name' | head -n 1 || true)
+  TAG=$(curl -sL "${CURL_HEADERS[@]}" --retry 3 --retry-delay 2 "https://api.github.com/repos/SteamClientHomebrew/Millennium/releases" | jq -r '.[] | select(.prerelease == true and (.tag_name | contains("beta"))) | .tag_name' | head -n 1 || true)
 else
   TAG=$(python3 -c '
 import urllib.request, json, os
@@ -136,7 +136,7 @@ URL="https://github.com/SteamClientHomebrew/Millennium/releases/download/v${VER}
 SHA_URL="https://github.com/SteamClientHomebrew/Millennium/releases/download/v${VER}/millennium-v${VER}-linux-x86_64.sha256"
 
 echo "Fetching SHA256 checksum for Millennium v${VER}..."
-SHA=$(curl -fsSL "${CURL_HEADERS[@]}" "$SHA_URL" | awk '{print $1}' || true)
+SHA=$(curl -fsSL "${CURL_HEADERS[@]}" --retry 3 --retry-delay 2 "$SHA_URL" | awk '{print $1}' || true)
 
 if [[ -z "$SHA" ]]; then
   echo "Error: Could not retrieve the SHA256 checksum for v${VER}." >&2
@@ -152,7 +152,7 @@ else
   trap 'rm -rf "$TMP"' EXIT INT TERM
 
   echo "Downloading Millennium v${VER}..."
-  curl -fL "${CURL_HEADERS[@]}" "$URL" -o "$TMP/$ARCHIVE"
+  curl -fL "${CURL_HEADERS[@]}" --retry 3 --retry-delay 2 "$URL" -o "$TMP/$ARCHIVE"
   echo "${SHA}  ${ARCHIVE}" | (cd "$TMP" && sha256sum -c)
 
   echo "Installing to /usr/lib/millennium/..."

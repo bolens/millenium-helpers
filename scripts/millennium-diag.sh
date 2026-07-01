@@ -270,7 +270,7 @@ if [[ "$ONLINE" == "true" ]]; then
   
   # Fetch latest commit SHA to bypass raw.githubusercontent.com caching delays
   LATEST_SHA="main"
-  if feed_data=$(curl -sL "https://github.com/bolens/millenium-helpers/commits/main.atom" 2>/dev/null); then
+  if feed_data=$(curl -sL --retry 3 --retry-delay 2 "https://github.com/bolens/millenium-helpers/commits/main.atom" 2>/dev/null); then
     parsed_sha=$(echo "$feed_data" | grep -o 'Commit/[0-9a-f]\{40\}' | head -n 1 | cut -d/ -f2)
     if [[ -n "$parsed_sha" ]]; then
       LATEST_SHA="$parsed_sha"
@@ -286,7 +286,7 @@ if [[ "$ONLINE" == "true" ]]; then
       remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/${LATEST_SHA}/${remote_rel}"
       tmp_dest="${TMP_SCRIPTS}/${local_cmd}"
       
-      if curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" "$remote_url" -o "$tmp_dest" &>/dev/null; then
+      if curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" --retry 3 --retry-delay 2 "$remote_url" -o "$tmp_dest" &>/dev/null; then
         local_sha=$(sha256sum "$local_path" | awk '{print $1}')
         remote_sha=$(sha256sum "$tmp_dest" | awk '{print $1}')
         
@@ -305,7 +305,7 @@ if [[ "$ONLINE" == "true" ]]; then
       SCRIPTS_UP_TO_DATE=false
       remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/${LATEST_SHA}/${remote_rel}"
       tmp_dest="${TMP_SCRIPTS}/${local_cmd}"
-      if curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" "$remote_url" -o "$tmp_dest" &>/dev/null; then
+      if curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" --retry 3 --retry-delay 2 "$remote_url" -o "$tmp_dest" &>/dev/null; then
         out_of_date_scripts+=("$local_cmd")
       fi
     fi
