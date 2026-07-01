@@ -85,6 +85,7 @@ UTILITIES=(
 
 RUNNING_USER="${SUDO_USER:-$USER}"
 USER_HOME="$(getent passwd "$RUNNING_USER" | cut -d: -f6)"
+USER_CONFIG_DIR="${USER_HOME}/.config/systemd/user"
 
 sysctl_user() {
   if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" ]]; then
@@ -103,7 +104,6 @@ if [[ -f "/usr/lib/millennium/version.txt" ]]; then
   fi
 else
   # Fall back to checking systemd user service file if it exists
-  USER_CONFIG_DIR="${USER_HOME}/.config/systemd/user"
   SERVICE_PATH="${USER_CONFIG_DIR}/millennium-update.service"
   if [[ -f "$SERVICE_PATH" ]] && grep -q "upgrade-beta" "$SERVICE_PATH" 2>/dev/null; then
     UPDATE_CHANNEL="beta"
