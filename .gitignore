@@ -1,11 +1,27 @@
-# Logs
-*.log
-
-# Editor backup/swap files
-*~
-*.swp
-*.swo
-
-# OS metadata
+# System Files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+
+# IDEs and Text Editors
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*~
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+/scratch/
+/tmp/
+/dist/
+/build/
