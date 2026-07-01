@@ -22,7 +22,7 @@ jobs:
       - name: Install Nushell
         uses: hustcer/setup-nu@v3
         with:
-          version: 'latest'
+          check-latest: true
 
       - name: Bash completion (syntax + source)
         run: |
