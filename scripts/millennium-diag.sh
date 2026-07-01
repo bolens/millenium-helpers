@@ -16,9 +16,11 @@ Usage: $(basename "$0") [COMMAND] [OPTIONS]
 Commands:
   (None)        Run read-only diagnostics report (default)
   doctor        Detect and automatically repair partial or broken installations
+  logs          Display recent Millennium and Steam WebHelper startup logs
 
 Options:
   -f, --fix     Alias for the 'doctor' command
+  -l, --follow  Follow (tail -f) real-time log output
   -d, --dry-run Perform a dry-run (simulates doctor repairs without modifying anything)
   -h, --help    Show this help message
 EOF
@@ -26,11 +28,20 @@ EOF
 
 COMMAND=""
 DRY_RUN=false
+FOLLOW_LOGS=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     doctor|--fix|-f)
       COMMAND="doctor"
+      shift
+      ;;
+    logs)
+      COMMAND="logs"
+      shift
+      ;;
+    -l|--follow)
+      FOLLOW_LOGS=true
       shift
       ;;
     -d|--dry-run)
@@ -100,6 +111,57 @@ if [[ -n "$user_xdg" ]]; then
   USER_CONFIG_DIR="${user_xdg}/systemd/user"
 else
   USER_CONFIG_DIR="${USER_HOME}/.config/systemd/user"
+fi
+
+# --- Logs Viewer Execution ---
+if [[ "$COMMAND" == "logs" ]]; then
+  echo -e "${BLUE}=== Millennium & Steam WebHelper Logs ===${NC}"
+  
+  # Find latest log files
+  log_files=()
+  for steam_dir in "${USER_HOME}/.local/share/Steam" "${USER_HOME}/.steam/steam" "${USER_HOME}/.steam/root" "${USER_HOME}/.var/app/com.valvesoftware.Steam/.local/share/Steam"; do
+    [[ -d "$steam_dir/logs" ]] || continue
+    if [[ -f "$steam_dir/logs/webhelper-linux.txt" ]]; then
+      log_files+=("$steam_dir/logs/webhelper-linux.txt")
+    fi
+    if [[ -f "$steam_dir/logs/console-linux.txt" ]]; then
+      log_files+=("$steam_dir/logs/console-linux.txt")
+    fi
+  done
+  
+  if [[ ${#log_files[@]} -eq 0 ]]; then
+    echo -e "${RED}Error: No Steam logs found on this system.${NC}" >&2
+    exit 1
+  fi
+  
+  # Pick the newest log file
+  latest_log=""
+  latest_mtime=0
+  for f in "${log_files[@]}"; do
+    mtime=$(stat -c '%Y' "$f" 2>/dev/null || echo 0)
+    if (( mtime > latest_mtime )); then
+      latest_mtime=$mtime
+      latest_log=$f
+    fi
+  done
+  
+  if [[ -z "$latest_log" ]]; then
+    echo -e "${RED}Error: Could not resolve the most recent log file.${NC}" >&2
+    exit 1
+  fi
+  
+  echo -e "${YELLOW}Reading log file: ${latest_log}${NC}\n"
+  
+  filter_regex="Millennium|BOOTSTRAP|update-check|plugin_loader|pressure-vessel|steamwebhelper"
+  
+  if [[ "$FOLLOW_LOGS" == "true" ]]; then
+    echo "Tailing log file (Ctrl+C to exit)..."
+    tail -n 100 -f "$latest_log" | grep --line-buffered -iE "$filter_regex"
+  else
+    # Output matching lines in the last 200 lines
+    tail -n 200 "$latest_log" | grep -iE "$filter_regex" || echo "No recent Millennium-related log entries found."
+  fi
+  exit 0
 fi
 
 sysctl_user() {
