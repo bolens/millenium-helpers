@@ -432,14 +432,7 @@ if [[ "$ONLINE" == "true" ]]; then
   TMP_SCRIPTS=$(mktemp -d)
   trap 'rm -rf "${TMP_SCRIPTS:-}"' EXIT INT TERM
   
-  # Fetch latest commit SHA to bypass raw.githubusercontent.com caching delays
-  LATEST_SHA="main"
-  if feed_data=$(curl -sL --retry 3 --retry-delay 2 "https://github.com/bolens/millenium-helpers/commits/main.atom" 2>/dev/null); then
-    parsed_sha=$(echo "$feed_data" | grep -o 'Commit/[0-9a-f]\{40\}' | head -n 1 | cut -d/ -f2)
-    if [[ -n "$parsed_sha" ]]; then
-      LATEST_SHA="$parsed_sha"
-    fi
-  fi
+  local_ts=$(date +%s)
 
   for item in "${UTILITIES[@]}"; do
     local_cmd="${item%%:*}"
@@ -452,7 +445,7 @@ if [[ "$ONLINE" == "true" ]]; then
     fi
     
     if [[ -n "$local_path" ]]; then
-      remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/${LATEST_SHA}/${remote_rel}"
+      remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/main/${remote_rel}?t=${local_ts}"
       tmp_dest="${TMP_SCRIPTS}/${local_cmd}"
       
       if curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" --retry 3 --retry-delay 2 "$remote_url" -o "$tmp_dest" &>/dev/null; then
@@ -472,7 +465,7 @@ if [[ "$ONLINE" == "true" ]]; then
     else
       echo -e "  - ${local_cmd}: ${RED}Not Installed${NC}"
       SCRIPTS_UP_TO_DATE=false
-      remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/${LATEST_SHA}/${remote_rel}"
+      remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/main/${remote_rel}?t=${local_ts}"
       tmp_dest="${TMP_SCRIPTS}/${local_cmd}"
       if curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" --retry 3 --retry-delay 2 "$remote_url" -o "$tmp_dest" &>/dev/null; then
         out_of_date_scripts+=("$local_cmd")
@@ -495,9 +488,38 @@ if [[ "$COMMAND" == "doctor" ]]; then
   fi
 
   # Require Steam closed for any updates/repairs (only if binary or hook modifications are pending)
+  relaunch_steam_after_doctor=false
+  was_flatpak=false
   if [[ "$STEAM_RUNNING" == true ]] && [[ "$BINARIES_OK" == false || "$HOOKS_OK" == false ]]; then
-    echo -e "${RED}Error: Steam is currently running. Please close Steam completely before applying repairs to hooks or binaries.${NC}" >&2
-    exit 1
+    echo -e "${YELLOW}Steam is currently running and must be closed to apply repairs to hooks/binaries.${NC}"
+    
+    if command -v flatpak &>/dev/null && runuser -l "$RUNNING_USER" -c "flatpak ps" 2>/dev/null | grep -q "com.valvesoftware.Steam"; then
+      was_flatpak=true
+    fi
+    
+    echo "Closing Steam gracefully..."
+    if [[ "$was_flatpak" == "true" ]]; then
+      execute runuser -l "$RUNNING_USER" -c "flatpak run com.valvesoftware.Steam -shutdown" || true
+    elif command -v steam &>/dev/null; then
+      execute runuser -l "$RUNNING_USER" -c "steam -shutdown" || true
+    elif [[ -x "${USER_HOME}/.local/bin/steam" ]]; then
+      execute runuser -l "$RUNNING_USER" -c "${USER_HOME}/.local/bin/steam -shutdown" || true
+    fi
+    
+    timeout=30
+    while pgrep -x steam >/dev/null && [[ $timeout -gt 0 ]]; do
+      sleep 1
+      ((timeout--))
+    done
+    
+    if pgrep -x steam >/dev/null; then
+      echo "Steam did not close gracefully. Force killing..."
+      killall -9 steam steamwebhelper 2>/dev/null || true
+    fi
+    
+    echo "Steam closed successfully."
+    STEAM_RUNNING=false
+    relaunch_steam_after_doctor=true
   fi
 
   # Issue 1: Out of date helper scripts (do this first so repairs run on new code)
@@ -632,5 +654,18 @@ if [[ "$COMMAND" == "doctor" ]]; then
     echo -e "\n${GREEN}Doctor dry-run simulation finished successfully!${NC}"
   else
     echo -e "\n${GREEN}Doctor repairs applied successfully! Re-run diagnostics to verify.${NC}"
+  fi
+
+  if [[ "$relaunch_steam_after_doctor" == "true" ]]; then
+    echo -e "\n${GREEN}Relaunching Steam...${NC}"
+    if [[ "$was_flatpak" == "true" ]]; then
+      execute runuser -l "$RUNNING_USER" -c "flatpak run com.valvesoftware.Steam &"
+    else
+      if command -v steam &>/dev/null; then
+        execute runuser -l "$RUNNING_USER" -c "steam &"
+      elif [[ -x "${USER_HOME}/.local/bin/steam" ]]; then
+        execute runuser -l "$RUNNING_USER" -c "${USER_HOME}/.local/bin/steam &"
+      fi
+    fi
   fi
 fi
