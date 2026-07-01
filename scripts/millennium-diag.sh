@@ -70,8 +70,10 @@ SUDOERS_OK=true
 TIMER_ACTIVE=true
 LINGER_OK=true
 SCRIPTS_UP_TO_DATE=true
+PERMISSIONS_OK=true
 
 out_of_date_scripts=()
+unwritable_dirs=()
 TMP_SCRIPTS=""
 
 UTILITIES=(
@@ -86,15 +88,18 @@ UTILITIES=(
 RUNNING_USER="${SUDO_USER:-$USER}"
 USER_HOME="$(getent passwd "$RUNNING_USER" | cut -d: -f6)"
 USER_CONFIG_DIR=""
+user_xdg=""
 if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" ]]; then
   # shellcheck disable=SC2016
   user_xdg=$(runuser -l "$RUNNING_USER" -c 'echo "${XDG_CONFIG_HOME:-}"' 2>/dev/null || true)
-  if [[ -n "$user_xdg" ]]; then
-    USER_CONFIG_DIR="${user_xdg}/systemd/user"
-  fi
+else
+  user_xdg="${XDG_CONFIG_HOME:-}"
 fi
-if [[ -z "$USER_CONFIG_DIR" ]]; then
-  USER_CONFIG_DIR="${XDG_CONFIG_HOME:-$USER_HOME/.config}/systemd/user"
+
+if [[ -n "$user_xdg" ]]; then
+  USER_CONFIG_DIR="${user_xdg}/systemd/user"
+else
+  USER_CONFIG_DIR="${USER_HOME}/.config/systemd/user"
 fi
 
 sysctl_user() {
@@ -229,6 +234,68 @@ if [[ "$found_steam" == false ]]; then
   echo -e "  ${RED}No Steam directories detected for the current user.${NC}"
 fi
 
+# 3.5. Check Config & Theme Directories permissions
+echo -e "\nMillennium Config & Theme Directory Permissions:"
+# A. Millennium User Config Directory
+millennium_user_config=""
+if [[ -n "$user_xdg" ]]; then
+  millennium_user_config="${user_xdg}/millennium"
+else
+  millennium_user_config="${USER_HOME}/.config/millennium"
+fi
+
+echo -n "  - Config Directory (${millennium_user_config}): "
+if [[ -d "$millennium_user_config" ]]; then
+  config_owner=$(stat -c '%U' "$millennium_user_config" 2>/dev/null || echo "unknown")
+  if [[ ! -w "$millennium_user_config" ]]; then
+    PERMISSIONS_OK=false
+    unwritable_dirs+=("$millennium_user_config")
+    echo -e "${RED}Not Writable${NC} (Owned by: ${config_owner})"
+  else
+    echo -e "${GREEN}Writable${NC} (Owned by: ${config_owner})"
+  fi
+else
+  echo -e "${GREEN}Not Created Yet${NC} (will be created automatically by Millennium)"
+fi
+
+# B. Steam Skins/Themes directories
+for steam_dir in "${USER_HOME}/.local/share/Steam" "${USER_HOME}/.steam/steam" "${USER_HOME}/.steam/root" "${USER_HOME}/.var/app/com.valvesoftware.Steam/.local/share/Steam"; do
+  [[ -d "$steam_dir" ]] || continue
+  skins_dir="${steam_dir}/steamui/skins"
+  type_env="Native"
+  if [[ "$steam_dir" == *"com.valvesoftware.Steam"* ]]; then
+    type_env="Flatpak"
+  fi
+  
+  echo -n "  - Skins Directory [${type_env}] (${skins_dir}): "
+  if [[ -d "$skins_dir" ]]; then
+    skins_owner=$(stat -c '%U' "$skins_dir" 2>/dev/null || echo "unknown")
+    if [[ ! -w "$skins_dir" ]]; then
+      PERMISSIONS_OK=false
+      unwritable_dirs+=("$skins_dir")
+      echo -e "${RED}Not Writable${NC} (Owned by: ${skins_owner})"
+    else
+      echo -e "${GREEN}Writable${NC} (Owned by: ${skins_owner})"
+    fi
+  else
+    # Skins directory doesn't exist, check parent
+    parent_dir=$(dirname "$skins_dir")
+    if [[ -d "$parent_dir" ]]; then
+      parent_owner=$(stat -c '%U' "$parent_dir" 2>/dev/null || echo "unknown")
+      if [[ ! -w "$parent_dir" ]]; then
+        PERMISSIONS_OK=false
+        unwritable_dirs+=("$parent_dir")
+        echo -e "${RED}Parent Not Writable${NC} (Owned by: ${parent_owner})"
+      else
+        echo -e "${YELLOW}Missing (parent is writable, will be created automatically)${NC}"
+      fi
+    else
+      echo -e "${RED}Steam Directory Missing${NC}"
+    fi
+  fi
+done
+echo ""
+
 # 4. Check Sudoers Authorization
 echo -n "Sudoers Passwordless Update Authorization: "
 check_cmd="sudo -n -l"
@@ -334,7 +401,7 @@ if [[ "$COMMAND" == "doctor" ]]; then
   echo -e "\n${BLUE}=== Running Millennium Doctor (Automatic Repairs) ===${NC}"
   
   # Check if anything needs fixing
-  if [[ "$BINARIES_OK" == true && "$HOOKS_OK" == true && "$FLATPAK_OK" == true && "$SUDOERS_OK" == true && "$TIMER_ACTIVE" == true && "$LINGER_OK" == true && "$SCRIPTS_UP_TO_DATE" == true ]]; then
+  if [[ "$BINARIES_OK" == true && "$HOOKS_OK" == true && "$FLATPAK_OK" == true && "$SUDOERS_OK" == true && "$TIMER_ACTIVE" == true && "$LINGER_OK" == true && "$SCRIPTS_UP_TO_DATE" == true && "$PERMISSIONS_OK" == true ]]; then
     echo -e "${GREEN}No issues detected. Your Millennium installation is healthy!${NC}"
     exit 0
   fi
@@ -434,6 +501,22 @@ if [[ "$COMMAND" == "doctor" ]]; then
   if [[ "$LINGER_OK" == false ]]; then
     echo -e "\n${YELLOW}[DOCTOR] Enabling systemd user lingering to run updates in the background...${NC}"
     execute loginctl enable-linger "${RUNNING_USER}"
+  fi
+
+  # Issue 8: Incorrect directory permissions or ownership
+  if [[ "$PERMISSIONS_OK" == false ]]; then
+    echo -e "\n${YELLOW}[DOCTOR] Repairing directory permissions and ownership...${NC}"
+    for dir in "${unwritable_dirs[@]:-}"; do
+      [[ -n "$dir" ]] || continue
+      echo "Correcting ownership and permissions for: ${dir}"
+      if [[ "$(id -u)" -eq 0 ]]; then
+        execute chown -R "${RUNNING_USER}:${RUNNING_USER}" "$dir"
+        execute chmod -R u+rwX "$dir"
+      else
+        echo -e "${RED}Error: Root privileges are required to fix ownership of ${dir}.${NC}" >&2
+        echo -e "Please re-run the doctor with sudo: ${YELLOW}sudo millennium-diag doctor${NC}" >&2
+      fi
+    done
   fi
 
   if [[ "$DRY_RUN" == "true" ]]; then
