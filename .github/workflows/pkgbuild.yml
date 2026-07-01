@@ -1,0 +1,46 @@
+name: PKGBUILD Validation
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'packaging/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'packaging/**'
+
+jobs:
+  validate:
+    name: Validate AUR packaging
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+    steps:
+      - name: Install build tooling
+        run: |
+          pacman -Syu --noconfirm --quiet base-devel git namcap
+
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Lint PKGBUILD with namcap
+        run: |
+          cd packaging
+          namcap PKGBUILD
+
+      # makepkg refuses to run as root, so build as an unprivileged user
+      # (mirroring how AUR helpers/makepkg are actually invoked).
+      - name: Create build user
+        run: |
+          useradd -m builduser
+          cp -r "$GITHUB_WORKSPACE/packaging" /home/builduser/packaging
+          chown -R builduser:builduser /home/builduser/packaging
+
+      - name: Verify .SRCINFO is up to date with PKGBUILD
+        run: |
+          su builduser -c 'cd /home/builduser/packaging && makepkg --printsrcinfo' > /tmp/generated.SRCINFO
+          if ! diff -u packaging/.SRCINFO /tmp/generated.SRCINFO; then
+            echo "::error::.SRCINFO is out of date. Run 'makepkg --printsrcinfo > .SRCINFO' in packaging/ and commit the result."
+            exit 1
+          fi

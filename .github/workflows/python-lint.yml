@@ -1,0 +1,33 @@
+name: Python Lint
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'scripts/*.py'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'scripts/*.py'
+
+jobs:
+  ruff:
+    name: Ruff lint (millennium-mcp.py)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Compile check
+        run: python -m py_compile scripts/millennium-mcp.py
+
+      - name: Run ruff check
+        run: ruff check scripts/*.py
