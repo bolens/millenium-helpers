@@ -19,7 +19,7 @@ install=millennium-helpers.install
 source=("git+${url}.git"
         "millennium-helpers.sudoers")
 sha256sums=('SKIP'
-            '91bf3f1f069e53cf74bbe6ef43fe20553336cb69f5014294fefee5de77d4ec7d')
+            '6e5cd09dd4baac9d954476bf9825f7fe2b6aee7341ed7002c6f052b8f29aa44e')
 
 pkgver() {
   cd "${srcdir}/${_pkgname}"

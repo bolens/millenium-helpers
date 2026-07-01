@@ -193,7 +193,7 @@ def handle_tool_call(tool_name, arguments):
         return run_cmd(args)
         
     elif tool_name == "millennium_repair":
-        return run_cmd(["millennium-repair"])
+        return run_cmd(["millennium-repair"], run_as_root=True)
         
     elif tool_name == "millennium_purge":
         return run_cmd(["millennium-purge"], run_as_root=True)
