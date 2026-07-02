@@ -45,7 +45,7 @@ run_mcp() {
 # millennium-helpers installed system-wide, a PATH-only mock would silently
 # be shadowed by the real installed script.
 run_mcp_stderr() {
-  printf '%s\n' "$@" | python3 "$MCP_PY" 2>&1 >/dev/null
+  { printf '%s\n' "$@" | python3 "$MCP_PY" >/dev/null; } 2>&1
 }
 
 # --- initialize ---
