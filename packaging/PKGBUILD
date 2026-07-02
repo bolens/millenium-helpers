@@ -1,7 +1,7 @@
 # Maintainer: bolens <https://github.com/bolens>
 pkgname=millennium-helpers-git
 _pkgname=millennium-helpers
-pkgver=r46.g6b2068d
+pkgver=r95.g02b6280
 pkgrel=1
 pkgdesc="Utility scripts for managing, repairing, upgrading, rolling back, viewing logs, managing themes, and scheduling updates for Millennium on Linux"
 arch=('any')
@@ -11,15 +11,37 @@ depends=('bash' 'curl' 'unzip' 'python' 'sudo')
 optdepends=(
   'jq: enhanced JSON parsing for updates'
   'systemd: daily update timer scheduler'
+  'libnotify: desktop notifications for background update status'
+  'flatpak: compatibility with Flatpak Steam'
+  'cronie: alternative daily update timer scheduler via cron (fallback)'
 )
 makedepends=('git')
 provides=("${_pkgname}")
 conflicts=("${_pkgname}")
 install=millennium-helpers.install
-source=("git+${url}.git"
+backup=('etc/sudoers.d/millennium-helpers')
+source=("${_pkgname}::git+${url}.git"
         "millennium-helpers.sudoers")
 sha256sums=('SKIP'
             '6e5cd09dd4baac9d954476bf9825f7fe2b6aee7341ed7002c6f052b8f29aa44e')
+
+prepare() {
+  if [ -f "/usr/local/bin/millennium-repair" ] || { [ -f "/etc/sudoers.d/millennium-helpers" ] && ! pacman -Qo "/etc/sudoers.d/millennium-helpers" &>/dev/null; }; then
+    error "A manual installation of millennium-helpers was detected."
+    plain "To avoid file conflicts, please uninstall the manual installation first by running:"
+    plain "  sudo ./install.sh -u  (from the root of the source directory)"
+    plain ""
+    plain "If you no longer have the source directory, you can manually remove the conflicting files:"
+    plain "  sudo rm -f /etc/sudoers.d/millennium-helpers"
+    plain "  sudo rm -f /usr/local/bin/millennium-"*
+    plain "  sudo rm -rf /usr/local/lib/millennium-helpers"
+    plain "  sudo rm -f /usr/share/bash-completion/completions/millennium-"*
+    plain "  sudo rm -f /usr/share/zsh/site-functions/_millennium-"*
+    plain "  sudo rm -f /usr/share/fish/vendor_completions.d/millennium-"*
+    plain "  sudo rm -f /usr/share/nushell/completions/millennium-helpers.nu"
+    exit 1
+  fi
+}
 
 pkgver() {
   cd "${srcdir}/${_pkgname}"

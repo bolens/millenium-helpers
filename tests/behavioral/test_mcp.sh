@@ -140,4 +140,28 @@ assert_equals "True" "$timeout_is_error" "run_cmd() reports isError=True when th
 assert_contains "$timeout_msg" "timed out" "run_cmd()'s timeout error message explains the command timed out"
 rm -f "${MOCK_BIN}/mcp-hang-test"
 
+# --- --register/--install command line arguments ---
+
+FAKE_HOME_MCP=$(mktemp -d)
+mkdir -p "${FAKE_HOME_MCP}/.config/Claude"
+mkdir -p "${FAKE_HOME_MCP}/.codeium/windsurf"
+
+# Write an empty config file to Claude
+echo "{}" > "${FAKE_HOME_MCP}/.config/Claude/claude_desktop_config.json"
+
+out=$(HOME="$FAKE_HOME_MCP" python3 "$MCP_PY" --register 2>&1)
+rc=$?
+assert_success "$rc" "millennium-mcp --register exits 0 when config directories exist"
+assert_contains "$out" "Registering" "millennium-mcp --register output contains registration message"
+assert_contains "$out" "Successfully registered in Claude Desktop" "millennium-mcp --register output confirms Claude Desktop registration"
+
+# Verify config contents
+assert_file_exists "${FAKE_HOME_MCP}/.config/Claude/claude_desktop_config.json" "claude_desktop_config.json exists"
+config_contents=$(cat "${FAKE_HOME_MCP}/.config/Claude/claude_desktop_config.json")
+assert_contains "$config_contents" "millennium-helpers" "claude_desktop_config.json contains the millennium-helpers key"
+assert_contains "$config_contents" "millennium-mcp" "claude_desktop_config.json contains the millennium-mcp command"
+
+rm -rf "$FAKE_HOME_MCP"
+
 print_summary
+

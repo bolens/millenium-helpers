@@ -12,6 +12,18 @@ source "${TEST_DIR}/../lib/mocks.sh"
 
 INSTALL_SH="${REPO_ROOT}/install.sh"
 
+setup_mock_bin
+trap teardown_mock_bin EXIT
+
+# Mock runuser to execute the command directly in our test environment
+# shellcheck disable=SC2016
+mock_cmd "runuser" '
+shift  # drop -l
+target_user="$1"; shift
+shift  # drop -c
+eval "$1"
+'
+
 echo -e "${YELLOW}=== Behavioral tests: install.sh ===${NC}"
 
 # --- Help output ---
@@ -57,10 +69,28 @@ assert_success "$rc" "install.sh uninstall --dry-run exits 0 without root"
 assert_contains "$out" "DRY RUN MODE" "install.sh uninstall --dry-run announces dry-run mode"
 assert_contains "$out" "Uninstalling" "install.sh uninstall --dry-run describes the uninstall action"
 
-# --- check_root error message includes the real invocation args (regression test) ---
-
 out=$(bash "$INSTALL_SH" install 2>&1 < /dev/null || true)
 assert_contains "$out" "sudo" "install.sh without --dry-run and without root tells the user to use sudo"
 assert_contains "$out" "install.sh install" "install.sh's sudo hint preserves the original arguments (e.g. 'install')"
 
+# --- Interactive Wizard (Dry run) ---
+
+# Run the installer with FORCE_WIZARD=true and input responses:
+# Channel: 2 (beta)
+# Enable schedule: y (yes)
+# GitHub token: test_pat_token
+out=$(echo -e "2\ny\ntest_pat_token" | FORCE_WIZARD=true bash "$INSTALL_SH" --dry-run 2>&1)
+rc=$?
+assert_success "$rc" "install.sh wizard --dry-run exits 0"
+assert_contains "$out" "Configuration Wizard" "install.sh wizard announces itself"
+assert_contains "$out" "Selected channel:" "install.sh wizard shows selected channel"
+assert_contains "$out" "beta" "install.sh wizard captures beta channel"
+assert_contains "$out" "Automated timer:" "install.sh wizard shows automated timer choice"
+assert_contains "$out" "true" "install.sh wizard captures true scheduler choice"
+assert_contains "$out" "Would write config" "install.sh wizard announces it would write config"
+assert_contains "$out" "update_channel: beta" "install.sh wizard output contains correct channel"
+assert_contains "$out" "github_token: test_pat_token" "install.sh wizard output contains correct token"
+assert_contains "$out" "Configuring background update scheduler" "install.sh wizard triggers schedule enablement"
+
 print_summary
+

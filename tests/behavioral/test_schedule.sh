@@ -127,7 +127,15 @@ assert_failure "$rc" "millennium-schedule post-update exits non-zero when diagno
 assert_contains "$out" "failed verification" "millennium-schedule post-update explains the verification failure"
 mock_cmd "millennium-diag" 'exit 0'
 
+# --- Default channel selection from CONFIG_UPDATE_CHANNEL ---
+
+export CONFIG_UPDATE_CHANNEL="beta"
+out=$(run_schedule enable --dry-run --cron 2>&1)
+assert_contains "$out" "millennium-upgrade-beta" "millennium-schedule defaults to beta channel when CONFIG_UPDATE_CHANNEL is set to beta"
+unset CONFIG_UPDATE_CHANNEL
+
 rm -rf "$FAKE_XDG_CONFIG"
 rm -rf "$FAKE_RELAUNCH_HOME"
 
 print_summary
+
