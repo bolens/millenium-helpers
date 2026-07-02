@@ -184,6 +184,15 @@ install_completions() {
   done
 }
 
+run_wizard() {
+  local user_name="${SUDO_USER:-$(id -un)}"
+  if [[ "$user_name" != "root" ]]; then
+    local dry_flag=""
+    [[ "${DRY_RUN}" == "true" ]] && dry_flag="-d"
+    runuser -l "$user_name" -c "FORCE_WIZARD=true bash ${SCRIPT_DIR}/scripts/millennium-schedule.sh setup ${dry_flag}"
+  fi
+}
+
 install_scripts() {
   echo -e "${BLUE}Installing Millennium helper scripts to ${TARGET_DIR}...${NC}"
 
@@ -291,6 +300,8 @@ EOF
       fi
     done
   fi
+
+
 
   if [[ "$DRY_RUN" == "true" ]]; then
     echo -e "${GREEN}Dry run completed successfully!${NC}"
@@ -478,6 +489,9 @@ uninstall_scripts() {
 
 case "$ACTION" in
   install)
+    if [[ ( ${#ORIGINAL_ARGS[@]} -eq 0 || "${FORCE_WIZARD:-}" == "true" ) && ( -t 0 || "${FORCE_WIZARD:-}" == "true" ) ]]; then
+      run_wizard
+    fi
     install_scripts
     ;;
   uninstall)

@@ -244,7 +244,76 @@ def handle_tool_call(tool_name, arguments):
             "isError": True
         }
 
+def register_mcp():
+    import os
+    import json
+
+    home = os.path.expanduser("~")
+
+    # Define configurations
+    claude_path = os.path.join(home, ".config", "Claude", "claude_desktop_config.json")
+    windsurf_path = os.path.join(home, ".codeium", "windsurf", "mcp_config.json")
+
+    configs = [
+        ("Claude Desktop", claude_path, "mcpServers"),
+        ("Windsurf", windsurf_path, "mcpServers")
+    ]
+
+    # The server name and command
+    server_name = "millennium-helpers"
+    server_config = {
+        "command": "millennium-mcp"
+    }
+
+    registered_any = False
+
+    for label, path, key in configs:
+        # Ensure the parent directory exists
+        dir_path = os.path.dirname(path)
+        if not os.path.exists(dir_path):
+            continue
+
+        print(f"Registering Millennium Helpers MCP server in {label}...")
+
+        data = {}
+        if os.path.exists(path):
+            try:
+                with open(path, "r") as f:
+                    data = json.load(f)
+            except Exception as e:
+                print(f"  Warning: failed to read existing config at {path}: {e}. Creating new.")
+
+        if key not in data:
+            data[key] = {}
+
+        # Check if already registered
+        if server_name in data[key] and data[key][server_name].get("command") == "millennium-mcp":
+            print(f"  Already registered in {label}.")
+            registered_any = True
+            continue
+
+        data[key][server_name] = server_config
+
+        try:
+            with open(path, "w") as f:
+                json.dump(data, f, indent=2)
+            print(f"  Successfully registered in {label} config: {path}")
+            registered_any = True
+        except Exception as e:
+            print(f"  Error: failed to write config to {path}: {e}")
+
+    if not registered_any:
+        print("No active config directories found (Claude Desktop or Windsurf).")
+        print("Please configure manually as described in the README.")
+        sys.exit(1)
+    else:
+        print("Registration check completed successfully.")
+        sys.exit(0)
+
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] in ["--register", "-r"]:
+        register_mcp()
+        return
     log("Millennium Helpers MCP server started.")
     while True:
         try:
@@ -313,3 +382,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

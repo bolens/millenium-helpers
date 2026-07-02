@@ -57,6 +57,7 @@ echo -e "\n${YELLOW}Running unit tests for common.sh...${NC}"
 # Source the helpers to test them
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../scripts"
 export DRY_RUN=true # Keep dry-run active during unit tests
+export MOCK_PROC="/nonexistent_mock_proc"
 
 # Mocking resolve_helper_path environment
 # Create a temp bin directory with mock scripts
