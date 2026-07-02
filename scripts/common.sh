@@ -243,7 +243,8 @@ relaunch_steam() {
 
 is_game_running() {
   local game_running=false
-  for environ_file in /proc/[0-9]*/environ; do
+  local proc_dir="${MOCK_PROC:-/proc}"
+  for environ_file in "${proc_dir}"/[0-9]*/environ; do
     [[ -f "$environ_file" && -r "$environ_file" ]] || continue
     local pid_dir
     pid_dir="$(dirname "$environ_file")"
@@ -251,7 +252,7 @@ is_game_running() {
     [[ "$pid" =~ ^[0-9]+$ ]] || continue
     
     local comm
-    comm=$(cat "/proc/${pid}/comm" 2>/dev/null || true)
+    comm=$(cat "${proc_dir}/${pid}/comm" 2>/dev/null || true)
     [[ "$comm" == "steam" || "$comm" == "steamwebhelper" ]] && continue
     
     if { tr '\0' '\n' < "$environ_file"; } 2>/dev/null | grep -q "^SteamAppId=[1-9]"; then
@@ -387,3 +388,41 @@ send_notification() {
     runuser -l "$target_user" -c "${env_prefix}notify-send '${title}' '${msg}'" &>/dev/null || true
   fi
 }
+
+load_user_config() {
+  local user_name="${SUDO_USER:-$(id -un)}"
+  local user_home
+  user_home="$(getent passwd "$user_name" | cut -d: -f6 || echo "")"
+  if [[ -z "$user_home" ]]; then
+    user_home="$HOME"
+  fi
+  
+  local config_dir="${XDG_CONFIG_HOME:-$user_home/.config}/millennium-helpers"
+  local config_file="${config_dir}/config.json"
+  
+  if [[ -f "$config_file" ]]; then
+    local parsed
+    parsed=$(python3 -c "
+import json, sys
+try:
+    with open('$config_file') as f:
+        d = json.load(f)
+        print(f\"{d.get('github_token', '')}:{d.get('update_channel', '')}\")
+except Exception:
+    print(':')
+" 2>/dev/null || echo ":")
+    
+    local config_token="${parsed%%:*}"
+    local config_channel="${parsed#*:}"
+    
+    if [[ -n "$config_token" && -z "${GITHUB_TOKEN:-}" ]]; then
+      export GITHUB_TOKEN="$config_token"
+    fi
+    if [[ -n "$config_channel" && -z "${CONFIG_UPDATE_CHANNEL:-}" ]]; then
+      export CONFIG_UPDATE_CHANNEL="$config_channel"
+    fi
+  fi
+}
+
+load_user_config
+

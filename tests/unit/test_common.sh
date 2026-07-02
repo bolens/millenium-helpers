@@ -279,4 +279,49 @@ assert_contains "$notify_calls" "Millennium Updated" "send_notification passes t
 assert_contains "$notify_calls" "All good" "send_notification passes the message through to notify-send"
 rm -f "${MOCK_BIN}/notify.calls" "${MOCK_BIN}/notify-send" "${MOCK_BIN}/runuser"
 
+# --- load_user_config() ---
+
+# Setup a clean config environment
+TEMP_CONF_DIR=$(mktemp -d)
+OLD_XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-}"
+export XDG_CONFIG_HOME="${TEMP_CONF_DIR}"
+
+# 1. No config file -> nothing exported
+unset GITHUB_TOKEN
+unset CONFIG_UPDATE_CHANNEL
+load_user_config
+assert_equals "" "${GITHUB_TOKEN:-}" "load_user_config does not export GITHUB_TOKEN if no config exists"
+assert_equals "" "${CONFIG_UPDATE_CHANNEL:-}" "load_user_config does not export CONFIG_UPDATE_CHANNEL if no config exists"
+
+# 2. Config file exists -> variables loaded
+mkdir -p "${TEMP_CONF_DIR}/millennium-helpers"
+cat > "${TEMP_CONF_DIR}/millennium-helpers/config.json" << EOF
+{
+  "update_channel": "beta",
+  "github_token": "token123"
+}
+EOF
+
+load_user_config
+assert_equals "token123" "${GITHUB_TOKEN:-}" "load_user_config loads and exports GITHUB_TOKEN from config.json"
+assert_equals "beta" "${CONFIG_UPDATE_CHANNEL:-}" "load_user_config loads and exports CONFIG_UPDATE_CHANNEL from config.json"
+
+# 3. Environment variables should NOT be overwritten if already set
+export GITHUB_TOKEN="env_token"
+export CONFIG_UPDATE_CHANNEL="env_channel"
+load_user_config
+assert_equals "env_token" "${GITHUB_TOKEN}" "load_user_config preserves existing GITHUB_TOKEN environment override"
+assert_equals "env_channel" "${CONFIG_UPDATE_CHANNEL}" "load_user_config preserves existing CONFIG_UPDATE_CHANNEL environment override"
+
+# Cleanup
+unset GITHUB_TOKEN
+unset CONFIG_UPDATE_CHANNEL
+if [[ -n "$OLD_XDG_CONFIG_HOME" ]]; then
+  export XDG_CONFIG_HOME="$OLD_XDG_CONFIG_HOME"
+else
+  unset XDG_CONFIG_HOME
+fi
+rm -rf "$TEMP_CONF_DIR"
+
 print_summary
+

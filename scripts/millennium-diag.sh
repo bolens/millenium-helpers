@@ -223,19 +223,30 @@ if [[ "$OUTPUT_JSON" == "true" ]]; then
   exec 1>/dev/null
 fi
 
+print_diag_item() {
+  local status="$1"
+  local label="$2"
+  local value="$3"
+  if [[ "$status" == "ok" ]]; then
+    printf "  [${GREEN}✔${NC}] %-45s : %b\n" "$label" "$value"
+  elif [[ "$status" == "warn" ]]; then
+    printf "  [${YELLOW}!${NC}] %-45s : %b\n" "$label" "$value"
+  else
+    printf "  [${RED}✘${NC}] %-45s : %b\n" "$label" "$value"
+  fi
+}
+
 echo -e "${BLUE}=== Millennium Diagnostics Report ===${NC}\n"
 
 # 1. Check Steam Status
-echo -n "Steam Client: "
 if pgrep -x steam >/dev/null 2>&1; then
   STEAM_RUNNING=true
-  echo -e "${GREEN}Running (PID: $(pgrep -x steam | head -n 1))${NC}"
+  print_diag_item "ok" "Steam Client" "Running (PID: $(pgrep -x steam | head -n 1))"
 else
-  echo -e "${YELLOW}Not Running${NC}"
+  print_diag_item "warn" "Steam Client" "Not Running"
 fi
 
 # 2. Check Installed Millennium version & integrity
-echo -n "Millennium Binary Version: "
 if [[ -f "/usr/lib/millennium/version.txt" ]]; then
   # Verify .so files and integrity check
   if [[ ! -f "/usr/lib/millennium/libmillennium_bootstrap_x86.so" || \
@@ -244,19 +255,19 @@ if [[ -f "/usr/lib/millennium/version.txt" ]]; then
         ! -f "/usr/lib/millennium/libmillennium_hhx64.so" || \
         ! -f "/usr/lib/millennium/libmillennium_pvs64" ]]; then
     BINARIES_OK=false
-    echo -e "${RED}Corrupted (core libraries or wrapper binaries are missing)${NC}"
+    print_diag_item "error" "Millennium Binary Version" "Corrupted (core libraries or wrapper binaries are missing)"
   elif [[ ! -f "/usr/lib/millennium/checksums.txt" ]]; then
     BINARIES_OK=false
-    echo -e "${RED}Corrupted (missing integrity manifest /usr/lib/millennium/checksums.txt)${NC}"
+    print_diag_item "error" "Millennium Binary Version" "Corrupted (missing integrity manifest /usr/lib/millennium/checksums.txt)"
   elif ! (cd /usr/lib/millennium && sha256sum -c checksums.txt &>/dev/null); then
     BINARIES_OK=false
-    echo -e "${RED}Corrupted (cryptographic checksum verification failed!)${NC}"
+    print_diag_item "error" "Millennium Binary Version" "Corrupted (cryptographic checksum verification failed!)"
   else
-    echo -e "${GREEN}v$(cat /usr/lib/millennium/version.txt) (${UPDATE_CHANNEL} channel) - Verified Healthy${NC}"
+    print_diag_item "ok" "Millennium Binary Version" "v$(cat /usr/lib/millennium/version.txt) (${UPDATE_CHANNEL} channel) - Verified Healthy"
   fi
 else
   BINARIES_OK=false
-  echo -e "${RED}Not Installed (missing /usr/lib/millennium/version.txt)${NC}"
+  print_diag_item "error" "Millennium Binary Version" "Not Installed (missing /usr/lib/millennium/version.txt)"
 fi
 
 # 3. Check Bootstrap Hook Status for Current User
@@ -282,32 +293,30 @@ for steam_dir in "${USER_HOME}/.local/share/Steam" "${USER_HOME}/.steam/steam" "
     lib_name="${arch#*:}"
     hook_file="${steam_dir}/${folder}/libXtst.so.6"
     
-    echo -n "    - ${folder} hook: "
     if [[ -L "$hook_file" ]]; then
       target=$(readlink "$hook_file")
       if [[ "$target" == *"/usr/lib/millennium/libmillennium_bootstrap_${lib_name}.so"* ]]; then
         if [[ -f "$target" ]]; then
-          echo -e "${GREEN}Active and Verified${NC}"
+          print_diag_item "ok" "    - Hook (${folder})" "Active and Verified"
         else
           HOOKS_OK=false
           broken_hooks+=("${steam_dir}:${folder}:${lib_name}")
-          echo -e "${RED}Broken Symlink${NC} (target does not exist)"
+          print_diag_item "error" "    - Hook (${folder})" "Broken Symlink (target does not exist)"
         fi
       else
-        echo -e "${YELLOW}Active, but points to custom library:${NC} ${target}"
+        print_diag_item "warn" "    - Hook (${folder})" "Active, but points to custom library: ${target}"
       fi
     elif [[ -f "$hook_file" ]]; then
-      echo -e "${YELLOW}Replaced by a real file (non-symlink)${NC}"
+      print_diag_item "warn" "    - Hook (${folder})" "Replaced by a real file (non-symlink)"
     else
       HOOKS_OK=false
       missing_hooks+=("${steam_dir}:${folder}:${lib_name}")
-      echo -e "${RED}Inactive (missing symlink)${NC}"
+      print_diag_item "error" "    - Hook (${folder})" "Inactive (missing symlink)"
     fi
   done
 
   # Flatpak specific checks
   if [[ "$type_env" == "Flatpak" ]]; then
-    echo -n "    - Flatpak Sandbox Override: "
     flatpak_user_override="${USER_HOME}/.local/share/flatpak/overrides/com.valvesoftware.Steam"
     flatpak_sys_override="/var/lib/flatpak/overrides/com.valvesoftware.Steam"
     has_override=false
@@ -320,10 +329,10 @@ for steam_dir in "${USER_HOME}/.local/share/Steam" "${USER_HOME}/.steam/steam" "
     done
     
     if [[ "$has_override" == true ]]; then
-      echo -e "${GREEN}Configured (/usr/lib/millennium is visible inside container)${NC}"
+      print_diag_item "ok" "    - Flatpak Sandbox Override" "Configured (/usr/lib/millennium is visible inside container)"
     else
       FLATPAK_OK=false
-      echo -e "${RED}Missing!${NC}"
+      print_diag_item "error" "    - Flatpak Sandbox Override" "Missing!"
     fi
   fi
 done
@@ -342,18 +351,17 @@ else
   millennium_user_config="${USER_HOME}/.config/millennium"
 fi
 
-echo -n "  - Config Directory (${millennium_user_config}): "
 if [[ -d "$millennium_user_config" ]]; then
   config_owner=$(stat -c '%U' "$millennium_user_config" 2>/dev/null || echo "unknown")
   if [[ ! -w "$millennium_user_config" ]]; then
     PERMISSIONS_OK=false
     unwritable_dirs+=("$millennium_user_config")
-    echo -e "${RED}Not Writable${NC} (Owned by: ${config_owner})"
+    print_diag_item "error" "  - Config Directory (${millennium_user_config})" "Not Writable (Owned by: ${config_owner})"
   else
-    echo -e "${GREEN}Writable${NC} (Owned by: ${config_owner})"
+    print_diag_item "ok" "  - Config Directory (${millennium_user_config})" "Writable (Owned by: ${config_owner})"
   fi
 else
-  echo -e "${GREEN}Not Created Yet${NC} (will be created automatically by Millennium)"
+  print_diag_item "ok" "  - Config Directory (${millennium_user_config})" "Not Created Yet (will be created automatically by Millennium)"
 fi
 
 # B. Steam Skins/Themes directories
@@ -365,15 +373,14 @@ for steam_dir in "${USER_HOME}/.local/share/Steam" "${USER_HOME}/.steam/steam" "
     type_env="Flatpak"
   fi
   
-  echo -n "  - Skins Directory [${type_env}] (${skins_dir}): "
   if [[ -d "$skins_dir" ]]; then
     skins_owner=$(stat -c '%U' "$skins_dir" 2>/dev/null || echo "unknown")
     if [[ ! -w "$skins_dir" ]]; then
       PERMISSIONS_OK=false
       unwritable_dirs+=("$skins_dir")
-      echo -e "${RED}Not Writable${NC} (Owned by: ${skins_owner})"
+      print_diag_item "error" "  - Skins Directory [${type_env}] (${skins_dir})" "Not Writable (Owned by: ${skins_owner})"
     else
-      echo -e "${GREEN}Writable${NC} (Owned by: ${skins_owner})"
+      print_diag_item "ok" "  - Skins Directory [${type_env}] (${skins_dir})" "Writable (Owned by: ${skins_owner})"
     fi
   else
     # Skins directory doesn't exist, check parent
@@ -383,72 +390,67 @@ for steam_dir in "${USER_HOME}/.local/share/Steam" "${USER_HOME}/.steam/steam" "
       if [[ ! -w "$parent_dir" ]]; then
         PERMISSIONS_OK=false
         unwritable_dirs+=("$parent_dir")
-        echo -e "${RED}Parent Not Writable${NC} (Owned by: ${parent_owner})"
+        print_diag_item "error" "  - Skins Parent [${type_env}] (${parent_dir})" "Parent Not Writable (Owned by: ${parent_owner})"
       else
-        echo -e "${YELLOW}Missing (parent is writable, will be created automatically)${NC}"
+        print_diag_item "warn" "  - Skins Directory [${type_env}] (${skins_dir})" "Missing (parent is writable, will be created automatically)"
         SKINS_DIR_OK=false
         missing_skins_dirs+=("$skins_dir")
       fi
     else
-      echo -e "${RED}Steam Directory Missing${NC}"
+      print_diag_item "error" "  - Skins Directory [${type_env}] (${skins_dir})" "Steam Directory Missing"
     fi
   fi
 done
 echo ""
 
 # 4. Check Sudoers Authorization
-echo -n "Sudoers Passwordless Update Authorization: "
 check_cmd="sudo -n -l"
 if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" ]]; then
   check_cmd="sudo -U $RUNNING_USER -n -l"
 fi
 
 if eval "$check_cmd" 2>/dev/null | grep -qE "NOPASSWD.*(millennium-upgrade-stable|ALL)"; then
-  echo -e "${GREEN}Active & Verified${NC}"
+  print_diag_item "ok" "Sudoers Passwordless Update Authorization" "Active & Verified"
 else
   SUDOERS_OK=false
-  echo -e "${RED}Not Configured / Unauthorized${NC}"
+  print_diag_item "error" "Sudoers Passwordless Update Authorization" "Not Configured / Unauthorized"
 fi
 
 # 5. Check Update Scheduler Status
 if [[ "$SYSTEMD_BOOTED" == "true" ]]; then
-  echo -n "Systemd Auto-Update Timer: "
   TIMER_PATH="${USER_CONFIG_DIR}/millennium-update.timer"
   if [[ -f "$TIMER_PATH" ]] && sysctl_user is-enabled millennium-update.timer &>/dev/null; then
     timer_state=$(sysctl_user is-active millennium-update.timer || echo "inactive")
     if [[ "$timer_state" == "active" ]]; then
-      echo -e "${GREEN}Enabled and Active${NC}"
       timer_trigger=$(sysctl_user list-timers millennium-update.timer --no-legend | awk '{print $1, $2, $3}')
-      echo "  Next Run: ${timer_trigger}"
+      print_diag_item "ok" "Systemd Auto-Update Timer" "Enabled and Active (Next Run: ${timer_trigger})"
     else
       TIMER_ACTIVE=false
-      echo -e "${YELLOW}Enabled but Inactive (timer is sleeping)${NC}"
+      print_diag_item "warn" "Systemd Auto-Update Timer" "Enabled but Inactive (timer is sleeping)"
     fi
   else
     TIMER_ACTIVE=false
-    echo -e "${RED}Disabled / Not Scheduled${NC}"
+    print_diag_item "error" "Systemd Auto-Update Timer" "Disabled / Not Scheduled"
   fi
 
   # 6. Check Systemd User Lingering status
-  echo -n "Systemd User Lingering: "
   if [[ -f "/var/lib/systemd/linger/${RUNNING_USER}" ]]; then
-    echo -e "${GREEN}Enabled${NC}"
+    print_diag_item "ok" "Systemd User Lingering" "Enabled"
   else
     LINGER_OK=false
-    echo -e "${YELLOW}Disabled (Updates will only trigger when user is logged in)${NC}"
+    print_diag_item "warn" "Systemd User Lingering" "Disabled (Updates will only trigger when user is logged in)"
   fi
 else
-  echo -n "Cron Auto-Update Scheduler: "
   if command -v crontab &>/dev/null; then
     if crontab -l 2>/dev/null | grep -q "millennium-schedule"; then
-      echo -e "${GREEN}Enabled and Active (Crontab entry configured)${NC}"
+      print_diag_item "ok" "Cron Auto-Update Scheduler" "Enabled and Active (Crontab entry configured)"
     else
       TIMER_ACTIVE=false
-      echo -e "${RED}Disabled / Not Scheduled${NC}"
+      print_diag_item "error" "Cron Auto-Update Scheduler" "Disabled / Not Scheduled"
     fi
   else
     TIMER_ACTIVE=false
-    echo -e "${RED}Disabled (No 'crontab' utility found)${NC}"
+    print_diag_item "error" "Cron Auto-Update Scheduler" "Disabled (No 'crontab' utility found)"
   fi
 fi
 
@@ -493,15 +495,15 @@ if [[ "$ONLINE" == "true" ]]; then
         if [[ "$local_sha" != "$remote_sha" ]]; then
           SCRIPTS_UP_TO_DATE=false
           out_of_date_scripts+=("$local_cmd")
-          echo -e "  - ${local_cmd}: ${RED}Out of date${NC}"
+          print_diag_item "error" "  - ${local_cmd}" "Out of date"
         else
-          echo -e "  - ${local_cmd}: ${GREEN}Up to date${NC}"
+          print_diag_item "ok" "  - ${local_cmd}" "Up to date"
         fi
       else
-        echo -e "  - ${local_cmd}: ${YELLOW}Unable to check (HTTP download failed)${NC}"
+        print_diag_item "warn" "  - ${local_cmd}" "Unable to check (HTTP download failed)"
       fi
     else
-      echo -e "  - ${local_cmd}: ${RED}Not Installed${NC}"
+      print_diag_item "error" "  - ${local_cmd}" "Not Installed"
       SCRIPTS_UP_TO_DATE=false
       remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/${LATEST_SHA}/${remote_rel}"
       tmp_dest="${TMP_SCRIPTS}/${local_cmd}"
@@ -513,6 +515,7 @@ if [[ "$ONLINE" == "true" ]]; then
 else
   echo -e "  ${YELLOW}System is offline. Skipping update checks for helper scripts.${NC}"
 fi
+
 # 8. Check Shell Completions Status
 echo -e "\nShell Autocompletions Status:"
 
@@ -574,7 +577,7 @@ for local_path in "${!COMPLETION_FILES[@]}"; do
   if [[ ! -f "$local_path" ]]; then
     COMPLETIONS_OK=false
     missing_completions+=("$local_path")
-    echo -e "  - $(basename "$local_path"): ${RED}Missing${NC}"
+    print_diag_item "error" "  - $(basename "$local_path")" "Missing"
   elif [[ "${ONLINE:-false}" == "true" ]]; then
     remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/${LATEST_SHA}/${remote_rel}"
     tmp_dest="${TMP_SCRIPTS}/comp_$(basename "$local_path")"
@@ -585,15 +588,15 @@ for local_path in "${!COMPLETION_FILES[@]}"; do
       if [[ "$local_sha" != "$remote_sha" ]]; then
         COMPLETIONS_OK=false
         out_of_date_completions+=("$local_path")
-        echo -e "  - $(basename "$local_path"): ${RED}Out of date${NC}"
+        print_diag_item "error" "  - $(basename "$local_path")" "Out of date"
       else
-        echo -e "  - $(basename "$local_path"): ${GREEN}Up to date${NC}"
+        print_diag_item "ok" "  - $(basename "$local_path")" "Up to date"
       fi
     else
-      echo -e "  - $(basename "$local_path"): ${YELLOW}Unable to check (HTTP download failed)${NC}"
+      print_diag_item "warn" "  - $(basename "$local_path")" "Unable to check (HTTP download failed)"
     fi
   else
-    echo -e "  - $(basename "$local_path"): ${GREEN}Present (offline, cannot verify version)${NC}"
+    print_diag_item "ok" "  - $(basename "$local_path")" "Present (offline, cannot verify version)"
   fi
 done
 
@@ -608,13 +611,13 @@ for symlink_item in "${COMPLETION_SYMLINKS[@]}"; do
   if [[ ! -L "$symlink_path" ]]; then
     COMPLETIONS_OK=false
     broken_symlinks+=("$symlink_path:$symlink_target")
-    echo -e "  - $(basename "$symlink_path") symlink: ${RED}Missing/Broken${NC}"
+    print_diag_item "error" "  - $(basename "$symlink_path") symlink" "Missing/Broken"
   else
     target_resolved=$(readlink "$symlink_path" || true)
     if [[ "$target_resolved" != "$symlink_target" ]]; then
       COMPLETIONS_OK=false
       broken_symlinks+=("$symlink_path:$symlink_target")
-      echo -e "  - $(basename "$symlink_path") symlink: ${RED}Incorrect target (${target_resolved})${NC}"
+      print_diag_item "error" "  - $(basename "$symlink_path") symlink" "Incorrect target (${target_resolved})"
     fi
   fi
 done

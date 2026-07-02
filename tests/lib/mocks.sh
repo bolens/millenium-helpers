@@ -10,6 +10,7 @@ setup_mock_bin() {
   MOCK_BIN=$(mktemp -d)
   export MOCK_BIN
   export PATH="${MOCK_BIN}:${PATH}"
+  export MOCK_PROC="/nonexistent_mock_proc"
 }
 
 teardown_mock_bin() {

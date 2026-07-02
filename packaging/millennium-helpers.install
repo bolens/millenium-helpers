@@ -1,15 +1,17 @@
 post_install() {
-  echo ":: To enable daily background updates for both the client and themes,"
-  echo "   run the following command as your normal user (non-root):"
-  echo "     millennium-schedule enable stable"
+  echo ":: Millennium Helper Scripts installed successfully."
+  echo ":: To configure the helper scripts (select update channel, enable daily background"
+  echo "   updates, and set up a GitHub PAT token), run the interactive setup wizard as your"
+  echo "   normal user (non-root):"
+  echo "     millennium-schedule setup"
   echo ""
-  echo ":: Note: Ensure your user is in the 'wheel' group to allow the background"
-  echo "   timer to run the updater scripts via passwordless sudo."
+  echo ":: Note: Ensure your user is in the 'wheel' (or appropriate sudoers) group to allow"
+  echo "   the background timer to run updater scripts via passwordless sudo."
 }
 
 post_upgrade() {
-  echo ":: Millennium helpers package has been upgraded."
-  echo "   If you use the daily systemd auto-updater, run the following command"
-  echo "   as your normal user to regenerate the service file:"
-  echo "     millennium-schedule enable stable"
+  echo ":: Millennium helper scripts have been upgraded."
+  echo "   If you need to reconfigure or regenerate your update schedule timers, run:"
+  echo "     millennium-schedule setup"
 }
+

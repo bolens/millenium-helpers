@@ -36,6 +36,7 @@ Commands:
   enable [stable|beta]  Enable the daily update timer (defaults to stable)
   disable               Disable the update timer/cron and service
   status                Show status of the systemd user service and cron job
+  setup                 Run the interactive configuration wizard
 
 Options:
   -c, --cron            Force use of crontab instead of systemd
@@ -55,7 +56,7 @@ CHANNEL=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    enable|disable|status|pre-update|post-update)
+    enable|disable|status|setup|pre-update|post-update)
       COMMAND="$1"
       shift
       ;;
@@ -95,7 +96,7 @@ fi
 # execute and write_file resolved from common.sh
 
 enable_timer() {
-  local channel="${1:-stable}"
+  local channel="${1:-${CONFIG_UPDATE_CHANNEL:-stable}}"
   local script_file=""
 
   case "$channel" in
@@ -306,7 +307,7 @@ post_update() {
 }
 
 enable_cron() {
-  local channel="${1:-stable}"
+  local channel="${1:-${CONFIG_UPDATE_CHANNEL:-stable}}"
   local script_file=""
 
   case "$channel" in
@@ -382,12 +383,114 @@ disable_cron() {
   fi
 }
 
+run_setup_wizard() {
+  if [[ ! -t 0 && "${FORCE_WIZARD:-}" != "true" ]]; then
+    echo -e "${RED}Error: Setup wizard must be run in an interactive terminal.${NC}" >&2
+    exit 1
+  fi
+
+  echo -e "\n${BLUE}=== Millennium Helpers Configuration Wizard ===${NC}"
+  echo -e "This wizard will guide you through the configuration of the Millennium Helpers.\n"
+
+  # 1. Release Channel Selection
+  local channel=""
+  while true; do
+    echo -e "Choose Millennium Update Channel:"
+    echo -e "  1) Stable (Default)"
+    echo -e "  2) Beta (Prereleases)"
+    read -rp "Selection [1-2, default: 1]: " ch_sel
+    case "$ch_sel" in
+      ""|1)
+        channel="stable"
+        break
+        ;;
+      2)
+        channel="beta"
+        break
+        ;;
+      *)
+        echo -e "${RED}Invalid selection. Please choose 1 or 2.${NC}\n"
+        ;;
+    esac
+  done
+  echo -e "Selected channel: ${GREEN}${channel}${NC}\n"
+
+  # 2. Automated Daily Update Scheduler Timer
+  local enable_sched=""
+  while true; do
+    read -rp "Would you like to enable the daily automated background update timer? [Y/n]: " sched_sel
+    case "$sched_sel" in
+      ""|[Yy]|[Yy][Ee][Ss])
+        enable_sched="true"
+        break
+        ;;
+      [Nn]|[Nn][Oo])
+        enable_sched="false"
+        break
+        ;;
+      *)
+        echo -e "${RED}Invalid option. Please enter y or n.${NC}\n"
+        ;;
+    esac
+  done
+  echo -e "Automated timer: ${GREEN}${enable_sched}${NC}\n"
+
+  # 3. GitHub API Token configuration
+  local github_token=""
+  echo -e "To prevent hitting GitHub API rate limits during updates, you can optionally provide a GitHub Personal Access Token (PAT)."
+  read -rp "Enter GitHub PAT (leave empty to skip): " github_token
+
+  # Write configuration to the user's config directory
+  local user_name="${SUDO_USER:-$(id -un)}"
+  local user_home
+  user_home="$(getent passwd "$user_name" | cut -d: -f6 || echo "")"
+  if [[ -z "$user_home" ]]; then
+    user_home="$HOME"
+  fi
+  local user_config_dir="${XDG_CONFIG_HOME:-$user_home/.config}/millennium-helpers"
+  
+  if [[ "$DRY_RUN" == "false" ]]; then
+    execute mkdir -p "$user_config_dir"
+    execute chmod 700 "$user_config_dir"
+    
+    write_file "${user_config_dir}/config.json" << EOF
+{
+  "update_channel": "${channel}",
+  "github_token": "${github_token}"
+}
+EOF
+    execute chmod 600 "${user_config_dir}/config.json"
+    if [[ "$(id -u)" -eq 0 && "$user_name" != "root" ]]; then
+      execute chown -R "${user_name}:${user_name}" "$user_config_dir"
+    fi
+    echo -e "\n${GREEN}Configuration saved successfully to:${NC} ${user_config_dir}/config.json"
+  else
+    echo -e "\n${YELLOW}[DRY RUN] Would write config to ${user_config_dir}/config.json:${NC}"
+    echo "update_channel: ${channel}"
+    echo "github_token: ${github_token}"
+  fi
+
+  # Reload configuration in memory
+  export CONFIG_UPDATE_CHANNEL="$channel"
+  export GITHUB_TOKEN="$github_token"
+
+  # Trigger enablement of schedule if chosen
+  if [[ "$enable_sched" == "true" ]]; then
+    echo -e "\n${BLUE}Configuring background update scheduler...${NC}"
+    if [[ "${USE_CRON:-false}" == "true" ]]; then
+      enable_cron "$channel"
+    else
+      enable_timer "$channel"
+    fi
+  fi
+}
+
 case "$COMMAND" in
   enable)
     if [[ "$USE_CRON" == "true" ]]; then
-      enable_cron "${CHANNEL:-stable}"
+      enable_cron "$CHANNEL"
     else
-      enable_timer "${CHANNEL:-stable}"
+      enable_timer "$CHANNEL"
     fi
     ;;
   disable)
@@ -396,6 +499,9 @@ case "$COMMAND" in
     ;;
   status)
     show_status
+    ;;
+  setup)
+    run_setup_wizard
     ;;
   pre-update)
     pre_update
