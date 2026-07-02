@@ -108,6 +108,27 @@ rc=$?
 assert_success "$rc" "millennium-repair --dry-run exits 0 for a custom theme lacking metadata"
 assert_contains "$out" "does not have GitHub metadata" "millennium-repair --dry-run explains it skips refreshing a theme without metadata"
 
+# --- Dry-run must not touch disk when Steam is running ---
+# capture_steam_env() creates a real state directory/file on disk; running
+# it unconditionally (even under --dry-run, before the DRY_RUN gate that
+# already protected close_steam_gracefully) contradicted --dry-run's
+# documented "no changes will be made" guarantee.
+
+mock_cmd "pgrep" 'echo 12345'  # Steam appears to be running
+mock_cmd "runuser" 'echo "runuser called: $*" >> "'"${MOCK_BIN}"'/runuser.calls"'
+relaunch_state_dir="${FAKE_HOME}/.local/state/millennium-helpers"
+rm -rf "$relaunch_state_dir" "${MOCK_BIN}/runuser.calls"
+
+out=$(run_repair --dry-run --skip-theme 2>&1)
+rc=$?
+assert_success "$rc" "millennium-repair --dry-run exits 0 when Steam is (mock) running"
+assert_contains "$out" "Would capture Steam's environment and close it" "millennium-repair --dry-run announces it would capture/close Steam instead of doing so"
+assert_file_not_exists "$relaunch_state_dir" "millennium-repair --dry-run does not create the relaunch state directory"
+assert_file_not_exists "${MOCK_BIN}/runuser.calls" "millennium-repair --dry-run does not invoke runuser to close Steam"
+
+rm -f "${MOCK_BIN}/runuser.calls"
+mock_cmd "pgrep" 'exit 1'  # restore: Steam not running, for any tests that might run after this one
+
 rm -rf "$FAKE_HOME"
 
 print_summary

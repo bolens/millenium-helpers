@@ -675,15 +675,15 @@ if [[ "$COMMAND" == "doctor" ]]; then
     fi
     
     echo -e "${YELLOW}Steam is currently running and must be closed to apply repairs to hooks/binaries.${NC}"
-    
-    # Capture env and command line arguments
-    capture_steam_env "$RUNNING_USER"
-    
-    # Close Steam gracefully
+
     if [[ "$DRY_RUN" == "false" ]]; then
+      # Capture env and command line arguments
+      capture_steam_env "$RUNNING_USER"
       close_steam_gracefully "$RUNNING_USER"
+    else
+      echo -e "${YELLOW}[DRY RUN] Would capture Steam's environment and close it to apply repairs.${NC}"
     fi
-    
+
     STEAM_RUNNING=false
     relaunch_steam_after_doctor=true
   fi

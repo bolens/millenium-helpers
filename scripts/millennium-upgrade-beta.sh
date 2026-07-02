@@ -102,12 +102,13 @@ if pgrep -x steam >/dev/null 2>&1; then
   fi
 
   echo "Steam is currently running. Closing Steam gracefully to apply update..."
-  
-  # Capture env and command line arguments
-  capture_steam_env "$RUNNING_USER"
 
   if [[ "$DRY_RUN" == "false" ]]; then
+    # Capture env and command line arguments
+    capture_steam_env "$RUNNING_USER"
     close_steam_gracefully "$RUNNING_USER"
+  else
+    echo -e "${YELLOW}[DRY RUN] Would capture Steam's environment and close it to apply the update.${NC}"
   fi
   RELAUNCH_STEAM=true
 fi
