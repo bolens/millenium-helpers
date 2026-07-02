@@ -19,6 +19,13 @@ source "${TEST_DIR}/../lib/mocks.sh"
 MCP_PY="${REPO_ROOT}/scripts/millennium-mcp.py"
 
 setup_mock_bin
+mock_cmd "millennium-diag" "exit 0"
+mock_cmd "millennium-theme" "exit 0"
+mock_cmd "millennium-upgrade-beta" "exit 0"
+mock_cmd "millennium-upgrade-stable" "exit 0"
+mock_cmd "millennium-schedule" "exit 0"
+mock_cmd "millennium-repair" "exit 0"
+mock_cmd "millennium-purge" "exit 0"
 trap teardown_mock_bin EXIT
 
 echo -e "${YELLOW}=== Behavioral tests: millennium-mcp.py ===${NC}"
