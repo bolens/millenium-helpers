@@ -1,7 +1,7 @@
 # Maintainer: bolens <https://github.com/bolens>
 pkgname=millennium-helpers-git
 _pkgname=millennium-helpers
-pkgver=r95.g02b6280
+pkgver=r96.g10217ef
 pkgrel=1
 pkgdesc="Utility scripts for managing, repairing, upgrading, rolling back, viewing logs, managing themes, and scheduling updates for Millennium on Linux"
 arch=('any')
