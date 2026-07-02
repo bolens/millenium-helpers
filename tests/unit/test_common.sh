@@ -323,5 +323,52 @@ else
 fi
 rm -rf "$TEMP_CONF_DIR"
 
+# --- download_file() ---
+
+# 1. Dry run mode
+out=$(DRY_RUN=true download_file "https://example.com/file" "/tmp/dest" 2>&1)
+assert_contains "$out" "Would download" "download_file (dry-run) prints dry run notice"
+assert_contains "$out" "https://example.com/file" "download_file (dry-run) contains source url"
+assert_contains "$out" "/tmp/dest" "download_file (dry-run) contains destination path"
+
+# 2. Live download (mocked curl)
+# We have setup_mock_bin already active, so we can mock curl
+# shellcheck disable=SC2016
+mock_cmd "curl" '
+# Mock curl that writes mock file and returns success
+dest=""
+while [[ $# -gt 0 ]]; do
+  if [[ "$1" == "-o" ]]; then
+    shift
+    dest="$1"
+  fi
+  shift
+done
+echo "mock download content" > "$dest"
+exit 0
+'
+download_temp=$(mktemp)
+out=$(DRY_RUN=false download_file "https://example.com/file" "$download_temp" "Fetching file" 2>&1)
+rc=$?
+assert_success "$rc" "download_file returns 0 on successful curl"
+assert_contains "$out" "Fetching file" "download_file outputs the description message"
+assert_contains "$out" "OK" "download_file outputs OK on success"
+assert_file_exists "$download_temp" "download_file actually writes the target file"
+assert_equals "mock download content" "$(cat "$download_temp")" "downloaded file content matches mock"
+rm -f "$download_temp"
+
+# 3. Live download failure (mocked curl exit 1)
+mock_cmd "curl" '
+echo "curl error message" >&2
+exit 1
+'
+download_temp=$(mktemp)
+out=$(DRY_RUN=false download_file "https://example.com/file" "$download_temp" "Fetching file" 2>&1)
+rc=$?
+assert_failure "$rc" "download_file returns non-zero on curl failure"
+assert_contains "$out" "FAIL" "download_file outputs FAIL on failure"
+assert_contains "$out" "curl error message" "download_file outputs curl stderr logs to stderr"
+rm -f "$download_temp"
+
 print_summary
 

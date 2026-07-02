@@ -92,5 +92,43 @@ assert_contains "$out" "update_channel: beta" "install.sh wizard output contains
 assert_contains "$out" "github_token: test_pat_token" "install.sh wizard output contains correct token"
 assert_contains "$out" "Configuring background update scheduler" "install.sh wizard triggers schedule enablement"
 
+# --- Interactive Sudoers Validation Recovery ---
+
+TEST_SUDO_DIR=$(mktemp -d)
+export MOCK_SUDOERS_FILE="${TEST_SUDO_DIR}/millennium-helpers"
+
+# Mock all file and system write operations that install.sh does in live mode
+mock_cmd "mkdir" "exit 0"
+mock_cmd "cp" "exit 0"
+mock_cmd "chown" "exit 0"
+mock_cmd "chmod" "exit 0"
+mock_cmd "ln" "exit 0"
+mock_cmd "restorecon" "exit 0"
+
+# Mock visudo to fail initially
+mock_cmd "visudo" "echo 'visudo: parse error in generated file' >&2; exit 1"
+
+# Mock id command to trick installer into thinking we are root
+mock_cmd "id" "echo 0"
+
+out=$(echo -e "2" | FORCE_RECOVERY=true FORCE_WIZARD=false bash "$INSTALL_SH" install 2>&1)
+rc=$?
+
+assert_success "$rc" "install.sh with failing visudo and choosing option 2 (skip) exits successfully"
+assert_contains "$out" "visudo validation failed" "install.sh reports visudo failure"
+assert_contains "$out" "Skipping passwordless sudo setup" "install.sh announces skipping sudoers"
+
+# Reset mocks
+rm -f "${MOCK_BIN}/id"
+rm -f "${MOCK_BIN}/visudo"
+rm -f "${MOCK_BIN}/mkdir"
+rm -f "${MOCK_BIN}/cp"
+rm -f "${MOCK_BIN}/chown"
+rm -f "${MOCK_BIN}/chmod"
+rm -f "${MOCK_BIN}/ln"
+rm -f "${MOCK_BIN}/restorecon"
+rm -rf "$TEST_SUDO_DIR"
+unset MOCK_SUDOERS_FILE
+
 print_summary
 

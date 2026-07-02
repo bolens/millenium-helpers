@@ -209,8 +209,7 @@ except Exception:
 
     rm -rf "$theme_tmp" "$theme_bak"
 
-    if ! curl -fsSL --retry 3 --retry-delay 2 "https://github.com/${owner}/${repo}/archive/${COMMIT}.zip" -o "$TMP/theme.zip"; then
-      echo -e "${RED}Error: Failed to download theme package.${NC}" >&2
+    if ! download_file "https://github.com/${owner}/${repo}/archive/${COMMIT}.zip" "$TMP/theme.zip" "Downloading theme package"; then
       rm -rf "$TMP"
       return 1
     fi
@@ -249,9 +248,46 @@ EOF
 
 # 1. LIST COMMAND
 if [[ "$COMMAND" == "list" ]]; then
+  active_theme="Steam"
   if [[ "$OUTPUT_JSON" == "false" ]]; then
     echo -e "${BLUE}=== Installed Millennium Themes ===${NC}"
+    
+    # Active theme detection
+    user_name="${SUDO_USER:-$(id -un)}"
+    user_home="$(getent passwd "$user_name" | cut -d: -f6 || echo "")"
+    if [[ -z "$user_home" ]]; then
+      user_home="$HOME"
+    fi
+    user_xdg="${XDG_CONFIG_HOME:-$user_home/.config}"
+    steam_path="${STEAM:-$user_home/.local/share/Steam}"
+    config_json=""
+    
+    for cand in \
+      "${user_xdg}/millennium/config.json" \
+      "${user_home}/.config/millennium/config.json" \
+      "${user_home}/.var/app/com.valvesoftware.Steam/config/millennium/config.json" \
+      "${user_home}/.var/app/com.valvesoftware.Steam/.config/millennium/config.json" \
+      "${steam_path}/millennium/config.json" \
+      "${steam_path}/ext/config.json"; do
+      if [[ -f "$cand" ]]; then
+        config_json="$cand"
+        break
+      fi
+    done
+    
+    if [[ -n "$config_json" ]]; then
+      active_theme=$(python3 -c "
+import json
+try:
+    with open('$config_json') as f:
+        data = json.load(f)
+        print(data.get('themes', {}).get('activeTheme', 'Steam'))
+except Exception:
+    print('Steam')
+" 2>/dev/null || echo "Steam")
+    fi
   fi
+
   if [[ ! -d "$SKINS_DIR" ]]; then
     if [[ "$OUTPUT_JSON" == "true" ]]; then
       echo "[]"
@@ -309,10 +345,22 @@ except Exception:
         printf '{"name":"%s","type":"local"}' "$theme_name"
       fi
     else
+      status_flag="[Installed]"
+      status_color="${BLUE}"
+      if [[ "$theme_name" == "$active_theme" ]]; then
+        status_flag="[Active]   "
+        status_color="${GREEN}"
+      fi
+      
       if [[ "$type" == "github" ]]; then
-        echo -e "  - ${GREEN}${theme_name}${NC} (${owner}/${repo} @ ${commit:0:7})"
+        printf "  %b%s%b  %-20s - %s/%s @ %s (GitHub)\n" \
+          "$status_color" "$status_flag" "${NC}" \
+          "$theme_name" \
+          "$owner" "$repo" "${commit:0:7}"
       else
-        echo -e "  - ${GREEN}${theme_name}${NC} (Local / Manual Installation)"
+        printf "  %b%s%b  %-20s - Local / Manual Installation\n" \
+          "$status_color" "$status_flag" "${NC}" \
+          "$theme_name"
       fi
     fi
   done
@@ -353,14 +401,15 @@ if [[ "$COMMAND" == "install" ]]; then
     exit 1
   fi
 
-  echo "Downloading theme package..."
   if [[ "$DRY_RUN" == "true" ]]; then
     echo -e "${YELLOW}[DRY RUN] Would install ${owner}/${repo} to ${target_dir}${NC}"
   else
     TMP="$(mktemp -d)"
     trap 'rm -rf "$TMP"' EXIT INT TERM
 
-    curl -fsSL --retry 3 --retry-delay 2 "https://github.com/${owner}/${repo}/archive/${COMMIT}.zip" -o "$TMP/theme.zip"
+    if ! download_file "https://github.com/${owner}/${repo}/archive/${COMMIT}.zip" "$TMP/theme.zip" "Downloading theme package"; then
+      exit 1
+    fi
 
     # Extract
     unzip -q "$TMP/theme.zip" -d "$TMP" || [[ $? -le 2 ]]

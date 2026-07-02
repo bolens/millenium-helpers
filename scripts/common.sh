@@ -58,6 +58,63 @@ resolve_helper_path() {
   fi
 }
 
+download_file() {
+  local url="$1"
+  local dest="$2"
+  local msg="${3:-Downloading}"
+  
+  if [[ "$DRY_RUN" == "true" ]]; then
+    echo -e "${YELLOW}[DRY RUN] Would download:${NC} ${url} -> ${dest}"
+    return 0
+  fi
+
+  local headers=()
+  if [[ -n "${GITHUB_TOKEN:-}" && "$url" == *"github.com"* ]]; then
+    headers+=("-H" "Authorization: token $GITHUB_TOKEN")
+  fi
+
+  local tmp_log
+  tmp_log=$(mktemp)
+  
+  if [[ ! -t 1 ]]; then
+    printf "%s... " "$msg"
+    if curl -fsSL --retry 3 --retry-delay 2 "${headers[@]}" "$url" -o "$dest" >"$tmp_log" 2>&1; then
+      echo -e "${GREEN}OK${NC}"
+      rm -f "$tmp_log"
+      return 0
+    else
+      echo -e "${RED}FAIL${NC}"
+      cat "$tmp_log" >&2
+      rm -f "$tmp_log"
+      return 1
+    fi
+  fi
+
+  curl -fsSL --retry 3 --retry-delay 2 "${headers[@]}" "$url" -o "$dest" >"$tmp_log" 2>&1 &
+  local pid=$!
+  local spinner="/-\|"
+  local i=0
+
+  printf "%s...  " "$msg"
+  while kill -0 "$pid" 2>/dev/null; do
+    printf "\b%s" "${spinner:i++%4:1}"
+    sleep 0.1
+  done
+  
+  wait "$pid"
+  local rc=$?
+  
+  printf "\b\b"
+  if [[ $rc -eq 0 ]]; then
+    echo -e "${GREEN}OK${NC}"
+  else
+    echo -e "${RED}FAIL${NC}"
+    cat "$tmp_log" >&2
+  fi
+  rm -f "$tmp_log"
+  return $rc
+}
+
 _github_curl_headers() {
   if [[ -n "${GITHUB_TOKEN:-}" ]]; then
     echo "-H" "Authorization: token $GITHUB_TOKEN"
