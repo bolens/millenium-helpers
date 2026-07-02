@@ -174,8 +174,9 @@ else
   TMP=$(mktemp -d)
   trap 'rm -rf "$TMP"' EXIT INT TERM
 
-  echo "Downloading Millennium v${VER}..."
-  curl -fL --retry 3 --retry-delay 2 "$URL" -o "$TMP/$ARCHIVE"
+  if ! download_file "$URL" "$TMP/$ARCHIVE" "Downloading Millennium v${VER}"; then
+    exit 1
+  fi
   echo "${SHA}  ${ARCHIVE}" | (cd "$TMP" && sha256sum -c)
 
   echo "Installing to /usr/lib/millennium/..."

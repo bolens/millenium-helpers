@@ -217,8 +217,9 @@ if [[ "$REFRESH_THEME" == "true" ]]; then
     TMP="$(mktemp -d)"
     trap 'rm -rf "$TMP"' EXIT INT TERM
 
-    echo "Refreshing active theme ${ACTIVE_THEME}..."
-    curl -fsSL --retry 3 --retry-delay 2 "https://github.com/${OWNER}/${REPO}/archive/${COMMIT}.zip" -o "$TMP/theme.zip"
+    if ! download_file "https://github.com/${OWNER}/${REPO}/archive/${COMMIT}.zip" "$TMP/theme.zip" "Refreshing active theme ${ACTIVE_THEME}"; then
+      exit 1
+    fi
     
     # Allow unzip to return warnings (exit code <= 2) and verify extraction
     unzip -q "$TMP/theme.zip" -d "$TMP" || [[ $? -le 2 ]]

@@ -1,0 +1,16 @@
+{
+  "name": "Millennium Helpers Dev Sandbox",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "timonwong.shellcheck",
+        "charliermarsh.ruff"
+      ]
+    }
+  },
+  "remoteUser": "developer",
+  "postCreateCommand": "make check-all"
+}
