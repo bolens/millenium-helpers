@@ -34,15 +34,18 @@ Options:
   --json        Output diagnostics report in structured JSON format
   -l, --follow  Follow (tail -f) real-time log output
   -d, --dry-run Perform a dry-run (simulates doctor repairs without modifying anything)
+  -s, --share   Upload diagnostic report to a pastebin and return a short link
   -h, --help    Show this help message
 EOF
 }
 
+ORIGINAL_ARGS=("$@")
 COMMAND=""
 DRY_RUN=false
 FOLLOW_LOGS=false
 FORCE_REPAIR=false
 OUTPUT_JSON=false
+SHARE_REPORT=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -70,6 +73,10 @@ while [[ $# -gt 0 ]]; do
       DRY_RUN=true
       shift
       ;;
+    -s|--share)
+      SHARE_REPORT=true
+      shift
+      ;;
     -h|--help)
       show_help
       exit 0
@@ -81,6 +88,45 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+if [[ "$SHARE_REPORT" == "true" ]]; then
+  echo "Generating and uploading diagnostic report..."
+  
+  clean_args=()
+  for arg in "${ORIGINAL_ARGS[@]}"; do
+    if [[ "$arg" != "-s" && "$arg" != "--share" ]]; then
+      clean_args+=("$arg")
+    fi
+  done
+  
+  report_file=$(mktemp)
+  trap 'rm -f "$report_file"' EXIT INT TERM
+  
+  # Run the diagnostic script itself with cleaned arguments
+  bash "$0" "${clean_args[@]}" > "$report_file" 2>&1 || true
+  
+  # Sanitize user home and user name
+  user_name="${SUDO_USER:-$(id -un)}"
+  user_home="$(getent passwd "$user_name" | cut -d: -f6 || echo "")"
+  if [[ -z "$user_home" ]]; then
+    user_home="$HOME"
+  fi
+  
+  # Replace home path and username to prevent info leakage
+  sed -i "s|$user_home|~|g; s|$user_name|user|g" "$report_file"
+  
+  # Upload using curl
+  upload_url=$(curl -fsSL --data-binary @"$report_file" https://paste.rs || true)
+  
+  if [[ -n "$upload_url" && "$upload_url" == *"http"* ]]; then
+    echo -e "${GREEN}Diagnostic report successfully shared!${NC}"
+    echo -e "URL: ${BLUE}${upload_url}${NC}"
+  else
+    echo -e "${RED}Error: Failed to upload diagnostic report to paste.rs.${NC}" >&2
+    exit 1
+  fi
+  exit 0
+fi
 
 if [[ "$DRY_RUN" == "true" ]]; then
   echo -e "${YELLOW}=== DRY RUN MODE: No changes will be made ===${NC}"

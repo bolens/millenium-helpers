@@ -112,4 +112,16 @@ rc=$?
 assert_success "$rc" "millennium-diag.sh -f --dry-run (doctor alias) completes without error"
 assert_contains "$out" "Doctor" "millennium-diag.sh -f --dry-run runs the doctor routine via its -f alias"
 
+# --- --share: Share report option ---
+mock_cmd "curl" "echo 'https://paste.rs/mocklink'"
+
+out=$(bash "$DIAG_SH" --share 2>&1)
+rc=$?
+assert_success "$rc" "millennium-diag.sh --share completes successfully"
+assert_contains "$out" "Diagnostic report successfully shared" "millennium-diag.sh reports share success"
+assert_contains "$out" "https://paste.rs/mocklink" "millennium-diag.sh prints the returned upload URL"
+
+# Clean up mock
+rm -f "${MOCK_BIN}/curl"
+
 print_summary
