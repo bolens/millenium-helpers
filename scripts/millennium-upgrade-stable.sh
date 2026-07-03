@@ -30,6 +30,8 @@ done
 FORCE=false
 DRY_RUN=false
 ROLLBACK=false
+ROLLBACK_TARGET=""
+LOCAL_FILE=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -f|--force)
@@ -42,6 +44,20 @@ while [[ $# -gt 0 ]]; do
       ;;
     -r|--rollback)
       ROLLBACK=true
+      if [[ $# -gt 1 && ! "$2" =~ ^- ]]; then
+        ROLLBACK_TARGET="$2"
+        shift
+      fi
+      shift
+      ;;
+    --file)
+      if [[ $# -gt 1 ]]; then
+        LOCAL_FILE="$2"
+        shift
+      else
+        echo "Error: --file requires an archive path argument." >&2
+        exit 1
+      fi
       shift
       ;;
     *)
@@ -51,32 +67,14 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ "$DRY_RUN" == "false" ]] && [[ "$(id -u)" -ne 0 ]]; then
+if [[ "$DRY_RUN" == "false" ]] && [[ "$ROLLBACK_TARGET" != "list" ]] && [[ "$(id -u)" -ne 0 ]]; then
   echo "Run with sudo: sudo $0" >&2
   exit 1
 fi
 
 # --- Rollback Execution ---
 if [[ "$ROLLBACK" == "true" ]]; then
-  dest_dir="/usr/lib/millennium"
-  dest_bak="${dest_dir}.bak"
-  
-  if [[ ! -d "$dest_bak" ]]; then
-    echo "Error: No backup directory found at ${dest_bak} to roll back to." >&2
-    exit 1
-  fi
-  
-  echo "Rolling back Millennium to the previous version..."
-  if [[ "$DRY_RUN" == "true" ]]; then
-    echo -e "[DRY RUN] Would swap ${dest_dir} with ${dest_bak}"
-  else
-    dest_tmp="${dest_dir}.rollback_tmp"
-    rm -rf "$dest_tmp"
-    mv "$dest_dir" "$dest_tmp"
-    mv "$dest_bak" "$dest_dir"
-    mv "$dest_tmp" "$dest_bak"
-    echo "Rollback successful! Previous version is now active."
-  fi
+  perform_rollback "$ROLLBACK_TARGET"
   exit 0
 fi
 
@@ -120,65 +118,85 @@ fi
 
 # execute resolved from common.sh
 
-check_network() {
-  local retries=5
-  local wait_sec=10
-  echo "Checking network connectivity..."
-  for ((i=1; i<=retries; i++)); do
-    if curl -sIk "https://github.com" &>/dev/null; then
-      return 0
+if [[ -n "$LOCAL_FILE" ]]; then
+  if [[ ! -f "$LOCAL_FILE" ]]; then
+    echo "Error: Local archive file '${LOCAL_FILE}' does not exist." >&2
+    exit 1
+  fi
+  VER=$(tar -xOzf "$LOCAL_FILE" usr/lib/millennium/version.txt 2>/dev/null || echo "local")
+  echo "Using local file: ${LOCAL_FILE} (Version: ${VER})"
+else
+  check_network() {
+    local retries=5
+    local wait_sec=10
+    echo "Checking network connectivity..."
+    for ((i=1; i<=retries; i++)); do
+      if curl -sIk "https://github.com" &>/dev/null; then
+        return 0
+      fi
+      echo "Network offline, retrying in ${wait_sec}s ($i/$retries)..." >&2
+      sleep "$wait_sec"
+    done
+    echo "Error: Network is offline. Aborting." >&2
+    exit 1
+  }
+  check_network
+
+  echo "Fetching latest Millennium stable release tag..."
+  TAG=$(fetch_github_latest_stable_tag "SteamClientHomebrew" "Millennium")
+
+  if [[ -z "$TAG" || "$TAG" == "null" ]]; then
+    echo "Error: Could not retrieve the latest stable version tag from GitHub." >&2
+    exit 1
+  fi
+
+  VER="${TAG#v}"
+
+  if [[ "$FORCE" = false ]] && [[ -f "/usr/lib/millennium/version.txt" ]]; then
+    INSTALLED_VER=$(cat "/usr/lib/millennium/version.txt")
+    if [[ "$VER" == "$INSTALLED_VER" ]]; then
+      echo "Millennium is already up to date (v${VER}). Use --force to reinstall."
+      exit 0
     fi
-    echo "Network offline, retrying in ${wait_sec}s ($i/$retries)..." >&2
-    sleep "$wait_sec"
-  done
-  echo "Error: Network is offline. Aborting." >&2
-  exit 1
-}
-
-check_network
-
-echo "Fetching latest Millennium stable release tag..."
-TAG=$(fetch_github_latest_stable_tag "SteamClientHomebrew" "Millennium")
-
-if [[ -z "$TAG" || "$TAG" == "null" ]]; then
-  echo "Error: Could not retrieve the latest stable version tag from GitHub." >&2
-  exit 1
-fi
-
-VER="${TAG#v}"
-
-if [[ "$FORCE" = false ]] && [[ -f "/usr/lib/millennium/version.txt" ]]; then
-  INSTALLED_VER=$(cat "/usr/lib/millennium/version.txt")
-  if [[ "$VER" == "$INSTALLED_VER" ]]; then
-    echo "Millennium is already up to date (v${VER}). Use --force to reinstall."
-    exit 0
   fi
 fi
 
-ARCHIVE="millennium-v${VER}-linux-x86_64.tar.gz"
-URL="https://github.com/SteamClientHomebrew/Millennium/releases/download/v${VER}/${ARCHIVE}"
-SHA_URL="https://github.com/SteamClientHomebrew/Millennium/releases/download/v${VER}/millennium-v${VER}-linux-x86_64.sha256"
+if [[ -z "$LOCAL_FILE" ]]; then
+  ARCHIVE="millennium-v${VER}-linux-x86_64.tar.gz"
+  URL="https://github.com/SteamClientHomebrew/Millennium/releases/download/v${VER}/${ARCHIVE}"
+  SHA_URL="https://github.com/SteamClientHomebrew/Millennium/releases/download/v${VER}/millennium-v${VER}-linux-x86_64.sha256"
 
-echo "Fetching SHA256 checksum for Millennium v${VER}..."
-SHA=$(curl -fsSL --retry 3 --retry-delay 2 "$SHA_URL" | awk '{print $1}' || true)
+  echo "Fetching SHA256 checksum for Millennium v${VER}..."
+  SHA=$(curl -fsSL --retry 3 --retry-delay 2 "$SHA_URL" | awk '{print $1}' || true)
 
-if [[ -z "$SHA" ]]; then
-  echo "Error: Could not retrieve the SHA256 checksum for v${VER}." >&2
-  exit 1
+  if [[ -z "$SHA" ]]; then
+    echo "Error: Could not retrieve the SHA256 checksum for v${VER}." >&2
+    exit 1
+  fi
 fi
 
 if [[ "$DRY_RUN" == "true" ]]; then
-  echo -e "${YELLOW}[DRY RUN] Would download archive: ${URL}${NC}"
-  echo -e "${YELLOW}[DRY RUN] Expected SHA256: ${SHA}${NC}"
+  if [[ -n "$LOCAL_FILE" ]]; then
+    echo -e "${YELLOW}[DRY RUN] Would install local archive: ${LOCAL_FILE}${NC}"
+  else
+    echo -e "${YELLOW}[DRY RUN] Would download archive: ${URL}${NC}"
+    echo -e "${YELLOW}[DRY RUN] Expected SHA256: ${SHA}${NC}"
+  fi
   echo -e "${YELLOW}[DRY RUN] Would clear /usr/lib/millennium/* and install new binaries${NC}"
+  prune_backups
 else
   TMP=$(mktemp -d)
   trap 'rm -rf "$TMP"' EXIT INT TERM
 
-  if ! download_file "$URL" "$TMP/$ARCHIVE" "Downloading Millennium v${VER}"; then
-    exit 1
+  if [[ -n "$LOCAL_FILE" ]]; then
+    cp "$LOCAL_FILE" "$TMP/millennium-local.tar.gz"
+    ARCHIVE="millennium-local.tar.gz"
+  else
+    if ! download_file "$URL" "$TMP/$ARCHIVE" "Downloading Millennium v${VER}"; then
+      exit 1
+    fi
+    echo "${SHA}  ${ARCHIVE}" | (cd "$TMP" && sha256sum -c)
   fi
-  echo "${SHA}  ${ARCHIVE}" | (cd "$TMP" && sha256sum -c)
 
   echo "Installing to /usr/lib/millennium/..."
   tar -xzf "$TMP/$ARCHIVE" -C "$TMP"
@@ -186,19 +204,30 @@ else
   # Atomic directory swap
   dest_dir="/usr/lib/millennium"
   dest_tmp="${dest_dir}.tmp"
-  dest_bak="${dest_dir}.bak"
+  
+  old_ver="unknown"
+  if [[ -f "${dest_dir}/version.txt" ]]; then
+    old_ver=$(cat "${dest_dir}/version.txt" | tr -d '[:space:]')
+  fi
+  if [[ -z "$old_ver" || "$old_ver" == "unknown" ]]; then
+    old_ver=$(date +%Y%m%d%H%M%S)
+  fi
+  dest_bak="${dest_dir}.bak_${old_ver}"
   
   rm -rf "$dest_tmp"
   mkdir -p "$dest_tmp"
-  find "$TMP/usr/lib/millennium/" -type f -exec install -m755 -t "$dest_tmp/" {} +
+  
+  extracted_dir="$TMP/usr/lib/millennium"
+  if [[ ! -d "$extracted_dir" ]]; then
+    extracted_dir="$TMP"
+  fi
+  find "$extracted_dir/" -type f -exec install -m755 -t "$dest_tmp/" {} + 2>/dev/null || true
   echo "${VER}" > "$dest_tmp/version.txt"
   chmod 644 "$dest_tmp/version.txt"
   
-  # Generate cryptographic integrity manifest
-  (cd "$dest_tmp" && sha256sum libmillennium_bootstrap_x86.so libmillennium_bootstrap_hhx64.so libmillennium_x86.so libmillennium_hhx64.so libmillennium_pvs64 > checksums.txt)
-  chmod 644 "$dest_tmp/checksums.txt"
+  (cd "$dest_tmp" && sha256sum libmillennium_bootstrap_x86.so libmillennium_bootstrap_hhx64.so libmillennium_x86.so libmillennium_hhx64.so libmillennium_pvs64 > checksums.txt 2>/dev/null || true)
+  chmod 644 "$dest_tmp/checksums.txt" 2>/dev/null || true
 
-  # Perform swap, keeping previous version in dest_bak
   if [[ -d "$dest_dir" ]]; then
     rm -rf "$dest_bak"
     mv "$dest_dir" "$dest_bak"
@@ -206,6 +235,7 @@ else
   
   if mv "$dest_tmp" "$dest_dir"; then
     echo "Millennium updated successfully."
+    prune_backups
   else
     echo "Error: Failed to swap directory. Restoring backup..." >&2
     if [[ -d "$dest_bak" ]]; then

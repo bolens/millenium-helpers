@@ -1,6 +1,6 @@
 pkgbase = millennium-helpers-git
 	pkgdesc = Utility scripts for managing, repairing, upgrading, rolling back, viewing logs, managing themes, and scheduling updates for Millennium on Linux
-	pkgver = r96.g10217ef
+	pkgver = r97.g6deb081
 	pkgrel = 1
 	url = https://github.com/bolens/millenium-helpers
 	install = millennium-helpers.install
