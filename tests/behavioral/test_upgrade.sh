@@ -54,21 +54,51 @@ echo "null"
   assert_contains "$out" "Could not retrieve the latest" "${script_name} explains it could not retrieve a version tag"
   rm -f "${MOCK_BIN}/curl"
 
-  # --- Rollback behavior depends on whether /usr/lib/millennium.bak exists on
-  # this machine. Rather than assuming a clean environment (which may not hold,
-  # e.g. if a previous real upgrade left a backup behind), branch on the actual
-  # state so the test is accurate either way.
-  if [[ -d /usr/lib/millennium.bak ]]; then
-    out=$(run_upgrade "$channel" --rollback --dry-run 2>&1)
-    rc=$?
-    assert_success "$rc" "${script_name} --rollback --dry-run succeeds when a backup directory exists"
-    assert_contains "$out" "Would swap" "${script_name} --rollback --dry-run reports the swap it would perform"
-  else
-    out=$(run_upgrade "$channel" --rollback --dry-run 2>&1)
-    rc=$?
-    assert_failure "$rc" "${script_name} --rollback fails when no backup directory exists"
-    assert_contains "$out" "No backup directory found" "${script_name} explains no backup is available to roll back to"
-  fi
+  # --- --file: Offline archive installation ---
+  MOCK_FILE=$(mktemp)
+  echo "mock archive content" > "$MOCK_FILE"
+  out=$(run_upgrade "$channel" --file "$MOCK_FILE" --dry-run 2>&1)
+  rc=$?
+  assert_success "$rc" "${script_name} with --file and --dry-run exits 0"
+  assert_contains "$out" "Would install local archive" "${script_name} --file notices local installation"
+  rm -f "$MOCK_FILE"
+
+  # --- Backup Management & Pruning & Rollback ---
+  TEST_LIB_DIR=$(mktemp -d)
+  export MOCK_LIB_DIR="${TEST_LIB_DIR}"
+
+  # Create mock backups
+  mkdir -p "${TEST_LIB_DIR}/millennium.bak_v2.0.0"
+  mkdir -p "${TEST_LIB_DIR}/millennium.bak_v2.1.0"
+  mkdir -p "${TEST_LIB_DIR}/millennium.bak_v2.2.0"
+  
+  # 1. Rollback list command
+  out=$(run_upgrade "$channel" --rollback list 2>&1)
+  rc=$?
+  assert_success "$rc" "${script_name} --rollback list exits 0"
+  assert_contains "$out" "v2.0.0" "${script_name} --rollback list lists v2.0.0"
+  assert_contains "$out" "v2.1.0" "${script_name} --rollback list lists v2.1.0"
+  assert_contains "$out" "v2.2.0" "${script_name} --rollback list lists v2.2.0"
+
+  # 2. Rollback to specific target (dry-run)
+  out=$(run_upgrade "$channel" --rollback v2.1.0 --dry-run 2>&1)
+  rc=$?
+  assert_success "$rc" "${script_name} --rollback target --dry-run exits 0"
+  assert_contains "$out" "Would swap active version with backup ${TEST_LIB_DIR}/millennium.bak_v2.1.0" "${script_name} rolls back to specified version"
+
+  # 3. Pruning check (dry-run)
+  export CONFIG_BACKUP_LIMIT=2
+  MOCK_FILE2=$(mktemp)
+  echo "mock archive" > "$MOCK_FILE2"
+  out=$(run_upgrade "$channel" --file "$MOCK_FILE2" --dry-run 2>&1)
+  rc=$?
+  assert_success "$rc" "${script_name} with custom backup limit exits 0"
+  assert_contains "$out" "Would prune backup: ${TEST_LIB_DIR}/millennium.bak_v2.0.0" "${script_name} prunes the oldest backup exceeding the limit"
+
+  rm -f "$MOCK_FILE2"
+  rm -rf "$TEST_LIB_DIR"
+  unset MOCK_LIB_DIR
+  unset CONFIG_BACKUP_LIMIT
 
 done
 
