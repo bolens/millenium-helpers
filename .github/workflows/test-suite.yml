@@ -139,6 +139,8 @@ jobs:
       - name: Run Pester tests
         shell: powershell
         run: |
+          Install-Module -Name Pester -Force -SkipPublisherCheck -AllowClobber -Scope CurrentUser
+          Import-Module Pester
           Invoke-Pester -Path "${{ matrix.suite }}" -Output Detailed
 
 

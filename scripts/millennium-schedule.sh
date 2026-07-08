@@ -3,7 +3,6 @@
 set -euo pipefail
 
 RUNNING_USER="${SUDO_USER:-$(id -un)}"
-USER_HOME="$(getent passwd "$RUNNING_USER" | cut -d: -f6)"
 
 # Source shared helpers
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -18,9 +17,11 @@ if [[ -f "$COMMON_SH" ]]; then
   # shellcheck disable=SC1090
   source "$COMMON_SH"
 else
-  echo -e "${RED:-}Error: Shared helper library not found." >&2
+  echo -e "Error: Shared helper library not found." >&2
   exit 1
 fi
+
+USER_HOME="$(get_user_home "$RUNNING_USER")"
 
 SERVICE_NAME="millennium-update.service"
 TIMER_NAME="millennium-update.timer"
@@ -123,10 +124,14 @@ enable_timer() {
 
   script_file=$(resolve_helper_path "millennium-upgrade")
 
-  # Sanity check: Ensure scripts have been installed system-wide (only if not dry run)
+  # Sanity check: Ensure scripts have been installed (only if not dry run)
   if [[ "$DRY_RUN" == "false" ]] && [[ ! -f "$script_file" ]]; then
     echo -e "${RED}Error: Installed updater script not found at ${script_file}.${NC}" >&2
-    echo -e "${YELLOW}Please run the installer first: sudo ./install.sh${NC}" >&2
+    if [[ "$(uname)" == "Darwin" ]]; then
+      echo -e "${YELLOW}Please install the helper tools first via Homebrew.${NC}" >&2
+    else
+      echo -e "${YELLOW}Please run the installer first: sudo ./install.sh${NC}" >&2
+    fi
     exit 1
   fi
 
@@ -137,6 +142,59 @@ enable_timer() {
   sched_self=$(resolve_helper_path "millennium-schedule")
 
   local state_dir="${XDG_STATE_HOME:-$USER_HOME/.local/state}/millennium-helpers"
+
+  if [[ "$(uname)" == "Darwin" ]]; then
+    local plist_dir="${USER_HOME}/Library/LaunchAgents"
+    local plist_path="${plist_dir}/com.millennium.update.plist"
+    
+    execute mkdir -p "$plist_dir"
+    
+    echo -e "${BLUE}Creating launchd plist file...${NC}"
+    write_file "$plist_path" << EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.millennium.update</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>-c</string>
+        <string>mkdir -p '${state_dir}' && { '${sched_self}' pre-update && '${script_file}' --channel '${channel}' && '${theme_cmd}' update && '${sched_self}' post-update; } >> '${state_dir}/updater.log' 2>&1</string>
+    </array>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>2</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+    <key>StandardOutPath</key>
+    <string>/tmp/com.millennium.update.stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/com.millennium.update.stderr.log</string>
+</dict>
+</plist>
+EOF
+
+    echo -e "${BLUE}Loading launchd agent...${NC}"
+    if [[ "$DRY_RUN" == "false" ]]; then
+      launchctl unload "$plist_path" 2>/dev/null || true
+      launchctl load "$plist_path"
+    else
+      echo -e "${YELLOW}[DRY RUN] Would load launchd agent: ${plist_path}${NC}"
+    fi
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+      echo -e "${GREEN}Dry run: LaunchAgent enablement simulated successfully.${NC}"
+    else
+      echo -e "${GREEN}Millennium auto-update LaunchAgent (${channel}) has been enabled!${NC}"
+      echo -e "It will run daily at 2:00 AM."
+    fi
+    echo -e "\nYou can check the status with: millennium-schedule status"
+    return 0
+  fi
 
   # Ensure user systemd config directory exists
   execute mkdir -p "$USER_CONFIG_DIR"
@@ -201,6 +259,21 @@ EOF
 }
 
 disable_timer() {
+  if [[ "$(uname)" == "Darwin" ]]; then
+    local plist_path="${USER_HOME}/Library/LaunchAgents/com.millennium.update.plist"
+    echo -e "${BLUE}Disabling and unloading Millennium update LaunchAgent...${NC}"
+    if [[ "$DRY_RUN" == "false" ]]; then
+      launchctl unload "$plist_path" 2>/dev/null || true
+      if [[ -f "$plist_path" ]]; then
+        rm -f "$plist_path"
+      fi
+    else
+      echo -e "${YELLOW}[DRY RUN] Would unload and remove LaunchAgent: ${plist_path}${NC}"
+    fi
+    echo -e "${GREEN}Millennium auto-update LaunchAgent has been disabled and removed.${NC}"
+    return 0
+  fi
+
   echo -e "${BLUE}Disabling and stopping Millennium update user timer and service...${NC}"
   
   if [[ "$DRY_RUN" == "false" ]]; then
@@ -237,6 +310,23 @@ disable_timer() {
 }
 
 show_status() {
+  if [[ "$(uname)" == "Darwin" ]]; then
+    local plist_path="${USER_HOME}/Library/LaunchAgents/com.millennium.update.plist"
+    echo -e "${BLUE}=== Millennium LaunchAgent Status ===${NC}"
+    if [[ -f "$plist_path" ]]; then
+      echo "LaunchAgent plist file exists: $plist_path"
+      launchctl list | grep "com.millennium.update" || echo "LaunchAgent is registered but currently idle."
+    else
+      echo -e "${YELLOW}LaunchAgent is not installed/configured.${NC}"
+    fi
+
+    if command -v crontab &>/dev/null; then
+      echo -e "\n${BLUE}=== Millennium Crontab Status ===${NC}"
+      crontab -l 2>/dev/null | grep "millennium-schedule" || echo "No crontab entry configured."
+    fi
+    return 0
+  fi
+
   echo -e "${BLUE}=== Millennium User Update Timer Status ===${NC}"
   if [[ -f "$TIMER_PATH" ]]; then
     systemctl --user status "$TIMER_NAME" || true

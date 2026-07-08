@@ -1,6 +1,5 @@
 # Pester tests for Windows schedule script
-$scriptDir = Split-Path -Parent $MyInvocation.ScriptName
-$winScriptDir = Join-Path -Path $scriptDir -ChildPath "..\..\scripts\windows"
+$winScriptDir = Join-Path -Path $PSScriptRoot -ChildPath "..\..\scripts\windows"
 
 # Dot-source the common module with dry-run forced
 $global:DryRun = $true

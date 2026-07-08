@@ -191,7 +191,7 @@ UTILITIES=(
 )
 
 RUNNING_USER="${SUDO_USER:-$(id -un)}"
-USER_HOME="$(getent passwd "$RUNNING_USER" | cut -d: -f6)"
+USER_HOME="$(get_user_home "$RUNNING_USER")"
 USER_CONFIG_DIR=""
 user_xdg=""
 if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" ]]; then
@@ -220,14 +220,13 @@ if [[ "$COMMAND" == "logs" ]]; then
   
   # Find latest log files
   log_files=()
-  for steam_dir in "${USER_HOME}/.local/share/Steam" "${USER_HOME}/.steam/steam" "${USER_HOME}/.steam/root" "${USER_HOME}/.var/app/com.valvesoftware.Steam/.local/share/Steam"; do
+  for steam_dir in "${USER_HOME}/.local/share/Steam" "${USER_HOME}/.steam/steam" "${USER_HOME}/.steam/root" "${USER_HOME}/.var/app/com.valvesoftware.Steam/.local/share/Steam" "${USER_HOME}/Library/Application Support/Steam"; do
     [[ -d "$steam_dir/logs" ]] || continue
-    if [[ -f "$steam_dir/logs/webhelper-linux.txt" ]]; then
-      log_files+=("$steam_dir/logs/webhelper-linux.txt")
-    fi
-    if [[ -f "$steam_dir/logs/console-linux.txt" ]]; then
-      log_files+=("$steam_dir/logs/console-linux.txt")
-    fi
+    for log_name in "webhelper.txt" "webhelper-linux.txt" "console.txt" "console-linux.txt"; do
+      if [[ -f "$steam_dir/logs/$log_name" ]]; then
+        log_files+=("$steam_dir/logs/$log_name")
+      fi
+    done
   done
   
   if [[ ${#log_files[@]} -eq 0 ]]; then
@@ -343,12 +342,15 @@ check_binaries_integrity() {
 }
 
 check_bootstrap_hooks() {
+  if [[ "$(uname)" == "Darwin" ]]; then
+    return 0
+  fi
   echo -e "\nBootstrap Hooks (for user ${RUNNING_USER}):"
   local found_steam=false
   broken_hooks=()
   missing_hooks=()
 
-  for steam_dir in "${USER_HOME}/.local/share/Steam" "${USER_HOME}/.steam/steam" "${USER_HOME}/.steam/root" "${USER_HOME}/.var/app/com.valvesoftware.Steam/.local/share/Steam"; do
+  for steam_dir in "${USER_HOME}/.local/share/Steam" "${USER_HOME}/.steam/steam" "${USER_HOME}/.steam/root" "${USER_HOME}/.var/app/com.valvesoftware.Steam/.local/share/Steam" "${USER_HOME}/Library/Application Support/Steam"; do
     [[ -d "$steam_dir" ]] || continue
     found_steam=true
     
@@ -440,7 +442,7 @@ check_directory_permissions() {
   fi
 
   # B. Steam Skins/Themes directories
-  for steam_dir in "${USER_HOME}/.local/share/Steam" "${USER_HOME}/.steam/steam" "${USER_HOME}/.steam/root" "${USER_HOME}/.var/app/com.valvesoftware.Steam/.local/share/Steam"; do
+  for steam_dir in "${USER_HOME}/.local/share/Steam" "${USER_HOME}/.steam/steam" "${USER_HOME}/.steam/root" "${USER_HOME}/.var/app/com.valvesoftware.Steam/.local/share/Steam" "${USER_HOME}/Library/Application Support/Steam"; do
     [[ -d "$steam_dir" ]] || continue
     local skins_dir="${steam_dir}/steamui/skins"
     local type_env="Native"
