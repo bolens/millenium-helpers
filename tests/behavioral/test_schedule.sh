@@ -30,8 +30,7 @@ EXPECTED_STATE_FILE="${FAKE_RELAUNCH_HOME}/.local/state/millennium-helpers/relau
 # Fast stand-ins for the other helper scripts (avoid invoking real, slow tools)
 mock_cmd "millennium-diag" 'exit 0'
 mock_cmd "millennium-theme" 'exit 0'
-mock_cmd "millennium-upgrade-stable" 'exit 0'
-mock_cmd "millennium-upgrade-beta" 'exit 0'
+mock_cmd "millennium-upgrade" 'exit 0'
 
 run_schedule() {
   bash "$SCHEDULE_SH" "$@"
@@ -85,7 +84,7 @@ rc=$?
 assert_success "$rc" "millennium-schedule enable beta --cron --dry-run exits 0"
 assert_contains "$out" "DRY RUN" "millennium-schedule enable --cron --dry-run announces dry-run mode"
 assert_contains "$out" "crontab" "millennium-schedule enable --cron --dry-run mentions crontab"
-assert_contains "$out" "millennium-upgrade-beta" "millennium-schedule enable beta --cron --dry-run references the beta upgrade script"
+assert_contains "$out" "millennium-upgrade" "millennium-schedule enable beta --cron --dry-run references the upgrade script"
 
 # --- disable dry-run ---
 
@@ -131,7 +130,7 @@ mock_cmd "millennium-diag" 'exit 0'
 
 export CONFIG_UPDATE_CHANNEL="beta"
 out=$(run_schedule enable --dry-run --cron 2>&1)
-assert_contains "$out" "millennium-upgrade-beta" "millennium-schedule defaults to beta channel when CONFIG_UPDATE_CHANNEL is set to beta"
+assert_contains "$out" "millennium-upgrade" "millennium-schedule defaults to beta channel when CONFIG_UPDATE_CHANNEL is set to beta"
 unset CONFIG_UPDATE_CHANNEL
 
 # --- config command tests ---
