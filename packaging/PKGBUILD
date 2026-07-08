@@ -1,7 +1,7 @@
 # Maintainer: bolens <https://github.com/bolens>
 pkgname=millennium-helpers-git
 _pkgname=millennium-helpers
-pkgver=r105.gb6a80e9
+pkgver=r109.g7057868
 pkgrel=1
 pkgdesc="Cross-platform utility scripts for managing, repairing, upgrading, rolling back, managing themes, and scheduling updates for Millennium on Linux and Windows"
 arch=('any')

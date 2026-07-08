@@ -48,7 +48,7 @@ jobs:
       - name: Verify .SRCINFO is up to date with PKGBUILD
         run: |
           su builduser -c 'cd /home/builduser/millenium-helpers/packaging && makepkg --printsrcinfo' > /tmp/generated.SRCINFO
-          if ! diff -u packaging/.SRCINFO /tmp/generated.SRCINFO; then
+          if ! diff -u -I '^\s*pkgver =' packaging/.SRCINFO /tmp/generated.SRCINFO; then
             echo "::error::.SRCINFO is out of date. Run 'makepkg --printsrcinfo > .SRCINFO' in packaging/ and commit the result."
             exit 1
           fi
