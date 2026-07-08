@@ -113,15 +113,55 @@ assert_success "$rc" "millennium-diag.sh -f --dry-run (doctor alias) completes w
 assert_contains "$out" "Doctor" "millennium-diag.sh -f --dry-run runs the doctor routine via its -f alias"
 
 # --- --share: Share report option ---
-mock_cmd "curl" "echo 'https://paste.rs/mocklink'"
+CAPTURE_TEMP=$(mktemp)
+export MOCK_PAYLOAD_CAPTURE="${CAPTURE_TEMP}"
+export GITHUB_TOKEN="github_pat_testtoken1234567890abcdef"
 
-out=$(bash "$DIAG_SH" --share 2>&1)
+FAKE_HOME=$(mktemp -d)
+mkdir -p "${FAKE_HOME}/.local/share/Steam/logs"
+echo "Some millennium log line with ghp_MySecretToken12345678901234567890" > "${FAKE_HOME}/.local/share/Steam/logs/console-linux.txt"
+
+mock_cmd "getent" "
+if [[ \"\$1\" == 'passwd' && \$# -eq 2 ]]; then
+  echo \"\$2:x:1000:1000::${FAKE_HOME}:/bin/bash\"
+else
+  /usr/bin/getent \"\$@\"
+fi
+"
+
+# shellcheck disable=SC2016
+mock_cmd "curl" '
+payload_file=""
+while [[ $# -gt 0 ]]; do
+  if [[ "$1" == "--data-binary" ]]; then
+    payload_file="${2#@}"
+    shift
+  fi
+  shift
+done
+if [[ -n "$payload_file" && -f "$payload_file" ]]; then
+  cp "$payload_file" "${MOCK_PAYLOAD_CAPTURE}"
+fi
+echo "https://paste.rs/mocklink"
+'
+
+out=$(SUDO_USER='' USER=faketestuser bash "$DIAG_SH" logs --share 2>&1)
 rc=$?
 assert_success "$rc" "millennium-diag.sh --share completes successfully"
 assert_contains "$out" "Diagnostic report successfully shared" "millennium-diag.sh reports share success"
 assert_contains "$out" "https://paste.rs/mocklink" "millennium-diag.sh prints the returned upload URL"
 
+captured_content=$(cat "$CAPTURE_TEMP" 2>/dev/null || true)
+assert_contains "$captured_content" "[REDACTED]" "Diagnostic report redacts tokens in upload"
+assert_not_contains "$captured_content" "ghp_MySecretToken" "Diagnostic report does not leak raw tokens"
+assert_not_contains "$captured_content" "github_pat_testtoken" "Diagnostic report does not leak env tokens"
+
 # Clean up mock
 rm -f "${MOCK_BIN}/curl"
+rm -f "${MOCK_BIN}/getent"
+rm -rf "$FAKE_HOME"
+rm -f "$CAPTURE_TEMP"
+unset MOCK_PAYLOAD_CAPTURE
+unset GITHUB_TOKEN
 
 print_summary
