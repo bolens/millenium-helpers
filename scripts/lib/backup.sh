@@ -75,9 +75,8 @@ prune_backups() {
     return 0
   fi
 
-  local sorted_backups
-  # shellcheck disable=SC2207
-  sorted_backups=($(printf '%s\n' "${backups[@]}" | sort || true))
+  local sorted_backups=()
+  mapfile -t sorted_backups < <(printf '%s\n' "${backups[@]}" | sort)
   local count=${#sorted_backups[@]}
 
   # 1. Prune by age if specified
@@ -142,9 +141,8 @@ list_backups() {
 perform_rollback() {
   local target="${1:-}"
   local lib_dir="${MOCK_LIB_DIR:-/usr/lib}"
-  local backups
-  # shellcheck disable=SC2207
-  backups=($(list_backups))
+  local backups=()
+  mapfile -t backups < <(list_backups)
   
   if [[ ${#backups[@]} -eq 0 ]]; then
     echo -e "${RED}Error: No backups available to roll back to.${NC}" >&2

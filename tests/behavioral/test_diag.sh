@@ -187,16 +187,16 @@ obs_file2="${TEST_OBS_DIR}/millennium-upgrade-beta"
 touch "$obs_file1" "$obs_file2"
 
 # 1. Detection via JSON
-out=$(DIAG_TEST_OBSOLETE_LIST="${obs_file1},${obs_file2}" bash "$DIAG_SH" --json 2>&1)
+out=$(DIAG_TEST_OBSOLETE_LIST="${obs_file1},${obs_file2}" DIAG_TEST_BYPASS_CHECKS=true bash "$DIAG_SH" --json 2>&1)
 assert_contains "$out" '"clean_of_obsolete": false' "millennium-diag.sh --json detects presence of obsolete files"
 
 # 2. Cleanup via doctor --dry-run
-out=$(DIAG_TEST_OBSOLETE_LIST="${obs_file1},${obs_file2}" bash "$DIAG_SH" doctor --dry-run 2>&1)
+out=$(DIAG_TEST_OBSOLETE_LIST="${obs_file1},${obs_file2}" DIAG_TEST_BYPASS_CHECKS=true bash "$DIAG_SH" doctor --dry-run 2>&1)
 assert_contains "$out" "rm -f ${obs_file1}" "millennium-diag.sh doctor --dry-run plans to remove first obsolete file"
 assert_contains "$out" "rm -f ${obs_file2}" "millennium-diag.sh doctor --dry-run plans to remove second obsolete file"
 
 # 3. Cleanup live doctor
-out=$(DIAG_TEST_OBSOLETE_LIST="${obs_file1},${obs_file2}" DRY_RUN=false bash "$DIAG_SH" doctor 2>&1)
+out=$(DIAG_TEST_OBSOLETE_LIST="${obs_file1},${obs_file2}" DIAG_TEST_BYPASS_CHECKS=true DRY_RUN=false bash "$DIAG_SH" doctor 2>&1)
 assert_contains "$out" "Removing deprecated file: ${obs_file1}" "millennium-diag.sh doctor reports removing first obsolete file"
 assert_contains "$out" "Removing deprecated file: ${obs_file2}" "millennium-diag.sh doctor reports removing second obsolete file"
 assert_file_not_exists "$obs_file1" "First obsolete file was actually deleted"

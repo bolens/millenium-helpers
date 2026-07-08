@@ -113,9 +113,14 @@ for suite in "${THIS_TEST_DIR}"/unit/*.sh "${THIS_TEST_DIR}"/behavioral/*.sh; do
 
   subtotal_line=$(echo "$suite_output" | grep -E '^SUBTOTAL file=' | tail -n1)
   if [[ -n "$subtotal_line" ]]; then
-    # shellcheck disable=SC2001
-    suite_run=$(echo "$subtotal_line" | sed -n 's/.*run=\([0-9]*\).*/\1/p')
-    suite_fail=$(echo "$subtotal_line" | sed -n 's/.*failed=\([0-9]*\).*/\1/p')
+    suite_run=0
+    suite_fail=0
+    if [[ "$subtotal_line" =~ run=([0-9]+) ]]; then
+      suite_run="${BASH_REMATCH[1]}"
+    fi
+    if [[ "$subtotal_line" =~ failed=([0-9]+) ]]; then
+      suite_fail="${BASH_REMATCH[1]}"
+    fi
     tests_run=$((tests_run + suite_run))
     tests_failed=$((tests_failed + suite_fail))
     if [[ "$suite_fail" -ne 0 ]]; then
