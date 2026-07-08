@@ -12,12 +12,11 @@ complete -F _millennium_repair_comp millennium-repair
 _millennium_upgrade_comp() {
   COMPREPLY=()
   local cur="${COMP_WORDS[COMP_CWORD]}"
-  local opts="-f --force -d --dry-run -h --help"
+  local opts="--channel --stable --beta --rollback -f --force -d --dry-run -h --help"
   COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
   return 0
 }
-complete -F _millennium_upgrade_comp millennium-upgrade-beta
-complete -F _millennium_upgrade_comp millennium-upgrade-stable
+complete -F _millennium_upgrade_comp millennium-upgrade
 
 _millennium_schedule_comp() {
   COMPREPLY=()

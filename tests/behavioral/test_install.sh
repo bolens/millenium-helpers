@@ -130,5 +130,36 @@ rm -f "${MOCK_BIN}/restorecon"
 rm -rf "$TEST_SUDO_DIR"
 unset MOCK_SUDOERS_FILE
 
+# --- Obsolete legacy files cleanup test ---
+TEST_TARGET_DIR=$(mktemp -d)
+
+# Create dummy legacy files to prune
+touch "${TEST_TARGET_DIR}/millennium-upgrade-stable"
+touch "${TEST_TARGET_DIR}/millennium-upgrade-beta"
+
+assert_file_exists "${TEST_TARGET_DIR}/millennium-upgrade-stable" "Legacy stable file exists before pruning"
+assert_file_exists "${TEST_TARGET_DIR}/millennium-upgrade-beta" "Legacy beta file exists before pruning"
+
+# Mock all file and system write operations
+mock_cmd "mkdir" "exit 0"
+mock_cmd "cp" "exit 0"
+mock_cmd "chown" "exit 0"
+mock_cmd "chmod" "exit 0"
+mock_cmd "ln" "exit 0"
+mock_cmd "restorecon" "exit 0"
+mock_cmd "id" "echo 0"
+mock_cmd "visudo" "exit 0"
+
+# Run install with TARGET_DIR pointing to our temp directory
+TARGET_DIR="${TEST_TARGET_DIR}" FORCE_RECOVERY=true FORCE_WIZARD=false bash "$INSTALL_SH" install >/dev/null 2>&1
+
+# Verify obsolete files were pruned
+assert_file_not_exists "${TEST_TARGET_DIR}/millennium-upgrade-stable" "install.sh install prunes legacy stable upgrade script"
+assert_file_not_exists "${TEST_TARGET_DIR}/millennium-upgrade-beta" "install.sh install prunes legacy beta upgrade script"
+
+# Clean up
+rm -rf "$TEST_TARGET_DIR"
+rm -f "${MOCK_BIN}/id" "${MOCK_BIN}/visudo" "${MOCK_BIN}/mkdir" "${MOCK_BIN}/cp" "${MOCK_BIN}/chown" "${MOCK_BIN}/chmod" "${MOCK_BIN}/ln" "${MOCK_BIN}/restorecon"
+
 print_summary
 

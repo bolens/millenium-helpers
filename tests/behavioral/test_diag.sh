@@ -163,5 +163,45 @@ rm -rf "$FAKE_HOME"
 rm -f "$CAPTURE_TEMP"
 unset MOCK_PAYLOAD_CAPTURE
 unset GITHUB_TOKEN
+# --- Channel detection from systemd service file ---
+TEST_CONFIG_DIR=$(mktemp -d)
+export XDG_CONFIG_HOME="${TEST_CONFIG_DIR}"
+
+mkdir -p "${TEST_CONFIG_DIR}/millennium-helpers"
+# Write service file with the new channel flag
+cat > "${TEST_CONFIG_DIR}/millennium-helpers/millennium-update.service" << EOF
+[Service]
+ExecStart=/bin/bash -c 'sudo -n millennium-upgrade --channel beta'
+EOF
+
+out=$(bash "$DIAG_SH" --json 2>&1)
+assert_contains "$out" '"update_channel": "beta"' "millennium-diag.sh --json correctly detects channel beta from systemd service file flags"
+
+rm -rf "${TEST_CONFIG_DIR}"
+unset XDG_CONFIG_HOME
+
+# --- Obsolete legacy files detection and doctor cleanup ---
+TEST_OBS_DIR=$(mktemp -d)
+obs_file1="${TEST_OBS_DIR}/millennium-upgrade-stable"
+obs_file2="${TEST_OBS_DIR}/millennium-upgrade-beta"
+touch "$obs_file1" "$obs_file2"
+
+# 1. Detection via JSON
+out=$(DIAG_TEST_OBSOLETE_LIST="${obs_file1},${obs_file2}" bash "$DIAG_SH" --json 2>&1)
+assert_contains "$out" '"clean_of_obsolete": false' "millennium-diag.sh --json detects presence of obsolete files"
+
+# 2. Cleanup via doctor --dry-run
+out=$(DIAG_TEST_OBSOLETE_LIST="${obs_file1},${obs_file2}" bash "$DIAG_SH" doctor --dry-run 2>&1)
+assert_contains "$out" "rm -f ${obs_file1}" "millennium-diag.sh doctor --dry-run plans to remove first obsolete file"
+assert_contains "$out" "rm -f ${obs_file2}" "millennium-diag.sh doctor --dry-run plans to remove second obsolete file"
+
+# 3. Cleanup live doctor
+out=$(DIAG_TEST_OBSOLETE_LIST="${obs_file1},${obs_file2}" DRY_RUN=false bash "$DIAG_SH" doctor 2>&1)
+assert_contains "$out" "Removing deprecated file: ${obs_file1}" "millennium-diag.sh doctor reports removing first obsolete file"
+assert_contains "$out" "Removing deprecated file: ${obs_file2}" "millennium-diag.sh doctor reports removing second obsolete file"
+assert_file_not_exists "$obs_file1" "First obsolete file was actually deleted"
+assert_file_not_exists "$obs_file2" "Second obsolete file was actually deleted"
+
+rm -rf "${TEST_OBS_DIR}"
 
 print_summary

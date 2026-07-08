@@ -21,8 +21,7 @@ MCP_PY="${REPO_ROOT}/scripts/millennium-mcp.py"
 setup_mock_bin
 mock_cmd "millennium-diag" "exit 0"
 mock_cmd "millennium-theme" "exit 0"
-mock_cmd "millennium-upgrade-beta" "exit 0"
-mock_cmd "millennium-upgrade-stable" "exit 0"
+mock_cmd "millennium-upgrade" "exit 0"
 mock_cmd "millennium-schedule" "exit 0"
 mock_cmd "millennium-repair" "exit 0"
 mock_cmd "millennium-purge" "exit 0"
@@ -109,6 +108,11 @@ assert_contains "$resp" "invalid action" "millennium_schedule's rejection messag
 resp=$(run_mcp '{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"millennium_upgrade","arguments":{"channel":"nightly"}}}')
 assert_contains "$resp" '"isError": true' "millennium_upgrade rejects a channel outside its declared enum"
 assert_contains "$resp" "invalid channel" "millennium_upgrade's rejection message explains the invalid channel"
+
+# --- tools/call: millennium_upgrade invokes the upgrade script with correct channel ---
+
+log=$(run_mcp_stderr '{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"millennium_upgrade","arguments":{"channel":"beta"}}}')
+assert_contains "$log" "millennium-upgrade --channel beta" "millennium_upgrade (channel:beta) invokes millennium-upgrade --channel beta"
 
 # --- tools/call: unknown tool name ---
 

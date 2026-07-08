@@ -167,6 +167,8 @@ SCRIPTS_UP_TO_DATE=true
 PERMISSIONS_OK=true
 SKINS_DIR_OK=true
 COMPLETIONS_OK=true
+CLEAN_OF_OBSOLETE=true
+obsolete_files_found=()
 
 SYSTEMD_BOOTED=false
 if [[ -d /run/systemd/system ]]; then
@@ -180,8 +182,7 @@ TMP_SCRIPTS=""
 
 UTILITIES=(
   "millennium-repair:scripts/millennium-repair.sh"
-  "millennium-upgrade-beta:scripts/millennium-upgrade-beta.sh"
-  "millennium-upgrade-stable:scripts/millennium-upgrade-stable.sh"
+  "millennium-upgrade:scripts/millennium-upgrade.sh"
   "millennium-schedule:scripts/millennium-schedule.sh"
   "millennium-purge:scripts/millennium-purge.sh"
   "millennium-diag:scripts/millennium-diag.sh"
@@ -282,7 +283,7 @@ if [[ -f "/usr/lib/millennium/version.txt" ]]; then
 else
   # Fall back to checking systemd user service file if it exists
   SERVICE_PATH="${USER_CONFIG_DIR}/millennium-update.service"
-  if [[ -f "$SERVICE_PATH" ]] && grep -q "upgrade-beta" "$SERVICE_PATH" 2>/dev/null; then
+  if [[ -f "$SERVICE_PATH" ]] && grep -qE "(--channel[[:space:]]+beta|--beta)" "$SERVICE_PATH" 2>/dev/null; then
     UPDATE_CHANNEL="beta"
   fi
 fi
@@ -296,6 +297,7 @@ print_diag_item() {
   local status="$1"
   local label="$2"
   local value="$3"
+  
   if [[ "$status" == "ok" ]]; then
     printf "  [${GREEN}✔${NC}] %-45s : %b\n" "$label" "$value"
   elif [[ "$status" == "warn" ]]; then
@@ -305,393 +307,466 @@ print_diag_item() {
   fi
 }
 
-echo -e "${BLUE}=== Millennium Diagnostics Report ===${NC}\n"
+# --- Diagnostics Functions ---
 
-# 1. Check Steam Status
-if pgrep -x steam >/dev/null 2>&1; then
-  STEAM_RUNNING=true
-  print_diag_item "ok" "Steam Client" "Running (PID: $(pgrep -x steam | head -n 1))"
-else
-  print_diag_item "warn" "Steam Client" "Not Running"
-fi
-
-# 2. Check Installed Millennium version & integrity
-if [[ -f "/usr/lib/millennium/version.txt" ]]; then
-  # Verify .so files and integrity check
-  if [[ ! -f "/usr/lib/millennium/libmillennium_bootstrap_x86.so" || \
-        ! -f "/usr/lib/millennium/libmillennium_bootstrap_hhx64.so" || \
-        ! -f "/usr/lib/millennium/libmillennium_x86.so" || \
-        ! -f "/usr/lib/millennium/libmillennium_hhx64.so" || \
-        ! -f "/usr/lib/millennium/libmillennium_pvs64" ]]; then
-    BINARIES_OK=false
-    print_diag_item "error" "Millennium Binary Version" "Corrupted (core libraries or wrapper binaries are missing)"
-  elif [[ ! -f "/usr/lib/millennium/checksums.txt" ]]; then
-    BINARIES_OK=false
-    print_diag_item "error" "Millennium Binary Version" "Corrupted (missing integrity manifest /usr/lib/millennium/checksums.txt)"
-  elif ! (cd /usr/lib/millennium && sha256sum -c checksums.txt &>/dev/null); then
-    BINARIES_OK=false
-    print_diag_item "error" "Millennium Binary Version" "Corrupted (cryptographic checksum verification failed!)"
+check_steam_status() {
+  if pgrep -x steam >/dev/null 2>&1; then
+    STEAM_RUNNING=true
+    print_diag_item "ok" "Steam Client" "Running (PID: $(pgrep -x steam | head -n 1))"
   else
-    print_diag_item "ok" "Millennium Binary Version" "v$(cat /usr/lib/millennium/version.txt) (${UPDATE_CHANNEL} channel) - Verified Healthy"
+    print_diag_item "warn" "Steam Client" "Not Running"
   fi
-else
-  BINARIES_OK=false
-  print_diag_item "error" "Millennium Binary Version" "Not Installed (missing /usr/lib/millennium/version.txt)"
-fi
+}
 
-# 3. Check Bootstrap Hook Status for Current User
-echo -e "\nBootstrap Hooks (for user ${RUNNING_USER}):"
-found_steam=false
-broken_hooks=()
-missing_hooks=()
-
-for steam_dir in "${USER_HOME}/.local/share/Steam" "${USER_HOME}/.steam/steam" "${USER_HOME}/.steam/root" "${USER_HOME}/.var/app/com.valvesoftware.Steam/.local/share/Steam"; do
-  [[ -d "$steam_dir" ]] || continue
-  found_steam=true
-  
-  # Determine environment type
-  type_env="Native"
-  if [[ "$steam_dir" == *"com.valvesoftware.Steam"* ]]; then
-    type_env="Flatpak"
-  fi
-  
-  echo -e "  Steam path [${type_env}]: ${steam_dir}"
-  
-  for arch in "ubuntu12_32:x86" "ubuntu12_64:hhx64"; do
-    folder="${arch%%:*}"
-    lib_name="${arch#*:}"
-    hook_file="${steam_dir}/${folder}/libXtst.so.6"
-    
-    if [[ -L "$hook_file" ]]; then
-      target=$(readlink "$hook_file")
-      if [[ "$target" == *"/usr/lib/millennium/libmillennium_bootstrap_${lib_name}.so"* ]]; then
-        if [[ -f "$target" ]]; then
-          print_diag_item "ok" "    - Hook (${folder})" "Active and Verified"
-        else
-          HOOKS_OK=false
-          broken_hooks+=("${steam_dir}:${folder}:${lib_name}")
-          print_diag_item "error" "    - Hook (${folder})" "Broken Symlink (target does not exist)"
-        fi
-      else
-        print_diag_item "warn" "    - Hook (${folder})" "Active, but points to custom library: ${target}"
-      fi
-    elif [[ -f "$hook_file" ]]; then
-      print_diag_item "warn" "    - Hook (${folder})" "Replaced by a real file (non-symlink)"
+check_binaries_integrity() {
+  if [[ -f "/usr/lib/millennium/version.txt" ]]; then
+    if [[ ! -f "/usr/lib/millennium/libmillennium_bootstrap_x86.so" || \
+          ! -f "/usr/lib/millennium/libmillennium_bootstrap_hhx64.so" || \
+          ! -f "/usr/lib/millennium/libmillennium_x86.so" || \
+          ! -f "/usr/lib/millennium/libmillennium_hhx64.so" || \
+          ! -f "/usr/lib/millennium/libmillennium_pvs64" ]]; then
+      BINARIES_OK=false
+      print_diag_item "error" "Millennium Binary Version" "Corrupted (core libraries or wrapper binaries are missing)"
+    elif [[ ! -f "/usr/lib/millennium/checksums.txt" ]]; then
+      BINARIES_OK=false
+      print_diag_item "error" "Millennium Binary Version" "Corrupted (missing integrity manifest /usr/lib/millennium/checksums.txt)"
+    elif ! (cd /usr/lib/millennium && sha256sum -c checksums.txt &>/dev/null); then
+      BINARIES_OK=false
+      print_diag_item "error" "Millennium Binary Version" "Corrupted (cryptographic checksum verification failed!)"
     else
-      HOOKS_OK=false
-      missing_hooks+=("${steam_dir}:${folder}:${lib_name}")
-      print_diag_item "error" "    - Hook (${folder})" "Inactive (missing symlink)"
+      print_diag_item "ok" "Millennium Binary Version" "v$(cat /usr/lib/millennium/version.txt) (${UPDATE_CHANNEL} channel) - Verified Healthy"
     fi
-  done
+  else
+    BINARIES_OK=false
+    print_diag_item "error" "Millennium Binary Version" "Not Installed (missing /usr/lib/millennium/version.txt)"
+  fi
+}
 
-  # Flatpak specific checks
-  if [[ "$type_env" == "Flatpak" ]]; then
-    flatpak_user_override="${USER_HOME}/.local/share/flatpak/overrides/com.valvesoftware.Steam"
-    flatpak_sys_override="/var/lib/flatpak/overrides/com.valvesoftware.Steam"
-    has_override=false
+check_bootstrap_hooks() {
+  echo -e "\nBootstrap Hooks (for user ${RUNNING_USER}):"
+  local found_steam=false
+  broken_hooks=()
+  missing_hooks=()
+
+  for steam_dir in "${USER_HOME}/.local/share/Steam" "${USER_HOME}/.steam/steam" "${USER_HOME}/.steam/root" "${USER_HOME}/.var/app/com.valvesoftware.Steam/.local/share/Steam"; do
+    [[ -d "$steam_dir" ]] || continue
+    found_steam=true
     
-    for override_file in "$flatpak_user_override" "$flatpak_sys_override"; do
-      if [[ -f "$override_file" ]] && grep -q "/usr/lib/millennium" "$override_file" 2>/dev/null; then
-        has_override=true
-        break
+    # Determine environment type
+    local type_env="Native"
+    if [[ "$steam_dir" == *"com.valvesoftware.Steam"* ]]; then
+      type_env="Flatpak"
+    fi
+    
+    echo -e "  Steam path [${type_env}]: ${steam_dir}"
+    
+    for arch in "ubuntu12_32:x86" "ubuntu12_64:hhx64"; do
+      local folder="${arch%%:*}"
+      local lib_name="${arch#*:}"
+      local hook_file="${steam_dir}/${folder}/libXtst.so.6"
+      
+      if [[ -L "$hook_file" ]]; then
+        local target
+        target=$(readlink "$hook_file")
+        if [[ "$target" == *"/usr/lib/millennium/libmillennium_bootstrap_${lib_name}.so"* ]]; then
+          if [[ -f "$target" ]]; then
+            print_diag_item "ok" "    - Hook (${folder})" "Active and Verified"
+          else
+            HOOKS_OK=false
+            broken_hooks+=("${steam_dir}:${folder}:${lib_name}")
+            print_diag_item "error" "    - Hook (${folder})" "Broken Symlink (target does not exist)"
+          fi
+        else
+          print_diag_item "warn" "    - Hook (${folder})" "Active, but points to custom library: ${target}"
+        fi
+      elif [[ -f "$hook_file" ]]; then
+        print_diag_item "warn" "    - Hook (${folder})" "Replaced by a real file (non-symlink)"
+      else
+        HOOKS_OK=false
+        missing_hooks+=("${steam_dir}:${folder}:${lib_name}")
+        print_diag_item "error" "    - Hook (${folder})" "Inactive (missing symlink)"
       fi
     done
-    
-    if [[ "$has_override" == true ]]; then
-      print_diag_item "ok" "    - Flatpak Sandbox Override" "Configured (/usr/lib/millennium is visible inside container)"
-    else
-      FLATPAK_OK=false
-      print_diag_item "error" "    - Flatpak Sandbox Override" "Missing!"
-    fi
-  fi
-done
 
-if [[ "$found_steam" == false ]]; then
-  echo -e "  ${RED}No Steam directories detected for the current user.${NC}"
-fi
-
-# 3.5. Check Config & Theme Directories permissions
-echo -e "\nMillennium Config & Theme Directory Permissions:"
-# A. Millennium User Config Directory
-millennium_user_config=""
-if [[ -n "$user_xdg" ]]; then
-  millennium_user_config="${user_xdg}/millennium"
-else
-  millennium_user_config="${USER_HOME}/.config/millennium"
-fi
-
-if [[ -d "$millennium_user_config" ]]; then
-  config_owner=$(stat -c '%U' "$millennium_user_config" 2>/dev/null || echo "unknown")
-  if [[ ! -w "$millennium_user_config" ]]; then
-    PERMISSIONS_OK=false
-    unwritable_dirs+=("$millennium_user_config")
-    print_diag_item "error" "  - Config Directory (${millennium_user_config})" "Not Writable (Owned by: ${config_owner})"
-  else
-    print_diag_item "ok" "  - Config Directory (${millennium_user_config})" "Writable (Owned by: ${config_owner})"
-  fi
-else
-  print_diag_item "ok" "  - Config Directory (${millennium_user_config})" "Not Created Yet (will be created automatically by Millennium)"
-fi
-
-# B. Steam Skins/Themes directories
-for steam_dir in "${USER_HOME}/.local/share/Steam" "${USER_HOME}/.steam/steam" "${USER_HOME}/.steam/root" "${USER_HOME}/.var/app/com.valvesoftware.Steam/.local/share/Steam"; do
-  [[ -d "$steam_dir" ]] || continue
-  skins_dir="${steam_dir}/steamui/skins"
-  type_env="Native"
-  if [[ "$steam_dir" == *"com.valvesoftware.Steam"* ]]; then
-    type_env="Flatpak"
-  fi
-  
-  if [[ -d "$skins_dir" ]]; then
-    skins_owner=$(stat -c '%U' "$skins_dir" 2>/dev/null || echo "unknown")
-    if [[ ! -w "$skins_dir" ]]; then
-      PERMISSIONS_OK=false
-      unwritable_dirs+=("$skins_dir")
-      print_diag_item "error" "  - Skins Directory [${type_env}] (${skins_dir})" "Not Writable (Owned by: ${skins_owner})"
-    else
-      print_diag_item "ok" "  - Skins Directory [${type_env}] (${skins_dir})" "Writable (Owned by: ${skins_owner})"
-    fi
-  else
-    # Skins directory doesn't exist, check parent
-    parent_dir=$(dirname "$skins_dir")
-    if [[ -d "$parent_dir" ]]; then
-      parent_owner=$(stat -c '%U' "$parent_dir" 2>/dev/null || echo "unknown")
-      if [[ ! -w "$parent_dir" ]]; then
-        PERMISSIONS_OK=false
-        unwritable_dirs+=("$parent_dir")
-        print_diag_item "error" "  - Skins Parent [${type_env}] (${parent_dir})" "Parent Not Writable (Owned by: ${parent_owner})"
-      else
-        print_diag_item "warn" "  - Skins Directory [${type_env}] (${skins_dir})" "Missing (parent is writable, will be created automatically)"
-        SKINS_DIR_OK=false
-        missing_skins_dirs+=("$skins_dir")
-      fi
-    else
-      print_diag_item "error" "  - Skins Directory [${type_env}] (${skins_dir})" "Steam Directory Missing"
-    fi
-  fi
-done
-echo ""
-
-# 4. Check Sudoers Authorization
-check_cmd="sudo -n -l"
-if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" ]]; then
-  check_cmd="sudo -U $RUNNING_USER -n -l"
-fi
-
-if eval "$check_cmd" 2>/dev/null | grep -qE "NOPASSWD.*(millennium-upgrade-stable|ALL)"; then
-  print_diag_item "ok" "Sudoers Passwordless Update Authorization" "Active & Verified"
-else
-  SUDOERS_OK=false
-  print_diag_item "error" "Sudoers Passwordless Update Authorization" "Not Configured / Unauthorized"
-fi
-
-# 5. Check Update Scheduler Status
-if [[ "$SYSTEMD_BOOTED" == "true" ]]; then
-  TIMER_PATH="${USER_CONFIG_DIR}/millennium-update.timer"
-  if [[ -f "$TIMER_PATH" ]] && sysctl_user is-enabled millennium-update.timer &>/dev/null; then
-    timer_state=$(sysctl_user is-active millennium-update.timer || echo "inactive")
-    if [[ "$timer_state" == "active" ]]; then
-      timer_trigger=$(sysctl_user list-timers millennium-update.timer --no-legend | awk '{print $1, $2, $3}')
-      print_diag_item "ok" "Systemd Auto-Update Timer" "Enabled and Active (Next Run: ${timer_trigger})"
-    else
-      TIMER_ACTIVE=false
-      print_diag_item "warn" "Systemd Auto-Update Timer" "Enabled but Inactive (timer is sleeping)"
-    fi
-  else
-    TIMER_ACTIVE=false
-    print_diag_item "error" "Systemd Auto-Update Timer" "Disabled / Not Scheduled"
-  fi
-
-  # 6. Check Systemd User Lingering status
-  if [[ -f "/var/lib/systemd/linger/${RUNNING_USER}" ]]; then
-    print_diag_item "ok" "Systemd User Lingering" "Enabled"
-  else
-    LINGER_OK=false
-    print_diag_item "warn" "Systemd User Lingering" "Disabled (Updates will only trigger when user is logged in)"
-  fi
-else
-  if command -v crontab &>/dev/null; then
-    if crontab -l 2>/dev/null | grep -q "millennium-schedule"; then
-      print_diag_item "ok" "Cron Auto-Update Scheduler" "Enabled and Active (Crontab entry configured)"
-    else
-      TIMER_ACTIVE=false
-      print_diag_item "error" "Cron Auto-Update Scheduler" "Disabled / Not Scheduled"
-    fi
-  else
-    TIMER_ACTIVE=false
-    print_diag_item "error" "Cron Auto-Update Scheduler" "Disabled (No 'crontab' utility found)"
-  fi
-fi
-
-# 7. Check for Helper Script Updates
-echo -e "\nHelper Scripts Update Status:"
-# Check internet connectivity
-ONLINE=false
-if curl -sIk "https://github.com" &>/dev/null; then
-  ONLINE=true
-fi
-
-if [[ "$ONLINE" == "true" ]]; then
-  TMP_SCRIPTS=$(mktemp -d)
-  trap 'rm -rf "${TMP_SCRIPTS:-}"' EXIT INT TERM
-  
-  LATEST_SHA="main"
-  if api_data=$(curl -sL --retry 3 --retry-delay 2 "https://api.github.com/repos/bolens/millenium-helpers/commits/main" 2>/dev/null); then
-    parsed_sha=$(echo "$api_data" | grep -m 1 '"sha":' | cut -d'"' -f4 || true)
-    if [[ "$parsed_sha" =~ ^[0-9a-f]{40}$ ]]; then
-      LATEST_SHA="$parsed_sha"
-    fi
-  fi
-
-  for item in "${UTILITIES[@]}"; do
-    local_cmd="${item%%:*}"
-    remote_rel="${item#*:}"
-    local_path=""
-    if [[ -f "/usr/bin/${local_cmd}" ]]; then
-      local_path="/usr/bin/${local_cmd}"
-    elif [[ -f "/usr/local/bin/${local_cmd}" ]]; then
-      local_path="/usr/local/bin/${local_cmd}"
-    fi
-    
-    if [[ -n "$local_path" ]]; then
-      remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/${LATEST_SHA}/${remote_rel}"
-      tmp_dest="${TMP_SCRIPTS}/${local_cmd}"
+    # Flatpak specific checks
+    if [[ "$type_env" == "Flatpak" ]]; then
+      local flatpak_user_override="${USER_HOME}/.local/share/flatpak/overrides/com.valvesoftware.Steam"
+      local flatpak_sys_override="/var/lib/flatpak/overrides/com.valvesoftware.Steam"
+      local has_override=false
       
-      if curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" --retry 3 --retry-delay 2 "$remote_url" -o "$tmp_dest" &>/dev/null; then
-        local_sha=$(sha256sum "$local_path" | awk '{print $1}')
-        remote_sha=$(sha256sum "$tmp_dest" | awk '{print $1}')
-        
-        if [[ "$local_sha" != "$remote_sha" ]]; then
-          SCRIPTS_UP_TO_DATE=false
-          out_of_date_scripts+=("$local_cmd")
-          print_diag_item "error" "  - ${local_cmd}" "Out of date"
-        else
-          print_diag_item "ok" "  - ${local_cmd}" "Up to date"
+      for override_file in "$flatpak_user_override" "$flatpak_sys_override"; do
+        if [[ -f "$override_file" ]] && grep -q "/usr/lib/millennium" "$override_file" 2>/dev/null; then
+          has_override=true
+          break
         fi
+      done
+      
+      if [[ "$has_override" == true ]]; then
+        print_diag_item "ok" "    - Flatpak Sandbox Override" "Configured (/usr/lib/millennium is visible inside container)"
       else
-        print_diag_item "warn" "  - ${local_cmd}" "Unable to check (HTTP download failed)"
-      fi
-    else
-      print_diag_item "error" "  - ${local_cmd}" "Not Installed"
-      SCRIPTS_UP_TO_DATE=false
-      remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/${LATEST_SHA}/${remote_rel}"
-      tmp_dest="${TMP_SCRIPTS}/${local_cmd}"
-      if curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" --retry 3 --retry-delay 2 "$remote_url" -o "$tmp_dest" &>/dev/null; then
-        out_of_date_scripts+=("$local_cmd")
+        FLATPAK_OK=false
+        print_diag_item "error" "    - Flatpak Sandbox Override" "Missing!"
       fi
     fi
   done
-else
-  echo -e "  ${YELLOW}System is offline. Skipping update checks for helper scripts.${NC}"
-fi
 
-# 8. Check Shell Completions Status
-echo -e "\nShell Autocompletions Status:"
-
-# Define paths and their corresponding remote repository locations
-declare -A COMPLETION_FILES=(
-  ["/usr/share/bash-completion/completions/millennium-helpers"]="completions/bash/millennium-helpers"
-  ["/usr/share/zsh/site-functions/_millennium-helpers"]="completions/zsh/_millennium-helpers"
-  ["/usr/share/fish/vendor_completions.d/millennium-repair.fish"]="completions/fish/millennium-repair.fish"
-  ["/usr/share/fish/vendor_completions.d/millennium-upgrade-beta.fish"]="completions/fish/millennium-upgrade-beta.fish"
-  ["/usr/share/fish/vendor_completions.d/millennium-upgrade-stable.fish"]="completions/fish/millennium-upgrade-stable.fish"
-  ["/usr/share/fish/vendor_completions.d/millennium-schedule.fish"]="completions/fish/millennium-schedule.fish"
-  ["/usr/share/fish/vendor_completions.d/millennium-purge.fish"]="completions/fish/millennium-purge.fish"
-  ["/usr/share/fish/vendor_completions.d/millennium-diag.fish"]="completions/fish/millennium-diag.fish"
-  ["/usr/share/fish/vendor_completions.d/millennium-theme.fish"]="completions/fish/millennium-theme.fish"
-  ["/usr/share/fish/vendor_completions.d/millennium-mcp.fish"]="completions/fish/millennium-mcp.fish"
-)
-
-nu_dest=""
-for base_dir in "/usr/share" "/usr/local/share"; do
-  if [[ -d "${base_dir}/nushell/completions" ]]; then
-    nu_dest="${base_dir}/nushell/completions/millennium-helpers.nu"
-    break
+  if [[ "$found_steam" == false ]]; then
+    echo -e "  ${RED}No Steam directories detected for the current user.${NC}"
   fi
-done
-if [[ -z "$nu_dest" ]]; then
-  nu_dest="/usr/share/nushell/completions/millennium-helpers.nu"
-fi
-COMPLETION_FILES["$nu_dest"]="completions/nushell/millennium-helpers.nu"
+}
 
-declare -a COMPLETION_SYMLINKS=(
-  "/usr/share/bash-completion/completions/millennium-repair:millennium-helpers"
-  "/usr/share/bash-completion/completions/millennium-upgrade-beta:millennium-helpers"
-  "/usr/share/bash-completion/completions/millennium-upgrade-stable:millennium-helpers"
-  "/usr/share/bash-completion/completions/millennium-schedule:millennium-helpers"
-  "/usr/share/bash-completion/completions/millennium-purge:millennium-helpers"
-  "/usr/share/bash-completion/completions/millennium-diag:millennium-helpers"
-  "/usr/share/bash-completion/completions/millennium-theme:millennium-helpers"
-  "/usr/share/bash-completion/completions/millennium-mcp:millennium-helpers"
-  
-  "/usr/share/zsh/site-functions/_millennium-repair:_millennium-helpers"
-  "/usr/share/zsh/site-functions/_millennium-upgrade-beta:_millennium-helpers"
-  "/usr/share/zsh/site-functions/_millennium-upgrade-stable:_millennium-helpers"
-  "/usr/share/zsh/site-functions/_millennium-schedule:_millennium-helpers"
-  "/usr/share/zsh/site-functions/_millennium-purge:_millennium-helpers"
-  "/usr/share/zsh/site-functions/_millennium-diag:_millennium-helpers"
-  "/usr/share/zsh/site-functions/_millennium-theme:_millennium-helpers"
-  "/usr/share/zsh/site-functions/_millennium-mcp:_millennium-helpers"
-)
+check_directory_permissions() {
+  echo -e "\nMillennium Config & Theme Directory Permissions:"
+  # A. Millennium User Config Directory
+  local millennium_user_config=""
+  if [[ -n "$user_xdg" ]]; then
+    millennium_user_config="${user_xdg}/millennium"
+  else
+    millennium_user_config="${USER_HOME}/.config/millennium"
+  fi
 
-missing_completions=()
-out_of_date_completions=()
+  if [[ -d "$millennium_user_config" ]]; then
+    local config_owner
+    config_owner=$(stat -c '%U' "$millennium_user_config" 2>/dev/null || echo "unknown")
+    if [[ ! -w "$millennium_user_config" ]]; then
+      PERMISSIONS_OK=false
+      unwritable_dirs+=("$millennium_user_config")
+      print_diag_item "error" "  - Config Directory (${millennium_user_config})" "Not Writable (Owned by: ${config_owner})"
+    else
+      print_diag_item "ok" "  - Config Directory (${millennium_user_config})" "Writable (Owned by: ${config_owner})"
+    fi
+  else
+    print_diag_item "ok" "  - Config Directory (${millennium_user_config})" "Not Created Yet (will be created automatically by Millennium)"
+  fi
 
-for local_path in "${!COMPLETION_FILES[@]}"; do
-  remote_rel="${COMPLETION_FILES[$local_path]}"
-  
-  local_dir=$(dirname "$local_path")
-  [[ -d "$local_dir" ]] || continue
-  
-  if [[ ! -f "$local_path" ]]; then
-    COMPLETIONS_OK=false
-    missing_completions+=("$local_path")
-    print_diag_item "error" "  - $(basename "$local_path")" "Missing"
-  elif [[ "${ONLINE:-false}" == "true" ]]; then
-    remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/${LATEST_SHA}/${remote_rel}"
-    tmp_dest="${TMP_SCRIPTS}/comp_$(basename "$local_path")"
+  # B. Steam Skins/Themes directories
+  for steam_dir in "${USER_HOME}/.local/share/Steam" "${USER_HOME}/.steam/steam" "${USER_HOME}/.steam/root" "${USER_HOME}/.var/app/com.valvesoftware.Steam/.local/share/Steam"; do
+    [[ -d "$steam_dir" ]] || continue
+    local skins_dir="${steam_dir}/steamui/skins"
+    local type_env="Native"
+    if [[ "$steam_dir" == *"com.valvesoftware.Steam"* ]]; then
+      type_env="Flatpak"
+    fi
     
-    if curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" --retry 3 --retry-delay 2 "$remote_url" -o "$tmp_dest" &>/dev/null; then
-      local_sha=$(sha256sum "$local_path" | awk '{print $1}')
-      remote_sha=$(sha256sum "$tmp_dest" | awk '{print $1}')
-      if [[ "$local_sha" != "$remote_sha" ]]; then
-        COMPLETIONS_OK=false
-        out_of_date_completions+=("$local_path")
-        print_diag_item "error" "  - $(basename "$local_path")" "Out of date"
+    if [[ -d "$skins_dir" ]]; then
+      local skins_owner
+      skins_owner=$(stat -c '%U' "$skins_dir" 2>/dev/null || echo "unknown")
+      if [[ ! -w "$skins_dir" ]]; then
+        PERMISSIONS_OK=false
+        unwritable_dirs+=("$skins_dir")
+        print_diag_item "error" "  - Skins Directory [${type_env}] (${skins_dir})" "Not Writable (Owned by: ${skins_owner})"
       else
-        print_diag_item "ok" "  - $(basename "$local_path")" "Up to date"
+        print_diag_item "ok" "  - Skins Directory [${type_env}] (${skins_dir})" "Writable (Owned by: ${skins_owner})"
       fi
     else
-      print_diag_item "warn" "  - $(basename "$local_path")" "Unable to check (HTTP download failed)"
+      # Skins directory doesn't exist, check parent
+      local parent_dir
+      parent_dir=$(dirname "$skins_dir")
+      if [[ -d "$parent_dir" ]]; then
+        local parent_owner
+        parent_owner=$(stat -c '%U' "$parent_dir" 2>/dev/null || echo "unknown")
+        if [[ ! -w "$parent_dir" ]]; then
+          PERMISSIONS_OK=false
+          unwritable_dirs+=("$parent_dir")
+          print_diag_item "error" "  - Skins Parent [${type_env}] (${parent_dir})" "Parent Not Writable (Owned by: ${parent_owner})"
+        else
+          print_diag_item "warn" "  - Skins Directory [${type_env}] (${skins_dir})" "Missing (parent is writable, will be created automatically)"
+          SKINS_DIR_OK=false
+          missing_skins_dirs+=("$skins_dir")
+        fi
+      else
+        print_diag_item "error" "  - Skins Directory [${type_env}] (${skins_dir})" "Steam Directory Missing"
+      fi
+    fi
+  done
+  echo ""
+}
+
+check_sudoers_authorization() {
+  local check_cmd="sudo -n -l"
+  if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" ]]; then
+    check_cmd="sudo -U $RUNNING_USER -n -l"
+  fi
+
+  if eval "$check_cmd" 2>/dev/null | grep -qE "NOPASSWD.*(millennium-upgrade|ALL)"; then
+    print_diag_item "ok" "Sudoers Passwordless Update Authorization" "Active & Verified"
+  else
+    SUDOERS_OK=false
+    print_diag_item "error" "Sudoers Passwordless Update Authorization" "Not Configured / Unauthorized"
+  fi
+}
+
+check_scheduler_status() {
+  if [[ "$SYSTEMD_BOOTED" == "true" ]]; then
+    local timer_path="${USER_CONFIG_DIR}/millennium-update.timer"
+    if [[ -f "$timer_path" ]] && sysctl_user is-enabled millennium-update.timer &>/dev/null; then
+      local timer_state
+      timer_state=$(sysctl_user is-active millennium-update.timer || echo "inactive")
+      if [[ "$timer_state" == "active" ]]; then
+        local timer_trigger
+        timer_trigger=$(sysctl_user list-timers millennium-update.timer --no-legend | awk '{print $1, $2, $3}')
+        print_diag_item "ok" "Systemd Auto-Update Timer" "Enabled and Active (Next Run: ${timer_trigger})"
+      else
+        TIMER_ACTIVE=false
+        print_diag_item "warn" "Systemd Auto-Update Timer" "Enabled but Inactive (timer is sleeping)"
+      fi
+    else
+      TIMER_ACTIVE=false
+      print_diag_item "error" "Systemd Auto-Update Timer" "Disabled / Not Scheduled"
+    fi
+
+    # Check Systemd User Lingering status
+    if [[ -f "/var/lib/systemd/linger/${RUNNING_USER}" ]]; then
+      print_diag_item "ok" "Systemd User Lingering" "Enabled"
+    else
+      LINGER_OK=false
+      print_diag_item "warn" "Systemd User Lingering" "Disabled (Updates will only trigger when user is logged in)"
     fi
   else
-    print_diag_item "ok" "  - $(basename "$local_path")" "Present (offline, cannot verify version)"
+    if command -v crontab &>/dev/null; then
+      if crontab -l 2>/dev/null | grep -q "millennium-schedule"; then
+        print_diag_item "ok" "Cron Auto-Update Scheduler" "Enabled and Active (Crontab entry configured)"
+      else
+        TIMER_ACTIVE=false
+        print_diag_item "error" "Cron Auto-Update Scheduler" "Disabled / Not Scheduled"
+      fi
+    else
+      TIMER_ACTIVE=false
+      print_diag_item "error" "Cron Auto-Update Scheduler" "Disabled (No 'crontab' utility found)"
+    fi
   fi
-done
+}
 
-broken_symlinks=()
-for symlink_item in "${COMPLETION_SYMLINKS[@]}"; do
-  symlink_path="${symlink_item%%:*}"
-  symlink_target="${symlink_item#*:}"
-  
-  symlink_dir=$(dirname "$symlink_path")
-  [[ -d "$symlink_dir" ]] || continue
-  
-  if [[ ! -L "$symlink_path" ]]; then
-    COMPLETIONS_OK=false
-    broken_symlinks+=("$symlink_path:$symlink_target")
-    print_diag_item "error" "  - $(basename "$symlink_path") symlink" "Missing/Broken"
+check_helper_updates() {
+  echo -e "\nHelper Scripts Update Status:"
+  ONLINE=false
+  if curl -sIk "https://github.com" &>/dev/null; then
+    ONLINE=true
+  fi
+
+  if [[ "$ONLINE" == "true" ]]; then
+    TMP_SCRIPTS=$(mktemp -d)
+    trap 'rm -rf "${TMP_SCRIPTS:-}"' EXIT INT TERM
+    
+    local latest_sha="main"
+    local api_data
+    if api_data=$(curl -sL --retry 3 --retry-delay 2 "https://api.github.com/repos/bolens/millenium-helpers/commits/main" 2>/dev/null); then
+      local parsed_sha
+      parsed_sha=$(echo "$api_data" | grep -m 1 '"sha":' | cut -d'"' -f4 || true)
+      if [[ "$parsed_sha" =~ ^[0-9a-f]{40}$ ]]; then
+        latest_sha="$parsed_sha"
+      fi
+    fi
+
+    for item in "${UTILITIES[@]}"; do
+      local cmd_name="${item%%:*}"
+      local remote_rel="${item#*:}"
+      local local_path=""
+      if [[ -f "/usr/bin/${cmd_name}" ]]; then
+        local_path="/usr/bin/${cmd_name}"
+      elif [[ -f "/usr/local/bin/${cmd_name}" ]]; then
+        local_path="/usr/local/bin/${cmd_name}"
+      fi
+      
+      local remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/${latest_sha}/${remote_rel}"
+      local tmp_dest="${TMP_SCRIPTS}/${cmd_name}"
+      
+      if [[ -n "$local_path" ]]; then
+        if curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" --retry 3 --retry-delay 2 "$remote_url" -o "$tmp_dest" &>/dev/null; then
+          local local_sha
+          local_sha=$(sha256sum "$local_path" | awk '{print $1}')
+          local remote_sha
+          remote_sha=$(sha256sum "$tmp_dest" | awk '{print $1}')
+          
+          if [[ "$local_sha" != "$remote_sha" ]]; then
+            SCRIPTS_UP_TO_DATE=false
+            out_of_date_scripts+=("$cmd_name")
+            print_diag_item "error" "  - ${cmd_name}" "Out of date"
+          else
+            print_diag_item "ok" "  - ${cmd_name}" "Up to date"
+          fi
+        else
+          print_diag_item "warn" "  - ${cmd_name}" "Unable to check (HTTP download failed)"
+        fi
+      else
+        print_diag_item "error" "  - ${cmd_name}" "Not Installed"
+        SCRIPTS_UP_TO_DATE=false
+        if curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" --retry 3 --retry-delay 2 "$remote_url" -o "$tmp_dest" &>/dev/null; then
+          out_of_date_scripts+=("$cmd_name")
+        fi
+      fi
+    done
   else
-    target_resolved=$(readlink "$symlink_path" || true)
-    if [[ "$target_resolved" != "$symlink_target" ]]; then
+    echo -e "  ${YELLOW}System is offline. Skipping update checks for helper scripts.${NC}"
+  fi
+}
+
+check_shell_completions() {
+  echo -e "\nShell Autocompletions Status:"
+
+  # Define paths and their corresponding remote repository locations
+  declare -A COMPLETION_FILES=(
+    ["/usr/share/bash-completion/completions/millennium-helpers"]="completions/bash/millennium-helpers"
+    ["/usr/share/zsh/site-functions/_millennium-helpers"]="completions/zsh/_millennium-helpers"
+    ["/usr/share/fish/vendor_completions.d/millennium-repair.fish"]="completions/fish/millennium-repair.fish"
+    ["/usr/share/fish/vendor_completions.d/millennium-upgrade.fish"]="completions/fish/millennium-upgrade.fish"
+    ["/usr/share/fish/vendor_completions.d/millennium-schedule.fish"]="completions/fish/millennium-schedule.fish"
+    ["/usr/share/fish/vendor_completions.d/millennium-purge.fish"]="completions/fish/millennium-purge.fish"
+    ["/usr/share/fish/vendor_completions.d/millennium-diag.fish"]="completions/fish/millennium-diag.fish"
+    ["/usr/share/fish/vendor_completions.d/millennium-theme.fish"]="completions/fish/millennium-theme.fish"
+    ["/usr/share/fish/vendor_completions.d/millennium-mcp.fish"]="completions/fish/millennium-mcp.fish"
+  )
+
+  local nu_dest=""
+  for base_dir in "/usr/share" "/usr/local/share"; do
+    if [[ -d "${base_dir}/nushell/completions" ]]; then
+      nu_dest="${base_dir}/nushell/completions/millennium-helpers.nu"
+      break
+    fi
+  done
+  if [[ -z "$nu_dest" ]]; then
+    nu_dest="/usr/share/nushell/completions/millennium-helpers.nu"
+  fi
+  COMPLETION_FILES["$nu_dest"]="completions/nushell/millennium-helpers.nu"
+
+  declare -a COMPLETION_SYMLINKS=(
+    "/usr/share/bash-completion/completions/millennium-repair:millennium-helpers"
+    "/usr/share/bash-completion/completions/millennium-upgrade:millennium-helpers"
+    "/usr/share/bash-completion/completions/millennium-schedule:millennium-helpers"
+    "/usr/share/bash-completion/completions/millennium-purge:millennium-helpers"
+    "/usr/share/bash-completion/completions/millennium-diag:millennium-helpers"
+    "/usr/share/bash-completion/completions/millennium-theme:millennium-helpers"
+    "/usr/share/bash-completion/completions/millennium-mcp:millennium-helpers"
+    
+    "/usr/share/zsh/site-functions/_millennium-repair:_millennium-helpers"
+    "/usr/share/zsh/site-functions/_millennium-upgrade:_millennium-helpers"
+    "/usr/share/zsh/site-functions/_millennium-schedule:_millennium-helpers"
+    "/usr/share/zsh/site-functions/_millennium-purge:_millennium-helpers"
+    "/usr/share/zsh/site-functions/_millennium-diag:_millennium-helpers"
+    "/usr/share/zsh/site-functions/_millennium-theme:_millennium-helpers"
+    "/usr/share/zsh/site-functions/_millennium-mcp:_millennium-helpers"
+  )
+
+  missing_completions=()
+  out_of_date_completions=()
+
+  for local_path in "${!COMPLETION_FILES[@]}"; do
+    local remote_rel="${COMPLETION_FILES[$local_path]}"
+    local local_dir
+    local_dir=$(dirname "$local_path")
+    [[ -d "$local_dir" ]] || continue
+    
+    if [[ ! -f "$local_path" ]]; then
+      COMPLETIONS_OK=false
+      missing_completions+=("$local_path")
+      print_diag_item "error" "  - $(basename "$local_path")" "Missing"
+    elif [[ "${ONLINE:-false}" == "true" ]]; then
+      local remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/${latest_sha:-main}/${remote_rel}"
+      local tmp_dest
+      tmp_dest="${TMP_SCRIPTS}/comp_$(basename "$local_path")"
+      
+      if curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" --retry 3 --retry-delay 2 "$remote_url" -o "$tmp_dest" &>/dev/null; then
+        local local_sha
+        local_sha=$(sha256sum "$local_path" | awk '{print $1}')
+        local remote_sha
+        remote_sha=$(sha256sum "$tmp_dest" | awk '{print $1}')
+        if [[ "$local_sha" != "$remote_sha" ]]; then
+          COMPLETIONS_OK=false
+          out_of_date_completions+=("$local_path")
+          print_diag_item "error" "  - $(basename "$local_path")" "Out of date"
+        else
+          print_diag_item "ok" "  - $(basename "$local_path")" "Up to date"
+        fi
+      else
+        print_diag_item "warn" "  - $(basename "$local_path")" "Unable to check (HTTP download failed)"
+      fi
+    else
+      print_diag_item "ok" "  - $(basename "$local_path")" "Present (offline, cannot verify version)"
+    fi
+  done
+
+  broken_symlinks=()
+  for symlink_item in "${COMPLETION_SYMLINKS[@]}"; do
+    local symlink_path="${symlink_item%%:*}"
+    local symlink_target="${symlink_item#*:}"
+    local symlink_dir
+    symlink_dir=$(dirname "$symlink_path")
+    [[ -d "$symlink_dir" ]] || continue
+    
+    if [[ ! -L "$symlink_path" ]]; then
       COMPLETIONS_OK=false
       broken_symlinks+=("$symlink_path:$symlink_target")
-      print_diag_item "error" "  - $(basename "$symlink_path") symlink" "Incorrect target (${target_resolved})"
+      print_diag_item "error" "  - $(basename "$symlink_path") symlink" "Missing/Broken"
+    else
+      local target_resolved
+      target_resolved=$(readlink "$symlink_path" || true)
+      if [[ "$target_resolved" != "$symlink_target" ]]; then
+        COMPLETIONS_OK=false
+        broken_symlinks+=("$symlink_path:$symlink_target")
+        print_diag_item "error" "  - $(basename "$symlink_path") symlink" "Incorrect target (${target_resolved})"
+      fi
     fi
-  fi
-done
+  done
+}
 
-# is_game_running is now sourced from common.sh
+check_obsolete_files() {
+  echo -e "\nObsolete / Deprecated Legacy Files:"
+  local obsolete_list=()
+  if [[ -n "${DIAG_TEST_OBSOLETE_LIST:-}" ]]; then
+    IFS=',' read -r -a obsolete_list <<< "$DIAG_TEST_OBSOLETE_LIST"
+  else
+    obsolete_list=(
+      "/usr/bin/millennium-upgrade-stable"
+      "/usr/bin/millennium-upgrade-beta"
+      "/usr/local/bin/millennium-upgrade-stable"
+      "/usr/local/bin/millennium-upgrade-beta"
+      "/usr/share/bash-completion/completions/millennium-upgrade-stable"
+      "/usr/share/bash-completion/completions/millennium-upgrade-beta"
+      "/usr/local/share/bash-completion/completions/millennium-upgrade-stable"
+      "/usr/local/share/bash-completion/completions/millennium-upgrade-beta"
+      "/usr/share/zsh/site-functions/_millennium-upgrade-stable"
+      "/usr/share/zsh/site-functions/_millennium-upgrade-beta"
+      "/usr/local/share/zsh/site-functions/_millennium-upgrade-stable"
+      "/usr/local/share/zsh/site-functions/_millennium-upgrade-beta"
+      "/usr/share/fish/vendor_completions.d/millennium-upgrade-stable.fish"
+      "/usr/share/fish/vendor_completions.d/millennium-upgrade-beta.fish"
+      "/usr/local/share/fish/vendor_completions.d/millennium-upgrade-stable.fish"
+      "/usr/local/share/fish/vendor_completions.d/millennium-upgrade-beta.fish"
+    )
+  fi
+
+  local found_any=false
+  for f in "${obsolete_list[@]}"; do
+    if [[ -f "$f" || -L "$f" ]]; then
+      found_any=true
+      obsolete_files_found+=("$f")
+    fi
+  done
+
+  if [[ "$found_any" == "true" ]]; then
+    CLEAN_OF_OBSOLETE=false
+    print_diag_item "warn" "Legacy Wrapper Files" "Detected ${#obsolete_files_found[@]} deprecated files needing cleanup"
+  else
+    print_diag_item "ok" "Legacy Wrapper Files" "None detected (Clean)"
+  fi
+}
+
+run_diagnostics() {
+  echo -e "${BLUE}=== Millennium Diagnostics Report ===${NC}\n"
+  
+  check_steam_status
+  check_binaries_integrity
+  check_bootstrap_hooks
+  check_directory_permissions
+  check_sudoers_authorization
+  check_scheduler_status
+  check_helper_updates
+  check_shell_completions
+  check_obsolete_files
+}
+
+# --- Execute Diagnostics Report ---
+run_diagnostics
 
 if [[ "$OUTPUT_JSON" == "true" ]]; then
   exec 1>&3
@@ -709,6 +784,7 @@ if [[ "$OUTPUT_JSON" == "true" ]]; then
   "permissions_ok": ${PERMISSIONS_OK},
   "skins_dir_ok": ${SKINS_DIR_OK},
   "completions_ok": ${COMPLETIONS_OK},
+  "clean_of_obsolete": ${CLEAN_OF_OBSOLETE},
   "update_channel": "${UPDATE_CHANNEL}"
 }
 EOF
@@ -720,9 +796,8 @@ if [[ "$COMMAND" == "doctor" ]]; then
   echo -e "\n${BLUE}=== Running Millennium Doctor (Automatic Repairs) ===${NC}"
   
   # Check if anything needs fixing
-  # Check if anything needs fixing
   if [[ "$FORCE_REPAIR" != "true" ]]; then
-    if [[ "$BINARIES_OK" == true && "$HOOKS_OK" == true && "$FLATPAK_OK" == true && "$SUDOERS_OK" == true && "$TIMER_ACTIVE" == true && "$LINGER_OK" == true && "$SCRIPTS_UP_TO_DATE" == true && "$PERMISSIONS_OK" == true && "$SKINS_DIR_OK" == true && "$COMPLETIONS_OK" == true ]]; then
+    if [[ "$BINARIES_OK" == true && "$HOOKS_OK" == true && "$FLATPAK_OK" == true && "$SUDOERS_OK" == true && "$TIMER_ACTIVE" == true && "$LINGER_OK" == true && "$SCRIPTS_UP_TO_DATE" == true && "$PERMISSIONS_OK" == true && "$SKINS_DIR_OK" == true && "$COMPLETIONS_OK" == true && "$CLEAN_OF_OBSOLETE" == true ]]; then
       echo -e "${GREEN}No issues detected. Your Millennium installation is healthy!${NC}"
       exit 0
     fi
@@ -736,6 +811,7 @@ if [[ "$COMMAND" == "doctor" ]]; then
     SCRIPTS_UP_TO_DATE=false
     PERMISSIONS_OK=false
     COMPLETIONS_OK=false
+    CLEAN_OF_OBSOLETE=false
   fi
 
   # Require Steam closed for any updates/repairs (only if binary or hook modifications are pending)
@@ -749,7 +825,6 @@ if [[ "$COMMAND" == "doctor" ]]; then
     echo -e "${YELLOW}Steam is currently running and must be closed to apply repairs to hooks/binaries.${NC}"
 
     if [[ "$DRY_RUN" == "false" ]]; then
-      # Capture env and command line arguments
       capture_steam_env "$RUNNING_USER"
       close_steam_gracefully "$RUNNING_USER"
     else
@@ -788,12 +863,12 @@ if [[ "$COMMAND" == "doctor" ]]; then
   if [[ "$BINARIES_OK" == false ]]; then
     echo -e "\n${YELLOW}[DOCTOR] Repairing Millennium binaries...${NC}"
     echo -e "Invoking updater on the '${UPDATE_CHANNEL}' channel with force reinstall:"
-    upgrade_cmd="millennium-upgrade-${UPDATE_CHANNEL}"
+    upgrade_cmd="millennium-upgrade"
     upgrade_path="/usr/local/bin/${upgrade_cmd}"
     if [[ -f "/usr/bin/${upgrade_cmd}" ]]; then
       upgrade_path="/usr/bin/${upgrade_cmd}"
     fi
-    execute sudo "${upgrade_path}" --force
+    execute sudo "${upgrade_path}" --channel "${UPDATE_CHANNEL}" --force
   fi
 
   # Issue 3: Missing or broken hooks
@@ -905,7 +980,7 @@ if [[ "$COMMAND" == "doctor" ]]; then
     for local_path in "${missing_completions[@]:-}" "${out_of_date_completions[@]:-}"; do
       [[ -n "$local_path" ]] || continue
       remote_rel="${COMPLETION_FILES[$local_path]}"
-      remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/${LATEST_SHA}/${remote_rel}"
+      remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/${latest_sha:-main}/${remote_rel}"
       echo "Restoring completion file: $local_path"
       if [[ "$DRY_RUN" == "true" ]]; then
         echo -e "[DRY RUN] Would download $remote_url to $local_path"
@@ -926,6 +1001,21 @@ if [[ "$COMMAND" == "doctor" ]]; then
       else
         execute rm -f "$symlink_path"
         execute ln -sf "$symlink_target" "$symlink_path"
+      fi
+    done
+  fi
+
+  # Issue 11: Cleanup of obsolete / deprecated files
+  if [[ "$CLEAN_OF_OBSOLETE" == false ]]; then
+    echo -e "\n${YELLOW}[DOCTOR] Cleaning up obsolete / deprecated legacy files...${NC}"
+    for f in "${obsolete_files_found[@]:-}"; do
+      [[ -n "$f" ]] || continue
+      parent_dir=$(dirname "$f")
+      if [[ -w "$parent_dir" ]]; then
+        echo "Removing deprecated file: $f"
+        execute rm -f "$f"
+      else
+        echo -e "${RED}Warning: Directory '${parent_dir}' is not writable. Skipping removal of ${f}.${NC}"
       fi
     done
   fi

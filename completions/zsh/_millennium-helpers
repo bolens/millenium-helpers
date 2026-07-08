@@ -1,4 +1,4 @@
-#compdef millennium-repair millennium-upgrade-beta millennium-upgrade-stable millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp
+#compdef millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp
 
 _millennium_helpers() {
   local curcontext="$curcontext" state line
@@ -10,8 +10,12 @@ _millennium_helpers() {
         {-d,--dry-run}'[Simulation mode]' \
         {-h,--help}'[Show help message]'
       ;;
-    millennium-upgrade-beta|millennium-upgrade-stable)
+    millennium-upgrade)
       _arguments \
+        '--channel[Update channel (stable or beta)]' \
+        '--stable[Alias for --channel stable]' \
+        '--beta[Alias for --channel beta]' \
+        '--rollback[Rollback to a specific version or list backups]' \
         {-f,--force}'[Force reinstall]' \
         {-d,--dry-run}'[Simulation mode]' \
         {-h,--help}'[Show help message]'

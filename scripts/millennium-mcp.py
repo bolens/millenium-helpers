@@ -209,10 +209,7 @@ def handle_tool_call(tool_name, arguments):
         channel = arguments.get("channel", "stable")
         if channel not in VALID_CHANNELS:
             return {"isError": True, "content": [{"type": "text", "text": f"Error: invalid channel '{channel}'. Must be one of: {', '.join(sorted(VALID_CHANNELS))}."}]}
-        if channel == "beta":
-            args = ["millennium-upgrade-beta"]
-        else:
-            args = ["millennium-upgrade-stable"]
+        args = ["millennium-upgrade", "--channel", channel]
         return run_cmd(args, run_as_root=True, timeout=LONG_TIMEOUT_SECONDS)
         
     elif tool_name == "millennium_schedule":

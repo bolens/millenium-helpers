@@ -426,7 +426,8 @@ run_setup_wizard() {
     echo -e "Choose Millennium Update Channel:"
     echo -e "  1) Stable"
     echo -e "  2) Beta"
-    read -rp "Selection [1-2, default: ${default_ch_num} (${default_ch_desc})]: " ch_sel
+    printf "Selection [1-2, default: %s (%s)]: " "${default_ch_num}" "${default_ch_desc}" >&2
+    read -r ch_sel
     [[ -z "$ch_sel" ]] && ch_sel="$default_ch_num"
     case "$ch_sel" in
       1)
@@ -475,7 +476,8 @@ run_setup_wizard() {
 
   local enable_sched=""
   while true; do
-    read -rp "Would you like to enable the daily automated background update timer? [${default_sched_desc}]: " sched_sel
+    printf "Would you like to enable the daily automated background update timer? [%s]: " "${default_sched_desc}" >&2
+    read -r sched_sel
     [[ -z "$sched_sel" ]] && sched_sel="$default_sched"
     case "$sched_sel" in
       [Yy]|[Yy][Ee][Ss])
@@ -497,13 +499,15 @@ run_setup_wizard() {
   local github_token=""
   echo -e "To prevent hitting GitHub API rate limits during updates, you can optionally provide a GitHub Personal Access Token (PAT)."
   if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-    read -rp "Enter GitHub PAT (leave empty to keep existing token): " github_token
+    printf "Enter GitHub PAT (leave empty to keep existing token): " >&2
+    read -r github_token
     if [[ -z "$github_token" ]]; then
       github_token="$GITHUB_TOKEN"
       echo -e "Keeping existing GitHub PAT.\n"
     fi
   else
-    read -rp "Enter GitHub PAT (leave empty to skip): " github_token
+    printf "Enter GitHub PAT (leave empty to skip): " >&2
+    read -r github_token
   fi
 
   # Write configuration to the user's config directory
