@@ -119,10 +119,10 @@ esac
 '
 out=$(run_upgrade stable --dry-run 2>&1)
 rc=$?
-assert_success "$rc" "millennium-upgrade-stable.sh --dry-run completes successfully with a mocked network/API"
-assert_contains "$out" "v9.9.9" "millennium-upgrade-stable.sh --dry-run resolves and reports the fetched version"
-assert_contains "$out" "deadbeefcafef00d" "millennium-upgrade-stable.sh --dry-run reports the expected SHA256 checksum"
-assert_contains "$out" "Dry run completed successfully" "millennium-upgrade-stable.sh --dry-run reports overall success"
+assert_success "$rc" "millennium-upgrade.sh --dry-run completes successfully with a mocked network/API"
+assert_contains "$out" "v9.9.9" "millennium-upgrade.sh --dry-run resolves and reports the fetched version"
+assert_contains "$out" "deadbeefcafef00d" "millennium-upgrade.sh --dry-run reports the expected SHA256 checksum"
+assert_contains "$out" "Dry run completed successfully" "millennium-upgrade.sh --dry-run reports overall success"
 
 # --- Already up-to-date short-circuit (no --force) ---
 # The real /usr/lib/millennium/version.txt reflects whatever happens to be
@@ -140,8 +140,8 @@ echo '{\"tag_name\": \"v${installed_ver}\"}'
 "
   out=$(run_upgrade stable --dry-run 2>&1)
   rc=$?
-  assert_success "$rc" "millennium-upgrade-stable.sh --dry-run exits 0 when already at the latest version"
-  assert_contains "$out" "already up to date" "millennium-upgrade-stable.sh --dry-run reports it is already up to date (no --force)"
+  assert_success "$rc" "millennium-upgrade.sh --dry-run exits 0 when already at the latest version"
+  assert_contains "$out" "already up to date" "millennium-upgrade.sh --dry-run reports it is already up to date (no --force)"
   rm -f "${MOCK_BIN}/curl"
 
   # --force bypasses the short-circuit and proceeds to fetch the checksum
@@ -158,9 +158,9 @@ esac
 "
   out=$(run_upgrade stable --force --dry-run 2>&1)
   rc=$?
-  assert_success "$rc" "millennium-upgrade-stable.sh --dry-run --force exits 0 even when already up to date"
-  assert_not_contains "$out" "already up to date" "millennium-upgrade-stable.sh --dry-run --force bypasses the up-to-date short-circuit"
-  assert_contains "$out" "Would download archive" "millennium-upgrade-stable.sh --dry-run --force proceeds to the download step"
+  assert_success "$rc" "millennium-upgrade.sh --dry-run --force exits 0 even when already up to date"
+  assert_not_contains "$out" "already up to date" "millennium-upgrade.sh --dry-run --force bypasses the up-to-date short-circuit"
+  assert_contains "$out" "Would download archive" "millennium-upgrade.sh --dry-run --force proceeds to the download step"
   rm -f "${MOCK_BIN}/curl"
 fi
 

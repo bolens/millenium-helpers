@@ -121,18 +121,7 @@ enable_timer() {
   local channel="${1:-${CONFIG_UPDATE_CHANNEL:-stable}}"
   local script_file=""
 
-  case "$channel" in
-    stable)
-      script_file=$(resolve_helper_path "millennium-upgrade-stable")
-      ;;
-    beta)
-      script_file=$(resolve_helper_path "millennium-upgrade-beta")
-      ;;
-    *)
-      echo -e "${RED}Error: Invalid channel '$channel'. Choose 'stable' or 'beta'.${NC}" >&2
-      exit 1
-      ;;
-  esac
+  script_file=$(resolve_helper_path "millennium-upgrade")
 
   # Sanity check: Ensure scripts have been installed system-wide (only if not dry run)
   if [[ "$DRY_RUN" == "false" ]] && [[ ! -f "$script_file" ]]; then
@@ -161,7 +150,7 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/bin/bash -c 'mkdir -p "${state_dir}" && { "${sched_self}" pre-update && /usr/bin/sudo -n "${script_file}" && "${theme_cmd}" update && "${sched_self}" post-update; } >> "${state_dir}/updater.log" 2>&1'
+ExecStart=/bin/bash -c 'mkdir -p "${state_dir}" && { "${sched_self}" pre-update && /usr/bin/sudo -n "${script_file}" --channel "${channel}" && "${theme_cmd}" update && "${sched_self}" post-update; } >> "${state_dir}/updater.log" 2>&1'
 EOF
 
   echo -e "${BLUE}Creating systemd user timer file...${NC}"
@@ -192,7 +181,7 @@ EOF
   fi
   
   # Verify if passwordless sudo is active
-  if ! sudo -n -l 2>/dev/null | grep -qE "NOPASSWD.*(millennium-upgrade-stable|ALL)"; then
+  if ! sudo -n -l 2>/dev/null | grep -qE "NOPASSWD.*(millennium-upgrade|ALL)"; then
     echo -e "\n${YELLOW}Warning: Passwordless sudo for the updater script could not be verified.${NC}"
     echo -e "Make sure you have run the installer first: sudo ./install.sh"
     echo -e "This configuration is required for the background timer to run successfully."
@@ -353,18 +342,7 @@ enable_cron() {
   local channel="${1:-${CONFIG_UPDATE_CHANNEL:-stable}}"
   local script_file=""
 
-  case "$channel" in
-    stable)
-      script_file=$(resolve_helper_path "millennium-upgrade-stable")
-      ;;
-    beta)
-      script_file=$(resolve_helper_path "millennium-upgrade-beta")
-      ;;
-    *)
-      echo -e "${RED}Error: Invalid channel '$channel'. Choose 'stable' or 'beta'.${NC}" >&2
-      exit 1
-      ;;
-  esac
+  script_file=$(resolve_helper_path "millennium-upgrade")
 
   if ! command -v crontab &>/dev/null; then
     echo -e "${RED}Error: 'crontab' command not found. Please install a cron daemon (e.g. cronie, fcron).${NC}" >&2
@@ -378,7 +356,7 @@ enable_cron() {
   theme_cmd=$(resolve_helper_path "millennium-theme")
 
   local state_dir="${XDG_STATE_HOME:-$USER_HOME/.local/state}/millennium-helpers"
-  local cron_cmd="0 2 * * * sleep \$(python3 -c 'import random; print(random.randint(0, 3600))') && mkdir -p ${state_dir} && { ${sched_self} pre-update && /usr/bin/sudo -n ${script_file} && ${theme_cmd} update && ${sched_self} post-update; } >> ${state_dir}/updater.log 2>&1"
+  local cron_cmd="0 2 * * * sleep \$(python3 -c 'import random; print(random.randint(0, 3600))') && mkdir -p ${state_dir} && { ${sched_self} pre-update && /usr/bin/sudo -n ${script_file} --channel ${channel} && ${theme_cmd} update && ${sched_self} post-update; } >> ${state_dir}/updater.log 2>&1"
   
   echo -e "${BLUE}Configuring daily crontab job for user ${RUNNING_USER}...${NC}"
   
