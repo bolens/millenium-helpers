@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Config, backups and rollback management helpers for Millennium Helpers.
 # Sourced by common.sh
 

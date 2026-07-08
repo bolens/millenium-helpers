@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Steam client management helpers for Millennium Helpers.
 # Sourced by common.sh
 
