@@ -44,6 +44,7 @@ jobs:
           # Copy checkout (including parent git dir so git describe works in pkgver)
           cp -r "$GITHUB_WORKSPACE" /home/builduser/millenium-helpers
           chown -R builduser:builduser /home/builduser/millenium-helpers
+          su builduser -c 'git config --global --add safe.directory /home/builduser/millenium-helpers'
 
       - name: Verify .SRCINFO is up to date with PKGBUILD
         run: |
