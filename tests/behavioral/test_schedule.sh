@@ -172,6 +172,39 @@ out=$(run_schedule config get backup_limit 2>&1)
 rc=$?
 assert_equals "10" "$(echo "$out" | tr -d '[:space:]')" "config get backup_limit returns 10"
 
+# --- Setup Wizard dynamic defaults when configuration exists ---
+TEST_CONFIG_DIR=$(mktemp -d)
+export XDG_CONFIG_HOME="${TEST_CONFIG_DIR}"
+
+mkdir -p "${TEST_CONFIG_DIR}/millennium-helpers"
+cat > "${TEST_CONFIG_DIR}/millennium-helpers/config.json" << EOF
+{
+  "update_channel": "beta",
+  "github_token": "token_existing_pat"
+}
+EOF
+
+# Mock systemctl to simulate timer not being enabled yet
+mock_cmd "systemctl" "exit 1"
+
+# Run setup wizard in dry-run mode first to test output prompts
+out=$(echo -e "\n\n\n" | FORCE_WIZARD=true bash "$SCHEDULE_SH" setup --dry-run 2>&1)
+assert_contains "$out" "default: 2 (Beta)" "setup wizard default channel is Beta when beta is configured"
+assert_contains "$out" "background update timer? [y/N]" "setup wizard default scheduler is n (y/N) when config exists but not enabled"
+assert_contains "$out" "Enter GitHub PAT (leave empty to keep existing token)" "setup wizard prompts to keep existing token"
+
+# Run setup wizard in live mode to write config using defaults
+echo -e "\n\n\n" | FORCE_WIZARD=true bash "$SCHEDULE_SH" setup >/dev/null 2>&1
+
+val_ch=$(python3 -c "import json; print(json.load(open('${TEST_CONFIG_DIR}/millennium-helpers/config.json')).get('update_channel'))")
+val_token=$(python3 -c "import json; print(json.load(open('${TEST_CONFIG_DIR}/millennium-helpers/config.json')).get('github_token'))")
+assert_equals "beta" "$val_ch" "setup wizard preserves update_channel via default prompt"
+assert_equals "token_existing_pat" "$val_token" "setup wizard preserves github_token via default prompt"
+
+rm -f "${MOCK_BIN}/systemctl"
+rm -rf "${TEST_CONFIG_DIR}"
+unset XDG_CONFIG_HOME
+
 unset XDG_CONFIG_HOME
 
 rm -rf "$FAKE_XDG_CONFIG"

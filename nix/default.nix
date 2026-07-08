@@ -40,9 +40,10 @@ stdenv.mkDerivation rec {
     install -m755 scripts/millennium-theme.sh $out/bin/millennium-theme
     install -m755 scripts/millennium-mcp.py $out/bin/millennium-mcp
 
-    # Install shared library
-    mkdir -p $out/lib/millennium-helpers
+    # Install shared library and its modules
+    mkdir -p $out/lib/millennium-helpers/lib
     install -m644 scripts/common.sh $out/lib/millennium-helpers/common.sh
+    install -m644 scripts/lib/*.sh $out/lib/millennium-helpers/lib/
 
     # Wrap the scripts to ensure they have the runtime dependencies on PATH
     for script in millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp; do

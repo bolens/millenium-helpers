@@ -2,7 +2,7 @@
 # Installation/uninstallation script for Millennium helper scripts.
 set -euo pipefail
 
-TARGET_DIR="/usr/local/bin"
+TARGET_DIR="${TARGET_DIR:-/usr/local/bin}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SUDOERS_FILE="${MOCK_SUDOERS_FILE:-/etc/sudoers.d/millennium-helpers}"
 
@@ -254,14 +254,17 @@ install_scripts() {
     fi
   done
 
-  # Copy shared helper library
+  # Copy shared helper library and its modules
   local lib_dir="/usr/local/lib/millennium-helpers"
   printf "Installing shared helper library to %s... " "${lib_dir}/common.sh"
-  if execute mkdir -p "$lib_dir" && \
+  if execute mkdir -p "${lib_dir}/lib" && \
      execute cp -f "${SCRIPT_DIR}/scripts/common.sh" "${lib_dir}/common.sh" && \
+     execute cp -f "${SCRIPT_DIR}/scripts/lib/"*.sh "${lib_dir}/lib/" && \
      execute chown -R root:root "$lib_dir" && \
      execute chmod 755 "$lib_dir" && \
-     execute chmod 644 "${lib_dir}/common.sh"; then
+     execute chmod 755 "${lib_dir}/lib" && \
+     execute chmod 644 "${lib_dir}/common.sh" && \
+     execute chmod 644 "${lib_dir}/lib/"*.sh; then
     echo -e "${GREEN}OK${NC}"
   else
     echo -e "${RED}FAIL${NC}"

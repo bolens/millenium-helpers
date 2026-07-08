@@ -6,15 +6,12 @@ export extern "millennium-repair" [
   --help(-h)     # Show help message
 ]
 
-# Upgrade Millennium client using stable channel
-export extern "millennium-upgrade-stable" [
-  --force(-f)    # Force reinstall
-  --dry-run(-d)  # Simulation mode
-  --help(-h)     # Show help message
-]
-
-# Upgrade Millennium client using beta channel
-export extern "millennium-upgrade-beta" [
+# Upgrade Millennium client using specified channel
+export extern "millennium-upgrade" [
+  --channel: string # Update channel (stable, beta)
+  --stable       # Alias for --channel stable
+  --beta         # Alias for --channel beta
+  --rollback: string # Rollback to a specific version or list backups
   --force(-f)    # Force reinstall
   --dry-run(-d)  # Simulation mode
   --help(-h)     # Show help message

@@ -1,7 +1,7 @@
 # Maintainer: bolens <https://github.com/bolens>
 pkgname=millennium-helpers-git
 _pkgname=millennium-helpers
-pkgver=r103.gd05d44d
+pkgver=r104.g4e3f4df
 pkgrel=1
 pkgdesc="Utility scripts for managing, repairing, upgrading, rolling back, viewing logs, managing themes, and scheduling updates for Millennium on Linux"
 arch=('any')
@@ -23,7 +23,7 @@ backup=('etc/sudoers.d/millennium-helpers')
 source=("${_pkgname}::git+${url}.git"
         "millennium-helpers.sudoers")
 sha256sums=('SKIP'
-            '6e5cd09dd4baac9d954476bf9825f7fe2b6aee7341ed7002c6f052b8f29aa44e')
+            'd2a3e23decbd8d3e8ec59919f3bc244be21b9a1f6fa5e70ddd039243b7a87c9d')
 
 prepare() {
   if [ -f "/usr/local/bin/millennium-repair" ] || { [ -f "/etc/sudoers.d/millennium-helpers" ] && ! pacman -Qo "/etc/sudoers.d/millennium-helpers" &>/dev/null; }; then
@@ -64,9 +64,10 @@ package() {
   install -m755 scripts/millennium-theme.sh "${pkgdir}/usr/bin/millennium-theme"
   install -m755 scripts/millennium-mcp.py "${pkgdir}/usr/bin/millennium-mcp"
 
-  # Install shared helper library
-  install -d "${pkgdir}/usr/lib/millennium-helpers"
+  # Install shared helper library and its modules
+  install -d "${pkgdir}/usr/lib/millennium-helpers/lib"
   install -m644 scripts/common.sh "${pkgdir}/usr/lib/millennium-helpers/common.sh"
+  install -m644 scripts/lib/*.sh "${pkgdir}/usr/lib/millennium-helpers/lib/"
 
   # Install Bash completions
   install -Dm644 completions/bash/millennium-helpers "${pkgdir}/usr/share/bash-completion/completions/millennium-helpers"
