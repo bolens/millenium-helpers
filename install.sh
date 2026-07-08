@@ -13,6 +13,7 @@ source "${SCRIPT_DIR}/scripts/common.sh"
 # Define scripts to manage (format: "source_filename:target_command_name")
 SCRIPTS=(
   "scripts/millennium-repair.sh:millennium-repair"
+  "scripts/millennium-upgrade.sh:millennium-upgrade"
   "scripts/millennium-upgrade-beta.sh:millennium-upgrade-beta"
   "scripts/millennium-upgrade-stable.sh:millennium-upgrade-stable"
   "scripts/millennium-schedule.sh:millennium-schedule"
