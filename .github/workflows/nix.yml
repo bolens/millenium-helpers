@@ -1,0 +1,35 @@
+name: Nix Flake Build
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '**.nix'
+      - 'scripts/**'
+      - 'completions/**'
+      - 'LICENSE'
+      - 'Makefile'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '**.nix'
+      - 'scripts/**'
+      - 'completions/**'
+      - 'LICENSE'
+      - 'Makefile'
+
+jobs:
+  build:
+    name: Build Nix Package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v25
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Flake
+        run: nix build --experimental-features "nix-command flakes" --no-link

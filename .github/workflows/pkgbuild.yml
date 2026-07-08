@@ -5,10 +5,16 @@ on:
     branches: [ main ]
     paths:
       - 'packaging/**'
+      - 'scripts/**'
+      - 'completions/**'
+      - 'LICENSE'
   pull_request:
     branches: [ main ]
     paths:
       - 'packaging/**'
+      - 'scripts/**'
+      - 'completions/**'
+      - 'LICENSE'
 
 jobs:
   validate:
@@ -19,7 +25,7 @@ jobs:
     steps:
       - name: Install build tooling
         run: |
-          pacman -Syu --noconfirm --quiet base-devel git namcap
+          pacman -Syu --noconfirm --quiet base-devel git namcap sudo
 
       - name: Checkout code
         uses: actions/checkout@v7
@@ -34,13 +40,19 @@ jobs:
       - name: Create build user
         run: |
           useradd -m builduser
-          cp -r "$GITHUB_WORKSPACE/packaging" /home/builduser/packaging
-          chown -R builduser:builduser /home/builduser/packaging
+          echo "builduser ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+          # Copy checkout (including parent git dir so git describe works in pkgver)
+          cp -r "$GITHUB_WORKSPACE" /home/builduser/millenium-helpers
+          chown -R builduser:builduser /home/builduser/millenium-helpers
 
       - name: Verify .SRCINFO is up to date with PKGBUILD
         run: |
-          su builduser -c 'cd /home/builduser/packaging && makepkg --printsrcinfo' > /tmp/generated.SRCINFO
+          su builduser -c 'cd /home/builduser/millenium-helpers/packaging && makepkg --printsrcinfo' > /tmp/generated.SRCINFO
           if ! diff -u packaging/.SRCINFO /tmp/generated.SRCINFO; then
             echo "::error::.SRCINFO is out of date. Run 'makepkg --printsrcinfo > .SRCINFO' in packaging/ and commit the result."
             exit 1
           fi
+
+      - name: Test build PKGBUILD
+        run: |
+          su builduser -c 'cd /home/builduser/millenium-helpers/packaging && makepkg -s --noconfirm'
