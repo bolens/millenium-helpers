@@ -47,7 +47,7 @@ function Sanitize-ThemeComponent {
         [string]$Val,
         [string]$Label
     )
-    if (!$Val -or $Val -eq "." -or $Val -eq ".." -or $Val -like "*/*" -or $Val -like "*\`*") {
+    if (!$Val -or $Val -eq "." -or $Val -eq ".." -or $Val -like "*/*" -or $Val -like "*\*" -or $Val -like "*`*") {
         Log-Error "Error: Invalid $Label '$Val'."
         exit 1
     }
@@ -138,6 +138,9 @@ if ($Command -eq "install") {
         Log-Error "Error: Install command requires an owner/repo argument."
         exit 1
     }
+
+    # Normalize backslashes to forward slashes for repo format validation
+    $Theme = $Theme -replace '\\', '/'
 
     if ($Theme -notlike "*/*" -or $Theme -like "*/*/*") {
         Log-Error "Error: Theme target must be in the format 'owner/repo'."
