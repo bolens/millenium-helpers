@@ -414,14 +414,22 @@ run_setup_wizard() {
   echo -e "This wizard will guide you through the configuration of the Millennium Helpers.\n"
 
   # 1. Release Channel Selection
+  local default_ch_num="1"
+  local default_ch_desc="Stable"
+  if [[ "${CONFIG_UPDATE_CHANNEL:-}" == "beta" ]]; then
+    default_ch_num="2"
+    default_ch_desc="Beta"
+  fi
+
   local channel=""
   while true; do
     echo -e "Choose Millennium Update Channel:"
-    echo -e "  1) Stable (Default)"
-    echo -e "  2) Beta (Prereleases)"
-    read -rp "Selection [1-2, default: 1]: " ch_sel
+    echo -e "  1) Stable"
+    echo -e "  2) Beta"
+    read -rp "Selection [1-2, default: ${default_ch_num} (${default_ch_desc})]: " ch_sel
+    [[ -z "$ch_sel" ]] && ch_sel="$default_ch_num"
     case "$ch_sel" in
-      ""|1)
+      1)
         channel="stable"
         break
         ;;
@@ -437,11 +445,40 @@ run_setup_wizard() {
   echo -e "Selected channel: ${GREEN}${channel}${NC}\n"
 
   # 2. Automated Daily Update Scheduler Timer
+  local default_sched="y"
+  local default_sched_desc="Y/n"
+  
+  local systemd_enabled=false
+  if command -v systemctl &>/dev/null && systemctl --user is-enabled millennium-update.timer &>/dev/null; then
+    systemd_enabled=true
+  fi
+  
+  local cron_enabled=false
+  if command -v crontab &>/dev/null && crontab -l 2>/dev/null | grep -q "millennium-schedule"; then
+    cron_enabled=true
+  fi
+  
+  if [[ "$systemd_enabled" == "true" || "$cron_enabled" == "true" ]]; then
+    default_sched="y"
+    default_sched_desc="Y/n"
+  else
+    local user_name="${SUDO_USER:-$(id -un)}"
+    local user_home
+    user_home="$(getent passwd "$user_name" | cut -d: -f6 || echo "")"
+    [[ -z "$user_home" ]] && user_home="$HOME"
+    local user_config_dir="${XDG_CONFIG_HOME:-$user_home/.config}/millennium-helpers"
+    if [[ -f "${user_config_dir}/config.json" ]]; then
+      default_sched="n"
+      default_sched_desc="y/N"
+    fi
+  fi
+
   local enable_sched=""
   while true; do
-    read -rp "Would you like to enable the daily automated background update timer? [Y/n]: " sched_sel
+    read -rp "Would you like to enable the daily automated background update timer? [${default_sched_desc}]: " sched_sel
+    [[ -z "$sched_sel" ]] && sched_sel="$default_sched"
     case "$sched_sel" in
-      ""|[Yy]|[Yy][Ee][Ss])
+      [Yy]|[Yy][Ee][Ss])
         enable_sched="true"
         break
         ;;
@@ -459,7 +496,15 @@ run_setup_wizard() {
   # 3. GitHub API Token configuration
   local github_token=""
   echo -e "To prevent hitting GitHub API rate limits during updates, you can optionally provide a GitHub Personal Access Token (PAT)."
-  read -rp "Enter GitHub PAT (leave empty to skip): " github_token
+  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+    read -rp "Enter GitHub PAT (leave empty to keep existing token): " github_token
+    if [[ -z "$github_token" ]]; then
+      github_token="$GITHUB_TOKEN"
+      echo -e "Keeping existing GitHub PAT.\n"
+    fi
+  else
+    read -rp "Enter GitHub PAT (leave empty to skip): " github_token
+  fi
 
   # Write configuration to the user's config directory
   local user_name="${SUDO_USER:-$(id -un)}"
