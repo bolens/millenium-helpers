@@ -114,6 +114,29 @@ if [[ "$SHARE_REPORT" == "true" ]]; then
   
   # Replace home path and username to prevent info leakage
   sed -i "s|$user_home|~|g; s|$user_name|user|g" "$report_file"
+
+  # Redact any GitHub Personal Access Tokens (PATs) and configuration tokens
+  sed -i -E "s/ghp_[A-Za-z0-9_]+/\[REDACTED\]/g" "$report_file"
+  sed -i -E "s/github_pat_[A-Za-z0-9_]+/\[REDACTED\]/g" "$report_file"
+
+  user_config_dir="${XDG_CONFIG_HOME:-$user_home/.config}/millennium-helpers"
+  loaded_token=""
+  if [[ -f "${user_config_dir}/config.json" ]]; then
+    loaded_token=$(python3 -c "
+import json
+try:
+    with open('${user_config_dir}/config.json') as f:
+        print(json.load(f).get('github_token', ''))
+except Exception:
+    pass
+" 2>/dev/null)
+  fi
+  if [[ -n "$loaded_token" && ${#loaded_token} -ge 4 ]]; then
+    sed -i "s|$loaded_token|\[REDACTED\]|g" "$report_file"
+  fi
+  if [[ -n "${GITHUB_TOKEN:-}" && ${#GITHUB_TOKEN} -ge 4 ]]; then
+    sed -i "s|$GITHUB_TOKEN|\[REDACTED\]|g" "$report_file"
+  fi
   
   # Upload using curl
   upload_url=$(curl -fsSL --data-binary @"$report_file" https://paste.rs || true)
