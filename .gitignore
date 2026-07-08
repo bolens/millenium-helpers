@@ -25,3 +25,13 @@ Thumbs.db
 /tmp/
 /dist/
 /build/
+
+# Nix build artifacts
+/result
+/result-*
+
+# Arch build/packaging artifacts
+/packaging/*.pkg.tar.*
+/packaging/pkg/
+/packaging/src/
+/packaging/millennium-helpers/
