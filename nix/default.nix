@@ -34,8 +34,6 @@ stdenv.mkDerivation rec {
     mkdir -p $out/bin
     install -m755 scripts/millennium-repair.sh $out/bin/millennium-repair
     install -m755 scripts/millennium-upgrade.sh $out/bin/millennium-upgrade
-    install -m755 scripts/millennium-upgrade-beta.sh $out/bin/millennium-upgrade-beta
-    install -m755 scripts/millennium-upgrade-stable.sh $out/bin/millennium-upgrade-stable
     install -m755 scripts/millennium-schedule.sh $out/bin/millennium-schedule
     install -m755 scripts/millennium-purge.sh $out/bin/millennium-purge
     install -m755 scripts/millennium-diag.sh $out/bin/millennium-diag
@@ -47,7 +45,7 @@ stdenv.mkDerivation rec {
     install -m644 scripts/common.sh $out/lib/millennium-helpers/common.sh
 
     # Wrap the scripts to ensure they have the runtime dependencies on PATH
-    for script in millennium-repair millennium-upgrade millennium-upgrade-beta millennium-upgrade-stable millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp; do
+    for script in millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp; do
       wrapProgram $out/bin/$script \
         --prefix PATH : ${lib.makeBinPath [ bash python3 curl unzip git ]}
     done
@@ -55,13 +53,13 @@ stdenv.mkDerivation rec {
     # Install completions
     mkdir -p $out/share/bash-completion/completions
     install -m644 completions/bash/millennium-helpers $out/share/bash-completion/completions/millennium-helpers
-    for script in millennium-repair millennium-upgrade millennium-upgrade-beta millennium-upgrade-stable millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp; do
+    for script in millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp; do
       ln -sf millennium-helpers $out/share/bash-completion/completions/$script
     done
 
     mkdir -p $out/share/zsh/site-functions
     install -m644 completions/zsh/_millennium-helpers $out/share/zsh/site-functions/_millennium-helpers
-    for script in millennium-repair millennium-upgrade millennium-upgrade-beta millennium-upgrade-stable millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp; do
+    for script in millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp; do
       ln -sf _millennium-helpers $out/share/zsh/site-functions/_$script
     done
 
