@@ -127,11 +127,20 @@ def get_tools_list():
         }
     ]
 
+IS_WINDOWS = sys.platform == "win32"
+
 def find_executable(cmd):
-    for path in ["/usr/local/bin", "/usr/bin"]:
-        full_path = f"{path}/{cmd}"
-        if shutil.which(full_path):
-            return full_path
+    import os
+    if IS_WINDOWS:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        ps1_path = os.path.join(script_dir, "windows", f"{cmd}.ps1")
+        if os.path.exists(ps1_path):
+            return ps1_path
+    else:
+        for path in ["/usr/local/bin", "/usr/bin"]:
+            full_path = f"{path}/{cmd}"
+            if shutil.which(full_path):
+                return full_path
     return shutil.which(cmd)
 
 def run_cmd(args, run_as_root=False, timeout=DEFAULT_TIMEOUT_SECONDS):
@@ -139,9 +148,29 @@ def run_cmd(args, run_as_root=False, timeout=DEFAULT_TIMEOUT_SECONDS):
     if not executable:
         return {"isError": True, "content": [{"type": "text", "text": f"Error: Command '{args[0]}' not found on system."}]}
     
-    cmd_args = [executable] + args[1:]
-    if run_as_root:
-        cmd_args = ["sudo", "-n"] + cmd_args
+    if IS_WINDOWS and executable.endswith(".ps1"):
+        cmd_args = [
+            "powershell.exe",
+            "-NoProfile",
+            "-ExecutionPolicy", "Bypass",
+            "-File", executable
+        ] + args[1:]
+        
+        if run_as_root:
+            if shutil.which("sudo.exe"):
+                cmd_args = ["sudo.exe"] + cmd_args
+            else:
+                # Run elevated via shell Start-Process
+                ps_args = f'-NoProfile -ExecutionPolicy Bypass -File "{executable}" ' + ' '.join(f'"{a}"' for a in args[1:])
+                cmd_args = [
+                    "powershell.exe",
+                    "-Command",
+                    f"Start-Process powershell -Verb RunAs -Wait -ArgumentList '{ps_args}'"
+                ]
+    else:
+        cmd_args = [executable] + args[1:]
+        if run_as_root:
+            cmd_args = ["sudo", "-n"] + cmd_args
         
     try:
         log(f"Executing: {' '.join(cmd_args)}")
@@ -248,7 +277,11 @@ def register_mcp():
     home = os.path.expanduser("~")
 
     # Define configurations
-    claude_path = os.path.join(home, ".config", "Claude", "claude_desktop_config.json")
+    if sys.platform == "win32":
+        claude_path = os.path.join(os.environ.get("APPDATA", ""), "Claude", "claude_desktop_config.json")
+    else:
+        claude_path = os.path.join(home, ".config", "Claude", "claude_desktop_config.json")
+        
     windsurf_path = os.path.join(home, ".codeium", "windsurf", "mcp_config.json")
 
     configs = [
