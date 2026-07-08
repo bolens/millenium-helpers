@@ -47,7 +47,7 @@ _is_safe_relaunch_state_file() {
 relaunch_steam() {
   local target_user="$1"
   local user_home
-  user_home="$(getent passwd "$target_user" | cut -d: -f6)"
+  user_home="$(get_user_home "$target_user")"
   local state_file
   state_file="$(relaunch_state_file "$target_user")"
 
@@ -60,7 +60,13 @@ relaunch_steam() {
   source "$state_file"
   rm -f "$state_file"
 
-  if [[ "${WAS_FLATPAK:-false}" == "true" ]]; then
+  if [[ "$(uname)" == "Darwin" ]]; then
+    if [[ "$(id -un)" == "$target_user" ]]; then
+      open -a Steam >/dev/null 2>&1 &
+    else
+      runuser -l "$target_user" -c "open -a Steam >/dev/null 2>&1 &"
+    fi
+  elif [[ "${WAS_FLATPAK:-false}" == "true" ]]; then
     # shellcheck disable=SC2086
     runuser "$target_user" -c "flatpak run com.valvesoftware.Steam ${STEAM_ARGS:-} >/dev/null 2>&1 &"
   else
@@ -76,6 +82,14 @@ relaunch_steam() {
 
 is_game_running() {
   local game_running=false
+  if [[ "$(uname)" == "Darwin" ]]; then
+    # shellcheck disable=SC2009
+    if ps -A -o command 2>/dev/null | grep -v "grep" | grep -q "steamapps/common"; then
+      game_running=true
+    fi
+    [[ "$game_running" == "true" ]]
+    return
+  fi
   local proc_dir="${MOCK_PROC:-/proc}"
   for environ_file in "${proc_dir}"/[0-9]*/environ; do
     [[ -f "$environ_file" && -r "$environ_file" ]] || continue
@@ -101,6 +115,14 @@ capture_steam_env() {
   local state_file
   state_file="$(relaunch_state_file "$target_user")"
   _prepare_relaunch_state_dir "$target_user" "$state_file"
+
+  if [[ "$(uname)" == "Darwin" ]]; then
+    echo "export WAS_MACOS='true'" > "$state_file"
+    if [[ "$(id -u)" -eq 0 && "$(id -un)" != "$target_user" ]]; then
+      chown "$target_user":"$target_user" "$state_file"
+    fi
+    return 0
+  fi
 
   local was_flatpak=false
   if command -v flatpak &>/dev/null && flatpak ps 2>/dev/null | grep -q "com.valvesoftware.Steam"; then
@@ -153,8 +175,29 @@ except Exception:
 close_steam_gracefully() {
   local target_user="$1"
   local user_home
-  user_home="$(getent passwd "$target_user" | cut -d: -f6)"
+  user_home="$(get_user_home "$target_user")"
   
+  if [[ "$(uname)" == "Darwin" ]]; then
+    if [[ "$(id -un)" == "$target_user" ]]; then
+      osascript -e 'quit app "Steam"' || true
+    else
+      runuser -l "$target_user" -c "osascript -e 'quit app \"Steam\"'" || true
+    fi
+    
+    local timeout=30
+    while pgrep -ix Steam >/dev/null && [[ $timeout -gt 0 ]]; do
+      sleep 1
+      ((timeout--))
+    done
+    
+    if pgrep -ix Steam >/dev/null; then
+      echo "Steam did not close gracefully. Force killing..." >&2
+      killall -9 Steam 2>/dev/null || true
+    fi
+    echo "Steam closed successfully."
+    return 0
+  fi
+
   local was_flatpak=false
   if command -v flatpak &>/dev/null && runuser -l "$target_user" -c "flatpak ps" 2>/dev/null | grep -q "com.valvesoftware.Steam"; then
     was_flatpak=true

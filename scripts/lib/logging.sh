@@ -155,3 +155,18 @@ send_notification() {
     runuser -l "$target_user" -c "${env_prefix}notify-send '${title}' '${msg}'" &>/dev/null || true
   fi
 }
+
+get_user_home() {
+  local user="$1"
+  local home=""
+  if command -v getent &>/dev/null; then
+    home="$(getent passwd "$user" | cut -d: -f6 || true)"
+  elif command -v dscl &>/dev/null; then
+    home="$(dscl . -read "/Users/${user}" NFSHomeDirectory 2>/dev/null | awk '{print $2}' || true)"
+  fi
+  if [[ -z "$home" ]]; then
+    home=$(eval echo "~${user}")
+  fi
+  echo "$home"
+}
+

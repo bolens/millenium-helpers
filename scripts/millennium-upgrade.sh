@@ -91,7 +91,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ "$DRY_RUN" == "false" ]] && [[ "$ROLLBACK_TARGET" != "list" ]] && [[ "$(id -u)" -ne 0 ]]; then
+if [[ "$DRY_RUN" == "false" ]] && [[ "$ROLLBACK_TARGET" != "list" ]] && [[ "$(id -u)" -ne 0 ]] && [[ "$(uname)" != "Darwin" ]]; then
   echo "Run with sudo: sudo $0" >&2
   exit 1
 fi
@@ -277,29 +277,31 @@ else
 fi
 
 # Re-link bootstrap hooks for all Steam users (same as pacman post_install)
-getent passwd | while IFS=: read -r _ _ uid _ _ home _; do
-  [[ "$uid" -ge 1000 ]] || continue
-  
-  # Find steam directory for this user
-  steam_dir=""
-  for cand in "$home/.local/share/Steam" "$home/.steam/steam" "$home/.steam/root" "$home/.var/app/com.valvesoftware.Steam/.local/share/Steam"; do
-    if [[ -d "$cand" ]]; then
-      steam_dir="$cand"
-      break
+if [[ "$(uname)" != "Darwin" ]]; then
+  getent passwd | while IFS=: read -r _ _ uid _ _ home _; do
+    [[ "$uid" -ge 1000 ]] || continue
+    
+    # Find steam directory for this user
+    steam_dir=""
+    for cand in "$home/.local/share/Steam" "$home/.steam/steam" "$home/.steam/root" "$home/.var/app/com.valvesoftware.Steam/.local/share/Steam"; do
+      if [[ -d "$cand" ]]; then
+        steam_dir="$cand"
+        break
+      fi
+    done
+    [[ -n "$steam_dir" ]] || continue
+    
+    execute mkdir -p "$steam_dir/ubuntu12_32" "$steam_dir/ubuntu12_64"
+    execute ln -sf /usr/lib/millennium/libmillennium_bootstrap_x86.so   "$steam_dir/ubuntu12_32/libXtst.so.6"
+    execute ln -sf /usr/lib/millennium/libmillennium_bootstrap_hhx64.so "$steam_dir/ubuntu12_64/libXtst.so.6"
+
+    # Flatpak Steam warning
+    if [[ "$steam_dir" == *"com.valvesoftware.Steam"* ]]; then
+      echo "Note: Flatpak Steam detected. To allow Steam to load Millennium, make sure to run:"
+      echo "  flatpak override --user --filesystem=/usr/lib/millennium com.valvesoftware.Steam"
     fi
   done
-  [[ -n "$steam_dir" ]] || continue
-  
-  execute mkdir -p "$steam_dir/ubuntu12_32" "$steam_dir/ubuntu12_64"
-  execute ln -sf /usr/lib/millennium/libmillennium_bootstrap_x86.so   "$steam_dir/ubuntu12_32/libXtst.so.6"
-  execute ln -sf /usr/lib/millennium/libmillennium_bootstrap_hhx64.so "$steam_dir/ubuntu12_64/libXtst.so.6"
-
-  # Flatpak Steam warning
-  if [[ "$steam_dir" == *"com.valvesoftware.Steam"* ]]; then
-    echo "Note: Flatpak Steam detected. To allow Steam to load Millennium, make sure to run:"
-    echo "  flatpak override --user --filesystem=/usr/lib/millennium com.valvesoftware.Steam"
-  fi
-done
+fi
 
 if [[ "$DRY_RUN" == "true" ]]; then
   echo -e "${GREEN}Dry run completed successfully!${NC}"

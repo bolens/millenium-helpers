@@ -53,7 +53,7 @@ if [[ "$DRY_RUN" == "false" ]] && [[ "$(id -u)" -ne 0 ]]; then
 fi
 
 USER_NAME="${SUDO_USER:-$(id -un)}"
-USER_HOME="$(getent passwd "$USER_NAME" | cut -d: -f6)"
+USER_HOME="$(get_user_home "$USER_NAME")"
 
 USER_XDG_CONFIG=""
 USER_XDG_DATA=""

@@ -86,7 +86,7 @@ if [[ "$COMMAND" != "list" && "$COMMAND" != "update" && -z "$ARG" ]]; then
 fi
 
 RUNNING_USER="${SUDO_USER:-$(id -un)}"
-USER_HOME="$(getent passwd "$RUNNING_USER" | cut -d: -f6)"
+USER_HOME="$(get_user_home "$RUNNING_USER")"
 
 # Find Steam directories
 steam_candidates=(
@@ -94,6 +94,7 @@ steam_candidates=(
   "${USER_HOME}/.steam/steam"
   "${USER_HOME}/.steam/root"
   "${USER_HOME}/.var/app/com.valvesoftware.Steam/.local/share/Steam"
+  "${USER_HOME}/Library/Application Support/Steam"
 )
 
 STEAM_DIR=""
