@@ -11,20 +11,21 @@ source "${TEST_DIR}/../lib/assertions.sh"
 source "${TEST_DIR}/../lib/mocks.sh"
 
 setup_mock_bin
+export MOCK_NETWORK_WAIT_SEC=0
 trap teardown_mock_bin EXIT
 
 mock_cmd "pgrep" 'exit 1'  # Steam not running, for most tests
 
-echo -e "${YELLOW}=== Behavioral tests: millennium-upgrade-stable.sh & millennium-upgrade-beta.sh ===${NC}"
+echo -e "${YELLOW}=== Behavioral tests: millennium-upgrade.sh ===${NC}"
 
 # run_upgrade <stable|beta> [args...]
 run_upgrade() {
   local channel="$1"; shift
-  bash "${REPO_ROOT}/scripts/millennium-upgrade-${channel}.sh" "$@"
+  bash "${REPO_ROOT}/scripts/millennium-upgrade.sh" --channel "$channel" "$@"
 }
 
 for channel in stable beta; do
-  script_name="millennium-upgrade-${channel}.sh"
+  script_name="millennium-upgrade.sh --channel ${channel}"
 
   # --- Unknown option ---
   out=$(run_upgrade "$channel" --bogus 2>&1)
@@ -162,5 +163,39 @@ esac
   assert_contains "$out" "Would download archive" "millennium-upgrade-stable.sh --dry-run --force proceeds to the download step"
   rm -f "${MOCK_BIN}/curl"
 fi
+
+# --- Direct millennium-upgrade.sh tests ---
+UPGRADE_SH="${REPO_ROOT}/scripts/millennium-upgrade.sh"
+
+# Test unknown option
+out=$(bash "$UPGRADE_SH" --bogus 2>&1)
+rc=$?
+assert_failure "$rc" "millennium-upgrade.sh exits non-zero on an unknown option"
+
+# Test --channel validation
+out=$(bash "$UPGRADE_SH" --channel invalid_channel 2>&1)
+rc=$?
+assert_failure "$rc" "millennium-upgrade.sh validation rejects invalid channel name"
+
+# Test --channel stable / beta
+# shellcheck disable=SC2016
+mock_cmd "curl" '
+for arg in "$@"; do
+  if [[ "$arg" == "https://github.com" ]]; then exit 0; fi
+done
+exit 1
+'
+out=$(bash "$UPGRADE_SH" --channel stable --dry-run 2>&1)
+assert_contains "$out" "stable release tag" "millennium-upgrade.sh uses stable tag resolver for stable channel"
+
+out=$(bash "$UPGRADE_SH" --channel beta --dry-run 2>&1)
+assert_contains "$out" "beta release tag" "millennium-upgrade.sh uses beta tag resolver for beta channel"
+
+out=$(bash "$UPGRADE_SH" --stable --dry-run 2>&1)
+assert_contains "$out" "stable release tag" "millennium-upgrade.sh --stable flag sets channel to stable"
+
+out=$(bash "$UPGRADE_SH" --beta --dry-run 2>&1)
+assert_contains "$out" "beta release tag" "millennium-upgrade.sh --beta flag sets channel to beta"
+rm -f "${MOCK_BIN}/curl"
 
 print_summary

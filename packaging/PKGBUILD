@@ -57,6 +57,7 @@ package() {
   # Install scripts
   install -d "${pkgdir}/usr/bin"
   install -m755 scripts/millennium-repair.sh "${pkgdir}/usr/bin/millennium-repair"
+  install -m755 scripts/millennium-upgrade.sh "${pkgdir}/usr/bin/millennium-upgrade"
   install -m755 scripts/millennium-upgrade-beta.sh "${pkgdir}/usr/bin/millennium-upgrade-beta"
   install -m755 scripts/millennium-upgrade-stable.sh "${pkgdir}/usr/bin/millennium-upgrade-stable"
   install -m755 scripts/millennium-schedule.sh "${pkgdir}/usr/bin/millennium-schedule"
@@ -71,18 +72,19 @@ package() {
 
   # Install Bash completions
   install -Dm644 completions/bash/millennium-helpers "${pkgdir}/usr/share/bash-completion/completions/millennium-helpers"
-  for script in millennium-repair millennium-upgrade-beta millennium-upgrade-stable millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp; do
+  for script in millennium-repair millennium-upgrade millennium-upgrade-beta millennium-upgrade-stable millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp; do
     ln -sf millennium-helpers "${pkgdir}/usr/share/bash-completion/completions/${script}"
   done
 
   # Install Zsh completions
   install -Dm644 completions/zsh/_millennium-helpers "${pkgdir}/usr/share/zsh/site-functions/_millennium-helpers"
-  for script in millennium-repair millennium-upgrade-beta millennium-upgrade-stable millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp; do
+  for script in millennium-repair millennium-upgrade millennium-upgrade-beta millennium-upgrade-stable millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp; do
     ln -sf _millennium-helpers "${pkgdir}/usr/share/zsh/site-functions/_${script}"
   done
 
   # Install Fish completions
   install -Dm644 completions/fish/millennium-repair.fish "${pkgdir}/usr/share/fish/vendor_completions.d/millennium-repair.fish"
+  install -Dm644 completions/fish/millennium-upgrade.fish "${pkgdir}/usr/share/fish/vendor_completions.d/millennium-upgrade.fish"
   install -Dm644 completions/fish/millennium-upgrade-beta.fish "${pkgdir}/usr/share/fish/vendor_completions.d/millennium-upgrade-beta.fish"
   install -Dm644 completions/fish/millennium-upgrade-stable.fish "${pkgdir}/usr/share/fish/vendor_completions.d/millennium-upgrade-stable.fish"
   install -Dm644 completions/fish/millennium-schedule.fish "${pkgdir}/usr/share/fish/vendor_completions.d/millennium-schedule.fish"
