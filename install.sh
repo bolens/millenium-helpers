@@ -61,8 +61,11 @@ change_owner() {
     if [[ "$(uname)" == "Darwin" && "$owner" == "root:root" ]]; then
       owner="root:wheel"
     fi
-    # shellcheck disable=SC2086
-    execute chown $recursive "$owner" "$target"
+    if [[ -n "$recursive" ]]; then
+      execute chown -R "$owner" "$target"
+    else
+      execute chown "$owner" "$target"
+    fi
   fi
 }
 

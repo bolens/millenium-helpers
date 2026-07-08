@@ -56,6 +56,19 @@ resolve_helper_path() {
   local name="$1"
   local found
   found=$(command -v "$name" 2>/dev/null || true)
+  
+  local script_dir
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+  local local_sh="${script_dir}/${name}.sh"
+  
+  if [[ -f "$local_sh" ]]; then
+    # Prefer local checkout if global command is missing or resolved to a standard system directory
+    if [[ -z "$found" || "$found" == "/usr/bin/"* || "$found" == "/usr/local/bin/"* || "$found" == "/bin/"* ]]; then
+      echo "$local_sh"
+      return
+    fi
+  fi
+
   if [[ -n "$found" ]]; then
     echo "$found"
   else

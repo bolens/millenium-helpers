@@ -67,14 +67,11 @@ relaunch_steam() {
       runuser -l "$target_user" -c "open -a Steam >/dev/null 2>&1 &"
     fi
   elif [[ "${WAS_FLATPAK:-false}" == "true" ]]; then
-    # shellcheck disable=SC2086
     runuser "$target_user" -c "flatpak run com.valvesoftware.Steam ${STEAM_ARGS:-} >/dev/null 2>&1 &"
   else
     if command -v steam &>/dev/null; then
-      # shellcheck disable=SC2086
       runuser "$target_user" -c "steam ${STEAM_ARGS:-} >/dev/null 2>&1 &"
     elif [[ -x "${user_home}/.local/bin/steam" ]]; then
-      # shellcheck disable=SC2086
       runuser "$target_user" -c "${user_home}/.local/bin/steam ${STEAM_ARGS:-} >/dev/null 2>&1 &"
     fi
   fi

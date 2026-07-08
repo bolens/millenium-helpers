@@ -3,11 +3,23 @@
   "build": {
     "dockerfile": "Dockerfile"
   },
+  "features": {
+    "ghcr.io/devcontainers/features/powershell:1": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/nix:1": {
+      "version": "latest"
+    }
+  },
   "customizations": {
     "vscode": {
       "extensions": [
         "timonwong.shellcheck",
-        "charliermarsh.ruff"
+        "charliermarsh.ruff",
+        "ms-vscode.powershell",
+        "jnoortheen.nix-ide",
+        "themisanthrope.fish-lsp",
+        "ms-plugins.nushell"
       ]
     }
   },

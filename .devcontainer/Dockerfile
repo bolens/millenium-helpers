@@ -13,7 +13,10 @@ RUN pacman -Syu --noconfirm && \
     ruff \
     sudo \
     systemd \
-    unzip
+    unzip \
+    zsh \
+    fish \
+    nushell
 
 # Create a developer user who is in the wheel group for passwordless sudo testing
 RUN useradd -m -g wheel -s /bin/bash developer && \

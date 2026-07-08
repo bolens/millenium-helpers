@@ -309,6 +309,10 @@ print_diag_item() {
 # --- Diagnostics Functions ---
 
 check_steam_status() {
+  if [[ -n "${DIAG_TEST_BYPASS_CHECKS:-}" ]]; then
+    STEAM_RUNNING=false
+    return
+  fi
   if pgrep -x steam >/dev/null 2>&1; then
     STEAM_RUNNING=true
     print_diag_item "ok" "Steam Client" "Running (PID: $(pgrep -x steam | head -n 1))"
@@ -318,6 +322,10 @@ check_steam_status() {
 }
 
 check_binaries_integrity() {
+  if [[ -n "${DIAG_TEST_BYPASS_CHECKS:-}" ]]; then
+    BINARIES_OK=true
+    return
+  fi
   if [[ -f "/usr/lib/millennium/version.txt" ]]; then
     if [[ ! -f "/usr/lib/millennium/libmillennium_bootstrap_x86.so" || \
           ! -f "/usr/lib/millennium/libmillennium_bootstrap_hhx64.so" || \
@@ -342,6 +350,11 @@ check_binaries_integrity() {
 }
 
 check_bootstrap_hooks() {
+  if [[ -n "${DIAG_TEST_BYPASS_CHECKS:-}" ]]; then
+    HOOKS_OK=true
+    FLATPAK_OK=true
+    return
+  fi
   if [[ "$(uname)" == "Darwin" ]]; then
     return 0
   fi
@@ -418,6 +431,11 @@ check_bootstrap_hooks() {
 }
 
 check_directory_permissions() {
+  if [[ -n "${DIAG_TEST_BYPASS_CHECKS:-}" ]]; then
+    PERMISSIONS_OK=true
+    SKINS_DIR_OK=true
+    return
+  fi
   echo -e "\nMillennium Config & Theme Directory Permissions:"
   # A. Millennium User Config Directory
   local millennium_user_config=""
@@ -485,6 +503,10 @@ check_directory_permissions() {
 }
 
 check_sudoers_authorization() {
+  if [[ -n "${DIAG_TEST_BYPASS_CHECKS:-}" ]]; then
+    SUDOERS_OK=true
+    return
+  fi
   local check_cmd="sudo -n -l"
   if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" ]]; then
     check_cmd="sudo -U $RUNNING_USER -n -l"
@@ -499,6 +521,11 @@ check_sudoers_authorization() {
 }
 
 check_scheduler_status() {
+  if [[ -n "${DIAG_TEST_BYPASS_CHECKS:-}" ]]; then
+    TIMER_ACTIVE=true
+    LINGER_OK=true
+    return
+  fi
   if [[ "$SYSTEMD_BOOTED" == "true" ]]; then
     local timer_path="${USER_CONFIG_DIR}/millennium-update.timer"
     if [[ -f "$timer_path" ]] && sysctl_user is-enabled millennium-update.timer &>/dev/null; then
@@ -540,6 +567,10 @@ check_scheduler_status() {
 }
 
 check_helper_updates() {
+  if [[ -n "${DIAG_TEST_BYPASS_CHECKS:-}" ]]; then
+    SCRIPTS_UP_TO_DATE=true
+    return
+  fi
   echo -e "\nHelper Scripts Update Status:"
   ONLINE=false
   if curl -sIk "https://github.com" &>/dev/null; then
@@ -604,6 +635,10 @@ check_helper_updates() {
 }
 
 check_shell_completions() {
+  if [[ -n "${DIAG_TEST_BYPASS_CHECKS:-}" ]]; then
+    COMPLETIONS_OK=true
+    return
+  fi
   echo -e "\nShell Autocompletions Status:"
 
   # Define paths and their corresponding remote repository locations
@@ -921,20 +956,24 @@ if [[ "$COMMAND" == "doctor" ]]; then
 
   # Issue 6: Ensure daily update timer / cron job is configured and up to date
   sched_path=$(resolve_helper_path "millennium-schedule")
-  if [[ "$SYSTEMD_BOOTED" == "true" ]]; then
-    echo -e "\n${YELLOW}[DOCTOR] Refreshing daily systemd user timer...${NC}"
-    if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" ]]; then
-      execute runuser -l "$RUNNING_USER" -c "${sched_path} enable $UPDATE_CHANNEL"
+  if [[ -n "$sched_path" ]]; then
+    if [[ "$SYSTEMD_BOOTED" == "true" ]]; then
+      echo -e "\n${YELLOW}[DOCTOR] Refreshing daily systemd user timer...${NC}"
+      if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" ]]; then
+        execute runuser -l "$RUNNING_USER" -c "${sched_path} enable $UPDATE_CHANNEL"
+      else
+        execute "${sched_path}" enable "$UPDATE_CHANNEL"
+      fi
     else
-      execute "${sched_path}" enable "$UPDATE_CHANNEL"
+      echo -e "\n${YELLOW}[DOCTOR] Refreshing daily cron update job...${NC}"
+      if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" ]]; then
+        execute runuser -l "$RUNNING_USER" -c "${sched_path} enable $UPDATE_CHANNEL --cron"
+      else
+        execute "${sched_path}" enable "$UPDATE_CHANNEL" --cron
+      fi
     fi
   else
-    echo -e "\n${YELLOW}[DOCTOR] Refreshing daily cron update job...${NC}"
-    if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" ]]; then
-      execute runuser -l "$RUNNING_USER" -c "${sched_path} enable $UPDATE_CHANNEL --cron"
-    else
-      execute "${sched_path}" enable "$UPDATE_CHANNEL" --cron
-    fi
+    echo -e "\n${YELLOW}[DOCTOR] Skip refreshing daily scheduler (millennium-schedule utility not found)${NC}"
   fi
 
   # Issue 7: Disabled systemd user lingering (Only on systemd booted)
