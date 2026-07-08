@@ -119,3 +119,16 @@ jobs:
       # that logic, which running as root (the container default) would skip.
       - name: Run ${{ matrix.suite }}
         run: su testuser -c "bash '${{ matrix.suite }}'"
+
+  test-windows:
+    name: Windows Pester Tests
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Run Pester tests
+        shell: powershell
+        run: |
+          Invoke-Pester -Path tests/windows/ -Output Detailed
+
