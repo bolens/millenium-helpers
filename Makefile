@@ -6,7 +6,7 @@ test:
 	bash tests/run_tests.sh
 
 lint:
-	shellcheck *.sh scripts/*.sh tests/*.sh tests/unit/*.sh tests/behavioral/*.sh
+	shellcheck *.sh scripts/*.sh scripts/lib/*.sh tests/*.sh tests/unit/*.sh tests/behavioral/*.sh
 	ruff check scripts/millennium-mcp.py
 
 format:

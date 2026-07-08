@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # GitHub API interaction helpers for Millennium Helpers.
 # Sourced by common.sh
 
