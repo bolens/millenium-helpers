@@ -198,4 +198,31 @@ out=$(bash "$UPGRADE_SH" --beta --dry-run 2>&1)
 assert_contains "$out" "beta release tag" "millennium-upgrade.sh --beta flag sets channel to beta"
 rm -f "${MOCK_BIN}/curl"
 
+# --- Steam active process detection and game running checks ---
+# 1. When Steam is running but NO game is running, dry-run succeeds
+mock_cmd "pgrep" "exit 0"
+mock_cmd "curl" 'echo "{\"tag_name\": \"v9.9.9\"}"'
+MOCK_PROC=$(mktemp -d)
+export MOCK_PROC
+# Empty MOCK_PROC means is_game_running is false
+out=$(bash "$UPGRADE_SH" --channel stable --dry-run 2>&1)
+rc=$?
+assert_success "$rc" "millennium-upgrade.sh succeeds dry-run when Steam is running and no game is active"
+assert_contains "$out" "Steam is currently running" "millennium-upgrade.sh detects that Steam is running"
+assert_contains "$out" "Would capture Steam's environment and close it" "millennium-upgrade.sh handles closing Steam when running"
+
+# 2. When Steam is running AND a game IS running, upgrade aborts
+mkdir -p "${MOCK_PROC}/123"
+echo "somegame" > "${MOCK_PROC}/123/comm"
+printf "SteamAppId=440\0" > "${MOCK_PROC}/123/environ"
+out=$(bash "$UPGRADE_SH" --channel stable --dry-run 2>&1)
+rc=$?
+assert_failure "$rc" "millennium-upgrade.sh fails when a Steam game is active"
+assert_contains "$out" "Upgrade cannot proceed while a game is active" "millennium-upgrade.sh explains that upgrade cannot proceed with active game"
+
+rm -rf "${MOCK_PROC}"
+unset MOCK_PROC
+rm -f "${MOCK_BIN}/pgrep"
+rm -f "${MOCK_BIN}/curl"
+
 print_summary
