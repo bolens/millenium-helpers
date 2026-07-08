@@ -121,8 +121,17 @@ jobs:
         run: su testuser -c "bash '${{ matrix.suite }}'"
 
   test-windows:
-    name: Windows Pester Tests
+    name: Windows - ${{ matrix.suite }}
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        suite:
+          - tests/windows/common.Tests.ps1
+          - tests/windows/millennium-diag.Tests.ps1
+          - tests/windows/millennium-upgrade.Tests.ps1
+          - tests/windows/millennium-theme.Tests.ps1
+          - tests/windows/millennium-schedule.Tests.ps1
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -130,5 +139,6 @@ jobs:
       - name: Run Pester tests
         shell: powershell
         run: |
-          Invoke-Pester -Path tests/windows/ -Output Detailed
+          Invoke-Pester -Path "${{ matrix.suite }}" -Output Detailed
+
 
