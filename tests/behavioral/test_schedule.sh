@@ -134,6 +134,47 @@ out=$(run_schedule enable --dry-run --cron 2>&1)
 assert_contains "$out" "millennium-upgrade-beta" "millennium-schedule defaults to beta channel when CONFIG_UPDATE_CHANNEL is set to beta"
 unset CONFIG_UPDATE_CHANNEL
 
+# --- config command tests ---
+
+export XDG_CONFIG_HOME="${FAKE_XDG_CONFIG}"
+
+# 1. config list (default/empty)
+out=$(run_schedule config list 2>&1)
+rc=$?
+assert_success "$rc" "millennium-schedule config list exits 0"
+assert_contains "$out" "update_channel" "config list lists update_channel"
+assert_contains "$out" "github_token" "config list lists github_token"
+
+# 2. config set update_channel
+out=$(run_schedule config set update_channel beta 2>&1)
+rc=$?
+assert_success "$rc" "millennium-schedule config set update_channel beta exits 0"
+assert_contains "$out" "successfully" "config set confirms success"
+
+# 3. config get update_channel
+out=$(run_schedule config get update_channel 2>&1)
+rc=$?
+assert_success "$rc" "millennium-schedule config get update_channel exits 0"
+assert_equals "beta" "$(echo "$out" | tr -d '[:space:]')" "config get update_channel returns correct value"
+
+# 4. config set validation failure
+out=$(run_schedule config set update_channel invalid_val 2>&1)
+rc=$?
+assert_failure "$rc" "config set update_channel with invalid value fails"
+assert_contains "$out" "must be 'stable' or 'beta'" "config set prints validation error"
+
+# 5. config set backup_limit
+out=$(run_schedule config set backup_limit 10 2>&1)
+rc=$?
+assert_success "$rc" "config set backup_limit 10 exits 0"
+
+# 6. config get backup_limit
+out=$(run_schedule config get backup_limit 2>&1)
+rc=$?
+assert_equals "10" "$(echo "$out" | tr -d '[:space:]')" "config get backup_limit returns 10"
+
+unset XDG_CONFIG_HOME
+
 rm -rf "$FAKE_XDG_CONFIG"
 rm -rf "$FAKE_RELAUNCH_HOME"
 
