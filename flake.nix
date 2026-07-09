@@ -1,5 +1,5 @@
 {
-  description = "Utility scripts for managing, repairing, upgrading, rolling back, viewing logs, managing themes, and scheduling updates for Millennium on Linux";
+  description = "Cross-platform utility scripts and Model Context Protocol (MCP) server for managing, upgrading, diagnosing, and controlling Millennium on Linux";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
