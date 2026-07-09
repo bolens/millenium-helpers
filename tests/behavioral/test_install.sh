@@ -161,5 +161,33 @@ assert_file_not_exists "${TEST_TARGET_DIR}/millennium-upgrade-beta" "install.sh 
 rm -rf "$TEST_TARGET_DIR"
 rm -f "${MOCK_BIN}/id" "${MOCK_BIN}/visudo" "${MOCK_BIN}/mkdir" "${MOCK_BIN}/cp" "${MOCK_BIN}/chown" "${MOCK_BIN}/chmod" "${MOCK_BIN}/ln" "${MOCK_BIN}/restorecon"
 
+# --- Standalone piped installer test ---
+STANDALONE_DIR=$(mktemp -d)
+
+# Copy install.sh to the temp directory WITHOUT any other files
+cp "$INSTALL_SH" "$STANDALONE_DIR/install.sh"
+
+# Mock curl to avoid internet access and return a mock tarball of the local workspace
+MOCK_TARBALL="${STANDALONE_DIR}/mock_repo.tar.gz"
+MOCK_SRC_DIR="${STANDALONE_DIR}/millenium-helpers-main"
+mkdir -p "$MOCK_SRC_DIR"
+cp -r "$REPO_ROOT/install.sh" "$REPO_ROOT/scripts" "$REPO_ROOT/completions" "$REPO_ROOT/LICENSE" "$MOCK_SRC_DIR/"
+tar -czf "$MOCK_TARBALL" -C "$STANDALONE_DIR" millenium-helpers-main
+
+# Mock curl to return our local mock tarball
+mock_cmd "curl" "cat '$MOCK_TARBALL'"
+
+# Run install.sh in the standalone directory in dry-run mode
+out=$(TARGET_DIR="$STANDALONE_DIR" bash "$STANDALONE_DIR/install.sh" install --dry-run 2>&1)
+rc=$?
+
+assert_success "$rc" "Standalone install.sh runs successfully"
+assert_contains "$out" "Running in standalone/piped mode. Downloading repository..." "Standalone install.sh detects piped mode"
+assert_contains "$out" "DRY RUN MODE" "Standalone install.sh successfully executes the downloaded script"
+
+# Clean up
+rm -rf "$STANDALONE_DIR"
+rm -f "${MOCK_BIN}/curl"
+
 print_summary
 

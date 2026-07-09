@@ -60,4 +60,32 @@ Describe "Windows Installer" {
             Remove-Item -Path $tempHome -Recurse -Force -ErrorAction SilentlyContinue | Out-Null
         }
     }
+
+    Context "Standalone / Piped Installer Mode" {
+        BeforeAll {
+            Mock Invoke-WebRequest {
+                param($Uri, $OutFile, $UseBasicParsing)
+                New-Item -Path $OutFile -ItemType File -Force | Out-Null
+            }
+            Mock Expand-Archive {
+                param($Path, $DestinationPath, $Force)
+                $repoRoot = Join-Path -Path $PSScriptRoot -ChildPath "..\.."
+                $targetExtractDir = Join-Path -Path $DestinationPath -ChildPath "millenium-helpers-main"
+                New-Item -Path $targetExtractDir -ItemType Directory -Force | Out-Null
+                $extractedWinDir = Join-Path -Path $targetExtractDir -ChildPath "scripts\windows"
+                New-Item -Path $extractedWinDir -ItemType Directory -Force | Out-Null
+                $mockInstallPs1 = Join-Path -Path $extractedWinDir -ChildPath "install.ps1"
+                "Write-Host 'Mock installer executed successfully'" | Set-Content -Path $mockInstallPs1 -Force
+            }
+        }
+
+        It "Detects standalone mode and successfully delegates to extracted repository installer" {
+            $installScript = Join-Path -Path $winScriptDir -ChildPath "install.ps1"
+            $sb = [scriptblock]::Create((Get-Content $installScript -Raw))
+            
+            $out = (& $sb 2>&1) | Out-String
+            $out | Should -BeLike "*Running in standalone/piped mode. Downloading repository*"
+            $out | Should -BeLike "*Mock installer executed successfully*"
+        }
+    }
 }
