@@ -17,8 +17,8 @@ A cross-platform set of utility scripts for managing, repairing, upgrading, roll
 - [Dry-Run Mode](#dry-run-mode)
 - [Shell Autocompletions](#shell-autocompletions)
 - [Script Overview](#script-overview)
-- [Troubleshooting & FAQ](#troubleshooting--faq)
-- [Security Design](#security-design)
+- [Model Context Protocol (MCP) Server](docs/mcp.md)
+- [Security & Troubleshooting](docs/security_troubleshooting.md)
 - [License](#license)
 
 ---
@@ -313,84 +313,13 @@ A skin/theme manager CLI. Allows listing themes, installing skin repositories fr
 ### 8. [scripts/millennium-mcp.py](scripts/millennium-mcp.py) (`millennium-mcp`)
 A Model Context Protocol (MCP) server. Exposes the entire suite of Millennium helper scripts as native AI tools to coding assistants (like Claude Desktop, Cursor, Windsurf, or Antigravity), allowing them to dynamically run diagnostics, manage themes, apply repairs, and perform upgrades directly.
 
-#### Exposed MCP Tools
-
-| Tool Name | Description | Parameters |
-| --- | --- | --- |
-| `millennium_diag` | Runs read-only diagnostics or applies auto-repairs in doctor mode. | `doctor` (boolean, optional): set `true` to auto-repair. |
-| `millennium_theme` | Manages theme/skin directories (list, install, remove, update). | `action` (string, required): `list`, `install`, `remove`, `update`. <br> `theme` (string, optional): repo or name. <br> `all` (boolean, optional): update all themes. |
-| `millennium_upgrade` | Upgrades the Millennium client system-wide. | `channel` (string, optional): `stable` (default) or `beta`. |
-| `millennium_schedule` | Manages background auto-update timers. | `action` (string, required): `enable`, `disable`, `status`. <br> `channel` (string, optional): `stable` or `beta`. <br> `cron` (boolean, optional): force crontab (Linux only). |
-| `millennium_repair` | Runs system-wide permissions and symlink repairs. | None. |
-| `millennium_purge` | Completely uninstalls all Millennium client hooks and files. | None. |
-
-#### Automatic Registration
-
-To automatically register the `millennium-mcp` server with installed AI tools (Claude Desktop and Windsurf), run:
-```bash
-millennium-mcp --register
-```
-This detects the config folders for Claude Desktop and Windsurf, updates or creates the JSON configuration files, and adds the `millennium-helpers` server automatically.
-
-#### Configuration Example
-
-To manually enable these tools in your AI assistant, add `millennium-mcp` to your configuration file:
-
-**Claude Desktop**:
-* **Linux**: `~/.config/Claude/claude_desktop_config.json`
-* **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
-
-```json
-{
-  "mcpServers": {
-    "millennium-helpers": {
-      "command": "millennium-mcp"
-    }
-  }
-}
-```
-
-**Cursor / Windsurf**:
-Go to Settings -> Features -> MCP, click **+ Add New MCP Server**, and configure:
-- **Name**: `millennium-helpers`
-- **Type**: `command`
-- **Command**: `millennium-mcp`
+For detailed setup, configurations, and the list of exposed tools, see the [MCP Server Guide](docs/mcp.md).
 
 ---
 
-## Troubleshooting & FAQ
+## Security & Troubleshooting
 
-### Steam shows a blank/black screen after upgrading Millennium
-This is usually caused by outdated CEF cached files. Run the repair utility to fix local permissions and clear Steam's htmlcache:
-```bash
-# Linux
-sudo millennium-repair
-
-# Windows
-millennium-repair
-```
-
-### The background timer is not running updates
-1. Check the timer status:
-   ```bash
-   millennium-schedule status
-   ```
-2. Verify that passwordless sudo (Linux) or Scheduled Tasks (Windows) are configured correctly.
-3. If you want the updates to run even when you are logged out of your session on Linux, enable user lingering:
-   ```bash
-   loginctl enable-linger $USER
-   ```
-
----
-
-## Security Design
-
-To allow background user-level timers to run updates that modify system directories, the updater scripts must run with elevated privileges. 
-
-This setup achieves this securely:
-1. **Sudoers Autoconfiguration (Linux)**: During `sudo ./install.sh`, the installer detects the original invoking user (`SUDO_USER`) and automatically configures a secure drop-in file at `/etc/sudoers.d/millennium-helpers`.
-2. **Write-Protected Scripts**: Helper scripts are copied into `/usr/local/bin/` owned by `root:root` with `755` permissions, meaning normal users cannot edit or tamper with them.
-3. **Task Scheduler (Windows)**: Scheduled tasks are registered with elevated credentials using native Windows Task Scheduler security boundaries.
+For details on security boundaries, privilege delegation, and troubleshooting common issues (such as blank/black screens or inactive background timers), see the [Security & Troubleshooting Guide](docs/security_troubleshooting.md).
 
 ---
 
