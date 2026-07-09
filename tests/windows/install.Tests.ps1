@@ -83,7 +83,7 @@ Describe "Windows Installer" {
             $installScript = Join-Path -Path $winScriptDir -ChildPath "install.ps1"
             $sb = [scriptblock]::Create((Get-Content $installScript -Raw))
             
-            $out = (& $sb 2>&1) | Out-String
+            $out = (& $sb *>&1) | Out-String
             $out | Should -BeLike "*Running in standalone/piped mode. Downloading repository*"
             $out | Should -BeLike "*Mock installer executed successfully*"
         }
