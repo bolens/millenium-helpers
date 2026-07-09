@@ -90,6 +90,19 @@ Clone this repository, open a PowerShell terminal, and run the installer script:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\install.ps1
 ```
+
+#### Run or Install via Scoop
+If you use Scoop, you can install the helper tools directly using the repository manifest:
+```powershell
+scoop install https://raw.githubusercontent.com/bolens/millenium-helpers/main/packaging/scoop/millennium-helpers.json
+```
+
+#### Run or Install via Winget
+If you use Winget, you can install the helper tools using the repository manifests:
+```powershell
+winget install --manifest packaging/winget/
+```
+
 This installer will:
 1. Copy all helper scripts to `$HOME/.millennium-helpers/bin`.
 2. Generate `.cmd` wrappers for all scripts (so you can run commands directly by typing `millennium-diag` or `millennium-upgrade` in any command shell or terminal).
