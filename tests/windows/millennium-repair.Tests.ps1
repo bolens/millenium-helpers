@@ -2,6 +2,7 @@ Describe "Repair Script" {
     BeforeAll {
         $winScriptDir = Join-Path -Path $PSScriptRoot -ChildPath "..\..\scripts\windows"
         $global:DryRun = $true
+        function Stop-Process { }
         if (!$IsWindows) {
             New-PSDrive -Name HKCU -PSProvider FileSystem -Root ([System.IO.Path]::GetTempPath()) -ErrorAction SilentlyContinue | Out-Null
             New-PSDrive -Name C -PSProvider FileSystem -Root ([System.IO.Path]::GetTempPath()) -ErrorAction SilentlyContinue | Out-Null

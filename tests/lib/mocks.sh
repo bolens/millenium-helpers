@@ -11,6 +11,10 @@ setup_mock_bin() {
   export MOCK_BIN
   export PATH="${MOCK_BIN}:${PATH}"
   export MOCK_PROC="/nonexistent_mock_proc"
+
+  # Stub out process-killing commands by default to protect the host environment
+  mock_cmd "killall" "exit 0"
+  mock_cmd "pkill" "exit 0"
 }
 
 teardown_mock_bin() {
