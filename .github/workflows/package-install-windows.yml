@@ -1,0 +1,55 @@
+name: Windows Package Installation Validation
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'packaging/scoop/**'
+      - 'scripts/windows/**'
+      - '.github/workflows/package-install-windows.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'packaging/scoop/**'
+      - 'scripts/windows/**'
+      - '.github/workflows/package-install-windows.yml'
+
+jobs:
+  test-scoop:
+    name: Test Scoop Package Install
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install Scoop
+        shell: powershell
+        run: |
+          Set-ExecutionPolicy Bypass -Scope Process -Force
+          [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+          Invoke-Expression (Invoke-WebRequest -UseBasicParsing https://get.scoop.sh)
+
+      - name: Package Local Workspace and Install
+        shell: powershell
+        run: |
+          # Package current checkout workspace to a local zip file
+          $zipPath = Join-Path -Path $env:TEMP -ChildPath "helpers.zip"
+          Compress-Archive -Path * -DestinationPath $zipPath -Force
+          
+          # Modify manifest to point to local zip URL
+          $escapedZipPath = $zipPath.Replace('\', '\\')
+          $manifest = Get-Content packaging/scoop/millennium-helpers.json -Raw
+          $manifest = $manifest -replace '"url":\s*"[^"]+"', "`"url`": `"$escapedZipPath`""
+          $manifestPath = Join-Path -Path $env:TEMP -ChildPath "millennium-helpers.json"
+          $manifest | Set-Content $manifestPath -Force
+          
+          # Install via Scoop
+          $env:PATH += ";$HOME\scoop\shims"
+          scoop install $manifestPath
+
+      - name: Verify Scoop commands run
+        shell: powershell
+        run: |
+          $env:PATH += ";$HOME\scoop\shims"
+          # Run diagnostic script in help mode to verify shim & script load natively
+          millennium-diag --help
