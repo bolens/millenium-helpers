@@ -132,7 +132,6 @@ def get_tools_list():
 IS_WINDOWS = sys.platform == "win32"
 
 def find_executable(cmd):
-    import os
     if IS_WINDOWS:
         script_dir = os.path.dirname(os.path.abspath(__file__))
         # Check installed folder layout (same directory)
@@ -278,9 +277,6 @@ def handle_tool_call(tool_name, arguments):
         }
 
 def register_mcp():
-    import os
-    import json
-
     home = os.path.expanduser("~")
 
     # Define configurations
