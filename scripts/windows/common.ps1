@@ -10,6 +10,10 @@ $NC = "`e[0m" # No Color
 
 $global:DryRun = $false
 
+if (!$env:LOCALAPPDATA) {
+    $env:LOCALAPPDATA = Join-Path -Path $env:HOME -ChildPath ".config"
+}
+
 function Log-Msg {
     param(
         [string]$Level,
@@ -70,14 +74,20 @@ function Write-ContentFile {
 }
 
 function Resolve-SteamPath {
-    # Check Current User registry
     $regHKCU = Get-ItemProperty -Path "HKCU:\Software\Valve\Steam" -ErrorAction SilentlyContinue
+    Write-Host "DEBUG: regHKCU is: '$regHKCU'"
+    if ($regHKCU) {
+        Write-Host "DEBUG: SteamPath is: '$($regHKCU.SteamPath)'"
+    }
     if ($regHKCU -and $regHKCU.SteamPath) {
         $steamPath = $regHKCU.SteamPath
-        if (Test-Path -Path $steamPath) { return $steamPath }
+        $testRes = Test-Path -Path $steamPath
+        Write-Host "DEBUG: Test-Path result: $testRes"
+        if ($testRes) { return $steamPath }
     }
 
     # Check Local Machine registry (32-bit redirect)
+    Write-Host "DEBUG: Reached HKLM32"
     $regHKLM32 = Get-ItemProperty -Path "HKLM:\SOFTWARE\WOW6432Node\Valve\Steam" -ErrorAction SilentlyContinue
     if ($regHKLM32 -and $regHKLM32.InstallPath) {
         $steamPath = $regHKLM32.InstallPath
@@ -85,6 +95,7 @@ function Resolve-SteamPath {
     }
 
     # Check Local Machine registry (64-bit native)
+    Write-Host "DEBUG: Reached HKLM64"
     $regHKLM64 = Get-ItemProperty -Path "HKLM:\SOFTWARE\Valve\Steam" -ErrorAction SilentlyContinue
     if ($regHKLM64 -and $regHKLM64.InstallPath) {
         $steamPath = $regHKLM64.InstallPath
@@ -92,12 +103,14 @@ function Resolve-SteamPath {
     }
 
     # Fallback default locations
+    Write-Host "DEBUG: Reached fallback paths"
     $fallbackPaths = @(
         "$env:ProgramFiles` (x86)`\Steam",
         "$env:ProgramFiles`\Steam",
         "C:\Steam"
     )
     foreach ($path in $fallbackPaths) {
+        Write-Host "DEBUG: Test-Path checking fallback path: '$path'"
         if (Test-Path -Path $path) {
             return $path
         }
@@ -192,9 +205,9 @@ function Relaunch-Steam {
     }
 
     try {
-        $state = Get-Content -Path $stateFile | ConvertTo-Json -ErrorAction SilentlyContinue
+        $state = Get-Content -Path $stateFile -Raw | ConvertFrom-Json -ErrorAction SilentlyContinue
         if ($null -eq $state) {
-            # Fallback to manual parsing if ConvertTo-Json isn't working
+            # Fallback to manual parsing if ConvertFrom-Json isn't working
             $state = Get-Content -Path $stateFile -Raw | ConvertFrom-Json
         }
     } catch {

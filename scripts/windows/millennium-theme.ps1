@@ -41,13 +41,15 @@ if (!$SteamPath) {
 }
 
 $SkinsDir = Join-Path -Path $SteamPath -ChildPath "steamui\skins"
+$configDir = Join-Path -Path $env:LOCALAPPDATA -ChildPath "millennium-helpers"
+$configFile = Join-Path -Path $configDir -ChildPath "config.json"
 
 function Sanitize-ThemeComponent {
     param(
         [string]$Val,
         [string]$Label
     )
-    if (!$Val -or $Val -eq "." -or $Val -eq ".." -or $Val -like "*/*" -or $Val -like "*\*" -or $Val -like "*`*") {
+    if (!$Val -or $Val -eq "." -or $Val -eq ".." -or $Val.Contains('/') -or $Val.Contains('\') -or $Val.Contains('*')) {
         Log-Error "Error: Invalid $Label '$Val'."
         exit 1
     }

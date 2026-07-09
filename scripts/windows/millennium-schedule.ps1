@@ -42,8 +42,8 @@ if (Test-Path -Path $configFile) {
     } catch {}
 }
 
-show_help() {
-    cat << EOF
+function Show-Help {
+    $helpText = @"
 Usage: millennium-schedule COMMAND [ARGUMENTS] [OPTIONS]
 
 Commands:
@@ -56,10 +56,11 @@ Commands:
 Options:
   -d, --dry-run         Perform dry-run without changing Task Scheduler or writing files
   -h, --help            Show this help message
-EOF
+"@
+    Write-Output $helpText
 }
 
-enable_task() {
+function Enable-Task {
     $channel_arg = $args[0]
     $upgradeScript = Join-Path -Path $ScriptDir -ChildPath "millennium-upgrade.ps1"
     
@@ -97,7 +98,7 @@ enable_task() {
     Log-Info "It will run daily with a randomized delay of up to 1 hour."
 }
 
-disable_task() {
+function Disable-Task {
     if (!(Test-Admin)) {
         Log-Error "Error: Administrator privileges are required to remove Scheduled Tasks."
         exit 1
@@ -115,7 +116,7 @@ disable_task() {
     } -Description "Unregister-ScheduledTask -TaskName $taskName"
 }
 
-show_status() {
+function Show-Status {
     Log-Info "=== Millennium Scheduled Task Status ==="
     $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
     if ($null -ne $task) {
@@ -128,7 +129,7 @@ show_status() {
     }
 }
 
-run_setup_wizard() {
+function Run-Setup-Wizard {
     # Verify interactive console
     if ([System.Console]::KeyAvailable -eq $false -and $env:FORCE_WIZARD -ne "true") {
         # Check if stdin is piped
@@ -251,7 +252,7 @@ run_setup_wizard() {
         $configObj | ConvertTo-Json | Set-Content -Path $configFile -Force
         Write-Host "`nConfiguration saved successfully to: $configFile" -ForegroundColor Green
     } else {
-        Write-Host "`n[DRY RUN] Would write config to $configFile:" -ForegroundColor Yellow
+        Write-Host "`n[DRY RUN] Would write config to $($configFile):" -ForegroundColor Yellow
         Write-Host "  update_channel : $channelVal"
         Write-Host "  github_token   : $githubToken"
     }
@@ -259,11 +260,11 @@ run_setup_wizard() {
     # Trigger Scheduled Task enablement if chosen
     if ($enableSched -eq "true") {
         Write-Host "`nConfiguring background update scheduled task..." -ForegroundColor Blue
-        enable_task $channelVal
+        Enable-Task $channelVal
     }
 }
 
-manage_config() {
+function Manage-Config {
     # Replicates config actions (list/get/set)
     $action = $args[0]
     $key = $null
@@ -383,29 +384,29 @@ manage_config() {
 
 # --- Dispatcher ---
 
-case "$Command" in
-    "enable")
-        enable_task $Channel
-        ;;
-    "disable")
-        disable_task
-        ;;
-    "status")
-        show_status
-        ;;
-    "setup")
-        run_setup_wizard
-        ;;
-    "config")
+switch ($Command) {
+    "enable" {
+        Enable-Task $Channel
+    }
+    "disable" {
+        Disable-Task
+    }
+    "status" {
+        Show-Status
+    }
+    "setup" {
+        Run-Setup-Wizard
+    }
+    "config" {
         # Pass remaining arguments to manage_config
         $cfgArgs = @()
         if ($args.Count -gt 1) { $cfgArgs = $args[1..($args.Count-1)] }
         if ($CONFIG_ACTION) { $cfgArgs = @($CONFIG_ACTION, $CONFIG_KEY, $CONFIG_VALUE) }
-        manage_config $cfgArgs
-        ;;
-    *)
-        show_help
+        Manage-Config $cfgArgs
+    }
+    Default {
+        Show-Help
         exit 1
-        ;;
-esac
+    }
+}
 exit 0
