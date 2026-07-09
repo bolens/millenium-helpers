@@ -75,6 +75,7 @@ relaunch_steam() {
       runuser "$target_user" -c "${user_home}/.local/bin/steam ${STEAM_ARGS:-} >/dev/null 2>&1 &"
     fi
   fi
+  return 0
 }
 
 is_game_running() {
