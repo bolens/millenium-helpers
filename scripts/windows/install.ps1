@@ -10,6 +10,14 @@ $ErrorActionPreference = "Stop"
 $installDir = Join-Path -Path $env:USERPROFILE -ChildPath ".millennium-helpers"
 $binDir = Join-Path -Path $installDir -ChildPath "bin"
 
+# Determine if running in an interactive console
+$isInteractive = $false
+try {
+    $isInteractive = ([System.Console]::IsInputRedirected -eq $false)
+} catch {
+    $isInteractive = $false
+}
+
 # ANSI colors
 $green = [char]27 + "[32m"
 $yellow = [char]27 + "[33m"
@@ -141,4 +149,11 @@ if ($IsWindows) {
 }
 
 Log-Info "${green}Millennium Helpers successfully installed!${reset}"
+
+# Launch configuration wizard if running interactively
+if ($isInteractive -and !$Uninstall -and $env:PSTESTS -ne "true") {
+    Log-Info "Launching the Millennium Helpers Configuration Wizard..."
+    & (Join-Path -Path $binDir -ChildPath "millennium-schedule.ps1") setup
+}
+
 Log-Info "You can now run commands like: ${cyan}millennium-diag${reset} or ${cyan}millennium-upgrade${reset} from any terminal."
