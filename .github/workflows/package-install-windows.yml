@@ -36,10 +36,12 @@ jobs:
           $zipPath = Join-Path -Path $env:TEMP -ChildPath "helpers.zip"
           Compress-Archive -Path * -DestinationPath $zipPath -Force
           
-          # Modify manifest to point to local zip URL
+          # Modify manifest to point to local zip URL and match calculated SHA256
           $escapedZipPath = $zipPath.Replace('\', '\\')
+          $hash = (Get-FileHash $zipPath -Algorithm SHA256).Hash.ToLower()
           $manifest = Get-Content packaging/scoop/millennium-helpers.json -Raw
           $manifest = $manifest -replace '"url":\s*"[^"]+"', "`"url`": `"$escapedZipPath`""
+          $manifest = $manifest -replace '"hash":\s*"[^"]+"', "`"hash`": `"$hash`""
           $manifestPath = Join-Path -Path $env:TEMP -ChildPath "millennium-helpers.json"
           $manifest | Set-Content $manifestPath -Force
           
