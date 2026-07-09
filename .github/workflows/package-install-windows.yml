@@ -49,9 +49,17 @@ jobs:
           $env:PATH += ";$HOME\scoop\shims"
           scoop install $manifestPath
 
+      - name: Setup Mock Steam Environment
+        shell: powershell
+        run: |
+          New-Item -Path "HKCU:\Software\Valve" -Force | Out-Null
+          New-Item -Path "HKCU:\Software\Valve\Steam" -Force | Out-Null
+          Set-ItemProperty -Path "HKCU:\Software\Valve\Steam" -Name "SteamPath" -Value "C:\MockSteam" -Force
+          New-Item -ItemType Directory -Path "C:\MockSteam" -Force | Out-Null
+
       - name: Verify Scoop commands run
         shell: powershell
         run: |
           $env:PATH += ";$HOME\scoop\shims"
-          # Run diagnostic script in help mode to verify shim & script load natively
-          millennium-diag --help
+          # Run diagnostic script in dry-run mode to verify shims and helper scripts execute cleanly
+          millennium-diag -DryRun
