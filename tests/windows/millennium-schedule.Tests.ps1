@@ -5,12 +5,12 @@ Describe "Schedule CLI Manager" {
         if (!$IsWindows) {
             New-PSDrive -Name HKCU -PSProvider FileSystem -Root ([System.IO.Path]::GetTempPath()) -ErrorAction SilentlyContinue | Out-Null
             New-PSDrive -Name C -PSProvider FileSystem -Root ([System.IO.Path]::GetTempPath()) -ErrorAction SilentlyContinue | Out-Null
-            function Register-ScheduledTask { }
-            function Get-ScheduledTask { }
-            function New-ScheduledTaskAction { }
-            function New-ScheduledTaskTrigger { }
-            function New-ScheduledTaskSettingsSet { }
         }
+        function Register-ScheduledTask { }
+        function Get-ScheduledTask { }
+        function New-ScheduledTaskAction { }
+        function New-ScheduledTaskTrigger { }
+        function New-ScheduledTaskSettingsSet { }
         function Get-Content {
             param(
                 [string]$Path,

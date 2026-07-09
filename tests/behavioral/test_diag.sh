@@ -167,9 +167,9 @@ unset GITHUB_TOKEN
 TEST_CONFIG_DIR=$(mktemp -d)
 export XDG_CONFIG_HOME="${TEST_CONFIG_DIR}"
 
-mkdir -p "${TEST_CONFIG_DIR}/millennium-helpers"
+mkdir -p "${TEST_CONFIG_DIR}/systemd/user"
 # Write service file with the new channel flag
-cat > "${TEST_CONFIG_DIR}/millennium-helpers/millennium-update.service" << EOF
+cat > "${TEST_CONFIG_DIR}/systemd/user/millennium-update.service" << EOF
 [Service]
 ExecStart=/bin/bash -c 'sudo -n millennium-upgrade --channel beta'
 EOF
