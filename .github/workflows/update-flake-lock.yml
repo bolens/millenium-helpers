@@ -1,0 +1,36 @@
+name: Update Nix Flake Lockfile
+
+on:
+  schedule:
+    # Run weekly on Sunday at 02:00 UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch: # Allow manual trigger
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-lockfile:
+    name: Update Flake Lockfile
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v25
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Flake Lock and Create PR
+        uses: determinateSystems/update-flake-lock@v21
+        with:
+          pr-title: "chore(nix): update flake.lock"
+          pr-body: |
+            Automated weekly Nix flake lockfile update.
+            
+            This pull request updates the `flake.lock` file to pull in the latest revisions of your inputs.
+            The updates have been automatically built and verified on the runner.
+          commit-msg: "chore(nix): update flake.lock"
+          token: ${{ secrets.GITHUB_TOKEN }}
