@@ -71,21 +71,24 @@ function Write-ContentFile {
 
 function Resolve-SteamPath {
     # Check Current User registry
-    $steamPath = (Get-ItemProperty -Path "HKCU:\Software\Valve\Steam" -Name "SteamPath" -ErrorAction SilentlyContinue).SteamPath
-    if ($steamPath -and (Test-Path -Path $steamPath)) {
-        return $steamPath
+    $regHKCU = Get-ItemProperty -Path "HKCU:\Software\Valve\Steam" -ErrorAction SilentlyContinue
+    if ($regHKCU -and $regHKCU.SteamPath) {
+        $steamPath = $regHKCU.SteamPath
+        if (Test-Path -Path $steamPath) { return $steamPath }
     }
 
     # Check Local Machine registry (32-bit redirect)
-    $steamPath = (Get-ItemProperty -Path "HKLM:\SOFTWARE\WOW6432Node\Valve\Steam" -Name "InstallPath" -ErrorAction SilentlyContinue).InstallPath
-    if ($steamPath -and (Test-Path -Path $steamPath)) {
-        return $steamPath
+    $regHKLM32 = Get-ItemProperty -Path "HKLM:\SOFTWARE\WOW6432Node\Valve\Steam" -ErrorAction SilentlyContinue
+    if ($regHKLM32 -and $regHKLM32.InstallPath) {
+        $steamPath = $regHKLM32.InstallPath
+        if (Test-Path -Path $steamPath) { return $steamPath }
     }
 
     # Check Local Machine registry (64-bit native)
-    $steamPath = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Valve\Steam" -Name "InstallPath" -ErrorAction SilentlyContinue).InstallPath
-    if ($steamPath -and (Test-Path -Path $steamPath)) {
-        return $steamPath
+    $regHKLM64 = Get-ItemProperty -Path "HKLM:\SOFTWARE\Valve\Steam" -ErrorAction SilentlyContinue
+    if ($regHKLM64 -and $regHKLM64.InstallPath) {
+        $steamPath = $regHKLM64.InstallPath
+        if (Test-Path -Path $steamPath) { return $steamPath }
     }
 
     # Fallback default locations

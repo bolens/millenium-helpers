@@ -35,7 +35,11 @@ $BackupDir = Join-Path -Path $SteamPath -ChildPath "millennium_backups"
 
 # Parse configuration (backup limit)
 $BackupLimit = 5
-$userHome = (Get-ItemProperty -Path "HKCU:\Software\Valve\Steam" -Name "SteamPath" -ErrorAction SilentlyContinue).SteamPath
+$userHome = $null
+$regHKCU = Get-ItemProperty -Path "HKCU:\Software\Valve\Steam" -ErrorAction SilentlyContinue
+if ($regHKCU -and $regHKCU.SteamPath) {
+    $userHome = $regHKCU.SteamPath
+}
 if (!$userHome) { $userHome = $env:USERPROFILE }
 $configDir = Join-Path -Path $env:LOCALAPPDATA -ChildPath "millennium-helpers"
 $configFile = Join-Path -Path $configDir -ChildPath "config.json"
