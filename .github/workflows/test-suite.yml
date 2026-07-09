@@ -159,4 +159,27 @@ jobs:
         run: |
           Invoke-Pester -Path "${{ matrix.suite }}" -Output Detailed
 
+  test-macos:
+    name: macOS - ${{ matrix.suite }}
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        suite:
+          - tests/unit/test_common.sh
+          - tests/behavioral/test_install.sh
+          - tests/behavioral/test_theme.sh
+          - tests/behavioral/test_schedule.sh
+          - tests/behavioral/test_purge.sh
+          - tests/behavioral/test_repair.sh
+          - tests/behavioral/test_upgrade.sh
+          - tests/behavioral/test_diag.sh
+          - tests/behavioral/test_mcp.sh
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Run ${{ matrix.suite }}
+        run: bash "${{ matrix.suite }}"
+
 
