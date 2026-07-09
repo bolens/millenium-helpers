@@ -187,6 +187,28 @@ else
   tests_failed=$((tests_failed + 1))
 fi
 
+# Nix Flake check (if Nix is installed)
+if command -v nix >/dev/null 2>&1; then
+  tests_run=$((tests_run + 1))
+  if nix flake check --experimental-features "nix-command flakes" >/dev/null 2>&1; then
+    echo -e "  ${GREEN}PASS:${NC} Nix flake check validation"
+  else
+    echo -e "  ${RED}FAIL:${NC} Nix flake check validation" >&2
+    tests_failed=$((tests_failed + 1))
+  fi
+fi
+
+# PKGBUILD Namcap Linting check (if namcap is installed)
+if command -v namcap >/dev/null 2>&1; then
+  tests_run=$((tests_run + 1))
+  if namcap packaging/PKGBUILD >/dev/null 2>&1; then
+    echo -e "  ${GREEN}PASS:${NC} PKGBUILD Namcap linting check"
+  else
+    echo -e "  ${RED}FAIL:${NC} PKGBUILD Namcap linting check" >&2
+    tests_failed=$((tests_failed + 1))
+  fi
+fi
+
 # Summary
 echo -e "\n${YELLOW}=== Test Suite Summary ===${NC}"
 echo -e "Total Tests Run: ${tests_run}"
