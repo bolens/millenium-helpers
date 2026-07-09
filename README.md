@@ -57,6 +57,12 @@ If you prefer a non-interactive installation, pass a specific subcommand:
 sudo ./install.sh install
 ```
 
+#### Install via curl (One-Liner)
+If you prefer not to clone the repository locally, you can download and run the installer in a single command using `curl`:
+```bash
+curl -fsSL https://raw.githubusercontent.com/bolens/millenium-helpers/main/install.sh | bash -s -- install
+```
+
 #### Run or Install via Nix Flake
 If you use Nix with flakes enabled, you can run the helpers directly without installing them system-wide:
 ```bash
@@ -89,6 +95,12 @@ These scripts require Windows PowerShell:
 Clone this repository, open a PowerShell terminal, and run the installer script:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\install.ps1
+```
+
+#### Install via PowerShell (One-Liner)
+If you prefer not to clone the repository locally, you can download and run the installer in a single command using `irm`:
+```powershell
+irm https://raw.githubusercontent.com/bolens/millenium-helpers/main/scripts/windows/install.ps1 | iex
 ```
 
 #### Run or Install via Scoop

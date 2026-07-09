@@ -31,7 +31,15 @@ If you prefer to clean up and remove the helper scripts manually instead of usin
 
 ### 1. Linux (System-Wide Install)
 
-If you ran `sudo ./install.sh install`, follow these steps to clean up all components:
+If you installed via the standard installer script:
+* **Option A: Piped Uninstall (One-Liner)**:
+  ```bash
+  curl -fsSL https://raw.githubusercontent.com/bolens/millenium-helpers/main/install.sh | sudo bash -s -- uninstall
+  ```
+  *(Add `--purge` at the end to also purge all Millennium hook/client files)*
+
+* **Option B: Manual Cleanup**:
+  Follow these steps to clean up all components manually:
 
 1. **Disable and remove the daily update systemd user timer**:
    ```bash
@@ -142,7 +150,14 @@ If you installed the helpers via Homebrew:
 
 ### 5. Windows (Standard Install)
 
-If you ran the Windows installer script (`install.ps1`), follow these steps to clean up all components manually:
+If you installed via the standard installer script:
+* **Option A: Piped Uninstall (One-Liner)**:
+  ```powershell
+  irm https://raw.githubusercontent.com/bolens/millenium-helpers/main/scripts/windows/install.ps1 | iex -Arguments @{Uninstall=$true}
+  ```
+
+* **Option B: Manual Cleanup**:
+  Follow these steps to clean up all components manually:
 
 1. **Remove the daily auto-update scheduled task**:
    ```powershell
