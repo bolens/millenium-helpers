@@ -136,6 +136,57 @@ for suite in "${THIS_TEST_DIR}"/unit/*.sh "${THIS_TEST_DIR}"/behavioral/*.sh; do
   fi
 done
 
+# 4. Package Manifest and Formula Validations
+echo -e "\n${YELLOW}Running package manifest and formula validations...${NC}"
+
+# Scoop JSON Validation
+tests_run=$((tests_run + 1))
+if jq . packaging/scoop/millennium-helpers.json >/dev/null 2>&1; then
+  echo -e "  ${GREEN}PASS:${NC} Scoop JSON syntax validation"
+else
+  echo -e "  ${RED}FAIL:${NC} Scoop JSON syntax validation" >&2
+  tests_failed=$((tests_failed + 1))
+fi
+
+# Winget YAML Validation
+if command -v python3 >/dev/null 2>&1; then
+  tests_run=$((tests_run + 1))
+  if python3 -c "
+import yaml, glob
+for f in glob.glob('packaging/winget/*.yaml'):
+    with open(f, 'r') as file:
+        yaml.safe_load(file)
+" >/dev/null 2>&1; then
+    echo -e "  ${GREEN}PASS:${NC} Winget YAML syntax validation"
+  else
+    echo -e "  ${RED}FAIL:${NC} Winget YAML syntax validation" >&2
+    tests_failed=$((tests_failed + 1))
+  fi
+fi
+
+# Homebrew Formula Audit & Checks
+tests_run=$((tests_run + 1))
+if [[ -f Formula/millennium-helpers.rb ]]; then
+  formula_desc=$(grep -E '^\s*desc ' Formula/millennium-helpers.rb | head -n1 | sed -E 's/^\s*desc "([^"]*)".*/\1/')
+  if [[ ${#formula_desc} -le 80 ]]; then
+    echo -e "  ${GREEN}PASS:${NC} Homebrew description length is within limits (${#formula_desc} chars)"
+  else
+    echo -e "  ${RED}FAIL:${NC} Homebrew description is too long (${#formula_desc} chars, max 80)" >&2
+    tests_failed=$((tests_failed + 1))
+  fi
+
+  tests_run=$((tests_run + 1))
+  if grep -q -E '^\s*sha256 ' Formula/millennium-helpers.rb; then
+    echo -e "  ${GREEN}PASS:${NC} Homebrew formula contains sha256 checksum field"
+  else
+    echo -e "  ${RED}FAIL:${NC} Homebrew formula is missing sha256 checksum field" >&2
+    tests_failed=$((tests_failed + 1))
+  fi
+else
+  echo -e "  ${RED}FAIL:${NC} Homebrew Formula file missing" >&2
+  tests_failed=$((tests_failed + 1))
+fi
+
 # Summary
 echo -e "\n${YELLOW}=== Test Suite Summary ===${NC}"
 echo -e "Total Tests Run: ${tests_run}"
