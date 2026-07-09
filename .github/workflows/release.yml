@@ -1,4 +1,4 @@
-name: Release Assets & Draft Automation
+name: "CD: Release Automation"
 
 on:
   push:

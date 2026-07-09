@@ -1,4 +1,4 @@
-name: Python Lint
+name: "CI: Python Linting"
 
 on:
   push:

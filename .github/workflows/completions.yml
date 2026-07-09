@@ -1,4 +1,4 @@
-name: Completions Syntax Check
+name: "CI: Completions Validation"
 
 on:
   push:
