@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 # Shared helper library entry point for Millennium Helpers.
 
+# Normalize locale settings for invariant parsing and consistent outputs
+if locale -a 2>/dev/null | grep -q "^C.UTF-8$"; then
+  export LC_ALL=C.UTF-8
+else
+  export LC_ALL=C
+fi
+
 # Source modular components
 _COMMON_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
