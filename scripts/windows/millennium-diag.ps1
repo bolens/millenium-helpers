@@ -190,12 +190,12 @@ function Print-DiagItem {
         [string]$Value
     )
     if ($Status -eq "ok") {
-        Write-Host -NoNewline "  [" -ForegroundColor White
-        Write-Host -NoNewline "✔" -ForegroundColor Green
-        Write-Host -NoNewline "] " -ForegroundColor White
+        Write-Host -NoNewline "  [ " -ForegroundColor White
+        Write-Host -NoNewline "OK" -ForegroundColor Green
+        Write-Host -NoNewline " ] " -ForegroundColor White
     } else {
         Write-Host -NoNewline "  [" -ForegroundColor White
-        Write-Host -NoNewline "✘" -ForegroundColor Red
+        Write-Host -NoNewline "FAIL" -ForegroundColor Red
         Write-Host -NoNewline "] " -ForegroundColor White
     }
     # Print label padded
