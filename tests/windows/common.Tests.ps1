@@ -5,6 +5,8 @@ Describe "Common Helpers" {
         if (!$IsWindows) {
             New-PSDrive -Name HKCU -PSProvider FileSystem -Root ([System.IO.Path]::GetTempPath()) -ErrorAction SilentlyContinue | Out-Null
             New-PSDrive -Name HKLM -PSProvider FileSystem -Root ([System.IO.Path]::GetTempPath()) -ErrorAction SilentlyContinue | Out-Null
+            New-PSDrive -Name C -PSProvider FileSystem -Root ([System.IO.Path]::GetTempPath()) -ErrorAction SilentlyContinue | Out-Null
+            function Get-CimInstance { }
         }
     }
 
@@ -75,6 +77,88 @@ Describe "Common Helpers" {
         It "Returns false when no game runs from steamapps" {
             $isRunning = Is-GameRunning
             $isRunning | Should -Be $false
+        }
+    }
+
+    Context "Steam Lifecycle - Capture and Relaunch" {
+        BeforeAll {
+            # Use temp directory for relaunch state file
+            $env:LOCALAPPDATA = [System.IO.Path]::GetTempPath()
+            
+            Mock Get-Process {
+                return [pscustomobject]@{ Name = "steam"; Id = 1234; Path = "C:\MockedSteam\steam.exe" }
+            }
+            Mock Get-CimInstance {
+                return [pscustomobject]@{ CommandLine = '"C:\MockedSteam\steam.exe" -tenfoot -login username' }
+            }
+            Mock Start-Process { return $true }
+            
+            . (Join-Path -Path $winScriptDir -ChildPath "common.ps1")
+        }
+
+        It "Captures Steam launch arguments and executable path correctly" {
+            # Run Capture with DryRun = $false temporarily to write state file
+            $global:DryRun = $false
+            Capture-SteamEnv
+            $global:DryRun = $true
+
+            $stateFile = Get-RelaunchStateFile
+            Test-Path -Path $stateFile | Should -Be $true
+            
+            $state = Get-Content -Path $stateFile -Raw | ConvertFrom-Json
+            $state.SteamRunning | Should -Be $true
+            $state.Executable | Should -Be "C:\MockedSteam\steam.exe"
+            $state.Arguments | Should -Be "-tenfoot -login username"
+        }
+
+        It "Relaunches Steam using the saved state" {
+            # Restore state file and run relaunch
+            $global:DryRun = $false
+            
+            Mock Start-Process {
+                param($FilePath, $ArgumentList)
+                $script:startedFile = $FilePath
+                $script:startedArgs = $ArgumentList
+                return $true
+            }
+            
+            Relaunch-Steam
+            $global:DryRun = $true
+
+            $script:startedFile | Should -Be "C:\MockedSteam\steam.exe"
+            $script:startedArgs | Should -Be "-tenfoot -login username"
+
+            # State file should have been cleaned up
+            Test-Path -Path (Get-RelaunchStateFile) | Should -Be $false
+        }
+    }
+
+    Context "Steam Lifecycle - Close Gracefully" {
+        BeforeAll {
+            $script:processCheckedCount = 0
+            Mock Get-Process {
+                $script:processCheckedCount++
+                if ($script:processCheckedCount -eq 1) {
+                    return [pscustomobject]@{ Name = "steam" }
+                }
+                return $null
+            }
+            Mock Test-Path { return $true }
+            Mock Get-ItemProperty { return [pscustomobject]@{ SteamPath = "C:\MockedSteam" } }
+            Mock Start-Process {
+                param($FilePath, $ArgumentList, $Wait)
+                $script:startedGracefulFile = $FilePath
+                $script:startedGracefulArgs = $ArgumentList
+                return $true
+            }
+            
+            . (Join-Path -Path $winScriptDir -ChildPath "common.ps1")
+        }
+
+        It "Closes steam client gracefully using -shutdown argument" {
+            Close-SteamGracefully
+            ($script:startedGracefulFile -replace '\\', '/') | Should -Be "C:/MockedSteam/steam.exe"
+            $script:startedGracefulArgs | Should -Be "-shutdown"
         }
     }
 }
