@@ -126,7 +126,21 @@ If you installed the helpers via `nix profile install github:bolens/millenium-he
    rm -rf ${XDG_CONFIG_HOME:-~/.config}/millennium-helpers
    ```
 
-### 4. Windows (Standard Install)
+### 4. macOS / Linux (Homebrew Install)
+
+If you installed the helpers via Homebrew:
+
+1. **Uninstall the formula**:
+   ```bash
+   brew uninstall millennium-helpers
+   ```
+
+2. **Clean up user-level configs (optional)**:
+   ```bash
+   rm -rf ${XDG_CONFIG_HOME:-~/.config}/millennium-helpers
+   ```
+
+### 5. Windows (Standard Install)
 
 If you ran the Windows installer script (`install.ps1`), follow these steps to clean up all components manually:
 
@@ -154,7 +168,7 @@ If you ran the Windows installer script (`install.ps1`), follow these steps to c
    Remove-Item -Path "$env:LOCALAPPDATA\millennium-helpers" -Recurse -Force -ErrorAction SilentlyContinue
    ```
 
-### 5. Windows (Scoop Install)
+### 6. Windows (Scoop Install)
 
 If you installed the helpers via Scoop, uninstallation is fully automated:
 
@@ -168,7 +182,7 @@ If you installed the helpers via Scoop, uninstallation is fully automated:
    Remove-Item -Path "$env:LOCALAPPDATA\millennium-helpers" -Recurse -Force -ErrorAction SilentlyContinue
    ```
 
-### 6. Windows (Winget Install)
+### 7. Windows (Winget Install)
 
 If you installed the helpers via Winget, uninstallation is fully automated:
 
