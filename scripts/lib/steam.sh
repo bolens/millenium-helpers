@@ -186,17 +186,18 @@ capture_steam_env() {
       fi
     done
     
-    local steam_args
-    steam_args=$(python3 -c "
-import sys
-try:
-    with open('/proc/' + sys.argv[1] + '/cmdline', 'rb') as f:
-        args = f.read().split(b'\x00')
-        args = [a.decode('utf-8', errors='ignore') for a in args if a][1:]
-        print(' '.join(\"'\" + a.replace(\"'\", \"'\\\\''\") + \"'\" for a in args))
-except Exception:
-    pass
-" "$steam_pid" 2>/dev/null || true)
+    local steam_args=""
+    local first=true
+    local arg
+    while IFS= read -r -d $'\0' arg; do
+      if [[ "$first" == "true" ]]; then
+        first=false
+        continue
+      fi
+      local escaped_arg
+      escaped_arg=$(printf '%q' "$arg")
+      steam_args+="${escaped_arg} "
+    done < "/proc/${steam_pid}/cmdline" 2>/dev/null || true
     
     echo "export STEAM_ARGS=\"${steam_args}\"" >> "$tmp_file"
     echo "export WAS_FLATPAK='${was_flatpak}'" >> "$tmp_file"
