@@ -56,7 +56,7 @@ echo "null"
   rm -f "${MOCK_BIN}/curl"
 
   # --- --file: Offline archive installation ---
-  MOCK_FILE=$(mktemp)
+  MOCK_FILE=$(mktemp 2>/dev/null || mktemp -t 'tmp')
   echo "mock archive content" > "$MOCK_FILE"
   out=$(run_upgrade "$channel" --file "$MOCK_FILE" --dry-run 2>&1)
   rc=$?
@@ -89,7 +89,7 @@ echo "null"
 
   # 3. Pruning check (dry-run)
   export CONFIG_BACKUP_LIMIT=2
-  MOCK_FILE2=$(mktemp)
+  MOCK_FILE2=$(mktemp 2>/dev/null || mktemp -t 'tmp')
   echo "mock archive" > "$MOCK_FILE2"
   out=$(run_upgrade "$channel" --file "$MOCK_FILE2" --dry-run 2>&1)
   rc=$?

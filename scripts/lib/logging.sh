@@ -92,7 +92,7 @@ download_file() {
   fi
 
   local tmp_log
-  tmp_log=$(mktemp)
+  tmp_log=$(mktemp 2>/dev/null || mktemp -t 'tmp')
   
   if [[ ! -t 1 ]]; then
     printf "%s... " "$msg"

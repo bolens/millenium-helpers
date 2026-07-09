@@ -99,7 +99,7 @@ if [[ "$SHARE_REPORT" == "true" ]]; then
     fi
   done
   
-  report_file=$(mktemp)
+  report_file=$(mktemp 2>/dev/null || mktemp -t 'tmp')
   trap 'rm -f "$report_file"' EXIT INT TERM
   
   # Run the diagnostic script itself with cleaned arguments
