@@ -410,6 +410,10 @@ post_update() {
     rm -f "$state_file"
     
     log_info "Relaunching Steam client with arguments: ${STEAM_ARGS:-none} (Flatpak: ${WAS_FLATPAK:-false})..."
+    if [[ -n "${TEST_SUITE_RUN:-}" ]]; then
+      log_info "[TEST] Bypassing real Steam relaunch in test suite."
+      return 0
+    fi
     if [[ "${WAS_FLATPAK:-false}" == "true" ]]; then
       # shellcheck disable=SC2086
       flatpak run com.valvesoftware.Steam ${STEAM_ARGS} >/dev/null 2>&1 &

@@ -12,9 +12,13 @@ setup_mock_bin() {
   export PATH="${MOCK_BIN}:${PATH}"
   export MOCK_PROC="/nonexistent_mock_proc"
 
-  # Stub out process-killing commands by default to protect the host environment
+  # Stub out process-killing and Steam commands by default to protect the host environment
   mock_cmd "killall" "exit 0"
   mock_cmd "pkill" "exit 0"
+  mock_cmd "pgrep" "exit 1"
+  mock_cmd "runuser" "exit 0"
+  mock_cmd "steam" "exit 0"
+  export TEST_SUITE_RUN=true
 }
 
 teardown_mock_bin() {
