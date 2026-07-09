@@ -1077,3 +1077,5 @@ if [[ "$COMMAND" == "doctor" ]]; then
     fi
   fi
 fi
+
+exit 0
