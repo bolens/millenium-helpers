@@ -54,7 +54,7 @@ if ($isStandalone) {
     
     # Cleanup temp dir (deferred/best effort)
     Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue | Out-Null
-    exit 0
+    return
 }
 
 # Define install location
@@ -112,7 +112,7 @@ if ($Uninstall) {
     }
 
     Log-Info "Millennium Helpers uninstallation complete."
-    exit 0
+    return
 }
 
 Log-Info "Starting installation of Millennium Helpers..."
@@ -128,7 +128,7 @@ if ($scriptDir -like "*windows*") {
 
 if (!(Test-Path -Path (Join-Path -Path $srcDir -ChildPath "common.ps1"))) {
     Log-Error "Could not locate source scripts. Please run this installer from the repository source folder."
-    exit 1
+    return
 }
 
 # Create directories
