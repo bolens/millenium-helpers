@@ -1,4 +1,4 @@
-name: PKGBUILD Validation
+name: "CI: PKGBUILD Validation"
 
 on:
   push:

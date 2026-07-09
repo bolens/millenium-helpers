@@ -1,4 +1,4 @@
-name: Windows Package Installation Validation
+name: "CI: Windows Package Validation"
 
 on:
   push:

@@ -1,4 +1,4 @@
-name: Update Nix Flake Lockfile
+name: "CD: Nix Flake Lock Update"
 
 on:
   schedule:

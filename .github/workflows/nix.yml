@@ -1,4 +1,4 @@
-name: Nix Flake Build
+name: "CI: Nix Flake Validation"
 
 on:
   push:
