@@ -24,5 +24,5 @@
     }
   },
   "remoteUser": "developer",
-  "postCreateCommand": "make check-all"
+  "postCreateCommand": "pwsh -Command \"Install-Module -Name Pester -Force -SkipPublisherCheck -Scope CurrentUser\" && make check-all"
 }
