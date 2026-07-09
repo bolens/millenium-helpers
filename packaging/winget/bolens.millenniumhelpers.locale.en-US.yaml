@@ -1,0 +1,21 @@
+# bolens.millenniumhelpers.locale.en-US.yaml
+PackageIdentifier: bolens.millenniumhelpers
+PackageVersion: 2.2.0
+PackageLocale: en-US
+Publisher: bolens
+PublisherUrl: https://github.com/bolens
+PublisherSupportUrl: https://github.com/bolens/millenium-helpers/issues
+Author: bolens
+PackageName: Millennium Helpers
+PackageUrl: https://github.com/bolens/millenium-helpers
+License: MIT
+LicenseUrl: https://github.com/bolens/millenium-helpers/blob/main/LICENSE
+Copyright: Copyright (c) 2026 bolens
+ShortDescription: Cross-platform utility scripts and Model Context Protocol (MCP) server for managing, upgrading, diagnosing, and controlling Millennium on Windows.
+Tags:
+- steam
+- millennium
+- helper
+- powershell
+ManifestType: locale
+ManifestVersion: 1.5.0

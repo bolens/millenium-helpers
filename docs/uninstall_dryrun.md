@@ -153,3 +153,31 @@ If you ran the Windows installer script (`install.ps1`), follow these steps to c
    ```powershell
    Remove-Item -Path "$env:LOCALAPPDATA\millennium-helpers" -Recurse -Force -ErrorAction SilentlyContinue
    ```
+
+### 5. Windows (Scoop Install)
+
+If you installed the helpers via Scoop, uninstallation is fully automated:
+
+1. **Uninstall package**:
+   ```powershell
+   scoop uninstall millennium-helpers
+   ```
+
+2. **Clean up user-level configs (optional)**:
+   ```powershell
+   Remove-Item -Path "$env:LOCALAPPDATA\millennium-helpers" -Recurse -Force -ErrorAction SilentlyContinue
+   ```
+
+### 6. Windows (Winget Install)
+
+If you installed the helpers via Winget, uninstallation is fully automated:
+
+1. **Uninstall package**:
+   ```powershell
+   winget uninstall bolens.millenniumhelpers
+   ```
+
+2. **Clean up user-level configs (optional)**:
+   ```powershell
+   Remove-Item -Path "$env:LOCALAPPDATA\millennium-helpers" -Recurse -Force -ErrorAction SilentlyContinue
+   ```

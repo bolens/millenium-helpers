@@ -1,0 +1,27 @@
+# bolens.millenniumhelpers.installer.yaml
+PackageIdentifier: bolens.millenniumhelpers
+PackageVersion: 2.2.0
+MinimumOSVersion: 10.0.0.0
+ReleaseDate: 2026-07-09
+Installers:
+- Architecture: neutral
+  InstallerType: portable
+  InstallerUrl: https://github.com/bolens/millenium-helpers/archive/refs/heads/main.zip
+  InstallerSha256: 0000000000000000000000000000000000000000000000000000000000000000 # Dummy value to be populated by publisher
+  UpgradeBehavior: uninstallPrevious
+  Commands:
+  - millennium-diag
+  - millennium-purge
+  - millennium-repair
+  - millennium-schedule
+  - millennium-theme
+  - millennium-upgrade
+  PortableCommandAliases:
+    millennium-diag: scripts/windows/millennium-diag.ps1
+    millennium-purge: scripts/windows/millennium-purge.ps1
+    millennium-repair: scripts/windows/millennium-repair.ps1
+    millennium-schedule: scripts/windows/millennium-schedule.ps1
+    millennium-theme: scripts/windows/millennium-theme.ps1
+    millennium-upgrade: scripts/windows/millennium-upgrade.ps1
+ManifestType: installer
+ManifestVersion: 1.5.0
