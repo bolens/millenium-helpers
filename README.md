@@ -73,12 +73,25 @@ These scripts require Windows PowerShell:
   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
   ```
 
-#### Setup & Configuration
-Clone this repository, open PowerShell as an Administrator, and run the configuration wizard:
+#### Installation & Setup (Windows)
+Clone this repository, open a PowerShell terminal, and run the installer script:
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\millennium-schedule.ps1 setup
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\install.ps1
 ```
-This wizard will prompt you for the update channel, configure the daily background task in **Windows Task Scheduler**, and optionally save your GitHub Personal Access Token.
+This installer will:
+1. Copy all helper scripts to `$HOME/.millennium-helpers/bin`.
+2. Generate `.cmd` wrappers for all scripts (so you can run commands directly by typing `millennium-diag` or `millennium-upgrade` in any command shell or terminal).
+3. Add the bin directory to your User `PATH` environment variable.
+
+After installation, run the interactive configuration wizard to configure background update scheduling and update channels:
+```powershell
+millennium-schedule setup
+```
+
+To uninstall the helper scripts and clean up the environment:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\install.ps1 -Uninstall
+```
 
 ---
 
@@ -89,8 +102,8 @@ This wizard will prompt you for the update channel, configure the daily backgrou
 # Linux
 millennium-diag
 
-# Windows (PowerShell)
-powershell -File .\scripts\windows\millennium-diag.ps1
+# Windows
+millennium-diag
 ```
 
 ### Run Doctor (Auto-Repair & Self-Update)
@@ -99,8 +112,8 @@ Scan your setup for any broken hooks, missing directories, stopped timers, or ou
 # Linux
 millennium-diag doctor [--force]
 
-# Windows (PowerShell)
-powershell -File .\scripts\windows\millennium-diag.ps1 doctor
+# Windows
+millennium-diag doctor
 ```
 *(Or alias `millennium-diag --fix` or `millennium-diag -f`)*
 
@@ -111,8 +124,8 @@ Use the `--force` option to force-run all repairs, permissions adjustments, and 
 # Linux
 millennium-schedule status
 
-# Windows (PowerShell)
-powershell -File .\scripts\windows\millennium-schedule.ps1 status
+# Windows
+millennium-schedule status
 ```
 
 ### Disable the Auto-Updater Timer
@@ -120,8 +133,8 @@ powershell -File .\scripts\windows\millennium-schedule.ps1 status
 # Linux
 millennium-schedule disable
 
-# Windows (PowerShell)
-powershell -File .\scripts\windows\millennium-schedule.ps1 disable
+# Windows
+millennium-schedule disable
 ```
 
 ### Repair Millennium Installation
@@ -129,8 +142,8 @@ powershell -File .\scripts\windows\millennium-schedule.ps1 disable
 # Linux
 sudo millennium-repair
 
-# Windows (PowerShell - Run as Administrator)
-powershell -File .\scripts\windows\millennium-repair.ps1
+# Windows (Run as Administrator)
+millennium-repair
 ```
 
 ### Purge/De-register Millennium Client from Steam
@@ -138,8 +151,8 @@ powershell -File .\scripts\windows\millennium-repair.ps1
 # Linux
 sudo millennium-purge
 
-# Windows (PowerShell - Run as Administrator)
-powershell -File .\scripts\windows\millennium-purge.ps1
+# Windows (Run as Administrator)
+millennium-purge
 ```
 
 ### Uninstall All Helper Scripts (Linux)
@@ -254,9 +267,9 @@ All scripts support a Dry-Run mode (`--dry-run` or `-d`) to preview file copies,
 millennium-upgrade --channel stable --dry-run
 millennium-repair --dry-run
 
-# Windows (PowerShell)
-powershell -File .\scripts\windows\millennium-upgrade.ps1 -Channel stable -DryRun
-powershell -File .\scripts\windows\millennium-diag.ps1 doctor -DryRun
+# Windows
+millennium-upgrade -Channel stable -DryRun
+millennium-diag doctor -DryRun
 ```
 
 ---
@@ -354,7 +367,7 @@ This is usually caused by outdated CEF cached files. Run the repair utility to f
 sudo millennium-repair
 
 # Windows
-powershell -File .\scripts\windows\millennium-repair.ps1
+millennium-repair
 ```
 
 ### The background timer is not running updates
