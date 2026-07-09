@@ -167,5 +167,16 @@ assert_contains "$config_contents" "millennium-mcp" "claude_desktop_config.json 
 
 rm -rf "$FAKE_HOME_MCP"
 
+# --- --help and invalid options ---
+out=$(python3 "$MCP_PY" --help 2>&1)
+rc=$?
+assert_success "$rc" "millennium-mcp --help exits 0"
+assert_contains "$out" "usage:" "millennium-mcp --help prints usage help"
+
+out=$(python3 "$MCP_PY" --invalid-flag 2>&1)
+rc=$?
+assert_failure "$rc" "millennium-mcp with invalid flag exits non-zero"
+assert_contains "$out" "unrecognized arguments" "millennium-mcp reports unrecognized arguments"
+
 print_summary
 

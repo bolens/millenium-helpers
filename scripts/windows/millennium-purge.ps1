@@ -32,7 +32,7 @@ Log-Info "=== Initiating Millennium Purge (Uninstall) ==="
 
 # 1. Disable scheduled tasks
 $scheduleScript = Join-Path -Path $ScriptDir -ChildPath "millennium-schedule.ps1"
-if (Test-Path -Path $scheduleScript -and (Test-Admin)) {
+if ((Test-Path -Path $scheduleScript) -and (Test-Admin)) {
     Log-Info "Disabling update scheduler..."
     Execute-Cmd -ScriptBlock {
         & $scheduleScript disable
