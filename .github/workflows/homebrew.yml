@@ -1,0 +1,21 @@
+name: Homebrew Validation
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  homebrew:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Homebrew
+        uses: Homebrew/actions/setup-homebrew@master
+
+      - name: Audit Formula
+        run: |
+          brew audit --formula packaging/homebrew/millennium-helpers.rb
