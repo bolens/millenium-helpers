@@ -130,8 +130,14 @@ function Show-Status {
 }
 
 function Run-Setup-Wizard {
-    # Verify interactive console
-    if ([System.Console]::KeyAvailable -eq $false -and $env:FORCE_WIZARD -ne "true") {
+    # Verify interactive console safely
+    $keyAvailable = $false
+    try {
+        $keyAvailable = [System.Console]::KeyAvailable
+    } catch {
+        $keyAvailable = $false
+    }
+    if ($keyAvailable -eq $false -and $env:FORCE_WIZARD -ne "true") {
         # Check if stdin is piped
         try {
             $isPiped = [System.Console]::IsInputRedirected
