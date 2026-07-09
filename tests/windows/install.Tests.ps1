@@ -2,6 +2,7 @@ Describe "Windows Installer" {
     BeforeAll {
         $winScriptDir = Join-Path -Path $PSScriptRoot -ChildPath "..\..\scripts\windows"
         $global:DryRun = $true
+        $env:PSTESTS = "true"
     }
 
     It "Successfully runs installation and uninstallation routines" {
