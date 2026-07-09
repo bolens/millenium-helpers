@@ -286,7 +286,7 @@ function Download-File {
 function Resolve-HelperPath {
     param([string]$Name)
     # Check scripts directory relative to common.ps1
-    $scriptDir = Split-Path -Parent $MyInvocation.ScriptName
+    $scriptDir = $PSScriptRoot
     $scriptPath = Join-Path -Path $scriptDir -ChildPath "$Name.ps1"
     if (Test-Path -Path $scriptPath) {
         return $scriptPath
