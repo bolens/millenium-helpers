@@ -133,6 +133,11 @@ def find_executable(cmd):
     import os
     if IS_WINDOWS:
         script_dir = os.path.dirname(os.path.abspath(__file__))
+        # Check installed folder layout (same directory)
+        ps1_path = os.path.join(script_dir, f"{cmd}.ps1")
+        if os.path.exists(ps1_path):
+            return ps1_path
+        # Check repository layout (windows subdirectory)
         ps1_path = os.path.join(script_dir, "windows", f"{cmd}.ps1")
         if os.path.exists(ps1_path):
             return ps1_path
