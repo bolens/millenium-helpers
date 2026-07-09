@@ -1,6 +1,10 @@
 # Shared helpers for Millennium Helper PowerShell scripts
 set-strictmode -version Latest
 
+# Set the current thread culture to invariant to avoid locale-specific issues (e.g. decimal separators)
+[System.Threading.Thread]::CurrentThread.CurrentCulture = [System.Globalization.CultureInfo]::InvariantCulture
+[System.Threading.Thread]::CurrentThread.CurrentUICulture = [System.Globalization.CultureInfo]::InvariantCulture
+
 # Text formatting colors
 $RED = "`e[0;31m"
 $GREEN = "`e[0;32m"
