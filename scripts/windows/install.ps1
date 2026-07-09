@@ -97,7 +97,11 @@ if ($Uninstall) {
         if ($userPath -like "*$binDir*") {
             $paths = $userPath -split ";" | Where-Object { $_.Trim() -ne $binDir -and $_.Trim() -ne "" }
             $newUserPath = $paths -join ";"
-            [Environment]::SetEnvironmentVariable("Path", $newUserPath, "User")
+            if ($env:PSTESTS -ne "true") {
+                [Environment]::SetEnvironmentVariable("Path", $newUserPath, "User")
+            } else {
+                Log-Info "[TEST] Bypassed removing $binDir from User PATH registry."
+            }
             Log-Info "Removed $binDir from User PATH environment variable."
         }
     }
@@ -189,7 +193,11 @@ if ($IsWindows) {
             $newUserPath += ";"
         }
         $newUserPath += $binDir
-        [Environment]::SetEnvironmentVariable("Path", $newUserPath, "User")
+        if ($env:PSTESTS -ne "true") {
+            [Environment]::SetEnvironmentVariable("Path", $newUserPath, "User")
+        } else {
+            Log-Info "[TEST] Bypassed adding $binDir to User PATH registry."
+        }
         Log-Info "Added $binDir to User PATH environment variable."
         Log-Warn "Please restart your terminal or environment for the PATH changes to take effect."
     } else {
