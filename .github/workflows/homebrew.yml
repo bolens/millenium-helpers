@@ -18,4 +18,6 @@ jobs:
 
       - name: Audit Formula
         run: |
-          brew audit --formula packaging/homebrew/millennium-helpers.rb
+          mkdir -p "$(brew --repository)/Library/Taps/local/homebrew-local/Formula"
+          cp Formula/millennium-helpers.rb "$(brew --repository)/Library/Taps/local/homebrew-local/Formula/"
+          brew audit --formula local/local/millennium-helpers
