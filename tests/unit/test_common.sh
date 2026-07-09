@@ -370,5 +370,43 @@ assert_contains "$out" "FAIL" "download_file outputs FAIL on failure"
 assert_contains "$out" "curl error message" "download_file outputs curl stderr logs to stderr"
 rm -f "$download_temp"
 
+# --- get_user_home() ---
+
+# 1. Resolve home using getent (Linux standard path)
+mock_cmd "getent" '
+if [[ "$*" == *"passwd testuser"* ]]; then
+  echo "testuser:x:1000:1000::/mock/getent/home:/bin/bash"
+  exit 0
+fi
+exit 1
+'
+home_dir=$(get_user_home "testuser")
+assert_equals "/mock/getent/home" "$home_dir" "get_user_home resolves home using getent"
+unmock_cmd "getent"
+
+# 2. Resolve home using dscl (macOS standard path)
+mock_cmd "getent" "exit 1"
+mock_cmd "dscl" '
+if [[ "$*" == *". -read /Users/testuser NFSHomeDirectory"* ]]; then
+  echo "NFSHomeDirectory: /mock/dscl/home"
+  exit 0
+fi
+exit 1
+'
+home_dir=$(get_user_home "testuser")
+assert_equals "/mock/dscl/home" "$home_dir" "get_user_home resolves home using dscl on macOS"
+unmock_cmd "getent"
+unmock_cmd "dscl"
+
+# 3. Fallback path using shell tilde expansion
+mock_cmd "getent" "exit 1"
+mock_cmd "dscl" "exit 1"
+# Fallback for current user should return the real $HOME
+current_user=$(id -un)
+home_dir=$(get_user_home "$current_user")
+assert_equals "$HOME" "$home_dir" "get_user_home falls back to tilde expansion"
+unmock_cmd "getent"
+unmock_cmd "dscl"
+
 print_summary
 

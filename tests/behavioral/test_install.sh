@@ -111,7 +111,7 @@ mock_cmd "visudo" "echo 'visudo: parse error in generated file' >&2; exit 1"
 # Mock id command to trick installer into thinking we are root
 mock_cmd "id" "echo 0"
 
-out=$(echo -e "2" | FORCE_RECOVERY=true FORCE_WIZARD=false bash "$INSTALL_SH" install 2>&1)
+out=$(echo -e "2" | FORCE_RECOVERY=true FORCE_WIZARD=false TARGET_DIR="${TEST_SUDO_DIR}" bash "$INSTALL_SH" install 2>&1)
 rc=$?
 
 assert_success "$rc" "install.sh with failing visudo and choosing option 2 (skip) exits successfully"
