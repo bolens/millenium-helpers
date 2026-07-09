@@ -44,6 +44,37 @@ _is_safe_relaunch_state_file() {
   [[ -z "$owner" || "$owner" == "$target_user" || "$owner" == "root" ]]
 }
 
+_run_steam_cmd() {
+  local target_user="$1"
+  local cmd="$2"
+  local state_file="$3"
+
+  local env_vars=()
+  if [[ -n "$state_file" && -f "$state_file" ]]; then
+    local DISPLAY XAUTHORITY WAYLAND_DISPLAY XDG_RUNTIME_DIR DBUS_SESSION_BUS_ADDRESS XDG_SESSION_TYPE XDG_CURRENT_DESKTOP
+    # shellcheck disable=SC1090
+    source "$state_file"
+    [[ -n "${DISPLAY:-}" ]] && env_vars+=("DISPLAY='${DISPLAY}'")
+    [[ -n "${WAYLAND_DISPLAY:-}" ]] && env_vars+=("WAYLAND_DISPLAY='${WAYLAND_DISPLAY}'")
+    [[ -n "${XAUTHORITY:-}" ]] && env_vars+=("XAUTHORITY='${XAUTHORITY}'")
+    [[ -n "${XDG_RUNTIME_DIR:-}" ]] && env_vars+=("XDG_RUNTIME_DIR='${XDG_RUNTIME_DIR}'")
+    [[ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]] && env_vars+=("DBUS_SESSION_BUS_ADDRESS='${DBUS_SESSION_BUS_ADDRESS}'")
+    [[ -n "${XDG_SESSION_TYPE:-}" ]] && env_vars+=("XDG_SESSION_TYPE='${XDG_SESSION_TYPE}'")
+    [[ -n "${XDG_CURRENT_DESKTOP:-}" ]] && env_vars+=("XDG_CURRENT_DESKTOP='${XDG_CURRENT_DESKTOP}'")
+  fi
+
+  local env_prefix=""
+  if [[ ${#env_vars[@]} -gt 0 ]]; then
+    env_prefix="env ${env_vars[*]} "
+  fi
+
+  if [[ "$(id -u)" -eq 0 || -n "${MOCK_BIN:-}" ]]; then
+    runuser "$target_user" -c "${env_prefix}${cmd}"
+  else
+    eval "${env_prefix}${cmd}"
+  fi
+}
+
 relaunch_steam() {
   local target_user="$1"
   local user_home
@@ -56,9 +87,9 @@ relaunch_steam() {
   fi
 
   echo "Relaunching Steam..."
+  # Sourced in local scope to retrieve parameters
   # shellcheck disable=SC1090
   source "$state_file"
-  rm -f "$state_file"
 
   if [[ "$(uname)" == "Darwin" ]]; then
     if [[ "$(id -un)" == "$target_user" ]]; then
@@ -66,15 +97,24 @@ relaunch_steam() {
     else
       runuser -l "$target_user" -c "open -a Steam >/dev/null 2>&1 &"
     fi
-  elif [[ "${WAS_FLATPAK:-false}" == "true" ]]; then
-    runuser "$target_user" -c "flatpak run com.valvesoftware.Steam ${STEAM_ARGS:-} >/dev/null 2>&1 &"
   else
-    if command -v steam &>/dev/null; then
-      runuser "$target_user" -c "steam ${STEAM_ARGS:-} >/dev/null 2>&1 &"
-    elif [[ -x "${user_home}/.local/bin/steam" ]]; then
-      runuser "$target_user" -c "${user_home}/.local/bin/steam ${STEAM_ARGS:-} >/dev/null 2>&1 &"
+    local steam_cmd=""
+    if [[ "${WAS_FLATPAK:-false}" == "true" ]]; then
+      steam_cmd="flatpak run com.valvesoftware.Steam ${STEAM_ARGS:-} >/dev/null 2>&1 &"
+    else
+      if command -v steam &>/dev/null; then
+        steam_cmd="steam ${STEAM_ARGS:-} >/dev/null 2>&1 &"
+      elif [[ -x "${user_home}/.local/bin/steam" ]]; then
+        steam_cmd="${user_home}/.local/bin/steam ${STEAM_ARGS:-} >/dev/null 2>&1 &"
+      fi
+    fi
+
+    if [[ -n "$steam_cmd" ]]; then
+      _run_steam_cmd "$target_user" "$steam_cmd" "$state_file"
     fi
   fi
+
+  rm -f "$state_file"
   return 0
 }
 
@@ -197,16 +237,31 @@ close_steam_gracefully() {
   fi
 
   local was_flatpak=false
-  if command -v flatpak &>/dev/null && runuser -l "$target_user" -c "flatpak ps" 2>/dev/null | grep -q "com.valvesoftware.Steam"; then
-    was_flatpak=true
+  if command -v flatpak &>/dev/null; then
+    if [[ "$(id -un)" == "$target_user" ]]; then
+      if flatpak ps 2>/dev/null | grep -q "com.valvesoftware.Steam"; then
+        was_flatpak=true
+      fi
+    else
+      if runuser -l "$target_user" -c "flatpak ps" 2>/dev/null | grep -q "com.valvesoftware.Steam"; then
+        was_flatpak=true
+      fi
+    fi
   fi
   
+  local state_file
+  state_file="$(relaunch_state_file "$target_user")"
+  local shutdown_cmd=""
   if [[ "$was_flatpak" == "true" ]]; then
-    runuser -l "$target_user" -c "flatpak run com.valvesoftware.Steam -shutdown" || true
+    shutdown_cmd="flatpak run com.valvesoftware.Steam -shutdown"
   elif command -v steam &>/dev/null; then
-    runuser -l "$target_user" -c "steam -shutdown" || true
+    shutdown_cmd="steam -shutdown"
   elif [[ -x "${user_home}/.local/bin/steam" ]]; then
-    runuser -l "$target_user" -c "${user_home}/.local/bin/steam -shutdown" || true
+    shutdown_cmd="${user_home}/.local/bin/steam -shutdown"
+  fi
+
+  if [[ -n "$shutdown_cmd" ]]; then
+    _run_steam_cmd "$target_user" "$shutdown_cmd" "$state_file" || true
   fi
 
   local timeout=30
