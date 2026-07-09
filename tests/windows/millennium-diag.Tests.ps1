@@ -5,8 +5,8 @@ Describe "Diagnostics & Doctor" {
         if (!$IsWindows) {
             New-PSDrive -Name HKCU -PSProvider FileSystem -Root ([System.IO.Path]::GetTempPath()) -ErrorAction SilentlyContinue | Out-Null
             New-PSDrive -Name C -PSProvider FileSystem -Root ([System.IO.Path]::GetTempPath()) -ErrorAction SilentlyContinue | Out-Null
-            function Get-ScheduledTask { }
         }
+        function Get-ScheduledTask { }
         function Get-Content {
             param(
                 [string]$Path,
