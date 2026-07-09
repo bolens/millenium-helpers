@@ -7,6 +7,8 @@ import sys
 import json
 import subprocess
 import shutil
+import os
+import argparse
 
 # Hard upper bound on how long any single underlying millennium-* command is
 # allowed to run. The server processes one JSON-RPC request at a time on a
@@ -346,9 +348,14 @@ def register_mcp():
         sys.exit(0)
 
 def main():
-    if len(sys.argv) > 1 and sys.argv[1] in ["--register", "-r"]:
+    parser = argparse.ArgumentParser(description="Model Context Protocol (MCP) server for Millennium Helpers.")
+    parser.add_argument("--register", "-r", action="store_true", help="Register the MCP server with Claude Desktop and Windsurf.")
+    args = parser.parse_args()
+
+    if args.register:
         register_mcp()
         return
+
     log("Millennium Helpers MCP server started.")
     while True:
         try:
