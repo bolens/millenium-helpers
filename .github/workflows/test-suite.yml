@@ -79,6 +79,7 @@ jobs:
         distro: [debian, ubuntu, fedora, archlinux]
         suite:
           - tests/unit/test_common.sh
+          - tests/unit/test_mocks.sh
           - tests/behavioral/test_install.sh
           - tests/behavioral/test_theme.sh
           - tests/behavioral/test_schedule.sh
@@ -167,6 +168,7 @@ jobs:
       matrix:
         suite:
           - tests/unit/test_common.sh
+          - tests/unit/test_mocks.sh
           - tests/behavioral/test_install.sh
           - tests/behavioral/test_theme.sh
           - tests/behavioral/test_schedule.sh
