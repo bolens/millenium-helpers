@@ -24,6 +24,7 @@ setup_mock_bin() {
   mock_cmd "osascript" "exit 0"
   mock_cmd "notify-send" "exit 0"
   mock_cmd "visudo" "exit 0"
+  mock_cmd "open" "exit 0"
   export TEST_SUITE_RUN=true
 }
 
