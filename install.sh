@@ -199,10 +199,12 @@ install_completions() {
         echo -e "${GREEN}OK${NC}"
       else
         echo -e "${RED}FAIL (symlinks)${NC}"
+        echo -e "${RED}Error: Failed to create symlinks for some Bash completion scripts in ${base_bash_dir}.${NC}" >&2
         exit 1
       fi
     else
       echo -e "${RED}FAIL${NC}"
+      echo -e "${RED}Error: Failed to copy or configure Bash completion base script in ${base_bash_dir}.${NC}" >&2
       exit 1
     fi
   fi
@@ -223,10 +225,12 @@ install_completions() {
         echo -e "${GREEN}OK${NC}"
       else
         echo -e "${RED}FAIL (symlinks)${NC}"
+        echo -e "${RED}Error: Failed to create symlinks for some Zsh completion scripts in ${base_zsh_dir}.${NC}" >&2
         exit 1
       fi
     else
       echo -e "${RED}FAIL${NC}"
+      echo -e "${RED}Error: Failed to copy or configure Zsh completion base script in ${base_zsh_dir}.${NC}" >&2
       exit 1
     fi
   fi
@@ -250,6 +254,7 @@ install_completions() {
       echo -e "${GREEN}OK${NC}"
     else
       echo -e "${RED}FAIL${NC}"
+      echo -e "${RED}Error: Failed to copy or configure Fish completions in ${base_fish_dir}.${NC}" >&2
       exit 1
     fi
   fi
@@ -265,6 +270,7 @@ install_completions() {
         echo -e "${GREEN}OK${NC}"
       else
         echo -e "${RED}FAIL${NC}"
+        echo -e "${RED}Error: Failed to copy or configure Nushell completions in ${cand_dir}.${NC}" >&2
       fi
     fi
   done
@@ -280,6 +286,7 @@ run_wizard() {
 }
 
 install_scripts() {
+  local user_name="${SUDO_USER:-$(id -un)}"
   # Clean up obsolete script files from older installations
   local obsolete_scripts=("millennium-upgrade-stable" "millennium-upgrade-beta")
   for script in "${obsolete_scripts[@]}"; do
@@ -311,6 +318,8 @@ install_scripts() {
       echo -e "${GREEN}OK${NC}"
     else
       echo -e "${RED}FAIL${NC}"
+      echo -e "${RED}Error: Failed to install or configure helper script ${dest_path}.${NC}" >&2
+      echo -e "${YELLOW}Please ensure you have write permissions to ${TARGET_DIR} (you may need to run this script using sudo).${NC}" >&2
       exit 1
     fi
   done
@@ -329,6 +338,8 @@ install_scripts() {
     echo -e "${GREEN}OK${NC}"
   else
     echo -e "${RED}FAIL${NC}"
+    echo -e "${RED}Error: Failed to copy or configure shared helper library directory ${lib_dir}.${NC}" >&2
+    echo -e "${YELLOW}Please verify directory permissions for ${lib_dir}.${NC}" >&2
     exit 1
   fi
 
@@ -336,7 +347,6 @@ install_scripts() {
 
   # Configure passwordless sudoers rules in /etc/sudoers.d/millennium-helpers
   if [[ "$(uname)" != "Darwin" ]]; then
-    local user_name="${SUDO_USER:-$(id -un)}"
     if [[ "$user_name" != "root" ]]; then
       printf "Configuring passwordless sudo rule in %s... " "${SUDOERS_FILE}"
       
@@ -435,6 +445,7 @@ EOF
         echo -e "${GREEN}OK${NC}"
       else
         echo -e "${RED}FAIL${NC}"
+        echo -e "${RED}Error: Failed to configure or validate passwordless sudo rule in ${SUDOERS_FILE}.${NC}" >&2
         exit 1
       fi
     else
@@ -477,6 +488,9 @@ uninstall_completions() {
   local base_zsh_dir="/usr/share/zsh/site-functions"
   local base_fish_dir="/usr/share/fish/vendor_completions.d"
   local base_nu_dirs=("/usr/share/nushell/completions" "/usr/local/share/nushell/completions")
+  local user_name="${SUDO_USER:-$(id -un)}"
+  local USER_HOME
+  USER_HOME="$(get_user_home "$user_name")"
 
   if [[ "$(uname)" == "Darwin" ]]; then
     local brew_prefix="/opt/homebrew"
@@ -588,6 +602,7 @@ uninstall_scripts() {
         removed_any=true
       else
         echo -e "${RED}FAIL${NC}"
+        echo -e "${RED}Error: Failed to remove helper script ${dest_path}.${NC}" >&2
       fi
     fi
   done
@@ -600,6 +615,7 @@ uninstall_scripts() {
       removed_any=true
     else
       echo -e "${RED}FAIL${NC}"
+      echo -e "${RED}Error: Failed to remove shared helper library directory ${lib_dir}.${NC}" >&2
     fi
   fi
 
@@ -610,6 +626,7 @@ uninstall_scripts() {
       removed_any=true
     else
       echo -e "${RED}FAIL${NC}"
+      echo -e "${RED}Error: Failed to remove sudoers configuration file ${SUDOERS_FILE}.${NC}" >&2
     fi
   fi
 

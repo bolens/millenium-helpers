@@ -42,7 +42,14 @@ mock_cmd() {
 #!/usr/bin/env bash
 ${body}
 MOCKEOF
-  chmod +x "${MOCK_BIN}/${name}"
+  (PATH="/usr/bin:/bin" chmod +x "${MOCK_BIN}/${name}")
+  hash -r
+}
+
+unmock_cmd() {
+  local name="$1"
+  (PATH="/usr/bin:/bin" rm -f "${MOCK_BIN}/${name}")
+  hash -r
 }
 
 # mock_cmd_output <name> <fixed stdout> [<exit code>]
