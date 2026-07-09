@@ -109,10 +109,17 @@ resp=$(run_mcp '{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"
 assert_contains "$resp" '"isError": true' "millennium_upgrade rejects a channel outside its declared enum"
 assert_contains "$resp" "invalid channel" "millennium_upgrade's rejection message explains the invalid channel"
 
-# --- tools/call: millennium_upgrade invokes the upgrade script with correct channel ---
-
 log=$(run_mcp_stderr '{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"millennium_upgrade","arguments":{"channel":"beta"}}}')
 assert_contains "$log" "millennium-upgrade --channel beta" "millennium_upgrade (channel:beta) invokes millennium-upgrade --channel beta"
+
+log=$(run_mcp_stderr '{"jsonrpc":"2.0","id":80,"method":"tools/call","params":{"name":"millennium_upgrade","arguments":{"channel":"beta","force":true}}}')
+assert_contains "$log" "millennium-upgrade --channel beta --force" "millennium_upgrade (force:true) passes --force flag"
+
+log=$(run_mcp_stderr '{"jsonrpc":"2.0","id":81,"method":"tools/call","params":{"name":"millennium_upgrade","arguments":{"channel":"stable","rollback":"list"}}}')
+assert_contains "$log" "millennium-upgrade --channel stable --rollback list" "millennium_upgrade (rollback:list) passes --rollback list"
+
+resp=$(run_mcp '{"jsonrpc":"2.0","id":82,"method":"tools/call","params":{"name":"millennium_upgrade","arguments":{"channel":"stable","rollback":"../invalid"}}}')
+assert_contains "$resp" '"isError": true' "millennium_upgrade with invalid rollback pattern returns error"
 
 # --- tools/call: unknown tool name ---
 
