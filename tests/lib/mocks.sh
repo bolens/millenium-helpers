@@ -18,6 +18,12 @@ setup_mock_bin() {
   mock_cmd "pgrep" "exit 1"
   mock_cmd "runuser" "exit 0"
   mock_cmd "steam" "exit 0"
+  mock_cmd "systemctl" "exit 0"
+  mock_cmd "launchctl" "exit 0"
+  mock_cmd "crontab" "exit 0"
+  mock_cmd "osascript" "exit 0"
+  mock_cmd "notify-send" "exit 0"
+  mock_cmd "visudo" "exit 0"
   export TEST_SUITE_RUN=true
 }
 
