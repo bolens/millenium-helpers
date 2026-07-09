@@ -17,5 +17,4 @@ jobs:
       - name: Run ShellCheck Lint
         uses: ludeeus/action-shellcheck@master
         with:
-          ignore_paths: >-
-            completions/
+          ignore_paths: completions/ packaging/
