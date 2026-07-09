@@ -1,5 +1,5 @@
 class MillenniumHelpers < Formula
-  desc "Cross-platform utility scripts for managing Millennium on Linux and macOS"
+  desc "Cross-platform utility scripts and Model Context Protocol (MCP) server for Millennium on Linux and macOS"
   homepage "https://github.com/bolens/millenium-helpers"
   url "https://github.com/bolens/millenium-helpers/archive/refs/tags/v0.1.0.tar.gz" # Placeholder URL, release-specific
   head "https://github.com/bolens/millenium-helpers.git", branch: "main"
