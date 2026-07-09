@@ -75,7 +75,7 @@ def get_tools_list():
         },
         {
             "name": "millennium_upgrade",
-            "description": "Upgrade the Millennium client to the latest version on the stable or beta release channel.",
+            "description": "Upgrade, reinstall, or roll back the Millennium client on the stable or beta release channel.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -83,6 +83,14 @@ def get_tools_list():
                         "type": "string",
                         "enum": ["stable", "beta"],
                         "description": "The release channel to upgrade to (defaults to stable)."
+                    },
+                    "force": {
+                        "type": "boolean",
+                        "description": "Force reinstalling or upgrading the client even if it is already up to date."
+                    },
+                    "rollback": {
+                        "type": "string",
+                        "description": "Rollback option. Set to 'list' to view available backup directories, or specify a backup directory name to roll back to that state."
                     }
                 }
             }
@@ -242,9 +250,21 @@ def handle_tool_call(tool_name, arguments):
         
     elif tool_name == "millennium_upgrade":
         channel = arguments.get("channel", "stable")
+        force = arguments.get("force", False)
+        rollback = arguments.get("rollback")
+
         if channel not in VALID_CHANNELS:
             return {"isError": True, "content": [{"type": "text", "text": f"Error: invalid channel '{channel}'. Must be one of: {', '.join(sorted(VALID_CHANNELS))}."}]}
+        
         args = ["millennium-upgrade", "--channel", channel]
+        if force:
+            args.append("--force")
+        if rollback:
+            import re
+            if rollback != "list" and not re.match(r"^[a-zA-Z0-9_\-\.]+$", rollback):
+                return {"isError": True, "content": [{"type": "text", "text": "Error: invalid rollback target name format."}]}
+            args += ["--rollback", rollback]
+            
         return run_cmd(args, run_as_root=True, timeout=LONG_TIMEOUT_SECONDS)
         
     elif tool_name == "millennium_schedule":
