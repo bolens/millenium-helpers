@@ -1,0 +1,81 @@
+name: Release Assets & Draft Automation
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    name: Build & Package Release Assets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Create Linux/macOS Release Tarball
+        run: |
+          # Package all source files needed for Unix systems
+          tar -czf millennium-helpers.tar.gz \
+            --exclude='.git*' \
+            --exclude='.github*' \
+            --exclude='tests*' \
+            --exclude='packaging*' \
+            *
+
+      - name: Create Windows Release Zip
+        run: |
+          # Package scripts and install files for Windows systems
+          zip -r millennium-helpers.zip \
+            scripts/windows/ \
+            completions/ \
+            install.sh \
+            README.md \
+            LICENSE \
+            -x "*.git*" "*tests*" "*.github*"
+
+      - name: Calculate Checksums
+        id: checksums
+        run: |
+          LINUX_SHA=$(sha256sum millennium-helpers.tar.gz | cut -d' ' -f1)
+          WINDOWS_SHA=$(sha256sum millennium-helpers.zip | cut -d' ' -f1)
+          
+          echo "LINUX_SHA=$LINUX_SHA" >> $GITHUB_ENV
+          echo "WINDOWS_SHA=$WINDOWS_SHA" >> $GITHUB_ENV
+          
+          # Write checksum files for upload
+          echo "$LINUX_SHA  millennium-helpers.tar.gz" > millennium-helpers.tar.gz.sha256
+          echo "$WINDOWS_SHA  millennium-helpers.zip" > millennium-helpers.zip.sha256
+
+      - name: Create GitHub Release Draft
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+          body: |
+            ## Release Verification & Checksums
+            
+            Integrity hashes for official package manager formulas and manual verification:
+            
+            | Asset | SHA256 Checksum |
+            | :--- | :--- |
+            | `millennium-helpers.tar.gz` (Linux/macOS) | `${{ env.LINUX_SHA }}` |
+            | `millennium-helpers.zip` (Windows) | `${{ env.WINDOWS_SHA }}` |
+            
+            ### Package Verification
+            To verify the integrity of the downloaded assets, run:
+            ```bash
+            # On Linux/macOS
+            sha256sum -c millennium-helpers.tar.gz.sha256
+            
+            # On Windows (PowerShell)
+            Get-FileHash -Path .\millennium-helpers.zip -Algorithm SHA256
+            ```
+          files: |
+            millennium-helpers.tar.gz
+            millennium-helpers.zip
+            millennium-helpers.tar.gz.sha256
+            millennium-helpers.zip.sha256
