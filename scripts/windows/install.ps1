@@ -6,6 +6,57 @@ param (
 
 $ErrorActionPreference = "Stop"
 
+# If running standalone/piped (e.g. via Invoke-Expression), download the full repository zip to temp and run
+$scriptPath = ""
+if ($MyInvocation.MyCommand -and $MyInvocation.MyCommand.Definition) {
+    $scriptPath = $MyInvocation.MyCommand.Definition
+}
+
+$isStandalone = $true
+if ($scriptPath -and (Test-Path -Path $scriptPath -PathType Leaf)) {
+    $scriptDir = Split-Path -Parent -Path $scriptPath
+    # Check if we are running in the repo or near scripts
+    $testCommon = Join-Path -Path $scriptDir -ChildPath "common.ps1"
+    if (!(Test-Path -Path $testCommon)) {
+        # Check if we are in the root of the repo
+        $testCommon = Join-Path -Path $scriptDir -ChildPath "scripts\windows\common.ps1"
+    }
+    if (Test-Path -Path $testCommon) {
+        $isStandalone = $false
+    }
+}
+
+if ($isStandalone) {
+    Write-Host "Running in standalone/piped mode. Downloading repository..."
+    $tempDir = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "millennium-helpers-temp"
+    Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue | Out-Null
+    New-Item -Path $tempDir -ItemType Directory -Force | Out-Null
+    
+    $zipPath = Join-Path -Path $tempDir -ChildPath "archive.zip"
+    $url = "https://github.com/bolens/millenium-helpers/archive/refs/heads/main.zip"
+    
+    # Download
+    Invoke-WebRequest -Uri $url -OutFile $zipPath -UseBasicParsing
+    
+    # Extract
+    Expand-Archive -Path $zipPath -DestinationPath $tempDir -Force
+    
+    # Locate extracted folder (it will be like millenium-helpers-main)
+    $extractedFolder = Get-ChildItem -Path $tempDir -Directory | Select-Object -First 1
+    $extractedScript = Join-Path -Path $extractedFolder.FullName -ChildPath "scripts\windows\install.ps1"
+    
+    # Run the extracted installer with same parameters
+    $params = @{}
+    if ($PSBoundParameters.ContainsKey("Uninstall")) { $params["Uninstall"] = $Uninstall }
+    if ($PSBoundParameters.ContainsKey("Force")) { $params["Force"] = $Force }
+    
+    & $extractedScript @params
+    
+    # Cleanup temp dir (deferred/best effort)
+    Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue | Out-Null
+    exit 0
+}
+
 # Define install location
 $installDir = Join-Path -Path $env:USERPROFILE -ChildPath ".millennium-helpers"
 $binDir = Join-Path -Path $installDir -ChildPath "bin"

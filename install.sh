@@ -4,6 +4,28 @@ set -euo pipefail
 
 TARGET_DIR="${TARGET_DIR:-/usr/local/bin}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# If running standalone/piped (e.g. curl ... | bash), download the full repo to a temp folder and run
+if [[ ! -f "${SCRIPT_DIR}/scripts/common.sh" ]]; then
+  echo "Running in standalone/piped mode. Downloading repository..."
+  TEMP_DIR=$(mktemp -d)
+  # Best-effort cleanup
+  trap 'rm -rf "$TEMP_DIR"' EXIT
+  
+  if command -v curl >/dev/null 2>&1; then
+    curl -sSL https://github.com/bolens/millenium-helpers/archive/refs/heads/main.tar.gz | tar -xz -C "$TEMP_DIR" --strip-components=1
+  elif command -v wget >/dev/null 2>&1; then
+    wget -qO- https://github.com/bolens/millenium-helpers/archive/refs/heads/main.tar.gz | tar -xz -C "$TEMP_DIR" --strip-components=1
+  else
+    echo "Error: curl or wget is required for standalone installation." >&2
+    exit 1
+  fi
+  
+  # Run the installer from the temp directory with the original arguments
+  bash "$TEMP_DIR/install.sh" "$@"
+  exit 0
+fi
+
 SUDOERS_FILE="${MOCK_SUDOERS_FILE:-/etc/sudoers.d/millennium-helpers}"
 
 # Source shared helpers (color vars, execute, write_file)
