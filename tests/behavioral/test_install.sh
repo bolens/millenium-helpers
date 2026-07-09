@@ -115,8 +115,13 @@ out=$(echo -e "2" | FORCE_RECOVERY=true FORCE_WIZARD=false TARGET_DIR="${TEST_SU
 rc=$?
 
 assert_success "$rc" "install.sh with failing visudo and choosing option 2 (skip) exits successfully"
-assert_contains "$out" "visudo validation failed" "install.sh reports visudo failure"
-assert_contains "$out" "Skipping passwordless sudo setup" "install.sh announces skipping sudoers"
+if [[ "$(uname)" != "Darwin" ]]; then
+  assert_contains "$out" "visudo validation failed" "install.sh reports visudo failure"
+  assert_contains "$out" "Skipping passwordless sudo setup" "install.sh announces skipping sudoers"
+else
+  assert_not_contains "$out" "visudo validation failed" "install.sh does not report visudo failure on macOS"
+  assert_not_contains "$out" "Skipping passwordless sudo setup" "install.sh does not configure sudoers on macOS"
+fi
 
 # Reset mocks
 rm -f "${MOCK_BIN}/id"
