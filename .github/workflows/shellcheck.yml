@@ -3,8 +3,22 @@ name: ShellCheck Linting
 on:
   push:
     branches: [ main ]
+    paths:
+      - '**.sh'
+      - 'scripts/**'
+      - 'install.sh'
+      - '.github/workflows/shellcheck.yml'
   pull_request:
     branches: [ main ]
+    paths:
+      - '**.sh'
+      - 'scripts/**'
+      - 'install.sh'
+      - '.github/workflows/shellcheck.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   shellcheck:

@@ -3,8 +3,18 @@ name: Completions Syntax Check
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'completions/**'
+      - '.github/workflows/completions.yml'
   pull_request:
     branches: [ main ]
+    paths:
+      - 'completions/**'
+      - '.github/workflows/completions.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   completions:
