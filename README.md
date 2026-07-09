@@ -1,5 +1,8 @@
 # Millennium Helper Scripts
 
+[![Test Suite](https://github.com/bolens/millenium-helpers/actions/workflows/test-suite.yml/badge.svg)](https://github.com/bolens/millenium-helpers/actions/workflows/test-suite.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A cross-platform set of utility scripts for managing, repairing, upgrading, rolling back, viewing logs, managing themes, and scheduling updates (for both the client and skins) for the [Millennium](https://github.com/SteamClientHomebrew/Millennium) Steam Client homebrew hook on Linux and Windows.
 
 ---
@@ -53,6 +56,16 @@ sudo ./install.sh
 If you prefer a non-interactive installation, pass a specific subcommand:
 ```bash
 sudo ./install.sh install
+```
+
+#### Run or Install via Nix Flake
+If you use Nix with flakes enabled, you can run the helpers directly without installing them system-wide:
+```bash
+nix run github:bolens/millenium-helpers -- --help
+```
+To install them into your profile:
+```bash
+nix profile install github:bolens/millenium-helpers
 ```
 
 #### Enable the Daily Auto-Updater Timer
