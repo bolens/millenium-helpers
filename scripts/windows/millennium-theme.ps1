@@ -9,7 +9,7 @@ param(
 set-strictmode -version Latest
 
 # Source shared helpers
-$ScriptDir = Split-Path -Parent $MyInvocation.ScriptName
+$ScriptDir = $PSScriptRoot
 $CommonPs1 = Join-Path -Path $ScriptDir -ChildPath "common.ps1"
 if (Test-Path -Path $CommonPs1) {
     . $CommonPs1
