@@ -68,7 +68,12 @@ _run_steam_cmd() {
     env_prefix="env ${env_vars[*]} "
   fi
 
-  if [[ "$(id -u)" -eq 0 || -n "${MOCK_BIN:-}" ]]; then
+  if [[ -n "${MOCK_BIN:-}" && -f "${MOCK_BIN}/runuser" ]]; then
+    runuser "$target_user" -c "${env_prefix}${cmd}"
+  elif [[ -n "${TEST_SUITE_RUN:-}" ]]; then
+    echo "[TEST] Bypassing command execution to protect host: ${env_prefix}${cmd}"
+    return 0
+  elif [[ "$(id -u)" -eq 0 || -n "${MOCK_BIN:-}" ]]; then
     runuser "$target_user" -c "${env_prefix}${cmd}"
   else
     eval "${env_prefix}${cmd}"
