@@ -53,9 +53,15 @@ assert_contains "$out" "millennium-mcp" "install.sh install --dry-run lists mill
 assert_not_contains "$out" "Traceback" "install.sh install --dry-run has no Python trailing tracebacks"
 
 if [[ -f /usr/local/bin/millennium-repair ]]; then
-  before_mtime=$(stat -c '%Y' /usr/local/bin/millennium-repair)
-  bash "$INSTALL_SH" install --dry-run > /dev/null 2>&1
-  after_mtime=$(stat -c '%Y' /usr/local/bin/millennium-repair)
+  if [[ "$(uname)" == "Darwin" ]]; then
+    before_mtime=$(stat -f '%m' /usr/local/bin/millennium-repair)
+    bash "$INSTALL_SH" install --dry-run > /dev/null 2>&1
+    after_mtime=$(stat -f '%m' /usr/local/bin/millennium-repair)
+  else
+    before_mtime=$(stat -c '%Y' /usr/local/bin/millennium-repair)
+    bash "$INSTALL_SH" install --dry-run > /dev/null 2>&1
+    after_mtime=$(stat -c '%Y' /usr/local/bin/millennium-repair)
+  fi
   assert_equals "$before_mtime" "$after_mtime" "install.sh install --dry-run does not modify an already-installed script"
 else
   assert_file_not_exists "/usr/local/bin/millennium-repair" "install.sh install --dry-run does not install millennium-repair when absent"
@@ -69,7 +75,7 @@ assert_success "$rc" "install.sh uninstall --dry-run exits 0 without root"
 assert_contains "$out" "DRY RUN MODE" "install.sh uninstall --dry-run announces dry-run mode"
 assert_contains "$out" "Uninstalling" "install.sh uninstall --dry-run describes the uninstall action"
 
-out=$(bash "$INSTALL_SH" install 2>&1 < /dev/null || true)
+out=$(TARGET_DIR=/var/invalid/nonexistent bash "$INSTALL_SH" install 2>&1 < /dev/null || true)
 assert_contains "$out" "sudo" "install.sh without --dry-run and without root tells the user to use sudo"
 assert_contains "$out" "install.sh install" "install.sh's sudo hint preserves the original arguments (e.g. 'install')"
 

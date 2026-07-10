@@ -226,7 +226,7 @@ mock_cmd "flatpak" 'exit 1'
 rm -f "$expected_state_file"
 capture_steam_env "$test_relaunch_user"
 assert_file_exists "$expected_state_file" "capture_steam_env creates the state file even with no Steam process"
-capture_dir_perms=$(stat -c '%a' "$(dirname "$expected_state_file")")
+capture_dir_perms=$(get_file_perms "$(dirname "$expected_state_file")")
 assert_equals "700" "$capture_dir_perms" "capture_steam_env locks the state directory down to mode 700"
 capture_contents=$(cat "$expected_state_file")
 assert_contains "$capture_contents" "WAS_FLATPAK='false'" "capture_steam_env records WAS_FLATPAK=false when Steam/Flatpak aren't running"

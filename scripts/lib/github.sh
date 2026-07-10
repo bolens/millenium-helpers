@@ -17,7 +17,7 @@ fetch_github_commit() {
   fi
 
   if command -v jq &>/dev/null; then
-    curl -fsSL --retry 3 --retry-delay 2 "${headers[@]}" \
+    curl -fsSL --retry 3 --retry-delay 2 ${headers[@]+"${headers[@]}"} \
       "https://api.github.com/repos/${owner}/${repo}/commits" | jq -r '.[0].sha' || true
   else
     python3 -c "
@@ -45,7 +45,7 @@ fetch_github_latest_stable_tag() {
   fi
 
   if command -v jq &>/dev/null; then
-    curl -sL --retry 3 --retry-delay 2 "${headers[@]}" \
+    curl -sL --retry 3 --retry-delay 2 ${headers[@]+"${headers[@]}"} \
       "https://api.github.com/repos/${owner}/${repo}/releases/latest" | jq -r '.tag_name' || true
   else
     python3 -c "
@@ -73,7 +73,7 @@ fetch_github_latest_beta_tag() {
   fi
 
   if command -v jq &>/dev/null; then
-    curl -sL --retry 3 --retry-delay 2 "${headers[@]}" \
+    curl -sL --retry 3 --retry-delay 2 ${headers[@]+"${headers[@]}"} \
       "https://api.github.com/repos/${owner}/${repo}/releases" \
       | jq -r '.[] | select(.prerelease == true and (.tag_name | contains("beta"))) | .tag_name' \
       | head -n 1 || true

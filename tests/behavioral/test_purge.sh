@@ -67,7 +67,13 @@ rm -rf "$FAKE_HOME"
 # --- Game running aborts the purge ---
 
 mock_cmd "pgrep" 'exit 0'  # pretend steam is running
-mock_cmd "getent" '/usr/bin/getent "$@"'
+mock_cmd "getent" "
+if [[ \"\$*\" == *\"passwd\"* ]]; then
+  echo 'purgetestuser:x:1999:1999::/tmp/nonexistent:/bin/bash'
+  exit 0
+fi
+exit 1
+"
 
 # is_game_running from common.sh inspects /proc; in this sandboxed test run no
 # process actually has SteamAppId set, so is_game_running will be false and
