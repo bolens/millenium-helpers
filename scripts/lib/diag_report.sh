@@ -393,9 +393,11 @@ check_shell_completions() {
   echo -e "\nShell Autocompletions Status:"
 
   # Define paths and their corresponding remote repository locations using parallel arrays for Bash 3.2 compatibility
-  local completion_paths=(
+  # Exported for doctor restore lookups (avoid associative arrays — Bash 3.2).
+  DIAG_COMPLETION_PATHS=(
     "/usr/share/bash-completion/completions/millennium-helpers"
     "/usr/share/zsh/site-functions/_millennium-helpers"
+    "/usr/share/fish/vendor_completions.d/millennium.fish"
     "/usr/share/fish/vendor_completions.d/millennium-repair.fish"
     "/usr/share/fish/vendor_completions.d/millennium-upgrade.fish"
     "/usr/share/fish/vendor_completions.d/millennium-schedule.fish"
@@ -404,9 +406,10 @@ check_shell_completions() {
     "/usr/share/fish/vendor_completions.d/millennium-theme.fish"
     "/usr/share/fish/vendor_completions.d/millennium-mcp.fish"
   )
-  local completion_repos=(
+  DIAG_COMPLETION_REPOS=(
     "completions/bash/millennium-helpers"
     "completions/zsh/_millennium-helpers"
+    "completions/fish/millennium.fish"
     "completions/fish/millennium-repair.fish"
     "completions/fish/millennium-upgrade.fish"
     "completions/fish/millennium-schedule.fish"
@@ -426,10 +429,11 @@ check_shell_completions() {
   if [[ -z "$nu_dest" ]]; then
     nu_dest="/usr/share/nushell/completions/millennium-helpers.nu"
   fi
-  completion_paths+=("$nu_dest")
-  completion_repos+=("completions/nushell/millennium-helpers.nu")
+  DIAG_COMPLETION_PATHS+=("$nu_dest")
+  DIAG_COMPLETION_REPOS+=("completions/nushell/millennium-helpers.nu")
 
   declare -a COMPLETION_SYMLINKS=(
+    "/usr/share/bash-completion/completions/millennium:millennium-helpers"
     "/usr/share/bash-completion/completions/millennium-repair:millennium-helpers"
     "/usr/share/bash-completion/completions/millennium-upgrade:millennium-helpers"
     "/usr/share/bash-completion/completions/millennium-schedule:millennium-helpers"
@@ -438,6 +442,7 @@ check_shell_completions() {
     "/usr/share/bash-completion/completions/millennium-theme:millennium-helpers"
     "/usr/share/bash-completion/completions/millennium-mcp:millennium-helpers"
     
+    "/usr/share/zsh/site-functions/_millennium:_millennium-helpers"
     "/usr/share/zsh/site-functions/_millennium-repair:_millennium-helpers"
     "/usr/share/zsh/site-functions/_millennium-upgrade:_millennium-helpers"
     "/usr/share/zsh/site-functions/_millennium-schedule:_millennium-helpers"
@@ -450,9 +455,10 @@ check_shell_completions() {
   missing_completions=()
   out_of_date_completions=()
 
-  for i in "${!completion_paths[@]}"; do
-    local local_path="${completion_paths[$i]}"
-    local remote_rel="${completion_repos[$i]}"
+  local i
+  for i in "${!DIAG_COMPLETION_PATHS[@]}"; do
+    local local_path="${DIAG_COMPLETION_PATHS[$i]}"
+    local remote_rel="${DIAG_COMPLETION_REPOS[$i]}"
     local local_dir
     local_dir=$(dirname "$local_path")
     [[ -d "$local_dir" ]] || continue
@@ -508,6 +514,117 @@ check_shell_completions() {
       fi
     fi
   done
+}
+
+# True when helpers were installed via pacman (Arch/CachyOS package).
+helpers_are_pacman_packaged() {
+  if [[ "${DIAG_TEST_PACMAN_PACKAGED:-}" == "true" ]]; then
+    return 0
+  fi
+  command -v pacman >/dev/null 2>&1 || return 1
+  pacman -Qo /usr/bin/millennium >/dev/null 2>&1
+}
+
+diag_completion_remote_for() {
+  local want="$1"
+  local i
+  for i in "${!DIAG_COMPLETION_PATHS[@]}"; do
+    if [[ "${DIAG_COMPLETION_PATHS[$i]}" == "$want" ]]; then
+      echo "${DIAG_COMPLETION_REPOS[$i]}"
+      return 0
+    fi
+  done
+  return 1
+}
+
+# Leftover install.sh files under /usr/share that pacman does not own will
+# block package upgrades (e.g. unmanaged millennium.fish).
+check_unmanaged_package_files() {
+  UNMANAGED_FILES_OK=true
+  unmanaged_files_found=()
+
+  if [[ -n "${DIAG_TEST_UNMANAGED_LIST:-}" ]]; then
+    echo -e "\nUnmanaged Package Files:"
+    local unmanaged_list=()
+    IFS=',' read -r -a unmanaged_list <<< "$DIAG_TEST_UNMANAGED_LIST"
+    local f
+    for f in ${unmanaged_list[@]+"${unmanaged_list[@]}"}; do
+      [[ -n "$f" ]] || continue
+      if [[ -e "$f" || -L "$f" ]]; then
+        unmanaged_files_found+=("$f")
+      fi
+    done
+    if [[ ${#unmanaged_files_found[@]} -gt 0 ]]; then
+      UNMANAGED_FILES_OK=false
+      print_diag_item "warn" "Unmanaged leftovers" "Detected ${#unmanaged_files_found[@]} file(s) that can block pacman upgrades"
+    else
+      print_diag_item "ok" "Unmanaged leftovers" "None detected"
+    fi
+    return
+  fi
+
+  if [[ -n "${DIAG_TEST_BYPASS_CHECKS:-}" ]]; then
+    return
+  fi
+
+  if ! helpers_are_pacman_packaged; then
+    return
+  fi
+
+  echo -e "\nUnmanaged Package Files:"
+  local candidates=(
+    /usr/share/fish/vendor_completions.d/millennium.fish
+    /usr/share/fish/vendor_completions.d/millennium-repair.fish
+    /usr/share/fish/vendor_completions.d/millennium-upgrade.fish
+    /usr/share/fish/vendor_completions.d/millennium-schedule.fish
+    /usr/share/fish/vendor_completions.d/millennium-purge.fish
+    /usr/share/fish/vendor_completions.d/millennium-diag.fish
+    /usr/share/fish/vendor_completions.d/millennium-theme.fish
+    /usr/share/fish/vendor_completions.d/millennium-mcp.fish
+    /usr/share/bash-completion/completions/millennium
+    /usr/share/bash-completion/completions/millennium-helpers
+    /usr/share/bash-completion/completions/millennium-repair
+    /usr/share/bash-completion/completions/millennium-upgrade
+    /usr/share/bash-completion/completions/millennium-schedule
+    /usr/share/bash-completion/completions/millennium-purge
+    /usr/share/bash-completion/completions/millennium-diag
+    /usr/share/bash-completion/completions/millennium-theme
+    /usr/share/bash-completion/completions/millennium-mcp
+    /usr/share/zsh/site-functions/_millennium
+    /usr/share/zsh/site-functions/_millennium-helpers
+    /usr/share/zsh/site-functions/_millennium-repair
+    /usr/share/zsh/site-functions/_millennium-upgrade
+    /usr/share/zsh/site-functions/_millennium-schedule
+    /usr/share/zsh/site-functions/_millennium-purge
+    /usr/share/zsh/site-functions/_millennium-diag
+    /usr/share/zsh/site-functions/_millennium-theme
+    /usr/share/zsh/site-functions/_millennium-mcp
+    /usr/share/nushell/completions/millennium-helpers.nu
+    /usr/share/man/man1/millennium.1
+    /usr/share/man/man1/millennium-repair.1
+    /usr/share/man/man1/millennium-upgrade.1
+    /usr/share/man/man1/millennium-schedule.1
+    /usr/share/man/man1/millennium-purge.1
+    /usr/share/man/man1/millennium-diag.1
+    /usr/share/man/man1/millennium-theme.1
+    /usr/share/man/man1/millennium-mcp.1
+  )
+
+  local f
+  for f in "${candidates[@]}"; do
+    [[ -e "$f" || -L "$f" ]] || continue
+    if ! pacman -Qo "$f" >/dev/null 2>&1; then
+      unmanaged_files_found+=("$f")
+      print_diag_item "warn" "  - $(basename "$f")" "Exists but not owned by pacman"
+    fi
+  done
+
+  if [[ ${#unmanaged_files_found[@]} -gt 0 ]]; then
+    UNMANAGED_FILES_OK=false
+    print_diag_item "warn" "Package file ownership" "Unmanaged leftovers will block pacman -U / upgrades"
+  else
+    print_diag_item "ok" "Package file ownership" "No unmanaged leftovers"
+  fi
 }
 
 check_obsolete_files() {
@@ -566,9 +683,17 @@ print_diag_next_steps() {
   [[ "${SUDOERS_OK:-true}" == "true" ]] || { ((issues++)) || true; suggestions+=("sudo ./install.sh install        # restore passwordless sudoers drop-in"); }
   [[ "${TIMER_ACTIVE:-true}" == "true" ]] || { ((issues++)) || true; suggestions+=("millennium schedule enable       # enable daily auto-updates"); }
   [[ "${LINGER_OK:-true}" == "true" ]] || { ((issues++)) || true; suggestions+=("sudo loginctl enable-linger ${RUNNING_USER:-$USER}  # keep user timers after logout"); }
-  [[ "${SCRIPTS_UP_TO_DATE:-true}" == "true" ]] || { ((issues++)) || true; suggestions+=("millennium doctor                # update helper scripts"); }
+  [[ "${SCRIPTS_UP_TO_DATE:-true}" == "true" ]] || {
+    ((issues++)) || true
+    if helpers_are_pacman_packaged 2>/dev/null; then
+      suggestions+=("sudo pacman -Syu millennium-helpers-git  # upgrade packaged helpers")
+    else
+      suggestions+=("millennium doctor                # update helper scripts")
+    fi
+  }
   [[ "${COMPLETIONS_OK:-true}" == "true" ]] || { ((issues++)) || true; suggestions+=("millennium doctor                # restore shell completions"); }
   [[ "${CLEAN_OF_OBSOLETE:-true}" == "true" ]] || { ((issues++)) || true; suggestions+=("millennium doctor                # remove legacy wrapper files"); }
+  [[ "${UNMANAGED_FILES_OK:-true}" == "true" ]] || { ((issues++)) || true; suggestions+=("millennium doctor                # remove unmanaged files blocking pacman"); }
 
   echo ""
   if [[ "$issues" -eq 0 ]]; then
@@ -600,6 +725,7 @@ run_diagnostics() {
   check_scheduler_status
   check_helper_updates
   check_shell_completions
+  check_unmanaged_package_files
   check_obsolete_files
 }
 

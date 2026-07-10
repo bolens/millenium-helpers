@@ -238,7 +238,11 @@ PERMISSIONS_OK=true
 SKINS_DIR_OK=true
 COMPLETIONS_OK=true
 CLEAN_OF_OBSOLETE=true
+UNMANAGED_FILES_OK=true
 obsolete_files_found=()
+unmanaged_files_found=()
+DIAG_COMPLETION_PATHS=()
+DIAG_COMPLETION_REPOS=()
 
 SYSTEMD_BOOTED=false
 if [[ -d /run/systemd/system ]]; then
@@ -265,6 +269,21 @@ UTILITIES=(
   "millennium-diag:scripts/millennium-diag.sh"
   "millennium-theme:scripts/millennium-theme.sh"
   "millennium-mcp:scripts/millennium-mcp.py"
+  "millennium:scripts/millennium.sh"
+)
+
+# Shared library modules kept in sync with helper scripts on manual installs.
+# (Pacman packages own these paths — doctor must not overwrite them.)
+# shellcheck disable=SC2034
+SHARED_MODULES=(
+  "common.sh:scripts/common.sh"
+  "lib/backup.sh:scripts/lib/backup.sh"
+  "lib/diag_report.sh:scripts/lib/diag_report.sh"
+  "lib/github.sh:scripts/lib/github.sh"
+  "lib/logging.sh:scripts/lib/logging.sh"
+  "lib/steam.sh:scripts/lib/steam.sh"
+  "lib/version.sh:scripts/lib/version.sh"
+  "VERSION:VERSION"
 )
 
 RUNNING_USER="${SUDO_USER:-$(id -un)}"
@@ -395,6 +414,7 @@ if [[ "$OUTPUT_JSON" == "true" ]]; then
   "skins_dir_ok": ${SKINS_DIR_OK},
   "completions_ok": ${COMPLETIONS_OK},
   "clean_of_obsolete": ${CLEAN_OF_OBSOLETE},
+  "unmanaged_files_ok": ${UNMANAGED_FILES_OK},
   "update_channel": "${UPDATE_CHANNEL}"
 }
 EOF
@@ -412,7 +432,7 @@ if [[ "$COMMAND" == "doctor" ]]; then
   
   # Check if anything needs fixing
   if [[ "$FORCE_REPAIR" != "true" ]]; then
-    if [[ "$BINARIES_OK" == true && "$HOOKS_OK" == true && "$FLATPAK_OK" == true && "$SUDOERS_OK" == true && "$TIMER_ACTIVE" == true && "$LINGER_OK" == true && "$SCRIPTS_UP_TO_DATE" == true && "$PERMISSIONS_OK" == true && "$SKINS_DIR_OK" == true && "$COMPLETIONS_OK" == true && "$CLEAN_OF_OBSOLETE" == true ]]; then
+    if [[ "$BINARIES_OK" == true && "$HOOKS_OK" == true && "$FLATPAK_OK" == true && "$SUDOERS_OK" == true && "$TIMER_ACTIVE" == true && "$LINGER_OK" == true && "$SCRIPTS_UP_TO_DATE" == true && "$PERMISSIONS_OK" == true && "$SKINS_DIR_OK" == true && "$COMPLETIONS_OK" == true && "$CLEAN_OF_OBSOLETE" == true && "$UNMANAGED_FILES_OK" == true ]]; then
       echo -e "${GREEN}No issues detected. Your Millennium installation is healthy!${NC}"
       exit 0
     fi
@@ -427,6 +447,7 @@ if [[ "$COMMAND" == "doctor" ]]; then
     PERMISSIONS_OK=false
     COMPLETIONS_OK=false
     CLEAN_OF_OBSOLETE=false
+    UNMANAGED_FILES_OK=false
   fi
 
   # Require Steam closed for any updates/repairs (only if binary or hook modifications are pending)
@@ -454,7 +475,12 @@ if [[ "$COMMAND" == "doctor" ]]; then
   # Issue 1: Out of date helper scripts (do this first so repairs run on new code)
   if [[ "$SCRIPTS_UP_TO_DATE" == false ]]; then
     echo -e "\n${YELLOW}[DOCTOR] Updating helper scripts...${NC}"
-    if [[ "$(id -u)" -ne 0 ]]; then
+    if helpers_are_pacman_packaged; then
+      echo -e "Helpers are installed via pacman. Skipping direct overwrites of package files."
+      echo -e "Upgrade the package instead (after clearing unmanaged leftovers):"
+      echo -e "  ${YELLOW}sudo pacman -Syu millennium-helpers-git${NC}"
+      echo -e "Or from a checkout: ${YELLOW}cd packaging && makepkg -si${NC}"
+    elif [[ "$(id -u)" -ne 0 ]]; then
       echo -e "${RED}Error: Root privileges are required to update helper scripts.${NC}" >&2
       echo -e "Please re-run the doctor with sudo: ${YELLOW}sudo $(basename "$0") doctor${NC}" >&2
     else
@@ -471,6 +497,34 @@ if [[ "$COMMAND" == "doctor" ]]; then
           execute chown root:root "$dest_path"
         fi
       done
+
+      # Keep shared libs aligned with scripts (prevents function skew like sysctl_user).
+      helper_lib_dir=""
+      if [[ -d /usr/local/lib/millennium-helpers ]]; then
+        helper_lib_dir="/usr/local/lib/millennium-helpers"
+      elif [[ -d /usr/lib/millennium-helpers ]]; then
+        helper_lib_dir="/usr/lib/millennium-helpers"
+      fi
+      if [[ -n "$helper_lib_dir" ]]; then
+        echo "Syncing shared library modules in ${helper_lib_dir}..."
+        execute mkdir -p "${helper_lib_dir}/lib"
+        for item in "${SHARED_MODULES[@]}"; do
+          mod_name="${item%%:*}"
+          remote_rel="${item#*:}"
+          tmp_mod="${TMP_SCRIPTS}/mod_$(basename "$mod_name")"
+          remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/${latest_sha:-main}/${remote_rel}"
+          dest_mod="${helper_lib_dir}/${mod_name}"
+          if [[ "$DRY_RUN" == "true" ]]; then
+            echo -e "[DRY RUN] Would download ${remote_url} to ${dest_mod}"
+          elif curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" --retry 3 --retry-delay 2 "$remote_url" -o "$tmp_mod" &>/dev/null; then
+            echo "Updating module: ${dest_mod}"
+            execute install -m644 "$tmp_mod" "$dest_mod"
+            execute chown root:root "$dest_mod"
+          else
+            echo -e "${YELLOW}Warning: could not download ${remote_rel}; skipping.${NC}"
+          fi
+        done
+      fi
       echo -e "${GREEN}Helper scripts successfully updated!${NC}"
     fi
   fi
@@ -595,34 +649,44 @@ if [[ "$COMMAND" == "doctor" ]]; then
   # Issue 10: Missing or out-of-date completions
   if [[ "$COMPLETIONS_OK" == false ]]; then
     echo -e "\n${YELLOW}[DOCTOR] Repairing shell autocompletions...${NC}"
-    
-    # 1. Restore files
-    for local_path in ${missing_completions[@]+"${missing_completions[@]}"} ${out_of_date_completions[@]+"${out_of_date_completions[@]}"}; do
-      [[ -n "$local_path" ]] || continue
-      remote_rel="${COMPLETION_FILES[$local_path]}"
-      remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/${latest_sha:-main}/${remote_rel}"
-      echo "Restoring completion file: $local_path"
-      if [[ "$DRY_RUN" == "true" ]]; then
-        echo -e "[DRY RUN] Would download $remote_url to $local_path"
-      else
-        execute curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" --retry 3 --retry-delay 2 "$remote_url" -o "$local_path"
-        execute chmod 644 "$local_path"
-      fi
-    done
-    
-    # 2. Restore symlinks
-    for symlink_item in ${broken_symlinks[@]+"${broken_symlinks[@]}"}; do
-      [[ -n "$symlink_item" ]] || continue
-      symlink_path="${symlink_item%%:*}"
-      symlink_target="${symlink_item#*:}"
-      echo "Restoring symlink: $symlink_path -> $symlink_target"
-      if [[ "$DRY_RUN" == "true" ]]; then
-        echo -e "[DRY RUN] Would link $symlink_path to $symlink_target"
-      else
-        execute rm -f "$symlink_path"
-        execute ln -sf "$symlink_target" "$symlink_path"
-      fi
-    done
+
+    if helpers_are_pacman_packaged; then
+      echo -e "Helpers are installed via pacman. Skipping direct writes under /usr/share."
+      echo -e "Reinstall the package after clearing unmanaged leftovers, e.g.:"
+      echo -e "  ${YELLOW}sudo pacman -Syu millennium-helpers-git${NC}"
+    else
+      # 1. Restore files
+      for local_path in ${missing_completions[@]+"${missing_completions[@]}"} ${out_of_date_completions[@]+"${out_of_date_completions[@]}"}; do
+        [[ -n "$local_path" ]] || continue
+        remote_rel="$(diag_completion_remote_for "$local_path" || true)"
+        if [[ -z "$remote_rel" ]]; then
+          echo -e "${YELLOW}Warning: no remote mapping for ${local_path}; skipping.${NC}"
+          continue
+        fi
+        remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/${latest_sha:-main}/${remote_rel}"
+        echo "Restoring completion file: $local_path"
+        if [[ "$DRY_RUN" == "true" ]]; then
+          echo -e "[DRY RUN] Would download $remote_url to $local_path"
+        else
+          execute curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" --retry 3 --retry-delay 2 "$remote_url" -o "$local_path"
+          execute chmod 644 "$local_path"
+        fi
+      done
+
+      # 2. Restore symlinks
+      for symlink_item in ${broken_symlinks[@]+"${broken_symlinks[@]}"}; do
+        [[ -n "$symlink_item" ]] || continue
+        symlink_path="${symlink_item%%:*}"
+        symlink_target="${symlink_item#*:}"
+        echo "Restoring symlink: $symlink_path -> $symlink_target"
+        if [[ "$DRY_RUN" == "true" ]]; then
+          echo -e "[DRY RUN] Would link $symlink_path to $symlink_target"
+        else
+          execute rm -f "$symlink_path"
+          execute ln -sf "$symlink_target" "$symlink_path"
+        fi
+      done
+    fi
   fi
 
   # Issue 11: Cleanup of obsolete / deprecated files
@@ -638,6 +702,24 @@ if [[ "$COMMAND" == "doctor" ]]; then
         echo -e "${RED}Warning: Directory '${parent_dir}' is not writable. Skipping removal of ${f}.${NC}"
       fi
     done
+  fi
+
+  # Issue 12: Unmanaged leftovers that block pacman upgrades
+  if [[ "$UNMANAGED_FILES_OK" == false ]]; then
+    echo -e "\n${YELLOW}[DOCTOR] Removing unmanaged files that block package upgrades...${NC}"
+    for f in ${unmanaged_files_found[@]+"${unmanaged_files_found[@]}"}; do
+      [[ -n "$f" ]] || continue
+      parent_dir=$(dirname "$f")
+      if [[ -w "$parent_dir" ]] || [[ "$(id -u)" -eq 0 ]]; then
+        echo "Removing unmanaged file: $f"
+        execute rm -f "$f"
+      else
+        echo -e "${RED}Warning: Directory '${parent_dir}' is not writable. Skipping removal of ${f}.${NC}"
+        echo -e "Re-run with sudo: ${YELLOW}sudo millennium-diag doctor${NC}"
+      fi
+    done
+    echo -e "After cleanup, reinstall/upgrade the package if needed:"
+    echo -e "  ${YELLOW}sudo pacman -Syu millennium-helpers-git${NC}"
   fi
 
   if [[ "$DRY_RUN" == "true" ]]; then

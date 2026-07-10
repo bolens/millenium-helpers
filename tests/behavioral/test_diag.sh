@@ -251,6 +251,37 @@ assert_contains "$out" '"clean_of_obsolete": true' "millennium-diag.sh --json wi
 
 rm -rf "${TEST_OBS_DIR}"
 
+# --- Unmanaged package leftovers (block pacman upgrades) ---
+TEST_UNMANAGED_DIR=$(mktemp -d)
+unmanaged_fish="${TEST_UNMANAGED_DIR}/millennium.fish"
+touch "$unmanaged_fish"
+
+out=$(DIAG_TEST_UNMANAGED_LIST="$unmanaged_fish" DIAG_TEST_BYPASS_CHECKS=true DIAG_TEST_OBSOLETE_LIST="" bash "$DIAG_SH" --json 2>&1)
+assert_contains "$out" '"unmanaged_files_ok": false' "millennium-diag.sh --json detects unmanaged package leftovers"
+
+out=$(DIAG_TEST_UNMANAGED_LIST="$unmanaged_fish" DIAG_TEST_BYPASS_CHECKS=true DIAG_TEST_OBSOLETE_LIST="" bash "$DIAG_SH" doctor --dry-run 2>&1)
+assert_contains "$out" "rm -f ${unmanaged_fish}" "millennium-diag.sh doctor --dry-run plans to remove unmanaged leftover"
+assert_contains "$out" "block package upgrades" "millennium-diag.sh doctor mentions package-upgrade blockers"
+
+mock_cmd "millennium-schedule" "exit 0"
+out=$(DIAG_TEST_UNMANAGED_LIST="$unmanaged_fish" DIAG_TEST_BYPASS_CHECKS=true DIAG_TEST_OBSOLETE_LIST="" bash "$DIAG_SH" doctor 2>&1)
+assert_contains "$out" "Removing unmanaged file: ${unmanaged_fish}" "millennium-diag.sh doctor reports removing unmanaged leftover"
+assert_file_not_exists "$unmanaged_fish" "Unmanaged leftover was actually deleted"
+assert_contains "$out" "pacman" "millennium-diag.sh doctor suggests pacman reinstall after unmanaged cleanup"
+rm -f "${MOCK_BIN}/millennium-schedule"
+
+out=$(DIAG_TEST_UNMANAGED_LIST="" DIAG_TEST_BYPASS_CHECKS=true DIAG_TEST_OBSOLETE_LIST="" bash "$DIAG_SH" --json 2>&1)
+rc=$?
+assert_success "$rc" "millennium-diag.sh --json with empty unmanaged list exits 0"
+assert_contains "$out" '"unmanaged_files_ok": true' "millennium-diag.sh --json with empty unmanaged list reports clean"
+
+rm -rf "${TEST_UNMANAGED_DIR}"
+
+# --- Pacman-packaged installs: doctor must not overwrite package files ---
+out=$(DIAG_TEST_PACMAN_PACKAGED=true DIAG_TEST_BYPASS_CHECKS=true DIAG_TEST_OBSOLETE_LIST="" bash "$DIAG_SH" doctor --force --dry-run 2>&1)
+assert_contains "$out" "installed via pacman" "millennium-diag.sh doctor refuses to overwrite pacman-owned helper scripts"
+assert_contains "$out" "pacman -Syu" "millennium-diag.sh doctor suggests pacman upgrade for packaged helpers"
+
 # --- Default report next-steps footer (not JSON, not doctor) ---
 out=$(DIAG_TEST_BYPASS_CHECKS=true DIAG_TEST_OBSOLETE_LIST="" bash "$DIAG_SH" 2>&1)
 rc=$?
