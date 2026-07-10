@@ -209,6 +209,9 @@ export MOCK_PROC
 # Empty MOCK_PROC means is_game_running is false
 out=$(bash "$UPGRADE_SH" --channel stable --dry-run 2>&1)
 rc=$?
+if [[ $rc -ne 0 ]]; then
+  echo "DEBUG: Upgrade script failed with $rc. Output: $out" >&2
+fi
 assert_success "$rc" "millennium-upgrade.sh succeeds dry-run when Steam is running and no game is active"
 assert_contains "$out" "Steam is currently running" "millennium-upgrade.sh detects that Steam is running"
 assert_contains "$out" "Would capture Steam's environment and close it" "millennium-upgrade.sh handles closing Steam when running"
