@@ -35,7 +35,7 @@ jobs:
       - name: Install Nushell
         uses: hustcer/setup-nu@v3
         with:
-          check-latest: true
+          version: '0.113.1'
 
       - name: Bash completion (syntax + source)
         run: |

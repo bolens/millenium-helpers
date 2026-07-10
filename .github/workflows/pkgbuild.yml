@@ -4,21 +4,33 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'packaging/**'
-      - 'scripts/**'
+      - 'packaging/PKGBUILD'
+      - 'packaging/.SRCINFO'
+      - 'packaging/*.install'
+      - 'packaging/*.sudoers'
+      - 'scripts/millennium*.sh'
+      - 'scripts/millennium-mcp.py'
+      - 'scripts/common.sh'
+      - 'scripts/lib/**'
       - 'completions/**'
       - 'man/**'
-      - 'VERSION'
       - 'LICENSE'
+      - '.github/workflows/pkgbuild.yml'
   pull_request:
     branches: [ main ]
     paths:
-      - 'packaging/**'
-      - 'scripts/**'
+      - 'packaging/PKGBUILD'
+      - 'packaging/.SRCINFO'
+      - 'packaging/*.install'
+      - 'packaging/*.sudoers'
+      - 'scripts/millennium*.sh'
+      - 'scripts/millennium-mcp.py'
+      - 'scripts/common.sh'
+      - 'scripts/lib/**'
       - 'completions/**'
       - 'man/**'
-      - 'VERSION'
       - 'LICENSE'
+      - '.github/workflows/pkgbuild.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

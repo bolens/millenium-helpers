@@ -7,7 +7,6 @@ on:
       - 'VERSION'
       - 'packaging/scoop/**'
       - 'packaging/winget/**'
-      - 'scripts/windows/**'
       - 'scripts/ci/check-winget-manifests.sh'
       - '.github/workflows/package-manifests.yml'
   pull_request:
@@ -16,7 +15,6 @@ on:
       - 'VERSION'
       - 'packaging/scoop/**'
       - 'packaging/winget/**'
-      - 'scripts/windows/**'
       - 'scripts/ci/check-winget-manifests.sh'
       - '.github/workflows/package-manifests.yml'
 
@@ -28,7 +26,29 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    name: Detect changed packaging paths
+    runs-on: ubuntu-latest
+    outputs:
+      winget: ${{ steps.filter.outputs.winget }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Path filter
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            winget:
+              - 'packaging/winget/**'
+              - 'VERSION'
+              - 'scripts/ci/check-winget-manifests.sh'
+              - '.github/workflows/package-manifests.yml'
+
   validate:
+    name: Validate Scoop / Winget manifests
+    needs: [changes]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -40,14 +60,17 @@ jobs:
           echo "Scoop JSON is valid!"
 
       - name: Set up Python
+        if: needs.changes.outputs.winget == 'true'
         uses: actions/setup-python@v6
         with:
           python-version: '3.x'
 
       - name: Install dependencies
+        if: needs.changes.outputs.winget == 'true'
         run: pip install pyyaml
 
       - name: Validate Winget YAMLs (parse)
+        if: needs.changes.outputs.winget == 'true'
         run: |
           python3 -c "
           import yaml, glob
@@ -59,10 +82,13 @@ jobs:
           echo "All Winget YAMLs are valid!"
 
       - name: Validate Winget manifests (structure)
+        if: needs.changes.outputs.winget == 'true'
         run: bash scripts/ci/check-winget-manifests.sh
 
   validate-winget-windows:
     name: winget validate (Windows)
+    needs: [changes]
+    if: needs.changes.outputs.winget == 'true'
     runs-on: windows-latest
     steps:
       - name: Checkout code

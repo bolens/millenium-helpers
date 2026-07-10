@@ -64,7 +64,15 @@ Windows: run the Pester suite under `tests/windows/` on a Windows host or CI.
 
 `VERSION` at the repo root is the helpers package version (aligned with Scoop, Winget, and the Homebrew Formula). Bump it when cutting a release; installers copy it next to the shared libraries so `--version` / `-Version` work after install. Prefer git tags `vX.Y.Z` for releases.
 
-Tagging `vX.Y.Z` runs the release workflow: it waits for the Test Suite on that commit, drafts a GitHub release with checksums, then opens a packaging PR that fills Formula/Scoop/Winget URLs and SHA256s from the tag source archives. Optional repo secret `PACKAGING_PAT` (classic PAT with `contents` + `pull-requests`) makes that packaging PR trigger CI automatically.
+Tagging `vX.Y.Z` runs the release workflow:
+
+1. Wait for the Test Suite on that commit
+2. Draft a GitHub release with checksummed assets
+3. Open a packaging PR that fills Formula/Scoop/Winget URLs and SHA256s from the tag source archives
+4. **If packaging CI passes:** squash-merge the PR and publish the draft release automatically
+5. **If packaging CI fails (or never starts):** leave the draft release and packaging PR for manual recovery (fix, merge, then publish)
+
+Repo secret `PACKAGING_PAT` is **required** for the automatic path: a classic PAT with `contents` + `pull-requests`, and permission to merge into `main` under any branch protection. PRs opened with `GITHUB_TOKEN` do not trigger workflows, so without this secret the finalize job cannot wait on packaging CI.
 
 Local checks:
 ```bash

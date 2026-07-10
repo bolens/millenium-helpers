@@ -3,19 +3,23 @@ name: "CI: Cross-Platform Test Suite"
 on:
   push:
     branches: [ main ]
+    # Tag pushes always run (GitHub skips path filters for tags), which the
+    # release workflow gate depends on.
     tags: [ 'v*' ]
-    paths-ignore:
-      - '**.md'
-      - 'LICENSE'
-      - '.gitignore'
-      - 'docs/**'
+    paths:
+      - 'scripts/**'
+      - 'tests/**'
+      - 'install.sh'
+      - 'VERSION'
+      - '.github/workflows/test-suite.yml'
   pull_request:
     branches: [ main ]
-    paths-ignore:
-      - '**.md'
-      - 'LICENSE'
-      - '.gitignore'
-      - 'docs/**'
+    paths:
+      - 'scripts/**'
+      - 'tests/**'
+      - 'install.sh'
+      - 'VERSION'
+      - '.github/workflows/test-suite.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -75,6 +79,7 @@ jobs:
   # run.
   test:
     name: Linux (${{ matrix.distro }}) - ${{ matrix.suite }}
+    needs: [syntax-check]
     runs-on: ubuntu-latest
     container:
       image: ${{ matrix.image }}
@@ -142,6 +147,7 @@ jobs:
 
   test-windows:
     name: Windows - ${{ matrix.suite }}
+    needs: [syntax-check]
     runs-on: windows-latest
     strategy:
       fail-fast: false
@@ -168,6 +174,7 @@ jobs:
 
   test-macos:
     name: macOS - ${{ matrix.suite }}
+    needs: [syntax-check]
     runs-on: macos-latest
     strategy:
       fail-fast: false

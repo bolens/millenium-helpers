@@ -5,18 +5,28 @@ on:
     branches: [ main ]
     paths:
       - '**.nix'
-      - 'scripts/**'
+      - 'flake.lock'
+      - 'scripts/millennium*.sh'
+      - 'scripts/millennium-mcp.py'
+      - 'scripts/common.sh'
+      - 'scripts/lib/**'
       - 'completions/**'
+      - 'man/**'
       - 'LICENSE'
-      - 'Makefile'
+      - '.github/workflows/nix.yml'
   pull_request:
     branches: [ main ]
     paths:
       - '**.nix'
-      - 'scripts/**'
+      - 'flake.lock'
+      - 'scripts/millennium*.sh'
+      - 'scripts/millennium-mcp.py'
+      - 'scripts/common.sh'
+      - 'scripts/lib/**'
       - 'completions/**'
+      - 'man/**'
       - 'LICENSE'
-      - 'Makefile'
+      - '.github/workflows/nix.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

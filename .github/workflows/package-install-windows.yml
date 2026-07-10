@@ -5,13 +5,11 @@ on:
     branches: [ main ]
     paths:
       - 'packaging/scoop/**'
-      - 'scripts/windows/**'
       - '.github/workflows/package-install-windows.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'packaging/scoop/**'
-      - 'scripts/windows/**'
       - '.github/workflows/package-install-windows.yml'
 
 concurrency:
