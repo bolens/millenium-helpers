@@ -26,7 +26,72 @@ fi
 
 # Quiet mode: suppress INFO (WARN/ERROR always print). Set via --quiet or MILLENNIUM_QUIET=1.
 is_quiet() {
+  # QUIET is exported so child helpers (and MILLENNIUM_QUIET) inherit quiet mode.
   [[ "${QUIET:-false}" == "true" || -n "${MILLENNIUM_QUIET:-}" ]]
+}
+
+# Suggest the closest known token for typos.
+# Scoring (higher wins): 4 = prefix/extension, 3 = substring, else shared leading
+# chars; subsequence matches (e.g. lst→list) score 3 minus length gap (floor 2).
+# Returns nothing unless best_score >= 2 (avoids weak one-char coincidences).
+# Usage: suggest_closest "lst" "list" "install" "update" "remove"
+suggest_closest() {
+  local input="$1"
+  shift
+  local c best="" best_score=0 score
+  [[ -z "$input" ]] && return 0
+  for c in "$@"; do
+    score=0
+    if [[ "$c" == "$input" ]]; then
+      echo "$c"
+      return 0
+    fi
+    if [[ "$c" == "$input"* || "$input" == "$c"* ]]; then
+      score=4
+    elif [[ "$c" == *"$input"* || "$input" == *"$c"* ]]; then
+      score=3
+    else
+      # Count identical leading characters (e.g. "upg" vs "upgrade" → 3).
+      local i=0
+      while [[ $i -lt ${#c} && $i -lt ${#input} && "${c:$i:1}" == "${input:$i:1}" ]]; do
+        i=$((i + 1))
+      done
+      score=$i
+      # Subsequence: every input char appears in order in candidate (skip gaps).
+      # Require len>=2 so a lone letter does not match every command.
+      if [[ ${#input} -ge 2 ]]; then
+        local ni=0 hi=0
+        while [[ $ni -lt ${#input} && $hi -lt ${#c} ]]; do
+          if [[ "${input:$ni:1}" == "${c:$hi:1}" ]]; then
+            ni=$((ni + 1))
+          fi
+          hi=$((hi + 1))
+        done
+        if [[ $ni -eq ${#input} ]]; then
+          # Prefer closer lengths: "lst"/"list" beats "lst"/"listall".
+          local len_diff=$(( ${#c} - ${#input} ))
+          [[ $len_diff -lt 0 ]] && len_diff=$(( -len_diff ))
+          local sub_score=$((3 - len_diff))
+          [[ $sub_score -lt 2 ]] && sub_score=2
+          if [[ $sub_score -gt $score ]]; then
+            score=$sub_score
+          fi
+        fi
+      fi
+    fi
+    if [[ $score -gt $best_score ]]; then
+      best_score=$score
+      best=$c
+    fi
+  done
+  if [[ $best_score -ge 2 && -n "$best" ]]; then
+    echo "$best"
+  fi
+}
+
+print_game_running_tip() {
+  local action="${1:-continue}"
+  echo -e "Close the running game, then re-run to ${action}. Use ${YELLOW}--yes${NC} to skip the Steam close prompt." >&2
 }
 
 log_msg() {
@@ -127,9 +192,10 @@ download_file() {
   fi
 
   # TTY: show curl's progress bar (bytes) instead of a spinner-only UX.
+  # Progress goes to stderr; leave it on the TTY (do not redirect).
   printf "%s...\n" "$msg"
   local rc=0
-  if ! curl -fL --progress-bar --retry 3 --retry-delay 2 ${headers[@]+"${headers[@]}"} "$url" -o "$dest" 2>"$tmp_log"; then
+  if ! curl -fL --progress-bar --retry 3 --retry-delay 2 ${headers[@]+"${headers[@]}"} "$url" -o "$dest"; then
     rc=$?
   fi
 
@@ -137,7 +203,6 @@ download_file() {
     echo -e "${GREEN}OK${NC}"
   else
     echo -e "${RED}FAIL${NC}"
-    cat "$tmp_log" >&2
   fi
   rm -f "$tmp_log"
   return $rc

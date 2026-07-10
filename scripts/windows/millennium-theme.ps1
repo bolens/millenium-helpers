@@ -47,7 +47,7 @@ Options:
 GNU-style flags (--json, --dry-run, --yes, --quiet) are also accepted.
 
 Examples:
-  millennium-theme install SteamClientHomebrew/millennium-steam-skin
+  millennium theme install SteamClientHomebrew/millennium-steam-skin
   millennium theme list
 "@
 }
@@ -95,6 +95,21 @@ if ($Help -or $Command -eq "help" -or $Command -eq "--help" -or $Command -eq "-h
 if ($Version -or $Command -eq "version" -or $Command -eq "--version" -or $Command -eq "-V") {
     Write-HelpersVersion -Name "millennium-theme"
     exit 0
+}
+
+$knownCommands = @("list", "install", "update", "remove")
+if (-not $Command) {
+    Show-Help
+    exit 1
+}
+if ($knownCommands -notcontains $Command) {
+    Write-Error "Unknown command: $Command"
+    $suggestion = Get-ClosestToken -InputToken $Command -Candidates $knownCommands
+    if ($suggestion) {
+        Write-Host "Did you mean '$suggestion'?"
+    }
+    Write-Host "Try 'millennium-theme -Help' for usage."
+    exit 1
 }
 
 if ($Yes) {
@@ -156,12 +171,18 @@ function Get-ThemeMetadata {
 }
 
 function Get-ActiveThemeName {
-    $candidates = @(
-        (Join-Path -Path $env:APPDATA -ChildPath "millennium\config.json"),
-        (Join-Path -Path $env:LOCALAPPDATA -ChildPath "millennium\config.json"),
-        (Join-Path -Path $SteamPath -ChildPath "millennium\config.json"),
-        (Join-Path -Path $SteamPath -ChildPath "ext\config.json")
-    )
+    # Millennium has used several config locations across versions/install layouts.
+    $candidates = @()
+    if ($env:APPDATA) {
+        $candidates += (Join-Path -Path $env:APPDATA -ChildPath "millennium\config.json")
+    }
+    if ($env:LOCALAPPDATA) {
+        $candidates += (Join-Path -Path $env:LOCALAPPDATA -ChildPath "millennium\config.json")
+    }
+    if ($SteamPath) {
+        $candidates += (Join-Path -Path $SteamPath -ChildPath "millennium\config.json")
+        $candidates += (Join-Path -Path $SteamPath -ChildPath "ext\config.json")
+    }
     foreach ($cand in $candidates) {
         if (!(Test-Path -Path $cand -PathType Leaf)) { continue }
         try {
@@ -182,14 +203,15 @@ if ($Command -eq "list") {
             Write-Output "[]"
         } else {
             Log-Info "No themes directory found. Install a theme first."
-            Write-Host "Install one with: millennium-theme install SteamClientHomebrew/millennium-steam-skin"
+            Write-Host "Install one with: millennium theme install SteamClientHomebrew/millennium-steam-skin"
         }
         exit 0
     }
 
-    $themes = Get-ChildItem -Path $SkinsDir -Directory
+    # PSIsContainer (not -Directory) for broader PowerShell compatibility.
+    $themes = @(Get-ChildItem -Path $SkinsDir | Where-Object { $_.PSIsContainer })
     $list = @()
-
+    $activeTheme = Get-ActiveThemeName
     foreach ($t in $themes) {
         $meta = Get-ThemeMetadata -ThemeDir $t.FullName
         if ($null -ne $meta) {
@@ -222,7 +244,7 @@ if ($Command -eq "list") {
         Write-Host "=== Installed Millennium Themes ==="
         if ($list.Count -eq 0) {
             Write-Host "  (none)"
-            Write-Host "Install one with: millennium-theme install SteamClientHomebrew/millennium-steam-skin"
+            Write-Host "Install one with: millennium theme install SteamClientHomebrew/millennium-steam-skin"
         } else {
             foreach ($item in $list) {
                 $state = if ($item.name -eq $activeTheme) { "Active" } else { "Installed" }
@@ -346,6 +368,8 @@ if ($Command -eq "install") {
     }
 
     Log-Info "Theme '$repo' successfully installed."
+    Write-Host "Next: enable it in Steam → Millennium → Themes (or Settings)."
+    Write-Host "Tip: millennium theme list shows installed themes; the active one is marked."
     exit 0
 }
 
@@ -412,7 +436,7 @@ if ($Command -eq "update") {
 
     if ($themesToUpdate.Count -eq 0) {
         Log-Info "No installed themes detected for update."
-        Write-Host "Install one with: millennium-theme install SteamClientHomebrew/millennium-steam-skin"
+        Write-Host "Install one with: millennium theme install SteamClientHomebrew/millennium-steam-skin"
         exit 0
     }
 
@@ -510,6 +534,3 @@ if ($Command -eq "update") {
     }
     exit 0
 }
-
-Show-Help
-exit 1

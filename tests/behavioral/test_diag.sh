@@ -60,7 +60,8 @@ out=$(bash "$DIAG_SH" --bogus 2>&1)
 rc=$?
 assert_failure "$rc" "millennium-diag.sh exits non-zero on an unknown option"
 assert_contains "$out" "Unknown option" "millennium-diag.sh reports the unrecognized option"
-assert_contains "$out" "Usage:" "millennium-diag.sh shows usage after an unrecognized option"
+assert_contains "$out" "Try '" "millennium-diag.sh unknown option points at --help"
+assert_not_contains "$out" "Run read-only diagnostics" "millennium-diag.sh unknown option does not dump full help"
 
 # --- logs command: no logs found anywhere ---
 FAKE_HOME=$(mktemp -d)
@@ -179,6 +180,20 @@ rc=$?
 assert_success "$rc" "millennium-diag.sh --share alone completes successfully"
 assert_contains "$out" "Diagnostic report successfully shared" "millennium-diag.sh --share alone reports share success"
 
+# --share failure keeps a local sanitized report for retry/offline paste.
+# shellcheck disable=SC2016
+mock_cmd "curl" 'echo "upload failed"; exit 22'
+STATE_DIR=$(mktemp -d)
+out=$(SUDO_USER='' USER=faketestuser XDG_STATE_HOME="$STATE_DIR" bash "$DIAG_SH" --share 2>&1)
+rc=$?
+assert_failure "$rc" "millennium-diag.sh --share exits non-zero when upload fails"
+assert_contains "$out" "Failed to upload" "millennium-diag.sh --share failure explains upload error"
+assert_contains "$out" "Local sanitized report kept at" "millennium-diag.sh --share failure keeps a local report"
+assert_contains "$out" "retry later" "millennium-diag.sh --share failure prints a retry tip"
+kept=$(find "$STATE_DIR" -type f -name 'diag-share-failed-*.txt' 2>/dev/null | head -n1)
+assert_file_exists "${kept:-/nonexistent}" "millennium-diag.sh --share failure writes a persistent report file"
+rm -rf "$STATE_DIR"
+
 # Clean up mock
 rm -f "${MOCK_BIN}/curl"
 rm -f "${MOCK_BIN}/getent"
@@ -240,7 +255,7 @@ out=$(DIAG_TEST_BYPASS_CHECKS=true DIAG_TEST_OBSOLETE_LIST="" bash "$DIAG_SH" 2>
 rc=$?
 assert_success "$rc" "millennium-diag.sh default report exits 0 with bypassed checks"
 assert_contains "$out" "No issues detected" "millennium-diag.sh default report prints healthy next-steps footer"
-assert_contains "$out" "millennium-schedule status" "millennium-diag.sh healthy footer mentions schedule status"
+assert_contains "$out" "millennium schedule status" "millennium-diag.sh healthy footer mentions schedule status"
 
 # Force an obsolete-file issue so the footer suggests doctor
 TEST_OBS_DIR2=$(mktemp -d)
@@ -248,7 +263,7 @@ obs_only="${TEST_OBS_DIR2}/millennium-upgrade-stable"
 touch "$obs_only"
 out=$(DIAG_TEST_BYPASS_CHECKS=true DIAG_TEST_OBSOLETE_LIST="$obs_only" bash "$DIAG_SH" 2>&1)
 assert_contains "$out" "issue(s) detected" "millennium-diag.sh default report counts issues in next-steps footer"
-assert_contains "$out" "millennium-diag doctor" "millennium-diag.sh next-steps footer suggests doctor"
+assert_contains "$out" "millennium doctor" "millennium-diag.sh next-steps footer suggests doctor"
 rm -rf "${TEST_OBS_DIR2}"
 
 # JSON mode must not print the human next-steps footer

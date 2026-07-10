@@ -28,12 +28,62 @@ Describe "Theme CLI Manager" {
             $out | Should -BeLike "*install*"
             $out | Should -BeLike "*SteamClientHomebrew/millennium-steam-skin*"
             $out | Should -BeLike "*-Yes*"
+            $out | Should -BeLike "*-Json*"
+            $out | Should -BeLike "*GNU-style*"
         }
 
         It "Prints version with -Version" {
             $themeScript = Join-Path -Path $winScriptDir -ChildPath "millennium-theme.ps1"
             $out = (& $themeScript -Version *>&1) | Out-String
             $out | Should -BeLike "*millennium-theme*"
+        }
+
+        It "Suggests closest command on typo" {
+            $themeScript = Join-Path -Path $winScriptDir -ChildPath "millennium-theme.ps1"
+            $out = (& $themeScript lst *>&1) | Out-String
+            $out | Should -BeLike "*Unknown command*"
+            $out | Should -BeLike "*Did you mean*list*"
+        }
+    }
+
+    Context "Active theme marker" {
+        BeforeAll {
+            Mock Get-ItemProperty { return [pscustomobject]@{ SteamPath = "C:\MockedSteam" } }
+            $skins = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ("mh-skins-" + [guid]::NewGuid().ToString("n"))
+            New-Item -ItemType Directory -Path (Join-Path $skins "CoolTheme") -Force | Out-Null
+            $themeFull = Join-Path $skins "CoolTheme"
+            Mock Test-Path { return $true }
+            Mock Get-ChildItem {
+                [pscustomobject]@{
+                    Name = "CoolTheme"
+                    FullName = $themeFull
+                    PSIsContainer = $true
+                }
+            }
+            Mock Get-Content {
+                if ($Path -like "*config.json*") {
+                    return '{"themes":{"activeTheme":"CoolTheme"}}'
+                }
+                if ($Path -like "*VERSION*") { return "2.2.0" }
+                return "{}"
+            }
+        }
+
+        It "Marks the active theme in list output" {
+            $prevApp = $env:APPDATA
+            $prevLocal = $env:LOCALAPPDATA
+            try {
+                $env:APPDATA = Join-Path ([System.IO.Path]::GetTempPath()) "mh-appdata"
+                $env:LOCALAPPDATA = Join-Path ([System.IO.Path]::GetTempPath()) "mh-localappdata"
+                New-Item -ItemType Directory -Path $env:APPDATA -Force | Out-Null
+                $themeScript = Join-Path -Path $winScriptDir -ChildPath "millennium-theme.ps1"
+                $out = (& $themeScript list *>&1) | Out-String
+                $out | Should -BeLike "*CoolTheme*"
+                $out | Should -BeLike "*[Active]*"
+            } finally {
+                $env:APPDATA = $prevApp
+                $env:LOCALAPPDATA = $prevLocal
+            }
         }
     }
 
@@ -49,7 +99,7 @@ Describe "Theme CLI Manager" {
         It "Suggests an install example when no themes directory exists" {
             $themeScript = Join-Path -Path $winScriptDir -ChildPath "millennium-theme.ps1"
             $out = (& $themeScript list *>&1) | Out-String
-            $out | Should -BeLike "*millennium-theme install*"
+            $out | Should -BeLike "*millennium theme install*"
         }
     }
 

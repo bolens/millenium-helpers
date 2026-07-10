@@ -239,7 +239,8 @@ The helper scripts respect the following environment variables if defined:
 | `XDG_CONFIG_HOME` | Optional. Dynamically resolved to locate your user configuration files. Defaults to `~/.config` on Linux. |
 | `LOCALAPPDATA` | Used on Windows to locate the user configuration path (`%LOCALAPPDATA%\millennium-helpers`). |
 | `NO_COLOR` | Optional. When set to any value, disables ANSI color output in helper scripts. |
-| `FORCE_COLOR` | Optional. When set, forces ANSI color output even when stdout is not a TTY. |
+| `FORCE_COLOR` | Optional. When set, forces ANSI color output even when stdout is not a TTY (Linux and Windows). |
+| `MILLENNIUM_QUIET` | Optional. When set (or with `--quiet` / `-Quiet`), suppresses informational log lines; warnings and errors still print. |
 | `MILLENNIUM_DEBUG` | Optional (Windows). When set, enables verbose Steam path resolution debug output. |
 
 ---

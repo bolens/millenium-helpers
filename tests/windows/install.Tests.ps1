@@ -40,6 +40,7 @@ Describe "Windows Installer" {
             $expectedWrappers = @(
                 "millennium.cmd",
                 "millennium-diag.cmd",
+                "millennium-mcp.cmd",
                 "millennium-purge.cmd",
                 "millennium-repair.cmd",
                 "millennium-schedule.cmd",
@@ -50,9 +51,13 @@ Describe "Windows Installer" {
                 Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath $wrapper) | Should -Be $true
             }
 
+            Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium-mcp.ps1") | Should -Be $true
+            Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium-mcp.py") | Should -Be $true
+
             $installOut | Should -BeLike "*Getting started*"
-            $installOut | Should -BeLike "*millennium-diag*"
             $installOut | Should -BeLike "*millennium diag*"
+            $installOut | Should -BeLike "*millennium upgrade*"
+            $installOut | Should -BeLike "*Long names*"
 
             # 2. Run Uninstall
             & $installScript -Uninstall

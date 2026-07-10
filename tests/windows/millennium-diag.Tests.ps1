@@ -46,7 +46,7 @@ Describe "Diagnostics & Doctor" {
             $diagScript = Join-Path -Path $winScriptDir -ChildPath "millennium-diag.ps1"
             $out = (& $diagScript -DryRun *>&1) | Out-String
             $out | Should -BeLike "*issue(s) detected*"
-            $out | Should -BeLike "*millennium-diag doctor*"
+            $out | Should -BeLike "*millennium doctor*"
             $out | Should -BeLike "*WARN*"
         }
     }

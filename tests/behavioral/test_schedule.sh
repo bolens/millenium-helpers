@@ -64,7 +64,7 @@ assert_contains "$out" "Usage:" "millennium-schedule with no command prints usag
 out=$(run_schedule enable bogus-channel --dry-run 2>&1)
 rc=$?
 assert_failure "$rc" "millennium-schedule enable rejects an unrecognized channel argument"
-assert_contains "$out" "Unknown option" "millennium-schedule enable reports the unrecognized channel as an unknown option"
+assert_contains "$out" "Unknown channel" "millennium-schedule enable reports the unrecognized channel"
 
 # --- enable (no --cron flag): path depends on whether systemd is actually
 # booted on this machine (millennium-schedule.sh auto-detects via
@@ -106,7 +106,42 @@ out=$(run_schedule status 2>&1)
 rc=$?
 assert_success "$rc" "millennium-schedule status exits 0 when nothing is configured"
 assert_contains "$out" "not installed/configured" "millennium-schedule status reports the timer as unconfigured"
-assert_contains "$out" "millennium-schedule enable" "millennium-schedule status when disabled prints the enable command"
+assert_contains "$out" "millennium schedule enable" "millennium-schedule status when disabled prints the enable command"
+
+# --- Unknown command typo suggestion ---
+out=$(run_schedule stauts 2>&1)
+rc=$?
+assert_failure "$rc" "millennium-schedule unknown command exits non-zero"
+assert_contains "$out" "Unknown command" "millennium-schedule reports unknown command for typos"
+assert_contains "$out" "Did you mean 'status'" "millennium-schedule suggests status for stauts typo"
+
+# --- status (timer configured) includes summary CTAs ---
+mkdir -p "${FAKE_XDG_CONFIG}/systemd/user"
+cat > "${FAKE_XDG_CONFIG}/systemd/user/millennium-update.timer" <<'EOF'
+[Timer]
+OnCalendar=daily
+EOF
+cat > "${FAKE_XDG_CONFIG}/systemd/user/millennium-update.service" <<'EOF'
+[Service]
+ExecStart=/usr/bin/sudo -n /usr/local/bin/millennium-upgrade --channel beta --quiet
+EOF
+mock_cmd "systemctl" 'echo "systemctl: $*"; exit 0'
+out=$(run_schedule status 2>&1)
+rc=$?
+assert_success "$rc" "millennium-schedule status exits 0 when timer files exist"
+if [[ "$(uname)" != "Darwin" ]]; then
+  assert_contains "$out" "Scheduler summary" "millennium-schedule status when enabled prints a summary section"
+  assert_contains "$out" "millennium schedule disable" "millennium-schedule status when enabled prints disable CTA"
+  assert_contains "$out" "Channel" "millennium-schedule status when enabled prints channel"
+fi
+rm -f "${FAKE_XDG_CONFIG}/systemd/user/millennium-update.timer" "${FAKE_XDG_CONFIG}/systemd/user/millennium-update.service"
+rm -f "${MOCK_BIN}/systemctl"
+
+# --- --quiet is accepted ---
+out=$(run_schedule status --quiet 2>&1)
+rc=$?
+assert_success "$rc" "millennium-schedule status --quiet exits 0"
+assert_not_contains "$out" "Unknown option" "millennium-schedule accepts --quiet"
 
 # --- pre-update: Steam not running ---
 

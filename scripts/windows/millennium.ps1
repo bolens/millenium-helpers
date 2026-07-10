@@ -33,24 +33,45 @@ Examples:
 "@
 }
 
+# Typo suggestions for the dispatcher. Scoring mirrors Get-ClosestToken in
+# common.ps1 (kept inline so this entrypoint stays self-contained): 4=prefix,
+# 3=substring, else shared leading chars; subsequence scores 3−|len gap| (floor 2).
+# Emit only when bestScore >= 2.
 function Get-CommandSuggestion {
     param([string]$InputCmd)
     $cmds = @("diag", "doctor", "upgrade", "schedule", "theme", "repair", "purge", "mcp", "help")
+    if ([string]::IsNullOrEmpty($InputCmd)) { return $null }
     $best = $null
     $bestScore = 0
     foreach ($c in $cmds) {
         $score = 0
         if ($c -eq $InputCmd) { return $c }
         if ($c.StartsWith($InputCmd) -or $InputCmd.StartsWith($c)) {
-            $score = 3
+            $score = 4
         } elseif ($c.Contains($InputCmd) -or $InputCmd.Contains($c)) {
-            $score = 2
+            $score = 3
         } else {
+            # Identical leading characters (e.g. "upg" vs "upgrade" → 3).
             $i = 0
             while ($i -lt $c.Length -and $i -lt $InputCmd.Length -and $c[$i] -eq $InputCmd[$i]) {
                 $i++
             }
             $score = $i
+            # Subsequence with gaps; Length -ge 2 avoids matching every command on one letter.
+            if ($InputCmd.Length -ge 2) {
+                $ni = 0
+                $hi = 0
+                while ($ni -lt $InputCmd.Length -and $hi -lt $c.Length) {
+                    if ($InputCmd[$ni] -eq $c[$hi]) { $ni++ }
+                    $hi++
+                }
+                if ($ni -eq $InputCmd.Length) {
+                    $lenDiff = [Math]::Abs($c.Length - $InputCmd.Length)
+                    $subScore = 3 - $lenDiff
+                    if ($subScore -lt 2) { $subScore = 2 }
+                    if ($subScore -gt $score) { $score = $subScore }
+                }
+            }
         }
         if ($score -gt $bestScore) {
             $bestScore = $score

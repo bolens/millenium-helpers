@@ -8,6 +8,8 @@ param(
     [switch]$DryRun = $false,
     [Alias("y")]
     [switch]$Yes = $false,
+    [Alias("q")]
+    [switch]$Quiet = $false,
     [Alias("h")]
     [switch]$Help = $false,
     [Alias("V")]
@@ -17,7 +19,7 @@ set-strictmode -version Latest
 
 if ($Help) {
     Write-Host @"
-Usage: millennium-upgrade.ps1 [-Channel stable|beta] [-Force] [-File PATH] [-Rollback ID|list] [-DryRun] [-Yes] [-Version] [-Help]
+Usage: millennium-upgrade.ps1 [-Channel stable|beta] [-Force] [-File PATH] [-Rollback ID|list] [-DryRun] [-Yes] [-Quiet] [-Version] [-Help]
 
 Install official Millennium (stable or beta) releases over system files.
 
@@ -28,6 +30,7 @@ Options:
   -Rollback ID      Roll back to a previous backup (or pass "list" to list backups)
   -DryRun           Simulate operations without modifying files
   -Yes, -y          Skip confirmation when closing Steam
+  -Quiet, -q        Suppress informational output
   -Version, -V      Show version information
   -Help, -h         Show this help message
 "@
@@ -51,6 +54,11 @@ if ($Version) {
 
 if ($Yes) {
     $global:AssumeYes = $true
+}
+
+if ($Quiet) {
+    $global:Quiet = $true
+    $env:MILLENNIUM_QUIET = "1"
 }
 
 if ($DryRun) {
@@ -111,6 +119,8 @@ if ($Rollback) {
         } else {
             Write-Host "  No backups directory exists."
         }
+        Write-Host ""
+        Write-Host "Apply one with: millennium upgrade -Rollback <id>"
         exit 0
     }
 
@@ -123,6 +133,7 @@ if ($Rollback) {
 
     if (Is-GameRunning) {
         Log-Error "Error: A Steam game is currently running. Rollback aborted."
+        Write-Host "Close the running game, then re-run. Use -Yes to skip the Steam close prompt."
         exit 1
     }
 
@@ -214,7 +225,7 @@ if ($File) {
         }
     } catch {
         Log-Error "Error: Could not retrieve release details from GitHub API: $_"
-        Log-Error "If you are rate-limited, set a PAT: millennium-schedule setup"
+        Log-Error "If you are rate-limited, set a PAT: millennium schedule setup"
         Log-Error "  or: millennium-schedule config set github_token <token>"
         exit 1
     }
@@ -222,7 +233,7 @@ if ($File) {
 
 if (!$latestVer) {
     Log-Error "Error: Could not resolve a valid version tag."
-    Log-Error "If you are rate-limited, set a PAT: millennium-schedule setup"
+    Log-Error "If you are rate-limited, set a PAT: millennium schedule setup"
     Log-Error "  or: millennium-schedule config set github_token <token>"
     exit 1
 }
@@ -256,6 +267,7 @@ if (!$File) {
 
 if (Is-GameRunning) {
     Log-Error "Error: A Steam game is currently running. Close all games before upgrading."
+    Write-Host "Close the running game, then re-run. Use -Yes to skip the Steam close prompt."
     exit 1
 }
 

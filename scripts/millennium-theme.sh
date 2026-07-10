@@ -38,7 +38,7 @@ Options:
   -h, --help            Show this help message
 
 Examples:
-  millennium-theme install SteamClientHomebrew/millennium-steam-skin
+  millennium theme install SteamClientHomebrew/millennium-steam-skin
   millennium-theme update --all
   millennium-theme remove millennium-steam-skin
 EOF
@@ -78,7 +78,7 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     -q|--quiet)
-      QUIET=true
+      export QUIET=true
       export MILLENNIUM_QUIET=1
       shift
       ;;
@@ -91,7 +91,15 @@ while [[ $# -gt 0 ]]; do
       exit 0
       ;;
     *)
-      echo "Unknown option: $1" >&2
+      if [[ "$1" != -* ]]; then
+        echo "Unknown command: $1" >&2
+        suggestion="$(suggest_closest "$1" list install update remove || true)"
+        if [[ -n "$suggestion" ]]; then
+          echo "Did you mean '${suggestion}'?" >&2
+        fi
+      else
+        echo "Unknown option: $1" >&2
+      fi
       echo "Try '$(basename "$0") --help' for usage." >&2
       exit 1
       ;;
@@ -280,7 +288,7 @@ if [[ "$COMMAND" == "list" ]]; then
   if [[ "$OUTPUT_JSON" == "false" ]]; then
     echo -e "${BLUE}=== Installed Millennium Themes ===${NC}"
     
-    # Active theme detection
+    # Active theme: Millennium config paths vary by XDG, Flatpak Steam, and install layout.
     user_name="${SUDO_USER:-$(id -un)}"
     user_home="$(get_user_home "$user_name")"
     if [[ -z "$user_home" ]]; then
@@ -321,7 +329,7 @@ except Exception:
       echo "[]"
     else
       echo "No themes skins directory found at ${SKINS_DIR}."
-      echo "Install one with: millennium-theme install SteamClientHomebrew/millennium-steam-skin"
+      echo "Install one with: millennium theme install SteamClientHomebrew/millennium-steam-skin"
     fi
     exit 0
   fi
@@ -398,7 +406,7 @@ except Exception:
     echo "]"
   elif [[ "$found" == "false" ]]; then
     echo "No themes installed."
-    echo "Install one with: millennium-theme install SteamClientHomebrew/millennium-steam-skin"
+    echo "Install one with: millennium theme install SteamClientHomebrew/millennium-steam-skin"
   fi
   exit 0
 fi
@@ -421,7 +429,7 @@ if [[ "$COMMAND" == "install" ]]; then
 
   if [[ -z "$COMMIT" ]]; then
     echo -e "${RED}Error: Could not retrieve latest commit info for ${owner}/${repo}. Check repository name, network, or GitHub rate limits.${NC}" >&2
-    echo -e "Tip: set a PAT via ${YELLOW}millennium-schedule setup${NC} or ${YELLOW}millennium-schedule config set github_token <token>${NC}." >&2
+    echo -e "Tip: set a PAT via ${YELLOW}millennium schedule setup${NC} or ${YELLOW}millennium schedule config set github_token <token>${NC}." >&2
     exit 1
   fi
 
@@ -468,6 +476,8 @@ EOF
     # Ensure correct ownership
     chown -R "${RUNNING_USER}:${RUNNING_USER}" "$target_dir"
     echo -e "${GREEN}Successfully installed theme '${repo}'!${NC}"
+    echo -e "Next: enable it in Steam → Millennium → Themes (or Settings)."
+    echo -e "Tip: ${YELLOW}millennium theme list${NC} shows installed themes; the active one is marked."
   fi
   exit 0
 fi
@@ -556,7 +566,7 @@ if [[ "$COMMAND" == "update" ]]; then
     
     if [[ "$found_any" == "false" ]]; then
       echo "No themes installed."
-      echo "Install one with: millennium-theme install SteamClientHomebrew/millennium-steam-skin"
+      echo "Install one with: millennium theme install SteamClientHomebrew/millennium-steam-skin"
     fi
   else
     update_single_theme "$ARG"

@@ -26,5 +26,6 @@ complete -c millennium-theme -f -n '__fish_seen_subcommand_from update remove' -
 complete -c millennium-theme -l json -d 'Output list results as JSON'
 complete -c millennium-theme -s y -l yes -d 'Skip confirmation when removing'
 complete -c millennium-theme -s d -l dry-run -d 'Simulation mode'
+complete -c millennium-theme -s q -l quiet -d 'Suppress informational output'
 complete -c millennium-theme -s h -l help -d 'Show help message'
 complete -c millennium-theme -s V -l version -d 'Show version information'

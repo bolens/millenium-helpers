@@ -3,6 +3,8 @@ param(
     [switch]$DryRun = $false,
     [Alias("y")]
     [switch]$Yes = $false,
+    [Alias("q")]
+    [switch]$Quiet = $false,
     [Alias("h")]
     [switch]$Help = $false,
     [Alias("V")]
@@ -12,13 +14,14 @@ set-strictmode -version Latest
 
 if ($Help) {
     Write-Host @"
-Usage: millennium-purge.ps1 [-DryRun] [-Yes] [-Version] [-Help]
+Usage: millennium-purge.ps1 [-DryRun] [-Yes] [-Quiet] [-Version] [-Help]
 
 De-register and purge Millennium client hooks and files from Steam.
 
 Options:
   -DryRun, -d     Simulate operations without modifying files
   -Yes, -y        Skip the interactive confirmation prompt
+  -Quiet, -q      Suppress informational output
   -Version, -V    Show version information
   -Help, -h       Show this help message
 "@
@@ -42,6 +45,11 @@ if ($Version) {
 
 if ($Yes) {
     $global:AssumeYes = $true
+}
+
+if ($Quiet) {
+    $global:Quiet = $true
+    $env:MILLENNIUM_QUIET = "1"
 }
 
 if ($DryRun) {
@@ -133,4 +141,6 @@ if ($steamRunning) {
 }
 
 Log-Info "Millennium Purge completed successfully."
+Write-Host "Tip: remove helper tools with .\install.ps1 uninstall if you no longer need them."
+Write-Host "     Scheduler tip: millennium schedule status should now report disabled."
 exit 0

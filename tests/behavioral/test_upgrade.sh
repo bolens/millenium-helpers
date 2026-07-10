@@ -46,7 +46,8 @@ for channel in stable beta; do
   rc=$?
   assert_failure "$rc" "${script_name} exits non-zero on an unknown option"
   assert_contains "$out" "Unknown option" "${script_name} reports the unrecognized option"
-  assert_contains "$out" "Usage:" "${script_name} unknown option prints usage"
+  assert_contains "$out" "Try '" "${script_name} unknown option points at --help"
+  assert_not_contains "$out" "Install official Millennium" "${script_name} unknown option does not dump full help"
 
   # --- Network offline aborts immediately ---
   mock_cmd "curl" 'exit 1'

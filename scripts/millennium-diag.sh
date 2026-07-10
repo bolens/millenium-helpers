@@ -83,7 +83,7 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     -q|--quiet)
-      QUIET=true
+      export QUIET=true
       export MILLENNIUM_QUIET=1
       shift
       ;;
@@ -100,7 +100,15 @@ while [[ $# -gt 0 ]]; do
       exit 0
       ;;
     *)
-      echo -e "${RED}Unknown option: $1${NC}" >&2
+      if [[ "$1" != -* ]]; then
+        echo -e "${RED}Unknown command: $1${NC}" >&2
+        suggestion="$(suggest_closest "$1" doctor logs || true)"
+        if [[ -n "$suggestion" ]]; then
+          echo "Did you mean '${suggestion}'?" >&2
+        fi
+      else
+        echo -e "${RED}Unknown option: $1${NC}" >&2
+      fi
       echo "Try '$(basename "$0") --help' for usage." >&2
       exit 1
       ;;
@@ -184,7 +192,24 @@ except Exception:
     echo -e "${GREEN}Diagnostic report successfully shared!${NC}"
     echo -e "URL: ${BLUE}${upload_url}${NC}"
   else
+    # report_file lives under a temp dir cleaned by the EXIT trap; copy it to
+    # durable state (or /tmp) so the path we print still exists after exit.
+    local_keep_dir="${XDG_STATE_HOME:-$user_home/.local/state}/millennium-helpers"
+    mkdir -p "$local_keep_dir" 2>/dev/null || local_keep_dir="${TMPDIR:-/tmp}"
+    kept_report="${local_keep_dir}/diag-share-failed-$(date +%Y%m%d%H%M%S).txt"
+    if ! cp -f "$report_file" "$kept_report" 2>/dev/null; then
+      # Copy failed: keep pointing at the temp file and disable cleanup so it survives.
+      kept_report="$report_file"
+      trap - EXIT INT TERM
+    fi
     echo -e "${RED}Error: Failed to upload diagnostic report to paste.rs.${NC}" >&2
+    echo -e "Local sanitized report kept at: ${YELLOW}${kept_report}${NC}" >&2
+    echo -e "Tip: retry later, or paste the file contents into an offline pastebin." >&2
+    if [[ -t 1 ]] && command -v xclip &>/dev/null; then
+      echo -e "     Or copy with: ${YELLOW}xclip -selection clipboard < ${kept_report}${NC}" >&2
+    elif [[ -t 1 ]] && command -v pbcopy &>/dev/null; then
+      echo -e "     Or copy with: ${YELLOW}pbcopy < ${kept_report}${NC}" >&2
+    fi
     exit 1
   fi
   exit 0
@@ -410,6 +435,7 @@ if [[ "$COMMAND" == "doctor" ]]; then
   if [[ "$STEAM_RUNNING" == true ]] && [[ "$BINARIES_OK" == false || "$HOOKS_OK" == false ]]; then
     if is_game_running; then
       echo -e "${RED}Error: A Steam game is currently running. Doctor repairs cannot proceed while a game is active.${NC}" >&2
+      print_game_running_tip "run doctor"
       exit 1
     fi
     

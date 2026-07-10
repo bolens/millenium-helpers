@@ -63,7 +63,7 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     -q|--quiet)
-      QUIET=true
+      export QUIET=true
       export MILLENNIUM_QUIET=1
       shift
       ;;
@@ -124,6 +124,7 @@ RELAUNCH_STEAM=false
 if pgrep -x steam >/dev/null 2>&1; then
   if is_game_running; then
     echo -e "${RED}Error: A Steam game is currently running. Repair cannot proceed while a game is active.${NC}" >&2
+    print_game_running_tip "repair"
     exit 1
   fi
 

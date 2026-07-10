@@ -1,4 +1,4 @@
-.TH MILLENNIUM 1 "July 9, 2026" "millennium-helpers" "User Commands"
+.TH MILLENNIUM 1 "July 10, 2026" "millennium-helpers" "User Commands"
 .SH NAME
 millennium \- unified dispatcher for Millennium Helpers
 .SH SYNOPSIS
@@ -6,11 +6,17 @@ millennium \- unified dispatcher for Millennium Helpers
 \fICOMMAND\fR [\fIARGUMENTS\fR...]
 .SH DESCRIPTION
 Thin wrapper that dispatches to the individual Millennium Helper commands.
+Long command names (millennium\-diag, …) still work as aliases.
 .SH COMMANDS
 .TP
 .B diag
 Run
 .BR millennium-diag .
+.TP
+.B doctor
+Alias for
+.B millennium diag doctor
+(automatic repairs).
 .TP
 .B upgrade
 Run
@@ -42,9 +48,13 @@ Show dispatcher help.
 .TP
 .B millennium diag
 .TP
+.B millennium doctor
+.TP
 .B millennium upgrade \-\-channel beta
 .TP
 .B millennium schedule status
+.TP
+.B millennium theme list
 .SH SEE ALSO
 .BR millennium-diag (1),
 .BR millennium-upgrade (1),
