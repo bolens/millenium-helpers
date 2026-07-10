@@ -93,4 +93,13 @@ else
   echo -e "${YELLOW}SKIP:${NC} check-winget-manifests.sh (PyYAML not installed)"
 fi
 
+# --- release.yml Windows zip must ship the shared MCP Python server ---
+windows_zip_block=$(awk '/Create Windows Release Zip/,/Calculate Checksums/' "${REPO_ROOT}/.github/workflows/release.yml")
+assert_contains "$windows_zip_block" "scripts/millennium-mcp.py" "Windows release zip includes millennium-mcp.py"
+assert_contains "$windows_zip_block" "millennium-helpers-windows.zip" "release.yml builds trimmed Windows zip"
+
+# Scoop CI staging must mirror the same MCP payload
+scoop_ci=$(cat "${REPO_ROOT}/.github/workflows/package-install-windows.yml")
+assert_contains "$scoop_ci" "millennium-mcp.py" "Scoop CI stages millennium-mcp.py beside scripts/windows"
+
 print_summary

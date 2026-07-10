@@ -18,7 +18,9 @@ if [[ ! -f "${SCRIPT_DIR}/scripts/common.sh" ]]; then
   trap 'rm -rf "$TEMP_DIR"' EXIT
 
   RELEASE_URL="${MILLENNIUM_HELPERS_RELEASE_URL:-https://github.com/bolens/millenium-helpers/releases/latest/download/millennium-helpers-linux.tar.gz}"
+  SHA_URL="${MILLENNIUM_HELPERS_RELEASE_SHA_URL:-${RELEASE_URL}.sha256}"
   ARCHIVE="$TEMP_DIR/millennium-helpers-linux.tar.gz"
+  SHA_FILE="$TEMP_DIR/millennium-helpers-linux.tar.gz.sha256"
   download_ok=false
   if command -v curl >/dev/null 2>&1; then
     if curl -fsSL "$RELEASE_URL" -o "$ARCHIVE"; then
@@ -38,6 +40,42 @@ if [[ ! -f "${SCRIPT_DIR}/scripts/common.sh" ]]; then
     echo "URL: $RELEASE_URL" >&2
     exit 1
   fi
+
+  sha_ok=false
+  if command -v curl >/dev/null 2>&1; then
+    if curl -fsSL "$SHA_URL" -o "$SHA_FILE"; then
+      sha_ok=true
+    fi
+  elif command -v wget >/dev/null 2>&1; then
+    if wget -qO "$SHA_FILE" "$SHA_URL"; then
+      sha_ok=true
+    fi
+  fi
+
+  if [[ "$sha_ok" != "true" || ! -s "$SHA_FILE" ]]; then
+    echo "Error: Failed to download the SHA256 checksum sidecar." >&2
+    echo "URL: $SHA_URL" >&2
+    exit 1
+  fi
+
+  if ! command -v sha256sum >/dev/null 2>&1; then
+    echo "Error: sha256sum is required to verify the release archive." >&2
+    exit 1
+  fi
+
+  EXPECTED_SHA=$(awk '{print $1; exit}' "$SHA_FILE" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
+  ACTUAL_SHA=$(sha256sum "$ARCHIVE" | awk '{print $1}' | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
+  if [[ ! "$EXPECTED_SHA" =~ ^[0-9a-f]{64}$ ]]; then
+    echo "Error: Checksum sidecar did not contain a valid SHA256 hash." >&2
+    exit 1
+  fi
+  if [[ "$EXPECTED_SHA" != "$ACTUAL_SHA" ]]; then
+    echo "Error: SHA256 mismatch for downloaded release archive." >&2
+    echo "Expected: $EXPECTED_SHA" >&2
+    echo "Actual:   $ACTUAL_SHA" >&2
+    exit 1
+  fi
+  echo "SHA256 checksum verified."
 
   if ! tar -xzf "$ARCHIVE" -C "$TEMP_DIR"; then
     echo "Error: Failed to extract the Linux release asset." >&2

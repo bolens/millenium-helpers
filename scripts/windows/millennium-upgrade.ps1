@@ -253,13 +253,52 @@ $tempDir = [System.IO.Path]::GetTempPath()
 $archiveName = "millennium-v$latestVer-windows-x86_64.zip"
 $localArchive = Join-Path -Path $tempDir -ChildPath $archiveName
 $url = "https://github.com/SteamClientHomebrew/Millennium/releases/download/v$latestVer/$archiveName"
+$shaUrl = "https://github.com/SteamClientHomebrew/Millennium/releases/download/v$latestVer/millennium-v$latestVer-windows-x86_64.sha256"
+$expectedSha = $null
 
 if (!$File) {
-    Log-Info "Downloading Millennium v$latestVer archive..."
-    $dlSuccess = Download-File -Url $url -Dest $localArchive -Msg "Fetching Millennium client archive" -GithubToken $githubToken
-    if (!$dlSuccess) {
-        Write-UpgradeFailureTips -Detail "Failed to download Millennium package."
+    Log-Info "Fetching SHA256 checksum for Millennium v$latestVer..."
+    try {
+        $shaHeaders = @{}
+        if ($githubToken) {
+            $shaHeaders["Authorization"] = "token $githubToken"
+        }
+        if ($shaHeaders.Count -gt 0) {
+            $shaResp = Invoke-WebRequest -Uri $shaUrl -Headers $shaHeaders -UseBasicParsing -ErrorAction Stop
+        } else {
+            $shaResp = Invoke-WebRequest -Uri $shaUrl -UseBasicParsing -ErrorAction Stop
+        }
+        $expectedSha = (($shaResp.Content -as [string]).Trim() -split '\s+')[0]
+    } catch {
+        Log-Error "Error: Could not retrieve the SHA256 checksum for v$latestVer."
+        Log-Error $_.Exception.Message
         exit 1
+    }
+    if ([string]::IsNullOrWhiteSpace($expectedSha) -or $expectedSha -notmatch '^[0-9a-fA-F]{64}$') {
+        Log-Error "Error: Could not retrieve the SHA256 checksum for v$latestVer."
+        exit 1
+    }
+
+    if ($global:DryRun) {
+        Log-Warn "[DRY RUN] Would download: $url"
+        Log-Warn "[DRY RUN] Expected SHA256: $expectedSha"
+    } else {
+        Log-Info "Downloading Millennium v$latestVer archive..."
+        $dlSuccess = Download-File -Url $url -Dest $localArchive -Msg "Fetching Millennium client archive" -GithubToken $githubToken
+        if (!$dlSuccess) {
+            Write-UpgradeFailureTips -Detail "Failed to download Millennium package."
+            exit 1
+        }
+
+        $actualSha = (Get-FileHash -Path $localArchive -Algorithm SHA256).Hash
+        if ($actualSha.ToLowerInvariant() -ne $expectedSha.ToLowerInvariant()) {
+            Log-Error "Error: SHA256 mismatch for downloaded Millennium archive."
+            Log-Error "Expected: $expectedSha"
+            Log-Error "Actual:   $actualSha"
+            Remove-Item -Path $localArchive -Force -ErrorAction SilentlyContinue
+            exit 1
+        }
+        Log-Info "SHA256 checksum verified."
     }
 } else {
     $localArchive = $File

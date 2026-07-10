@@ -76,14 +76,22 @@ Describe "Windows Installer" {
         BeforeAll {
             Mock Invoke-WebRequest {
                 param($Uri, $OutFile, $UseBasicParsing)
-                New-Item -Path $OutFile -ItemType File -Force | Out-Null
+                if (-not $OutFile) { return }
+                if ($Uri -like "*.sha256*") {
+                    $zipCandidate = $OutFile -replace '\.sha256$', ''
+                    if (!(Test-Path -Path $zipCandidate -PathType Leaf)) {
+                        $zipCandidate = Join-Path -Path (Split-Path -Parent $OutFile) -ChildPath "millennium-helpers-windows.zip"
+                    }
+                    $hash = (Get-FileHash -Path $zipCandidate -Algorithm SHA256).Hash.ToLowerInvariant()
+                    Set-Content -Path $OutFile -Value "$hash  millennium-helpers-windows.zip" -Force
+                } else {
+                    Set-Content -Path $OutFile -Value "fake-zip-content" -Force
+                }
             }
             Mock Expand-Archive {
                 param($Path, $DestinationPath, $Force)
-                $repoRoot = Join-Path -Path $PSScriptRoot -ChildPath "..\.."
-                $targetExtractDir = Join-Path -Path $DestinationPath -ChildPath "millenium-helpers-main"
-                New-Item -Path $targetExtractDir -ItemType Directory -Force | Out-Null
-                $extractedWinDir = Join-Path -Path $targetExtractDir -ChildPath "scripts\windows"
+                # Trimmed release layout: scripts/windows at archive root
+                $extractedWinDir = Join-Path -Path $DestinationPath -ChildPath "scripts\windows"
                 New-Item -Path $extractedWinDir -ItemType Directory -Force | Out-Null
                 $mockInstallPs1 = Join-Path -Path $extractedWinDir -ChildPath "install.ps1"
                 "Write-Host 'Mock installer executed successfully'" | Set-Content -Path $mockInstallPs1 -Force
@@ -95,7 +103,8 @@ Describe "Windows Installer" {
             $sb = [scriptblock]::Create((Get-Content $installScript -Raw))
             
             $out = (& $sb *>&1) | Out-String
-            $out | Should -BeLike "*Running in standalone/piped mode. Downloading repository*"
+            $out | Should -BeLike "*Running in standalone/piped mode. Downloading latest Windows release*"
+            $out | Should -BeLike "*SHA256 checksum verified*"
             $out | Should -BeLike "*Mock installer executed successfully*"
         }
     }

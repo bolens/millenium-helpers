@@ -14,6 +14,11 @@ make check-all  # shellcheck + ruff + full test suite
 Alternatives:
 - **Dev Container**: open the repo in a container (installs Pester, PSScriptAnalyzer, and pre-commit hooks on create). Then run `make check-all`.
 - **Nix**: `nix develop` for a shell with bash, python, shellcheck, and ruff.
+- **Windows Pester**: `make test-windows` (requires PowerShell 7+ / `pwsh`).
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for vulnerability reporting and [docs/security_troubleshooting.md](docs/security_troubleshooting.md) for design notes.
 
 ## Project layout
 

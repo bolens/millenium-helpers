@@ -297,4 +297,30 @@ Describe "Common Helpers" {
             Get-ClosestToken -InputToken "zzzz" -Candidates @("list", "install") | Should -Be $null
         }
     }
+
+    Context "Protect-HelpersConfigFile" {
+        BeforeAll {
+            . (Join-Path -Path $winScriptDir -ChildPath "common.ps1")
+        }
+
+        It "No-ops when the config file is missing" {
+            { Protect-HelpersConfigFile -Path (Join-Path $env:TEMP "mh-missing-config.json") } | Should -Not -Throw
+        }
+
+        It "Locks down ACL inheritance on Windows" {
+            if ($env:OS -ne 'Windows_NT') {
+                Set-ItResult -Skipped -Because "ACL lockdown is Windows-only"
+                return
+            }
+            $tmp = Join-Path -Path $env:TEMP -ChildPath "mh-acl-config.json"
+            '{"github_token":"secret"}' | Set-Content -Path $tmp -Force
+            try {
+                Protect-HelpersConfigFile -Path $tmp
+                $acl = Get-Acl -Path $tmp
+                $acl.AreAccessRulesProtected | Should -Be $true
+            } finally {
+                Remove-Item -Path $tmp -Force -ErrorAction SilentlyContinue
+            }
+        }
+    }
 }

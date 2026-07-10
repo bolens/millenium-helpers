@@ -141,9 +141,12 @@ jobs:
       - name: Create Windows Release Zip
         run: |
           set -euo pipefail
-          # Windows payload only — install.ps1 resolves VERSION via ..\..\VERSION.
+          # Windows payload — PowerShell scripts plus the shared MCP Python server
+          # (millennium-mcp.ps1 looks for ../millennium-mcp.py next to scripts/windows/).
+          # install.ps1 resolves VERSION via ..\..\VERSION.
           zip -r millennium-helpers-windows.zip \
             scripts/windows/ \
+            scripts/millennium-mcp.py \
             VERSION \
             LICENSE \
             README.md

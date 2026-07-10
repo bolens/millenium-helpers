@@ -254,6 +254,7 @@ The installer deploys completions for:
 | --- | --- |
 | Dry-run & manual uninstall | [docs/uninstall_dryrun.md](docs/uninstall_dryrun.md) |
 | MCP server setup & tools | [docs/mcp.md](docs/mcp.md) |
+| Security policy | [SECURITY.md](SECURITY.md) |
 | Security & troubleshooting | [docs/security_troubleshooting.md](docs/security_troubleshooting.md) |
 | Steam Deck & Flatpak | [docs/steam_deck.md](docs/steam_deck.md) |
 
