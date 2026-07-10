@@ -64,11 +64,28 @@ echo -e "${BLUE}Purging Millennium hooks and files...${NC}"
 # execute resolved from common.sh
 
 # 1. Clean up bootstrap symlinks and htmlcache for all users
-getent passwd | while IFS=: read -r _ _ uid _ _ home _; do
-  [[ "$uid" -ge 1000 ]] || continue
-  
-  # Find all Steam directories (native, Debian, and Flatpak candidates)
-  for steam_dir in "$home/.local/share/Steam" "$home/.steam/steam" "$home/.steam/root" "$home/.var/app/com.valvesoftware.Steam/.local/share/Steam"; do
+declare -a user_homes=()
+
+if command -v getent &>/dev/null; then
+  while IFS=: read -r _ _ uid _ _ home _; do
+    if [[ "$uid" -ge 1000 ]]; then
+      user_homes+=("$home")
+    fi
+  done < <(getent passwd)
+else
+  # macOS / fallback path
+  for user_dir in /Users/*; do
+    [[ -d "$user_dir" ]] || continue
+    username=$(basename "$user_dir")
+    if [[ "$username" != "Shared" && "$username" != "Guest" ]]; then
+      user_homes+=("$user_dir")
+    fi
+  done
+fi
+
+for home in "${user_homes[@]}"; do
+  # Find all Steam directories (native, Debian, Flatpak, and macOS candidates)
+  for steam_dir in "$home/.local/share/Steam" "$home/.steam/steam" "$home/.steam/root" "$home/.var/app/com.valvesoftware.Steam/.local/share/Steam" "$home/Library/Application Support/Steam"; do
     [[ -d "$steam_dir" ]] || continue
     
     # Check and remove 32-bit bootstrap hook

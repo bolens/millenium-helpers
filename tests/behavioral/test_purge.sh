@@ -46,12 +46,11 @@ mkdir -p "${FAKE_HOME}/.local/share/Steam/ubuntu12_32" "${FAKE_HOME}/.local/shar
 ln -sf "/usr/lib/millennium/libmillennium_bootstrap_x86.so" "${FAKE_HOME}/.local/share/Steam/ubuntu12_32/libXtst.so.6"
 
 mock_cmd "getent" "
-if [[ \"\$1\" == 'passwd' && \$# -eq 1 ]]; then
-  /usr/bin/getent passwd
+if [[ \"\$1\" == 'passwd' ]]; then
   echo 'purgetestuser:x:1999:1999::${FAKE_HOME}:/bin/bash'
-else
-  /usr/bin/getent \"\$@\"
+  exit 0
 fi
+exit 1
 "
 
 out=$(bash "$PURGE_SH" --dry-run 2>&1)

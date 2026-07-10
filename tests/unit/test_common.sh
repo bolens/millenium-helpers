@@ -54,7 +54,7 @@ assert_contains "$out" "echo hello world" "execute (dry-run) echoes the command 
 assert_not_contains "$out" $'hello world\n[DRY RUN]' "execute (dry-run) does not actually run the command"
 
 DRY_RUN=false
-marker_file=$(mktemp 2>/dev/null || mktemp -t 'tmp')
+marker_file=$(mktemp 2>/dev/null || mktemp -t tmp.XXXXXX)
 execute touch "$marker_file.executed"
 assert_file_exists "${marker_file}.executed" "execute (live) actually runs the given command"
 rm -f "$marker_file" "${marker_file}.executed"
@@ -62,14 +62,14 @@ rm -f "$marker_file" "${marker_file}.executed"
 DRY_RUN=true
 # --- write_file() ---
 
-target_file=$(mktemp -u 2>/dev/null || mktemp -u -t 'tmp')
+target_file=$(mktemp -u 2>/dev/null || mktemp -u -t tmp.XXXXXX)
 out=$(echo "file contents" | write_file "$target_file")
 assert_contains "$out" "[DRY RUN]" "write_file (dry-run) prints DRY RUN marker"
 assert_contains "$out" "$target_file" "write_file (dry-run) mentions target path"
 assert_file_not_exists "$target_file" "write_file (dry-run) does not create the file"
 
 DRY_RUN=false
-target_file2=$(mktemp -u 2>/dev/null || mktemp -u -t 'tmp')
+target_file2=$(mktemp -u 2>/dev/null || mktemp -u -t tmp.XXXXXX)
 echo "real contents" | write_file "$target_file2"
 assert_file_exists "$target_file2" "write_file (live) creates the target file"
 assert_equals "real contents" "$(cat "$target_file2" 2>/dev/null)" "write_file (live) writes the exact given contents"
@@ -347,7 +347,7 @@ done
 echo "mock download content" > "$dest"
 exit 0
 '
-download_temp=$(mktemp 2>/dev/null || mktemp -t 'tmp')
+download_temp=$(mktemp 2>/dev/null || mktemp -t tmp.XXXXXX)
 out=$(DRY_RUN=false download_file "https://example.com/file" "$download_temp" "Fetching file" 2>&1)
 rc=$?
 assert_success "$rc" "download_file returns 0 on successful curl"
@@ -362,7 +362,7 @@ mock_cmd "curl" '
 echo "curl error message" >&2
 exit 1
 '
-download_temp=$(mktemp 2>/dev/null || mktemp -t 'tmp')
+download_temp=$(mktemp 2>/dev/null || mktemp -t tmp.XXXXXX)
 out=$(DRY_RUN=false download_file "https://example.com/file" "$download_temp" "Fetching file" 2>&1)
 rc=$?
 assert_failure "$rc" "download_file returns non-zero on curl failure"

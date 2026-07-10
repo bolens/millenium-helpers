@@ -113,7 +113,7 @@ assert_success "$rc" "millennium-diag.sh -f --dry-run (doctor alias) completes w
 assert_contains "$out" "Doctor" "millennium-diag.sh -f --dry-run runs the doctor routine via its -f alias"
 
 # --- --share: Share report option ---
-CAPTURE_TEMP=$(mktemp 2>/dev/null || mktemp -t 'tmp')
+CAPTURE_TEMP=$(mktemp 2>/dev/null || mktemp -t tmp.XXXXXX)
 export MOCK_PAYLOAD_CAPTURE="${CAPTURE_TEMP}"
 export GITHUB_TOKEN="github_pat_testtoken1234567890abcdef"
 

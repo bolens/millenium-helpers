@@ -99,7 +99,7 @@ if [[ "$SHARE_REPORT" == "true" ]]; then
     fi
   done
   
-  report_file=$(mktemp 2>/dev/null || mktemp -t 'tmp')
+  report_file=$(mktemp 2>/dev/null || mktemp -t tmp.XXXXXX)
   trap 'rm -f "$report_file"' EXIT INT TERM
   
   # Run the diagnostic script itself with cleaned arguments
@@ -107,7 +107,7 @@ if [[ "$SHARE_REPORT" == "true" ]]; then
   
   # Sanitize user home and user name
   user_name="${SUDO_USER:-$(id -un)}"
-  user_home="$(getent passwd "$user_name" | cut -d: -f6 || echo "")"
+  user_home="$(get_user_home "$user_name")"
   if [[ -z "$user_home" ]]; then
     user_home="$HOME"
   fi

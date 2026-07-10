@@ -155,7 +155,7 @@ assert_file_exists "${FAKE_HOME}/.local/share/Steam/steamui/skins/GithubTheme" "
 
 # --- remove: path traversal in the theme name is rejected ---
 
-CANARY_FILE="$(mktemp 2>/dev/null || mktemp -t 'tmp')"
+CANARY_FILE="$(mktemp 2>/dev/null || mktemp -t tmp.XXXXXX)"
 echo "do not delete me" > "$CANARY_FILE"
 out=$(run_theme remove "../../../../..${CANARY_FILE}" 2>&1)
 rc=$?
