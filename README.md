@@ -349,7 +349,7 @@ make setup      # install shellcheck + ruff
 make check-all  # lint + full test suite
 ```
 
-Helpers report their version via `--version` / `-V` (reads the repo `VERSION` file). A Dev Container and Nix `devShell` are also available for a reproducible environment.
+Helpers report their version via `--version` / `-V` (reads the repo `VERSION` file). A Dev Container (Arch-based sandbox with PowerShell, Nix, and Docker-in-Docker) and Nix `devShell` are also available for a reproducible environment.
 
 ---
 

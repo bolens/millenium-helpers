@@ -12,7 +12,7 @@ make check-all  # shellcheck + ruff + full test suite
 ```
 
 Alternatives:
-- **Dev Container**: open the repo in a container (runs `make check-all` on create).
+- **Dev Container**: open the repo in a container (installs Pester, PSScriptAnalyzer, and pre-commit hooks on create). Then run `make check-all`.
 - **Nix**: `nix develop` for a shell with bash, python, shellcheck, and ruff.
 
 ## Project layout
