@@ -13,13 +13,20 @@ Describe "Schedule CLI Manager" {
         function New-ScheduledTaskSettingsSet { }
         function Get-Content {
             param(
+                [Parameter(ValueFromPipeline = $true)]
                 [string]$Path,
-                [switch]$Raw
+                [switch]$Raw,
+                [string]$LiteralPath
             )
-            if ($Path -like "*config.json*") {
-                return '{"update_channel":"stable","github_token":""}'
+            $p = if ($LiteralPath) { $LiteralPath } else { $Path }
+            if ($p -like "*config.json*") {
+                # Defer to real Get-Content so config tests can read written files.
+                return Microsoft.PowerShell.Management\Get-Content -LiteralPath $p -Raw:$Raw
             }
-            return "3.0.0"
+            if ($p -like "*VERSION*") {
+                return "3.0.0"
+            }
+            return Microsoft.PowerShell.Management\Get-Content @PSBoundParameters
         }
         . (Join-Path -Path $winScriptDir -ChildPath "common.ps1")
     }
@@ -112,6 +119,73 @@ Describe "Schedule CLI Manager" {
             $out = (& $scheduleScript status *>&1) | Out-String
             $out | Should -BeLike "*Scheduler disabled*"
             $out | Should -BeLike "*millennium schedule enable*"
+        }
+    }
+
+    Context "config get/set/list" {
+        BeforeEach {
+            $script:tempConfigDir = Join-Path ([System.IO.Path]::GetTempPath()) ("mh_sched_cfg_" + [guid]::NewGuid().ToString("n"))
+            $env:LOCALAPPDATA = $script:tempConfigDir
+            $cfgDir = Join-Path $script:tempConfigDir "millennium-helpers"
+            New-Item -ItemType Directory -Force -Path $cfgDir | Out-Null
+            '{"update_channel":"stable","github_token":"tok1234","backup_limit":3}' |
+                Set-Content -Path (Join-Path $cfgDir "config.json") -Encoding utf8
+        }
+        AfterEach {
+            Remove-Item -Path $script:tempConfigDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+
+        It "Lists config including backup keys" {
+            $scheduleScript = Join-Path -Path $winScriptDir -ChildPath "millennium-schedule.ps1"
+            $out = (& $scheduleScript config list *>&1) | Out-String
+            $out | Should -BeLike "*update_channel*"
+            $out | Should -BeLike "*backup_limit*"
+            $out | Should -BeLike "*github_token*"
+        }
+
+        It "Sets update_channel to main" {
+            $prevDry = $global:DryRun
+            $global:DryRun = $false
+            try {
+                $scheduleScript = Join-Path -Path $winScriptDir -ChildPath "millennium-schedule.ps1"
+                & $scheduleScript config set update_channel main *>&1 | Out-Null
+                $cfgPath = Join-Path $env:LOCALAPPDATA "millennium-helpers\config.json"
+                $raw = Microsoft.PowerShell.Management\Get-Content -LiteralPath $cfgPath -Raw
+                $data = $raw | ConvertFrom-Json
+                $data.update_channel | Should -Be "main"
+                $data.backup_limit | Should -Be 3
+            } finally {
+                $global:DryRun = $prevDry
+            }
+        }
+
+        It "Gets a config value" {
+            $scheduleScript = Join-Path -Path $winScriptDir -ChildPath "millennium-schedule.ps1"
+            $out = (& $scheduleScript config get update_channel *>&1) | Out-String
+            $out.Trim() | Should -Be "stable"
+        }
+    }
+
+    Context "enable task action parity" {
+        It "Registers task with -Yes -Quiet, theme update, and updater.log redirect" {
+            Mock Test-Admin { return $true }
+            Mock New-ScheduledTaskAction { return [pscustomobject]@{} }
+            Mock New-ScheduledTaskTrigger {
+                $t = [pscustomobject]@{}
+                $t | Add-Member -NotePropertyName RandomDelay -NotePropertyValue $null -Force
+                return $t
+            }
+            Mock New-ScheduledTaskSettingsSet { return [pscustomobject]@{} }
+            Mock Register-ScheduledTask { return $true }
+
+            $scheduleScript = Join-Path -Path $winScriptDir -ChildPath "millennium-schedule.ps1"
+            $out = (& $scheduleScript enable beta -DryRun *>&1) | Out-String
+            $out | Should -BeLike "*-Yes*"
+            $out | Should -BeLike "*-Quiet*"
+            $out | Should -BeLike "*updater.log*"
+            $out | Should -BeLike "*millennium-theme.ps1*"
+            $out | Should -BeLike "*update*"
+            $out | Should -BeLike "*-Channel beta*"
         }
     }
 }

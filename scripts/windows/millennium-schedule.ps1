@@ -1,7 +1,13 @@
 # Configure Windows Task Scheduler for Millennium helper auto-updates
+[CmdletBinding(PositionalBinding = $false)]
 param(
+    [Parameter(Position = 0)]
     [string]$Command = $null,
-    [string]$Channel = "stable",
+    # Catch "config set …" / "enable beta" without binding them to -Channel.
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$RemainingArgs = @(),
+    [ValidateSet("stable", "beta", "main")]
+    [string]$Channel = $null,
     [switch]$DryRun = $false,
     [Alias("q")]
     [switch]$Quiet = $false,
@@ -22,23 +28,42 @@ if (Test-Path -Path $CommonPs1) {
     exit 1
 }
 
-# Resolve command positional parameters / GNU-style flags
-if ($args.Count -gt 0) {
-    $gnuFlags = @{
-        DryRun = [bool]$DryRun
-        Quiet = [bool]$Quiet
-        Help = [bool]$Help
-        Version = [bool]$Version
+# Remaining positional args after Command (e.g. config set key value, enable beta)
+$script:PositionalArgs = @()
+
+# Unbound tokens from ValueFromRemainingArguments (and any classic $args if present)
+$unbound = [System.Collections.Generic.List[string]]::new()
+foreach ($r in @($RemainingArgs)) {
+    if ($null -ne $r -and "$r" -ne "") { [void]$unbound.Add([string]$r) }
+}
+if (Get-Variable -Name args -ErrorAction SilentlyContinue) {
+    foreach ($a in @($args)) {
+        if ($null -ne $a -and "$a" -ne "") { [void]$unbound.Add([string]$a) }
     }
-    $remaining = Apply-GnuStyleArgs -InputArgs ([string[]]$args) -Target $gnuFlags
+}
+
+if ($unbound.Count -gt 0) {
+    $gnuFlags = @{
+        DryRun  = [bool]$DryRun
+        Quiet   = [bool]$Quiet
+        Help    = [bool]$Help
+        Version = [bool]$Version
+        Channel = $Channel
+    }
+    $remaining = @(Apply-GnuStyleArgs -InputArgs @($unbound.ToArray()) -Target $gnuFlags)
     if ($gnuFlags.DryRun) { $DryRun = $true }
     if ($gnuFlags.Quiet) { $Quiet = $true; $global:Quiet = $true; $env:MILLENNIUM_QUIET = "1" }
     if ($gnuFlags.Help) { $Help = $true }
     if ($gnuFlags.Version) { $Version = $true }
+    if ($gnuFlags.Channel) { $Channel = [string]$gnuFlags.Channel }
     if ($remaining.Count -gt 0) {
-        if (!$Command) { $Command = $remaining[0] }
-        if ($remaining.Count -gt 1) {
-            $Channel = $remaining[1]
+        if ([string]::IsNullOrWhiteSpace($Command)) {
+            $Command = $remaining[0]
+            if ($remaining.Count -gt 1) {
+                $script:PositionalArgs = @($remaining[1..($remaining.Count - 1)])
+            }
+        } else {
+            $script:PositionalArgs = @($remaining)
         }
     }
 }
@@ -55,15 +80,27 @@ if ($DryRun) {
 $taskName = "MillenniumUpdate"
 $configDir = Join-Path -Path $env:LOCALAPPDATA -ChildPath "millennium-helpers"
 $configFile = Join-Path -Path $configDir -ChildPath "config.json"
+$updaterLog = Join-Path -Path $configDir -ChildPath "updater.log"
 
-# Load current configuration channel if not bound
-if (Test-Path -Path $configFile) {
-    try {
-        $config = Get-Content -Path $configFile -Raw | ConvertFrom-Json
-        if ($config -and $config.update_channel -and ($MyInvocation.BoundParameters.ContainsKey('Channel') -eq $false)) {
-            $Channel = $config.update_channel
-        }
-    } catch {}
+# Default channel from config when not set via -Channel / --channel / enable arg
+if ([string]::IsNullOrWhiteSpace($Channel)) {
+    $Channel = "stable"
+    if (Test-Path -Path $configFile) {
+        try {
+            $config = Get-Content -Path $configFile -Raw | ConvertFrom-Json
+            if ($config -and $config.update_channel) {
+                $Channel = [string]$config.update_channel
+            }
+        } catch {}
+    }
+}
+
+# enable <channel> from remaining positionals
+if ($Command -eq "enable" -and $script:PositionalArgs.Count -gt 0) {
+    $cand = [string]$script:PositionalArgs[0]
+    if ($cand -in @("stable", "beta", "main")) {
+        $Channel = $cand
+    }
 }
 
 function Show-Help {
@@ -100,6 +137,7 @@ if ($Version -or $Command -eq "version" -or $Command -eq "--version" -or $Comman
 function Enable-Task {
     $channel_arg = $args[0]
     $upgradeScript = Join-Path -Path $ScriptDir -ChildPath "millennium-upgrade.ps1"
+    $themeScript = Join-Path -Path $ScriptDir -ChildPath "millennium-theme.ps1"
 
     if (!(Test-Path -Path $upgradeScript)) {
         Log-Error "Error: Millennium upgrade script not found at $upgradeScript"
@@ -116,23 +154,27 @@ function Enable-Task {
     # Generate random start delay to prevent DDoS on GitHub
     $delayMin = Get-Random -Minimum 0 -Maximum 60
 
-    Execute-Cmd -ScriptBlock {
-        # Action executing powershell script
-        # -WindowStyle Hidden keeps the console from flashing on screen
-        $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$upgradeScript`" -Channel $channel_arg"
+    # Match Unix timer: upgrade -Yes -Quiet, theme update, append to updater.log
+    $psInner = @(
+        "New-Item -ItemType Directory -Force -Path '$configDir' | Out-Null"
+        "& '$upgradeScript' -Channel $channel_arg -Yes -Quiet *>> '$updaterLog'"
+        "if (Test-Path -LiteralPath '$themeScript') { & '$themeScript' update -Quiet *>> '$updaterLog' }"
+    ) -join "; "
+    $taskArg = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command `"$psInner`""
 
-        # Trigger daily
+    Log-Info "Task command: powershell.exe $taskArg"
+
+    Execute-Cmd -ScriptBlock {
+        $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $taskArg
         $trigger = New-ScheduledTaskTrigger -Daily -At "2:00AM"
         $trigger.RandomDelay = [System.TimeSpan]::FromMinutes($delayMin)
-
-        # Settings
         $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
-
         Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Force | Out-Null
     } -Description "Register-ScheduledTask -TaskName $taskName"
 
     Log-Info "Millennium auto-update scheduled task has been enabled!"
     Log-Info "It will run daily with a randomized delay of up to 1 hour."
+    Log-Info "Logs append to: $updaterLog"
 }
 
 function Disable-Task {
@@ -166,8 +208,7 @@ function Show-Status {
         if ($actionArgs -match '-Channel\s+(\S+)') {
             $channelDisp = $Matches[1]
         }
-        $logDir = Join-Path -Path $env:LOCALAPPDATA -ChildPath "millennium-helpers"
-        $logFile = Join-Path -Path $logDir -ChildPath "updater.log"
+        $logFile = $updaterLog
         Write-Host ""
         Write-Host "=== Scheduler summary ==="
         Write-Host "  Channel     : $channelDisp"
@@ -331,31 +372,43 @@ function Run-Setup-Wizard {
         } catch {}
     }
 
-    Write-Host "To prevent hitting GitHub API rate limits during updates, you can optionally provide a GitHub Personal Access Token (PAT)."
+    Write-Host "To avoid GitHub API rate limits during updates, you can store an optional Personal Access Token (PAT)."
     if ($existingToken) {
-        $githubToken = Read-MaskedHost -Prompt "Enter GitHub PAT (leave empty to keep existing token): "
+        Write-Host "A PAT is already saved. Press Enter to keep it (it will not be cleared), or paste a new token to replace it." -ForegroundColor Yellow
+        $githubToken = Read-MaskedHost -Prompt "GitHub PAT [keep existing]: "
         if ([string]::IsNullOrWhiteSpace($githubToken)) {
             $githubToken = $existingToken
-            Write-Host "Keeping existing GitHub PAT.`n"
+            Write-Host "Kept existing GitHub PAT (unchanged).`n"
         } else {
-            Write-Host "GitHub PAT received (hidden).`n"
+            Write-Host "New GitHub PAT saved (hidden).`n"
         }
     } else {
-        $githubToken = Read-MaskedHost -Prompt "Enter GitHub PAT (leave empty to skip): "
-        if (-not [string]::IsNullOrWhiteSpace($githubToken)) {
-            Write-Host "GitHub PAT received (hidden).`n"
+        Write-Host "No PAT is configured yet. Press Enter to skip, or paste a token to save one." -ForegroundColor Yellow
+        $githubToken = Read-MaskedHost -Prompt "GitHub PAT [optional]: "        if (-not [string]::IsNullOrWhiteSpace($githubToken)) {
+            Write-Host "GitHub PAT saved (hidden).`n"
+        } else {
+            Write-Host "No GitHub PAT saved.`n"
         }
     }
 
-    # Write configuration to LocalAppData config folder
+    # Write configuration to LocalAppData config folder (preserve backup_* and other keys)
     if (!$global:DryRun) {
         if (!(Test-Path -Path $configDir)) {
             New-Item -ItemType Directory -Force -Path $configDir | Out-Null
         }
-        $configObj = @{
-            "update_channel" = $channelVal;
-            "github_token" = $githubToken;
+        $configObj = @{}
+        if (Test-Path -Path $configFile) {
+            try {
+                $existing = Get-Content -Path $configFile -Raw | ConvertFrom-Json
+                if ($existing) {
+                    foreach ($p in $existing.PSObject.Properties) {
+                        $configObj[$p.Name] = $p.Value
+                    }
+                }
+            } catch {}
         }
+        $configObj["update_channel"] = $channelVal
+        $configObj["github_token"] = $githubToken
         $configObj | ConvertTo-Json | Set-Content -Path $configFile -Force
         Protect-HelpersConfigFile -Path $configFile
         Write-Host "`nConfiguration saved successfully to: $configFile" -ForegroundColor Green
@@ -367,6 +420,7 @@ function Run-Setup-Wizard {
         } else {
             Write-Host "  github_token   : (not set)"
         }
+        Write-Host "  (other keys such as backup_limit are preserved)"
     }
 
     # Trigger Scheduled Task enablement if chosen
@@ -381,16 +435,22 @@ function Run-Setup-Wizard {
 }
 
 function Manage-Config {
-    # Replicates config actions (list/get/set)
-    $action = $args[0]
+    param(
+        [Parameter(ValueFromRemainingArguments = $true)]
+        [AllowEmptyCollection()]
+        [string[]]$ConfigArgs = @()
+    )
+    $parts = @($ConfigArgs)
+    $action = $null
     $key = $null
     $val = $null
-    if ($args.Count -gt 1) { $key = $args[1] }
-    if ($args.Count -gt 2) { $val = $args[2] }
+    if ($parts.Count -gt 0) { $action = [string]$parts[0] }
+    if ($parts.Count -gt 1) { $key = [string]$parts[1] }
+    if ($parts.Count -gt 2) { $val = [string]$parts[2] }
 
-    if ($action -eq "list") {
+    if ([string]::IsNullOrWhiteSpace($action) -or $action -eq "list") {
         Write-Host "=== Millennium Helpers Configuration ==="
-        $data = @{}
+        $data = $null
         if (Test-Path -Path $configFile) {
             try {
                 $data = Get-Content -Path $configFile -Raw | ConvertFrom-Json
@@ -405,7 +465,7 @@ function Manage-Config {
             $valStr = ""
             if ($k -eq "github_token" -and $value) {
                 $valStr = if ($value.Length -ge 4) { $value.Substring(0, 4) + ("*" * 8) } else { "*" * 8 }
-            } elseif ($null -eq $value) {
+            } elseif ($null -eq $value -or $value -eq "") {
                 $valStr = "(not set)"
                 if ($k -eq "update_channel") { $valStr = "stable (default)" }
                 elseif ($k -eq "backup_limit") { $valStr = "5 (default)" }
@@ -515,11 +575,7 @@ switch ($Command) {
         Run-Setup-Wizard
     }
     "config" {
-        # Pass remaining arguments to manage_config
-        $cfgArgs = @()
-        if ($args.Count -gt 1) { $cfgArgs = $args[1..($args.Count-1)] }
-        if ($CONFIG_ACTION) { $cfgArgs = @($CONFIG_ACTION, $CONFIG_KEY, $CONFIG_VALUE) }
-        Manage-Config $cfgArgs
+        Manage-Config -ConfigArgs ([string[]]@($script:PositionalArgs))
     }
     Default {
         if ($Command) {

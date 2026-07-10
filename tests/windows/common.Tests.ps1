@@ -88,6 +88,22 @@ Describe "Common Helpers" {
             $flags.Yes | Should -Be $true
             $rest | Should -Contain "list"
         }
+
+        It "Apply-GnuStyleArgs maps channel shortcuts and --channel value" {
+            $flags = @{ Channel = $null; Force = $false }
+            $rest = Apply-GnuStyleArgs -InputArgs @("--main", "extra") -Target $flags
+            $flags.Channel | Should -Be "main"
+            $rest | Should -Contain "extra"
+
+            $flags2 = @{ Channel = $null; Force = $false; File = $null; Rollback = $null; SkipTheme = $false }
+            $rest2 = Apply-GnuStyleArgs -InputArgs @("--channel", "beta", "--force", "--file", "C:\a.zip", "--rollback", "list", "--skip-theme") -Target $flags2
+            $flags2.Channel | Should -Be "beta"
+            $flags2.Force | Should -Be $true
+            $flags2.File | Should -Be "C:\a.zip"
+            $flags2.Rollback | Should -Be "list"
+            $flags2.SkipTheme | Should -Be $true
+            @($rest2).Count | Should -Be 0
+        }
     }
 
     Context "Steam Path Resolution - Fallback" {

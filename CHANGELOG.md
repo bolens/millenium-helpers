@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.6.2] - 2026-07-10
+
+### Fixed
+- Windows↔Unix parity: schedule `config` under StrictMode; scheduled task uses `-Yes -Quiet`, theme update, and `updater.log`
+- Windows upgrade honors `backup_max_age_days` and accepts GNU-style channel/force/file/rollback flags
+- Windows repair supports `-SkipTheme` / `--skip-theme` and refreshes themes after force reinstall
+- Setup wizard (Unix + Windows) preserves `backup_limit` / `backup_max_age_days` when rewriting config
+
 ## [2.6.1] - 2026-07-10
 
 ### Changed

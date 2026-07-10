@@ -704,23 +704,27 @@ run_setup_wizard() {
 
   # 3. GitHub API Token configuration
   local github_token=""
-  echo -e "To prevent hitting GitHub API rate limits during updates, you can optionally provide a GitHub Personal Access Token (PAT)."
+  echo -e "To avoid GitHub API rate limits during updates, you can store an optional Personal Access Token (PAT)."
   if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-    printf "Enter GitHub PAT (leave empty to keep existing token): " >&2
+    echo -e "A PAT is already saved. ${YELLOW}Press Enter to keep it${NC} (it will not be cleared), or paste a new token to replace it."
+    printf "GitHub PAT [keep existing]: " >&2
     read -rs github_token
     echo "" >&2
     if [[ -z "$github_token" ]]; then
       github_token="$GITHUB_TOKEN"
-      echo -e "Keeping existing GitHub PAT.\n"
+      echo -e "Kept existing GitHub PAT (unchanged).\n"
     else
-      echo -e "GitHub PAT received (hidden).\n"
+      echo -e "New GitHub PAT saved (hidden).\n"
     fi
   else
-    printf "Enter GitHub PAT (leave empty to skip): " >&2
+    echo -e "No PAT is configured yet. ${YELLOW}Press Enter to skip${NC}, or paste a token to save one."
+    printf "GitHub PAT [optional]: " >&2
     read -rs github_token
     echo "" >&2
     if [[ -n "$github_token" ]]; then
-      echo -e "GitHub PAT received (hidden).\n"
+      echo -e "GitHub PAT saved (hidden).\n"
+    else
+      echo -e "No GitHub PAT saved.\n"
     fi
   fi
 
@@ -737,17 +741,33 @@ run_setup_wizard() {
     execute mkdir -p "$user_config_dir"
     execute chmod 700 "$user_config_dir"
 
-    write_file "${user_config_dir}/config.json" << EOF
-{
-  "update_channel": "${channel}",
-  "github_token": "${github_token}"
-}
-EOF
-    execute chmod 600 "${user_config_dir}/config.json"
+    local config_file="${user_config_dir}/config.json"
+    # Merge into existing config so backup_* and other keys are preserved.
+    python3 - "$config_file" "$channel" "$github_token" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+channel = sys.argv[2]
+token = sys.argv[3]
+data = {}
+if path.is_file():
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            data = {}
+    except Exception:
+        data = {}
+data["update_channel"] = channel
+data["github_token"] = token
+path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+PY
+    execute chmod 600 "$config_file"
     if [[ "$(id -u)" -eq 0 && "$user_name" != "root" ]]; then
       execute chown -R "${user_name}:${user_name}" "$user_config_dir"
     fi
-    echo -e "\n${GREEN}Configuration saved successfully to:${NC} ${user_config_dir}/config.json"
+    echo -e "\n${GREEN}Configuration saved successfully to:${NC} ${config_file}"
   else
     echo -e "\n${YELLOW}[DRY RUN] Would write config to ${user_config_dir}/config.json:${NC}"
     echo "update_channel: ${channel}"
@@ -756,6 +776,7 @@ EOF
     else
       echo "github_token: (not set)"
     fi
+    echo "(other keys such as backup_limit are preserved)"
   fi
 
   # Reload configuration in memory

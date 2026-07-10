@@ -17,6 +17,45 @@ param(
 )
 set-strictmode -version Latest
 
+# Source shared helpers
+$ScriptDir = $PSScriptRoot
+$CommonPs1 = Join-Path -Path $ScriptDir -ChildPath "common.ps1"
+if (Test-Path -Path $CommonPs1) {
+    . $CommonPs1
+} else {
+    Write-Error "Shared helper library not found at $CommonPs1"
+    exit 1
+}
+
+# GNU-style flags (--main, --channel, --force, …) from unbound args
+$channelExplicit = $MyInvocation.BoundParameters.ContainsKey('Channel')
+if ($args.Count -gt 0) {
+    $gnuFlags = @{
+        Channel  = $null
+        Force    = [bool]$Force
+        File     = $File
+        Rollback = $Rollback
+        DryRun   = [bool]$DryRun
+        Yes      = [bool]$Yes
+        Quiet    = [bool]$Quiet
+        Help     = [bool]$Help
+        Version  = [bool]$Version
+    }
+    [void](Apply-GnuStyleArgs -InputArgs ([string[]]$args) -Target $gnuFlags)
+    if ($null -ne $gnuFlags.Channel -and "$($gnuFlags.Channel)" -ne "") {
+        $Channel = [string]$gnuFlags.Channel
+        $channelExplicit = $true
+    }
+    if ($gnuFlags.Force) { $Force = $true }
+    if ($gnuFlags.File) { $File = [string]$gnuFlags.File }
+    if ($gnuFlags.Rollback) { $Rollback = [string]$gnuFlags.Rollback }
+    if ($gnuFlags.DryRun) { $DryRun = $true }
+    if ($gnuFlags.Yes) { $Yes = $true }
+    if ($gnuFlags.Quiet) { $Quiet = $true; $global:Quiet = $true; $env:MILLENNIUM_QUIET = "1" }
+    if ($gnuFlags.Help) { $Help = $true }
+    if ($gnuFlags.Version) { $Version = $true }
+}
+
 if ($Help) {
     Write-Host @"
 Usage: millennium-upgrade.ps1 [-Channel stable|beta|main] [-Force] [-File PATH] [-Rollback ID|list] [-DryRun] [-Yes] [-Quiet] [-Version] [-Help]
@@ -33,18 +72,10 @@ Options:
   -Quiet, -q        Suppress informational output
   -Version, -V      Show version information
   -Help, -h         Show this help message
+
+GNU-style flags (--channel, --stable, --beta, --main, --force, --file, --rollback, --yes, --quiet) are also accepted.
 "@
     exit 0
-}
-
-# Source shared helpers
-$ScriptDir = $PSScriptRoot
-$CommonPs1 = Join-Path -Path $ScriptDir -ChildPath "common.ps1"
-if (Test-Path -Path $CommonPs1) {
-    . $CommonPs1
-} else {
-    Write-Error "Shared helper library not found at $CommonPs1"
-    exit 1
 }
 
 if ($Version) {
@@ -76,14 +107,9 @@ $MillenniumDir = Join-Path -Path $SteamPath -ChildPath "millennium"
 $WsockDll = Join-Path -Path $SteamPath -ChildPath "wsock32.dll"
 $BackupDir = Join-Path -Path $SteamPath -ChildPath "millennium_backups"
 
-# Parse configuration (backup limit)
+# Parse configuration (backup limit / age + default channel)
 $BackupLimit = 5
-$userHome = $null
-$regHKCU = Get-ItemProperty -Path "HKCU:\Software\Valve\Steam" -ErrorAction SilentlyContinue
-if ($regHKCU -and $regHKCU.SteamPath) {
-    $userHome = $regHKCU.SteamPath
-}
-if (!$userHome) { $userHome = $env:USERPROFILE }
+$BackupMaxAgeDays = $null
 $configDir = Join-Path -Path $env:LOCALAPPDATA -ChildPath "millennium-helpers"
 $configFile = Join-Path -Path $configDir -ChildPath "config.json"
 if (Test-Path -Path $configFile) {
@@ -92,7 +118,10 @@ if (Test-Path -Path $configFile) {
         if ($config -and $config.backup_limit) {
             $BackupLimit = [int]$config.backup_limit
         }
-        if ($config -and $config.update_channel -and ($MyInvocation.BoundParameters.ContainsKey('Channel') -eq $false)) {
+        if ($config -and $null -ne $config.backup_max_age_days -and "$($config.backup_max_age_days)" -ne "") {
+            $BackupMaxAgeDays = [int]$config.backup_max_age_days
+        }
+        if ($config -and $config.update_channel -and -not $channelExplicit) {
             $Channel = $config.update_channel
         }
     } catch {}
@@ -359,16 +388,26 @@ if ((Test-Path -Path $MillenniumDir) -or (Test-Path -Path $WsockDll)) {
         }
     } -Description "Backup current version to $currBackupDir"
 
-    # Prune older backups
+    # Prune older backups (age first, then count — matches Unix prune_backups)
     if (Test-Path -Path $BackupDir) {
-        $backups = Get-ChildItem -Path $BackupDir -Directory | Sort-Object CreationTime
+        if ($null -ne $BackupMaxAgeDays -and $BackupMaxAgeDays -ge 0) {
+            $cutoff = (Get-Date).AddDays(-1 * $BackupMaxAgeDays)
+            $aged = @(Get-ChildItem -Path $BackupDir -Directory | Where-Object { $_.CreationTime -lt $cutoff })
+            foreach ($old in $aged) {
+                Log-Info "Pruning aged backup: $($old.Name) (older than $BackupMaxAgeDays days)"
+                Execute-Cmd -ScriptBlock {
+                    Remove-Item -Path $old.FullName -Recurse -Force
+                } -Description "Remove aged backup $($old.Name)"
+            }
+        }
+        $backups = @(Get-ChildItem -Path $BackupDir -Directory | Sort-Object CreationTime)
         while ($backups.Count -ge $BackupLimit) {
             $oldest = $backups[0]
             Log-Info "Pruning oldest backup: $($oldest.Name)"
             Execute-Cmd -ScriptBlock {
                 Remove-Item -Path $oldest.FullName -Recurse -Force
             } -Description "Remove oldest backup $oldest"
-            $backups = Get-ChildItem -Path $BackupDir -Directory | Sort-Object CreationTime
+            $backups = @(Get-ChildItem -Path $BackupDir -Directory | Sort-Object CreationTime)
         }
     }
 }

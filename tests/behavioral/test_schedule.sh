@@ -256,7 +256,9 @@ mkdir -p "${TEST_CONFIG_DIR}/millennium-helpers"
 cat > "${TEST_CONFIG_DIR}/millennium-helpers/config.json" << EOF
 {
   "update_channel": "beta",
-  "github_token": "token_existing_pat"
+  "github_token": "token_existing_pat",
+  "backup_limit": 7,
+  "backup_max_age_days": 14
 }
 EOF
 
@@ -267,7 +269,9 @@ mock_cmd "systemctl" "exit 1"
 out=$(echo -e "\n\n\n" | FORCE_WIZARD=true bash "$SCHEDULE_SH" setup --dry-run 2>&1)
 assert_contains "$out" "default: 2 (Beta)" "setup wizard default channel is Beta when beta is configured"
 assert_contains "$out" "background update timer? [y/N]" "setup wizard default scheduler is n (y/N) when config exists but not enabled"
-assert_contains "$out" "Enter GitHub PAT (leave empty to keep existing token)" "setup wizard prompts to keep existing token"
+assert_contains "$out" "Press Enter to keep it" "setup wizard explains blank keeps existing PAT"
+assert_contains "$out" "GitHub PAT [keep existing]" "setup wizard prompts to keep existing token"
+assert_contains "$out" "Kept existing GitHub PAT" "setup wizard confirms existing PAT was kept"
 assert_contains "$out" "github_token: [set]" "setup wizard dry-run redacts an existing GitHub token"
 assert_contains "$out" "backup_limit" "setup wizard tip mentions backup_limit"
 assert_contains "$out" "backup_max_age_days" "setup wizard tip mentions backup_max_age_days"
@@ -277,8 +281,12 @@ echo -e "\n\n\n" | FORCE_WIZARD=true bash "$SCHEDULE_SH" setup >/dev/null 2>&1
 
 val_ch=$(python3 -c "import json; print(json.load(open('${TEST_CONFIG_DIR}/millennium-helpers/config.json')).get('update_channel'))")
 val_token=$(python3 -c "import json; print(json.load(open('${TEST_CONFIG_DIR}/millennium-helpers/config.json')).get('github_token'))")
+val_limit=$(python3 -c "import json; print(json.load(open('${TEST_CONFIG_DIR}/millennium-helpers/config.json')).get('backup_limit'))")
+val_age=$(python3 -c "import json; print(json.load(open('${TEST_CONFIG_DIR}/millennium-helpers/config.json')).get('backup_max_age_days'))")
 assert_equals "beta" "$val_ch" "setup wizard preserves update_channel via default prompt"
 assert_equals "token_existing_pat" "$val_token" "setup wizard preserves github_token via default prompt"
+assert_equals "7" "$val_limit" "setup wizard preserves backup_limit when rewriting config"
+assert_equals "14" "$val_age" "setup wizard preserves backup_max_age_days when rewriting config"
 
 rm -f "${MOCK_BIN}/systemctl"
 rm -rf "${TEST_CONFIG_DIR}"

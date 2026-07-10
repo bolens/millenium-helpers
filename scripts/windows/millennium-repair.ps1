@@ -5,28 +5,14 @@ param(
     [switch]$Yes = $false,
     [Alias("q")]
     [switch]$Quiet = $false,
+    [Alias("s")]
+    [switch]$SkipTheme = $false,
     [Alias("h")]
     [switch]$Help = $false,
     [Alias("V")]
     [switch]$Version = $false
 )
 set-strictmode -version Latest
-
-if ($Help) {
-    Write-Host @"
-Usage: millennium-repair.ps1 [-DryRun] [-Yes] [-Quiet] [-Version] [-Help]
-
-Force reinstall and repair the Millennium client on Windows.
-
-Options:
-  -DryRun      Simulate operations without modifying files
-  -Yes, -y     Skip confirmation when closing Steam
-  -Quiet, -q   Suppress informational output
-  -Version, -V Show version information
-  -Help, -h    Show this help message
-"@
-    exit 0
-}
 
 # Source shared helpers
 $ScriptDir = $PSScriptRoot
@@ -36,6 +22,44 @@ if (Test-Path -Path $CommonPs1) {
 } else {
     Write-Error "Shared helper library not found at $CommonPs1"
     exit 1
+}
+
+if ($args.Count -gt 0) {
+    $gnuFlags = @{
+        DryRun    = [bool]$DryRun
+        Yes       = [bool]$Yes
+        Quiet     = [bool]$Quiet
+        SkipTheme = [bool]$SkipTheme
+        Help      = [bool]$Help
+        Version   = [bool]$Version
+    }
+    [void](Apply-GnuStyleArgs -InputArgs ([string[]]$args) -Target $gnuFlags)
+    if ($gnuFlags.DryRun) { $DryRun = $true }
+    if ($gnuFlags.Yes) { $Yes = $true }
+    if ($gnuFlags.Quiet) { $Quiet = $true; $global:Quiet = $true; $env:MILLENNIUM_QUIET = "1" }
+    if ($gnuFlags.SkipTheme) { $SkipTheme = $true }
+    if ($gnuFlags.Help) { $Help = $true }
+    if ($gnuFlags.Version) { $Version = $true }
+}
+
+if ($Help) {
+    Write-Host @"
+Usage: millennium-repair.ps1 [-DryRun] [-Yes] [-Quiet] [-SkipTheme] [-Version] [-Help]
+
+Force reinstall the Millennium client on Windows (via millennium-upgrade -Force),
+optionally refresh installed themes, and re-register the auto-update task if present.
+
+Options:
+  -DryRun         Simulate operations without modifying files
+  -Yes, -y        Skip confirmation when closing Steam
+  -Quiet, -q      Suppress informational output
+  -SkipTheme, -s  Skip theme refresh after reinstall
+  -Version, -V    Show version information
+  -Help, -h       Show this help message
+
+GNU-style flags (--skip-theme, --yes, --quiet, --dry-run) are also accepted.
+"@
+    exit 0
 }
 
 if ($Version) {
@@ -91,7 +115,8 @@ $upgradeScript = Join-Path -Path $ScriptDir -ChildPath "millennium-upgrade.ps1"
 if (Test-Path -Path $upgradeScript) {
     $upgradeArgs = @("-Channel", $Channel, "-Force", "-Yes")
     if ($global:DryRun) { $upgradeArgs += "-DryRun" }
-    Log-Info "Invoking client reinstalls: Powershell -File `"$upgradeScript`" $($upgradeArgs -join ' ')"
+    if ($Quiet) { $upgradeArgs += "-Quiet" }
+    Log-Info "Invoking client reinstall: Powershell -File `"$upgradeScript`" $($upgradeArgs -join ' ')"
     Execute-Cmd -ScriptBlock {
         & $upgradeScript @upgradeArgs
     } -Description "powershell -File $upgradeScript -Channel $Channel -Force -Yes"
@@ -99,10 +124,23 @@ if (Test-Path -Path $upgradeScript) {
     Log-Error "Error: Upgrade script not found at $upgradeScript"
 }
 
-# 3. Refresh scheduled tasks
+# 3. Refresh installed themes (Unix repair refreshes the active theme unless --skip-theme)
+if (-not $SkipTheme) {
+    $themeScript = Join-Path -Path $ScriptDir -ChildPath "millennium-theme.ps1"
+    if (Test-Path -Path $themeScript) {
+        Log-Info "Refreshing installed themes..."
+        $themeArgs = @("update")
+        if ($Quiet) { $themeArgs += "-Quiet" }
+        if ($global:DryRun) { $themeArgs += "-DryRun" }
+        Execute-Cmd -ScriptBlock {
+            & $themeScript @themeArgs
+        } -Description "powershell -File $themeScript update"
+    }
+}
+
+# 4. Refresh scheduled tasks
 $scheduleScript = Join-Path -Path $ScriptDir -ChildPath "millennium-schedule.ps1"
 if (Test-Path -Path $scheduleScript) {
-    # If task is configured, let's enable it again
     $taskName = "MillenniumUpdate"
     $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
     if ($null -ne $task -and (Test-Admin)) {

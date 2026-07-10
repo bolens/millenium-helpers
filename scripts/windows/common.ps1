@@ -42,6 +42,7 @@ function Test-MillenniumQuiet {
 }
 
 # Apply GNU-style flags from unbound $args (e.g. --json, --yes) onto script switches.
+# Target keys may include booleans (Json, Yes, …) and string values (Channel, File, Rollback).
 function Apply-GnuStyleArgs {
     param(
         [Parameter(Mandatory = $true)]
@@ -51,19 +52,49 @@ function Apply-GnuStyleArgs {
     )
     $remaining = New-Object System.Collections.Generic.List[string]
     for ($i = 0; $i -lt $InputArgs.Count; $i++) {
-        switch -Regex ($InputArgs[$i]) {
-            '^--json$' { if ($Target.ContainsKey('Json')) { $Target['Json'] = $true } else { $remaining.Add($InputArgs[$i]) } }
-            '^(--dry-run|-d)$' { if ($Target.ContainsKey('DryRun')) { $Target['DryRun'] = $true } else { $remaining.Add($InputArgs[$i]) } }
-            '^(--yes|-y)$' { if ($Target.ContainsKey('Yes')) { $Target['Yes'] = $true } else { $remaining.Add($InputArgs[$i]) } }
+        $tok = $InputArgs[$i]
+        switch -Regex ($tok) {
+            '^--json$' { if ($Target.ContainsKey('Json')) { $Target['Json'] = $true } else { $remaining.Add($tok) } }
+            '^(--dry-run|-d)$' { if ($Target.ContainsKey('DryRun')) { $Target['DryRun'] = $true } else { $remaining.Add($tok) } }
+            '^(--yes|-y)$' { if ($Target.ContainsKey('Yes')) { $Target['Yes'] = $true } else { $remaining.Add($tok) } }
             '^(--quiet|-q)$' {
                 if ($Target.ContainsKey('Quiet')) { $Target['Quiet'] = $true }
                 $global:Quiet = $true
                 $env:MILLENNIUM_QUIET = "1"
             }
-            '^(--help|-h)$' { if ($Target.ContainsKey('Help')) { $Target['Help'] = $true } else { $remaining.Add($InputArgs[$i]) } }
-            '^(--version|-V)$' { if ($Target.ContainsKey('Version')) { $Target['Version'] = $true } else { $remaining.Add($InputArgs[$i]) } }
-            '^(--all|-a)$' { if ($Target.ContainsKey('All')) { $Target['All'] = $true } else { $remaining.Add($InputArgs[$i]) } }
-            default { $remaining.Add($InputArgs[$i]) }
+            '^(--help|-h)$' { if ($Target.ContainsKey('Help')) { $Target['Help'] = $true } else { $remaining.Add($tok) } }
+            '^(--version|-V)$' { if ($Target.ContainsKey('Version')) { $Target['Version'] = $true } else { $remaining.Add($tok) } }
+            '^(--all|-a)$' { if ($Target.ContainsKey('All')) { $Target['All'] = $true } else { $remaining.Add($tok) } }
+            '^(--force|-f)$' { if ($Target.ContainsKey('Force')) { $Target['Force'] = $true } else { $remaining.Add($tok) } }
+            '^(--skip-theme|-s)$' { if ($Target.ContainsKey('SkipTheme')) { $Target['SkipTheme'] = $true } else { $remaining.Add($tok) } }
+            '^--stable$' { if ($Target.ContainsKey('Channel')) { $Target['Channel'] = 'stable' } else { $remaining.Add($tok) } }
+            '^--beta$' { if ($Target.ContainsKey('Channel')) { $Target['Channel'] = 'beta' } else { $remaining.Add($tok) } }
+            '^--main$' { if ($Target.ContainsKey('Channel')) { $Target['Channel'] = 'main' } else { $remaining.Add($tok) } }
+            '^(--channel|-c)$' {
+                if ($Target.ContainsKey('Channel') -and ($i + 1) -lt $InputArgs.Count) {
+                    $i++
+                    $Target['Channel'] = $InputArgs[$i]
+                } else {
+                    $remaining.Add($tok)
+                }
+            }
+            '^--file$' {
+                if ($Target.ContainsKey('File') -and ($i + 1) -lt $InputArgs.Count) {
+                    $i++
+                    $Target['File'] = $InputArgs[$i]
+                } else {
+                    $remaining.Add($tok)
+                }
+            }
+            '^(--rollback|-r)$' {
+                if ($Target.ContainsKey('Rollback') -and ($i + 1) -lt $InputArgs.Count) {
+                    $i++
+                    $Target['Rollback'] = $InputArgs[$i]
+                } else {
+                    $remaining.Add($tok)
+                }
+            }
+            default { $remaining.Add($tok) }
         }
     }
     return $remaining.ToArray()
