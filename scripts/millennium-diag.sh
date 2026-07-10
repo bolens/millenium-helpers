@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # Diagnostics and status reporter for Millennium helper scripts
+# State flags/arrays are consumed by sourced diag_*.sh modules (JSON + doctor).
+# shellcheck disable=SC2034
 set -euo pipefail
 
 # Source shared helpers
@@ -239,6 +241,10 @@ SKINS_DIR_OK=true
 COMPLETIONS_OK=true
 CLEAN_OF_OBSOLETE=true
 UNMANAGED_FILES_OK=true
+MIXED_INSTALL_OK=true
+INSTALL_METHOD=""
+HELPERS_CHECKOUT=""
+LATEST_RELEASE_TAG=""
 obsolete_files_found=()
 unmanaged_files_found=()
 DIAG_COMPLETION_PATHS=()
@@ -259,7 +265,7 @@ out_of_date_completions=()
 broken_symlinks=()
 TMP_SCRIPTS=""
 
-# Used by sourced diag_report.sh (check_scripts_integrity).
+# Used by sourced diag.sh (helper integrity / install checks).
 # shellcheck disable=SC2034
 UTILITIES=(
   "millennium-repair:scripts/millennium-repair.sh"
@@ -278,7 +284,21 @@ UTILITIES=(
 SHARED_MODULES=(
   "common.sh:scripts/common.sh"
   "lib/backup.sh:scripts/lib/backup.sh"
-  "lib/diag_report.sh:scripts/lib/diag_report.sh"
+  "lib/diag.sh:scripts/lib/diag.sh"
+  "lib/diag_ui.sh:scripts/lib/diag_ui.sh"
+  "lib/diag_steam.sh:scripts/lib/diag_steam.sh"
+  "lib/diag_env.sh:scripts/lib/diag_env.sh"
+  "lib/diag_install.sh:scripts/lib/diag_install.sh"
+  "lib/diag_release.sh:scripts/lib/diag_release.sh"
+  "lib/diag_updates.sh:scripts/lib/diag_updates.sh"
+  "lib/diag_completions.sh:scripts/lib/diag_completions.sh"
+  "lib/diag_package_files.sh:scripts/lib/diag_package_files.sh"
+  "lib/diag_next_steps.sh:scripts/lib/diag_next_steps.sh"
+  "lib/diag_doctor_cleanup.sh:scripts/lib/diag_doctor_cleanup.sh"
+  "lib/diag_doctor_scripts.sh:scripts/lib/diag_doctor_scripts.sh"
+  "lib/diag_doctor_repair.sh:scripts/lib/diag_doctor_repair.sh"
+  "lib/diag_doctor_completions.sh:scripts/lib/diag_doctor_completions.sh"
+  "lib/diag_doctor.sh:scripts/lib/diag_doctor.sh"
   "lib/github.sh:scripts/lib/github.sh"
   "lib/logging.sh:scripts/lib/logging.sh"
   "lib/steam.sh:scripts/lib/steam.sh"
@@ -360,7 +380,7 @@ if [[ "$COMMAND" == "logs" ]]; then
   exit 0
 fi
 
-# Used by sourced diag_report.sh (check_update_timer).
+# Used by sourced diag.sh (scheduler / channel detection).
 # sysctl_user is provided by scripts/lib/logging.sh (via common.sh).
 
 # Find configured update channel
@@ -383,14 +403,14 @@ if [[ "$OUTPUT_JSON" == "true" ]]; then
   exec 1>/dev/null
 fi
 
-# shellcheck source=lib/diag_report.sh
-if [[ -f "${_COMMON_LIB_DIR}/diag_report.sh" ]]; then
-  source "${_COMMON_LIB_DIR}/diag_report.sh"
-elif [[ -f "${SCRIPT_DIR}/lib/diag_report.sh" ]]; then
-  # shellcheck source=lib/diag_report.sh
-  source "${SCRIPT_DIR}/lib/diag_report.sh"
+# shellcheck source=lib/diag.sh
+if [[ -f "${_COMMON_LIB_DIR}/diag.sh" ]]; then
+  source "${_COMMON_LIB_DIR}/diag.sh"
+elif [[ -f "${SCRIPT_DIR}/lib/diag.sh" ]]; then
+  # shellcheck source=lib/diag.sh
+  source "${SCRIPT_DIR}/lib/diag.sh"
 else
-  echo "Error: Diagnostic report library not found." >&2
+  echo "Error: Diagnostic library not found." >&2
   exit 1
 fi
 
@@ -415,6 +435,10 @@ if [[ "$OUTPUT_JSON" == "true" ]]; then
   "completions_ok": ${COMPLETIONS_OK},
   "clean_of_obsolete": ${CLEAN_OF_OBSOLETE},
   "unmanaged_files_ok": ${UNMANAGED_FILES_OK},
+  "mixed_install_ok": ${MIXED_INSTALL_OK},
+  "install_method": "${INSTALL_METHOD:-unknown}",
+  "helpers_checkout": "${HELPERS_CHECKOUT:-}",
+  "latest_release_tag": "${LATEST_RELEASE_TAG:-}",
   "update_channel": "${UPDATE_CHANNEL}"
 }
 EOF
@@ -428,317 +452,8 @@ fi
 
 # --- Doctor / Auto-Repair Execution ---
 if [[ "$COMMAND" == "doctor" ]]; then
-  echo -e "\n${BLUE}=== Running Millennium Doctor (Automatic Repairs) ===${NC}"
-  
-  # Check if anything needs fixing
-  if [[ "$FORCE_REPAIR" != "true" ]]; then
-    if [[ "$BINARIES_OK" == true && "$HOOKS_OK" == true && "$FLATPAK_OK" == true && "$SUDOERS_OK" == true && "$TIMER_ACTIVE" == true && "$LINGER_OK" == true && "$SCRIPTS_UP_TO_DATE" == true && "$PERMISSIONS_OK" == true && "$SKINS_DIR_OK" == true && "$COMPLETIONS_OK" == true && "$CLEAN_OF_OBSOLETE" == true && "$UNMANAGED_FILES_OK" == true ]]; then
-      echo -e "${GREEN}No issues detected. Your Millennium installation is healthy!${NC}"
-      exit 0
-    fi
-  else
-    echo -e "${YELLOW}Force option specified. Forcing all doctor repairs...${NC}"
-    BINARIES_OK=false
-    HOOKS_OK=false
-    FLATPAK_OK=false
-    TIMER_ACTIVE=false
-    LINGER_OK=false
-    SCRIPTS_UP_TO_DATE=false
-    PERMISSIONS_OK=false
-    COMPLETIONS_OK=false
-    CLEAN_OF_OBSOLETE=false
-    UNMANAGED_FILES_OK=false
-  fi
-
-  # Require Steam closed for any updates/repairs (only if binary or hook modifications are pending)
-  relaunch_steam_after_doctor=false
-  if [[ "$STEAM_RUNNING" == true ]] && [[ "$BINARIES_OK" == false || "$HOOKS_OK" == false ]]; then
-    if is_game_running; then
-      echo -e "${RED}Error: A Steam game is currently running. Doctor repairs cannot proceed while a game is active.${NC}" >&2
-      print_game_running_tip "run doctor"
-      exit 1
-    fi
-    
-    echo -e "${YELLOW}Steam is currently running and must be closed to apply repairs to hooks/binaries.${NC}"
-
-    if [[ "$DRY_RUN" == "false" ]]; then
-      capture_steam_env "$RUNNING_USER"
-      confirm_close_steam "$RUNNING_USER" "${ASSUME_YES:-false}" || exit 1
-    else
-      echo -e "${YELLOW}[DRY RUN] Would capture Steam's environment and close it to apply repairs.${NC}"
-    fi
-
-    STEAM_RUNNING=false
-    relaunch_steam_after_doctor=true
-  fi
-
-  # Issue 1: Out of date helper scripts (do this first so repairs run on new code)
-  if [[ "$SCRIPTS_UP_TO_DATE" == false ]]; then
-    echo -e "\n${YELLOW}[DOCTOR] Updating helper scripts...${NC}"
-    if helpers_are_pacman_packaged; then
-      echo -e "Helpers are installed via pacman. Skipping direct overwrites of package files."
-      echo -e "Upgrade the package instead (after clearing unmanaged leftovers):"
-      echo -e "  ${YELLOW}sudo pacman -Syu millennium-helpers-git${NC}"
-      echo -e "Or from a checkout: ${YELLOW}cd packaging && makepkg -si${NC}"
-    elif [[ "$(id -u)" -ne 0 ]]; then
-      echo -e "${RED}Error: Root privileges are required to update helper scripts.${NC}" >&2
-      echo -e "Please re-run the doctor with sudo: ${YELLOW}sudo $(basename "$0") doctor${NC}" >&2
-    else
-      for cmd_name in ${out_of_date_scripts[@]+"${out_of_date_scripts[@]}"}; do
-        [[ -n "$cmd_name" ]] || continue
-        tmp_src="${TMP_SCRIPTS}/${cmd_name}"
-        dest_path="/usr/local/bin/${cmd_name}"
-        if [[ -f "/usr/bin/${cmd_name}" ]]; then
-          dest_path="/usr/bin/${cmd_name}"
-        fi
-        if [[ -f "$tmp_src" ]]; then
-          echo "Updating script: ${dest_path}"
-          execute install -m755 "$tmp_src" "$dest_path"
-          execute chown root:root "$dest_path"
-        fi
-      done
-
-      # Keep shared libs aligned with scripts (prevents function skew like sysctl_user).
-      helper_lib_dir=""
-      if [[ -d /usr/local/lib/millennium-helpers ]]; then
-        helper_lib_dir="/usr/local/lib/millennium-helpers"
-      elif [[ -d /usr/lib/millennium-helpers ]]; then
-        helper_lib_dir="/usr/lib/millennium-helpers"
-      fi
-      if [[ -n "$helper_lib_dir" ]]; then
-        echo "Syncing shared library modules in ${helper_lib_dir}..."
-        execute mkdir -p "${helper_lib_dir}/lib"
-        for item in "${SHARED_MODULES[@]}"; do
-          mod_name="${item%%:*}"
-          remote_rel="${item#*:}"
-          tmp_mod="${TMP_SCRIPTS}/mod_$(basename "$mod_name")"
-          remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/${latest_sha:-main}/${remote_rel}"
-          dest_mod="${helper_lib_dir}/${mod_name}"
-          if [[ "$DRY_RUN" == "true" ]]; then
-            echo -e "[DRY RUN] Would download ${remote_url} to ${dest_mod}"
-          elif curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" --retry 3 --retry-delay 2 "$remote_url" -o "$tmp_mod" &>/dev/null; then
-            echo "Updating module: ${dest_mod}"
-            execute install -m644 "$tmp_mod" "$dest_mod"
-            execute chown root:root "$dest_mod"
-          else
-            echo -e "${YELLOW}Warning: could not download ${remote_rel}; skipping.${NC}"
-          fi
-        done
-      fi
-      echo -e "${GREEN}Helper scripts successfully updated!${NC}"
-    fi
-  fi
-
-  # Issue 2: Missing or corrupted binaries
-  if [[ "$BINARIES_OK" == false ]]; then
-    echo -e "\n${YELLOW}[DOCTOR] Repairing Millennium binaries...${NC}"
-    echo -e "Invoking updater on the '${UPDATE_CHANNEL}' channel with force reinstall:"
-    upgrade_cmd="millennium-upgrade"
-    upgrade_path="/usr/local/bin/${upgrade_cmd}"
-    if [[ -f "/usr/bin/${upgrade_cmd}" ]]; then
-      upgrade_path="/usr/bin/${upgrade_cmd}"
-    fi
-    execute sudo "${upgrade_path}" --channel "${UPDATE_CHANNEL}" --force
-  fi
-
-  # Issue 3: Missing or broken hooks
-  if [[ "$HOOKS_OK" == false ]]; then
-    echo -e "\n${YELLOW}[DOCTOR] Repairing bootstrap hooks for Steam...${NC}"
-    
-    # Process broken symlinks
-    for item in ${broken_hooks[@]+"${broken_hooks[@]}"}; do
-      [[ -n "$item" ]] || continue
-      sdir="${item%%:*}"
-      folder_arch="${item#*:}"
-      folder="${folder_arch%%:*}"
-      arch="${folder_arch#*:}"
-      hook="${sdir}/${folder}/libXtst.so.6"
-      
-      echo "Fixing broken hook: $hook"
-      execute rm -f "$hook"
-      execute ln -sf "/usr/lib/millennium/libmillennium_bootstrap_${arch}.so" "$hook"
-    done
-
-    # Process missing symlinks
-    for item in ${missing_hooks[@]+"${missing_hooks[@]}"}; do
-      [[ -n "$item" ]] || continue
-      sdir="${item%%:*}"
-      folder_arch="${item#*:}"
-      folder="${folder_arch%%:*}"
-      arch="${folder_arch#*:}"
-      hook="${sdir}/${folder}/libXtst.so.6"
-      
-      echo "Installing missing hook: $hook"
-      execute mkdir -p "${sdir}/${folder}"
-      execute ln -sf "/usr/lib/millennium/libmillennium_bootstrap_${arch}.so" "$hook"
-    done
-  fi
-
-  # Issue 4: Missing Flatpak sandbox override
-  if [[ "$FLATPAK_OK" == false ]]; then
-    echo -e "\n${YELLOW}[DOCTOR] Granting Flatpak Steam permission to access Millennium directory...${NC}"
-    execute flatpak override --user --filesystem=/usr/lib/millennium com.valvesoftware.Steam
-  fi
-
-  # Issue 5: Missing or invalid Sudoers drop-in
-  if [[ "$SUDOERS_OK" == false ]]; then
-    echo -e "\n${YELLOW}[DOCTOR] Sudoers drop-in configuration is missing or unauthorized.${NC}"
-    echo -e "You must re-run the installer to set up the secure drop-in rules:"
-    echo -e "  ${YELLOW}sudo ./install.sh${NC} (from your cloned repository)"
-  fi
-
-  # Issue 6: Ensure daily update timer / cron job is configured and up to date
-  sched_path=$(resolve_helper_path "millennium-schedule")
-  if [[ -n "$sched_path" ]]; then
-    if [[ "$SYSTEMD_BOOTED" == "true" ]]; then
-      echo -e "\n${YELLOW}[DOCTOR] Refreshing daily systemd user timer...${NC}"
-      if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" ]]; then
-        execute runuser -l "$RUNNING_USER" -c "${sched_path} enable $UPDATE_CHANNEL" || true
-      else
-        execute "${sched_path}" enable "$UPDATE_CHANNEL" || true
-      fi
-    else
-      echo -e "\n${YELLOW}[DOCTOR] Refreshing daily cron update job...${NC}"
-      if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" ]]; then
-        execute runuser -l "$RUNNING_USER" -c "${sched_path} enable $UPDATE_CHANNEL --cron" || true
-      else
-        execute "${sched_path}" enable "$UPDATE_CHANNEL" --cron || true
-      fi
-    fi
-  else
-    echo -e "\n${YELLOW}[DOCTOR] Skip refreshing daily scheduler (millennium-schedule utility not found)${NC}"
-  fi
-
-  # Issue 7: Disabled systemd user lingering (Only on systemd booted)
-  if [[ "$SYSTEMD_BOOTED" == "true" && "$LINGER_OK" == false ]]; then
-    echo -e "\n${YELLOW}[DOCTOR] Enabling systemd user lingering to run updates in the background...${NC}"
-    execute loginctl enable-linger "${RUNNING_USER}"
-  fi
-
-  # Issue 8: Incorrect directory permissions or ownership
-  if [[ "$PERMISSIONS_OK" == false ]]; then
-    echo -e "\n${YELLOW}[DOCTOR] Repairing directory permissions and ownership...${NC}"
-    for dir in ${unwritable_dirs[@]+"${unwritable_dirs[@]}"}; do
-      [[ -n "$dir" ]] || continue
-      echo "Correcting ownership and permissions for: ${dir}"
-      if [[ "$(id -u)" -eq 0 ]]; then
-        execute chown -R "${RUNNING_USER}:${RUNNING_USER}" "$dir"
-        execute chmod -R u+rwX "$dir"
-      else
-        echo -e "${RED}Error: Root privileges are required to fix ownership of ${dir}.${NC}" >&2
-        echo -e "Please re-run the doctor with sudo: ${YELLOW}sudo millennium-diag doctor${NC}" >&2
-      fi
-    done
-  fi
-
-  # Issue 9: Missing skins directories
-  if [[ "${#missing_skins_dirs[@]}" -gt 0 ]]; then
-    echo -e "\n${YELLOW}[DOCTOR] Creating missing skins directories...${NC}"
-    for dir in "${missing_skins_dirs[@]}"; do
-      echo "Creating directory: ${dir}"
-      if [[ "$DRY_RUN" == "false" ]]; then
-        execute mkdir -p "$dir"
-        if [[ "$(id -u)" -eq 0 ]]; then
-          execute chown "${RUNNING_USER}:${RUNNING_USER}" "$dir"
-        fi
-        execute chmod 755 "$dir"
-      fi
-    done
-  fi
-
-  # Issue 10: Missing or out-of-date completions
-  if [[ "$COMPLETIONS_OK" == false ]]; then
-    echo -e "\n${YELLOW}[DOCTOR] Repairing shell autocompletions...${NC}"
-
-    if helpers_are_pacman_packaged; then
-      echo -e "Helpers are installed via pacman. Skipping direct writes under /usr/share."
-      echo -e "Reinstall the package after clearing unmanaged leftovers, e.g.:"
-      echo -e "  ${YELLOW}sudo pacman -Syu millennium-helpers-git${NC}"
-    else
-      # 1. Restore files
-      for local_path in ${missing_completions[@]+"${missing_completions[@]}"} ${out_of_date_completions[@]+"${out_of_date_completions[@]}"}; do
-        [[ -n "$local_path" ]] || continue
-        remote_rel="$(diag_completion_remote_for "$local_path" || true)"
-        if [[ -z "$remote_rel" ]]; then
-          echo -e "${YELLOW}Warning: no remote mapping for ${local_path}; skipping.${NC}"
-          continue
-        fi
-        remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/${latest_sha:-main}/${remote_rel}"
-        echo "Restoring completion file: $local_path"
-        if [[ "$DRY_RUN" == "true" ]]; then
-          echo -e "[DRY RUN] Would download $remote_url to $local_path"
-        else
-          execute curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" --retry 3 --retry-delay 2 "$remote_url" -o "$local_path"
-          execute chmod 644 "$local_path"
-        fi
-      done
-
-      # 2. Restore symlinks
-      for symlink_item in ${broken_symlinks[@]+"${broken_symlinks[@]}"}; do
-        [[ -n "$symlink_item" ]] || continue
-        symlink_path="${symlink_item%%:*}"
-        symlink_target="${symlink_item#*:}"
-        echo "Restoring symlink: $symlink_path -> $symlink_target"
-        if [[ "$DRY_RUN" == "true" ]]; then
-          echo -e "[DRY RUN] Would link $symlink_path to $symlink_target"
-        else
-          execute rm -f "$symlink_path"
-          execute ln -sf "$symlink_target" "$symlink_path"
-        fi
-      done
-    fi
-  fi
-
-  # Issue 11: Cleanup of obsolete / deprecated files
-  if [[ "$CLEAN_OF_OBSOLETE" == false ]]; then
-    echo -e "\n${YELLOW}[DOCTOR] Cleaning up obsolete / deprecated legacy files...${NC}"
-    for f in ${obsolete_files_found[@]+"${obsolete_files_found[@]}"}; do
-      [[ -n "$f" ]] || continue
-      parent_dir=$(dirname "$f")
-      if [[ -w "$parent_dir" ]]; then
-        echo "Removing deprecated file: $f"
-        execute rm -f "$f"
-      else
-        echo -e "${RED}Warning: Directory '${parent_dir}' is not writable. Skipping removal of ${f}.${NC}"
-      fi
-    done
-  fi
-
-  # Issue 12: Unmanaged leftovers that block pacman upgrades
-  if [[ "$UNMANAGED_FILES_OK" == false ]]; then
-    echo -e "\n${YELLOW}[DOCTOR] Removing unmanaged files that block package upgrades...${NC}"
-    for f in ${unmanaged_files_found[@]+"${unmanaged_files_found[@]}"}; do
-      [[ -n "$f" ]] || continue
-      parent_dir=$(dirname "$f")
-      if [[ -w "$parent_dir" ]] || [[ "$(id -u)" -eq 0 ]]; then
-        echo "Removing unmanaged file: $f"
-        execute rm -f "$f"
-      else
-        echo -e "${RED}Warning: Directory '${parent_dir}' is not writable. Skipping removal of ${f}.${NC}"
-        echo -e "Re-run with sudo: ${YELLOW}sudo millennium-diag doctor${NC}"
-      fi
-    done
-    echo -e "After cleanup, reinstall/upgrade the package if needed:"
-    echo -e "  ${YELLOW}sudo pacman -Syu millennium-helpers-git${NC}"
-  fi
-
-  if [[ "$DRY_RUN" == "true" ]]; then
-    echo -e "\n${GREEN}Doctor dry-run simulation finished successfully!${NC}"
-  else
-    echo -e "\n${GREEN}Doctor repairs applied successfully.${NC}"
-    echo -e "Channel: ${UPDATE_CHANNEL}. Re-run ${YELLOW}millennium-diag${NC} to verify, or ${YELLOW}millennium-diag doctor${NC} again if issues remain."
-  fi
-
-  if [[ "$relaunch_steam_after_doctor" == "true" ]]; then
-    echo -e "\n${GREEN}Relaunching Steam...${NC}"
-
-    if [[ "$DRY_RUN" == "true" ]]; then
-      execute relaunch_steam "$RUNNING_USER"
-    else
-      relaunch_steam "$RUNNING_USER"
-      echo -e "${GREEN}Steam relaunched.${NC}"
-    fi
-  fi
+  run_doctor_repairs
 fi
 
 exit 0
+

@@ -306,7 +306,8 @@ Describe "Common Helpers" {
         }
 
         It "No-ops when the config file is missing" {
-            { Protect-HelpersConfigFile -Path (Join-Path $env:TEMP "mh-missing-config.json") } | Should -Not -Throw
+            $tempRoot = if ($env:TEMP) { $env:TEMP } elseif ($env:TMPDIR) { $env:TMPDIR } else { [System.IO.Path]::GetTempPath() }
+            { Protect-HelpersConfigFile -Path (Join-Path $tempRoot "mh-missing-config.json") } | Should -Not -Throw
         }
 
         It "Locks down ACL inheritance on Windows" {
@@ -314,7 +315,8 @@ Describe "Common Helpers" {
                 Set-ItResult -Skipped -Because "ACL lockdown is Windows-only"
                 return
             }
-            $tmp = Join-Path -Path $env:TEMP -ChildPath "mh-acl-config.json"
+            $tempRoot = if ($env:TEMP) { $env:TEMP } elseif ($env:TMPDIR) { $env:TMPDIR } else { [System.IO.Path]::GetTempPath() }
+            $tmp = Join-Path -Path $tempRoot -ChildPath "mh-acl-config.json"
             '{"github_token":"secret"}' | Set-Content -Path $tmp -Force
             try {
                 Protect-HelpersConfigFile -Path $tmp

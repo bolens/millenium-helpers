@@ -153,6 +153,15 @@ if ($Uninstall) {
         }
     }
 
+    # Remove lib sub-directory if present (best-effort before full removal)
+    $libDir2 = Join-Path -Path $binDir -ChildPath "lib"
+    if (Test-Path -Path $libDir2) {
+        try {
+            Remove-Item -Path $libDir2 -Recurse -Force -ErrorAction SilentlyContinue | Out-Null
+            Log-Info "Removed lib directory: $libDir2"
+        } catch { }
+    }
+
     if (Test-Path -Path $installDir) {
         try {
             Remove-Item -Path $installDir -Recurse -Force
@@ -227,6 +236,15 @@ foreach ($script in $scriptsToCopy) {
     $destFile = Join-Path -Path $binDir -ChildPath $script
     Copy-Item -Path $srcFile -Destination $destFile -Force
     Log-Info "Installed: $script"
+}
+
+# Install lib/*.ps1 modules (required by millennium-diag.ps1)
+$libSrc  = Join-Path -Path $srcDir -ChildPath 'lib'
+$libDest = Join-Path -Path $binDir -ChildPath 'lib'
+if (Test-Path -Path $libSrc) {
+    New-Item -ItemType Directory -Force -Path $libDest | Out-Null
+    Copy-Item -Path (Join-Path -Path $libSrc -ChildPath '*.ps1') -Destination $libDest -Force
+    Log-Info "Installed: lib\*.ps1 modules"
 }
 
 # Install VERSION file next to scripts for -Version lookups

@@ -88,7 +88,21 @@ jobs:
       - name: Verify Scoop commands run
         shell: powershell
         run: |
+          $ErrorActionPreference = "Stop"
           $env:PATH += ";$HOME\scoop\shims"
+          $prefix = scoop prefix millennium-helpers
+          $diagLib = Join-Path $prefix "scripts\windows\lib\Diag.ps1"
+          if (-not (Test-Path $diagLib)) {
+            throw "Missing modular diag library at $diagLib (scripts/windows/lib not packaged)"
+          }
+          Write-Host "Diag lib OK: $diagLib"
           millennium help
           millennium-mcp -Help
           millennium-diag -DryRun
+          $json = millennium-diag -Json | ConvertFrom-Json
+          foreach ($key in @('install_method', 'mixed_install_ok', 'scripts_up_to_date')) {
+            if (-not ($json.PSObject.Properties.Name -contains $key)) {
+              throw "millennium-diag -Json missing required field: $key"
+            }
+          }
+          Write-Host "install_method=$($json.install_method) scripts_up_to_date=$($json.scripts_up_to_date)"

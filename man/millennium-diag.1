@@ -1,4 +1,4 @@
-.TH MILLENNIUM\-DIAG 1 "July 9, 2026" "millennium-helpers" "User Commands"
+.TH MILLENNIUM\-DIAG 1 "July 10, 2026" "millennium-helpers" "User Commands"
 .SH NAME
 millennium-diag \- diagnose Millennium and Steam helper health
 .SH SYNOPSIS
@@ -8,6 +8,14 @@ millennium-diag \- diagnose Millennium and Steam helper health
 Runs a read-only diagnostics report by default. Can also show logs, upload a
 redacted report, or run doctor mode to auto-repair common problems.
 After the default report, prints suggested next commands when issues are found.
+.PP
+Detects how helpers were installed (\fBpacman\fR, \fBmanual\fR, or \fBmixed\fR).
+Packaged installs are compared to the latest GitHub release tag (not
+\fBmain\fR tip). Manual installs sync from the release tarball. Doctor removes
+unmanaged leftovers that block pacman upgrades before suggesting
+.B makepkg \-si
+or
+.BR pacman \-Syu .
 .SH COMMANDS
 .TP
 .B (none)
@@ -15,6 +23,14 @@ Print the diagnostics report (default).
 .TP
 .B doctor
 Detect and repair partial or broken installations.
+Clears unmanaged/obsolete files first, then repairs hooks, permissions,
+completions, and (for manual installs) helper scripts from the latest release
+tarball. Pacman-owned files are never overwritten; use package upgrade instead.
+With
+.B \-\-yes
+and a local packaging checkout, doctor can run
+.B makepkg \-si
+for packaged upgrades.
 .TP
 .B logs
 Display recent Millennium and Steam WebHelper startup logs.
@@ -29,14 +45,22 @@ command.
 Force doctor repairs even if the system looks healthy.
 .TP
 .B \-\-json
-Emit the diagnostics report as structured JSON.
+Emit the diagnostics report as structured JSON, including
+.BR install_method ,
+.BR mixed_install_ok ,
+.BR helpers_checkout ,
+.BR latest_release_tag ,
+and
+.BR unmanaged_files_ok .
 .TP
 .BR \-l ", " \-\-follow
 Follow (tail \-f) real-time log output with
 .BR logs .
 .TP
 .BR \-y ", " \-\-yes
-Skip confirmation when doctor closes Steam.
+Skip confirmation when doctor closes Steam; also allows automatic
+.B makepkg \-si
+when a packaging checkout is found.
 .TP
 .BR \-d ", " \-\-dry\-run
 Simulate doctor repairs without modifying anything.

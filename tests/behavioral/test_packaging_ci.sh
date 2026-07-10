@@ -98,7 +98,13 @@ fi
 windows_zip_block=$(awk '/Create Windows Release Zip/,/Calculate Checksums/' "${REPO_ROOT}/.github/workflows/release.yml")
 assert_contains "$windows_zip_block" "scripts/millennium-mcp.py" "Windows release zip includes millennium-mcp.py"
 assert_contains "$windows_zip_block" "completions/powershell/" "Windows release zip includes PowerShell completions"
+assert_contains "$windows_zip_block" "scripts/windows/" "Windows release zip includes scripts/windows tree (diag lib modules)"
 assert_contains "$windows_zip_block" "millennium-helpers-windows.zip" "release.yml builds trimmed Windows zip"
+
+# Modular Windows diag lives under scripts/windows/lib — ensure the tree is shipped.
+assert_file_exists "${REPO_ROOT}/scripts/windows/lib/Diag.ps1" "scripts/windows/lib/Diag.ps1 exists for release packaging"
+assert_file_exists "${REPO_ROOT}/scripts/windows/lib/DiagInstall.ps1" "scripts/windows/lib/DiagInstall.ps1 exists for release packaging"
+assert_file_exists "${REPO_ROOT}/scripts/windows/lib/DiagDoctor.ps1" "scripts/windows/lib/DiagDoctor.ps1 exists for release packaging"
 
 # Release CD gate must wait on ShellCheck + completions, not only the test suite
 release_gate=$(awk '/name: Wait for required CI/,/build-release:/' "${REPO_ROOT}/.github/workflows/release.yml")

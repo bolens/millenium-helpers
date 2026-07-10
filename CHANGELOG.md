@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-07-10
+
+### Added
+- Modular `millennium-diag` libraries on Linux (`scripts/lib/diag_*.sh`) and Windows (`scripts/windows/lib/Diag*.ps1`)
+- Install-method detection (pacman/scoop/winget/manual/mixed) with release-tag comparison
+- Doctor cleanup of unmanaged leftovers before package-upgrade hints
+- PowerShell completion health checks and doctor repair
+- `-Yes` / `--yes` auto scoop/winget/pacman package upgrade when helpers are outdated
+- JSON fields: `install_method`, `mixed_install_ok`, `helpers_checkout`, `latest_release_tag`, `completions_ok`
+
+### Fixed
+- Pacman upgrades no longer blocked by unmanaged completion leftovers; doctor refuses to overwrite package-owned files
+- Empty `DIAG_TEST_OBSOLETE_LIST` correctly means “no obsolete candidates” in tests
+- Winget package ID uses `bolens.millenniumhelpers`
+
+### Changed
+- Thin loaders: Linux `diag.sh` (replaces `diag_report.sh`), Windows `Diag.ps1` (replaces `DiagReport.ps1`)
+- Manual installs sync helper scripts from the latest release tarball/zip instead of `main`
+
 ## [2.3.0] - 2026-07-10
 
 ### Added

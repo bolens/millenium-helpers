@@ -278,9 +278,53 @@ assert_contains "$out" '"unmanaged_files_ok": true' "millennium-diag.sh --json w
 rm -rf "${TEST_UNMANAGED_DIR}"
 
 # --- Pacman-packaged installs: doctor must not overwrite package files ---
-out=$(DIAG_TEST_PACMAN_PACKAGED=true DIAG_TEST_BYPASS_CHECKS=true DIAG_TEST_OBSOLETE_LIST="" bash "$DIAG_SH" doctor --force --dry-run 2>&1)
+out=$(DIAG_TEST_PACMAN_PACKAGED=true DIAG_TEST_INSTALL_METHOD=pacman DIAG_TEST_BYPASS_CHECKS=true DIAG_TEST_OBSOLETE_LIST="" bash "$DIAG_SH" doctor --force --dry-run 2>&1)
 assert_contains "$out" "installed via pacman" "millennium-diag.sh doctor refuses to overwrite pacman-owned helper scripts"
 assert_contains "$out" "pacman -Syu" "millennium-diag.sh doctor suggests pacman upgrade for packaged helpers"
+
+# Unmanaged cleanup runs before package-upgrade hints
+TEST_UNMANAGED_DIR2=$(mktemp -d)
+unmanaged_early="${TEST_UNMANAGED_DIR2}/millennium.fish"
+touch "$unmanaged_early"
+out=$(DIAG_TEST_UNMANAGED_LIST="$unmanaged_early" DIAG_TEST_PACMAN_PACKAGED=true DIAG_TEST_INSTALL_METHOD=pacman DIAG_TEST_BYPASS_CHECKS=true DIAG_TEST_OBSOLETE_LIST="" bash "$DIAG_SH" doctor --force --dry-run 2>&1)
+# Find line numbers: unmanaged removal should appear before "Updating helper scripts"
+unmanaged_line=$(printf '%s\n' "$out" | grep -n "Removing unmanaged files that block package upgrades\|rm -f ${unmanaged_early}" | head -1 | cut -d: -f1)
+scripts_line=$(printf '%s\n' "$out" | grep -n "Updating helper scripts" | head -1 | cut -d: -f1)
+if [[ -n "$unmanaged_line" && -n "$scripts_line" && "$unmanaged_line" -lt "$scripts_line" ]]; then
+  assert_success 0 "millennium-diag.sh doctor cleans unmanaged leftovers before package upgrade hints"
+else
+  assert_success 1 "millennium-diag.sh doctor cleans unmanaged leftovers before package upgrade hints (unmanaged=$unmanaged_line scripts=$scripts_line)"
+fi
+rm -rf "${TEST_UNMANAGED_DIR2}"
+
+# --- Install method / mixed layout / checkout in JSON ---
+out=$(DIAG_TEST_INSTALL_METHOD=pacman DIAG_TEST_CHECKOUT=/tmp/fake-helpers-checkout DIAG_TEST_BYPASS_CHECKS=true DIAG_TEST_OBSOLETE_LIST="" bash "$DIAG_SH" --json 2>&1)
+assert_contains "$out" '"install_method": "pacman"' "millennium-diag.sh --json reports pacman install_method"
+assert_contains "$out" '"mixed_install_ok": true' "millennium-diag.sh --json reports mixed_install_ok for pacman"
+assert_contains "$out" '"helpers_checkout": "/tmp/fake-helpers-checkout"' "millennium-diag.sh --json reports helpers_checkout"
+
+out=$(DIAG_TEST_INSTALL_METHOD=mixed DIAG_TEST_BYPASS_CHECKS=true DIAG_TEST_OBSOLETE_LIST="" bash "$DIAG_SH" --json 2>&1)
+assert_contains "$out" '"install_method": "mixed"' "millennium-diag.sh --json reports mixed install_method"
+assert_contains "$out" '"mixed_install_ok": false' "millennium-diag.sh --json reports mixed_install_ok false for mixed"
+
+out=$(DIAG_TEST_INSTALL_METHOD=manual DIAG_TEST_BYPASS_CHECKS=true DIAG_TEST_OBSOLETE_LIST="" bash "$DIAG_SH" doctor --dry-run 2>&1)
+assert_contains "$out" "Install method" "millennium-diag.sh doctor reports install method section" || true
+# With bypass, install method still runs; mixed guidance only when mixed
+out=$(DIAG_TEST_INSTALL_METHOD=mixed DIAG_TEST_BYPASS_CHECKS=true DIAG_TEST_OBSOLETE_LIST="" bash "$DIAG_SH" doctor --dry-run 2>&1)
+assert_contains "$out" "Mixed pacman and manual" "millennium-diag.sh doctor warns about mixed installs"
+
+# Checkout makepkg hint for packaged upgrades
+out=$(DIAG_TEST_PACMAN_PACKAGED=true DIAG_TEST_INSTALL_METHOD=pacman DIAG_TEST_CHECKOUT=/home/panda/dev/millenium-helpers DIAG_TEST_BYPASS_CHECKS=true DIAG_TEST_OBSOLETE_LIST="" bash "$DIAG_SH" doctor --force --dry-run 2>&1)
+assert_contains "$out" "makepkg -si" "millennium-diag.sh doctor suggests makepkg -si from checkout"
+
+# Release-extract staging for manual doctor (no network): mock extract tree
+TEST_RELEASE_DIR=$(mktemp -d)
+mkdir -p "${TEST_RELEASE_DIR}/scripts" "${TEST_RELEASE_DIR}/completions/fish"
+echo '#!/bin/bash' > "${TEST_RELEASE_DIR}/scripts/millennium-diag.sh"
+echo '# fish' > "${TEST_RELEASE_DIR}/completions/fish/millennium.fish"
+out=$(DIAG_TEST_INSTALL_METHOD=manual DIAG_TEST_RELEASE_EXTRACT="$TEST_RELEASE_DIR" DIAG_TEST_BYPASS_CHECKS=true DIAG_TEST_OBSOLETE_LIST="" bash "$DIAG_SH" --json 2>&1)
+assert_contains "$out" '"install_method": "manual"' "millennium-diag.sh --json reports manual install_method with release extract mock"
+rm -rf "${TEST_RELEASE_DIR}"
 
 # --- Default report next-steps footer (not JSON, not doctor) ---
 out=$(DIAG_TEST_BYPASS_CHECKS=true DIAG_TEST_OBSOLETE_LIST="" bash "$DIAG_SH" 2>&1)
