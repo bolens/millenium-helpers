@@ -5,9 +5,10 @@ set -euo pipefail
 TARGET_DIR="${TARGET_DIR:-/usr/local/bin}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# If running standalone/piped (e.g. curl ... | bash), download the full repo to a temp folder and run
+# If running standalone/piped (e.g. curl ... | bash), download the latest trimmed
+# Linux release asset to a temp folder and run the installer from there.
 if [[ ! -f "${SCRIPT_DIR}/scripts/common.sh" ]]; then
-  echo "Running in standalone/piped mode. Downloading repository..."
+  echo "Running in standalone/piped mode. Downloading latest Linux release..."
   TEMP_DIR=$(mktemp -d)
   if [[ -z "$TEMP_DIR" || ! -d "$TEMP_DIR" ]]; then
     echo "Error: Failed to create temporary directory for standalone installation." >&2
@@ -15,14 +16,16 @@ if [[ ! -f "${SCRIPT_DIR}/scripts/common.sh" ]]; then
   fi
   # Best-effort cleanup
   trap 'rm -rf "$TEMP_DIR"' EXIT
-  
+
+  RELEASE_URL="${MILLENNIUM_HELPERS_RELEASE_URL:-https://github.com/bolens/millenium-helpers/releases/latest/download/millennium-helpers-linux.tar.gz}"
+  ARCHIVE="$TEMP_DIR/millennium-helpers-linux.tar.gz"
   download_ok=false
   if command -v curl >/dev/null 2>&1; then
-    if curl -sSL https://github.com/bolens/millenium-helpers/archive/refs/heads/main.tar.gz | tar -xz -C "$TEMP_DIR" --strip-components=1; then
+    if curl -fsSL "$RELEASE_URL" -o "$ARCHIVE"; then
       download_ok=true
     fi
   elif command -v wget >/dev/null 2>&1; then
-    if wget -qO- https://github.com/bolens/millenium-helpers/archive/refs/heads/main.tar.gz | tar -xz -C "$TEMP_DIR" --strip-components=1; then
+    if wget -qO "$ARCHIVE" "$RELEASE_URL"; then
       download_ok=true
     fi
   else
@@ -30,11 +33,22 @@ if [[ ! -f "${SCRIPT_DIR}/scripts/common.sh" ]]; then
     exit 1
   fi
 
-  if [[ "$download_ok" == "false" ]]; then
-    echo "Error: Failed to download and extract the installation repository from GitHub." >&2
+  if [[ "$download_ok" != "true" || ! -s "$ARCHIVE" ]]; then
+    echo "Error: Failed to download the Linux release asset from GitHub." >&2
+    echo "URL: $RELEASE_URL" >&2
     exit 1
   fi
-  
+
+  if ! tar -xzf "$ARCHIVE" -C "$TEMP_DIR"; then
+    echo "Error: Failed to extract the Linux release asset." >&2
+    exit 1
+  fi
+
+  if [[ ! -f "$TEMP_DIR/install.sh" || ! -f "$TEMP_DIR/scripts/common.sh" ]]; then
+    echo "Error: Release archive is missing install.sh or scripts/common.sh." >&2
+    exit 1
+  fi
+
   # Run the installer from the temp directory with the original arguments
   bash "$TEMP_DIR/install.sh" "$@"
   exit 0

@@ -62,15 +62,17 @@ Windows: run the Pester suite under `tests/windows/` on a Windows host or CI.
 
 ## Versioning
 
-`VERSION` at the repo root is the helpers package version (aligned with Scoop, Winget, and the Homebrew Formula). Bump it when cutting a release; installers copy it next to the shared libraries so `--version` / `-Version` work after install. Prefer git tags `vX.Y.Z` for releases.
+`VERSION` at the repo root is the helpers package version (aligned with Scoop, Winget, Homebrew, and Nix). Bump it when cutting a release; installers copy it next to the shared libraries so `--version` / `-Version` work after install. Prefer git tags `vX.Y.Z` for releases.
 
 Tagging `vX.Y.Z` runs the release workflow:
 
 1. Wait for the Test Suite on that commit
-2. Draft a GitHub release with checksummed assets
-3. Open a packaging PR that fills Formula/Scoop/Winget URLs and SHA256s from the tag source archives
+2. Draft a GitHub release with platform-trimmed assets (`millennium-helpers-linux.tar.gz`, `millennium-helpers-windows.zip`) plus checksum sidecars
+3. Open a packaging PR that points Formula / Scoop / Winget at those release assets and fills SHA256s from the draft upload
 4. **If packaging CI passes:** squash-merge the PR and publish the draft release automatically
 5. **If packaging CI fails (or never starts):** leave the draft release and packaging PR for manual recovery (fix, merge, then publish)
+
+Piped installers (`install.sh` / `install.ps1`) download the **latest published** trimmed release asset (override with `MILLENNIUM_HELPERS_RELEASE_URL`).
 
 Repo secret `PACKAGING_PAT` is **required** for the automatic path: a classic PAT with `contents` + `pull-requests`, and permission to merge into `main` under any branch protection. PRs opened with `GITHUB_TOKEN` do not trigger workflows, so without this secret the finalize job cannot wait on packaging CI.
 
@@ -78,7 +80,7 @@ Local checks:
 ```bash
 make check-version   # VERSION ↔ Scoop / Winget / Homebrew
 make check-man       # every command has a man page
-make check-winget    # Winget manifest structure
+make check-winget    # Winget manifest structure (docs-only; no winget validate)
 ```
 
 Optional local hooks: `pre-commit install` (see `.pre-commit-config.yaml`) runs shellcheck, ruff, VERSION presence, version sync, and man-page coverage.
@@ -93,8 +95,12 @@ Optional local hooks: `pre-commit install` (see `.pre-commit-config.yaml`) runs 
 
 ## Packaging notes
 
-- Homebrew Formula version is taken from the stable `url` tag (`…/vX.Y.Z.tar.gz`). Do **not** add a redundant `version "X.Y.Z"` line — `brew audit` rejects it. Keep `license "MIT"`.
-- `scripts/ci/update-packaging-versions.sh` updates Formula URL/SHA256 (and strips any stray `version` line), Scoop, and Winget from a release tag.
+- Homebrew / Scoop / Winget consume the **trimmed GitHub Release assets**, not the auto-generated source archives.
+- Homebrew Formula version is taken from the `releases/download/vX.Y.Z/…` URL. Do **not** add a redundant `version "X.Y.Z"` line — `brew audit` rejects it. Keep `license "MIT"`.
+- Scoop is the supported multi-command Windows install path (`millennium`, `millennium-mcp`, and the individual commands).
+- Winget manifests track the Windows zip URL/hash for documentation only. WinGet portable nested files allow `.exe` only, so these PowerShell scripts cannot pass `winget validate` as a multi-command portable package.
+- `scripts/ci/update-packaging-versions.sh` updates Formula / Scoop / Winget from a release tag + asset hashes.
+- Arch `PKGBUILD` is the `-git` package and is intentionally outside the versioned release bump.
 - Man-page CI (`scripts/ci/check-man-pages.sh`) fails on mandoc `ERROR`/`FATAL` only; `WARNING`/`STYLE` are printed as notes.
 
 ## Pull requests

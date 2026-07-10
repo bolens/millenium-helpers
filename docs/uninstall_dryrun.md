@@ -209,16 +209,4 @@ If you installed the helpers via Scoop, uninstallation is fully automated:
    Remove-Item -Path "$env:LOCALAPPDATA\millennium-helpers" -Recurse -Force -ErrorAction SilentlyContinue
    ```
 
-### 7. Windows (Winget Install)
-
-If you installed the helpers via Winget, uninstallation is fully automated:
-
-1. **Uninstall package**:
-   ```powershell
-   winget uninstall bolens.millenniumhelpers
-   ```
-
-2. **Clean up user-level configs (optional)**:
-   ```powershell
-   Remove-Item -Path "$env:LOCALAPPDATA\millennium-helpers" -Recurse -Force -ErrorAction SilentlyContinue
-   ```
+Scoop is the supported multi-command Windows package path. Winget manifests in this repo track the Windows release zip for documentation only and do not expose PowerShell command shims (WinGet portable nested files allow `.exe` only).

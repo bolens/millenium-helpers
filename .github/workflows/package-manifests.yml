@@ -59,6 +59,27 @@ jobs:
           jq . packaging/scoop/millennium-helpers.json >/dev/null
           echo "Scoop JSON is valid!"
 
+      - name: Assert Scoop points at trimmed Windows release asset
+        run: |
+          set -euo pipefail
+          url="$(jq -r .url packaging/scoop/millennium-helpers.json)"
+          [[ "$url" == *"/releases/download/"*"/millennium-helpers-windows.zip" ]] || {
+            echo "::error::Scoop url must be a trimmed Windows release asset, got: $url"
+            exit 1
+          }
+          hash_url="$(jq -r '.autoupdate.hash.url // empty' packaging/scoop/millennium-helpers.json)"
+          [[ "$hash_url" == *"/millennium-helpers-windows.zip.sha256" ]] || {
+            echo "::error::Scoop autoupdate.hash.url must point at the .sha256 sidecar, got: $hash_url"
+            exit 1
+          }
+          for bin in millennium millennium-mcp millennium-diag; do
+            jq -e --arg b "$bin" '.bin | flatten | index($b)' packaging/scoop/millennium-helpers.json >/dev/null || {
+              echo "::error::Scoop bin list missing '$bin'"
+              exit 1
+            }
+          done
+          echo "Scoop release-asset URL and bins look good."
+
       - name: Set up Python
         if: needs.changes.outputs.winget == 'true'
         uses: actions/setup-python@v6
@@ -84,22 +105,3 @@ jobs:
       - name: Validate Winget manifests (structure)
         if: needs.changes.outputs.winget == 'true'
         run: bash scripts/ci/check-winget-manifests.sh
-
-  validate-winget-windows:
-    name: winget validate (Windows)
-    needs: [changes]
-    if: needs.changes.outputs.winget == 'true'
-    runs-on: windows-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Skip winget validate (PowerShell package)
-        shell: pwsh
-        run: |
-          Write-Host @"
-          ::notice::Skipping ``winget validate``.
-          WinGet portable NestedInstallerFiles only allow ``.exe`` files.
-          This package is PowerShell-based; Scoop is the supported multi-command Windows install path.
-          YAML structure is still checked on Ubuntu via check-winget-manifests.sh.
-          "@

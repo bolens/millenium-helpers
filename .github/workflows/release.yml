@@ -95,6 +95,8 @@ jobs:
     outputs:
       version: ${{ steps.meta.outputs.version }}
       tag: ${{ steps.meta.outputs.tag }}
+      linux_sha: ${{ steps.checksums.outputs.linux_sha }}
+      windows_sha: ${{ steps.checksums.outputs.windows_sha }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v7
@@ -118,7 +120,7 @@ jobs:
         run: |
           set -euo pipefail
           # Explicit Unix payload only — no Windows scripts, CI, packaging, or Nix.
-          tar -czf millennium-helpers.tar.gz \
+          tar -czf millennium-helpers-linux.tar.gz \
             install.sh \
             VERSION \
             LICENSE \
@@ -140,7 +142,7 @@ jobs:
         run: |
           set -euo pipefail
           # Windows payload only — install.ps1 resolves VERSION via ..\..\VERSION.
-          zip -r millennium-helpers.zip \
+          zip -r millennium-helpers-windows.zip \
             scripts/windows/ \
             VERSION \
             LICENSE \
@@ -151,17 +153,17 @@ jobs:
         run: |
           set -euo pipefail
 
-          [[ -s millennium-helpers.tar.gz ]] || {
+          [[ -s millennium-helpers-linux.tar.gz ]] || {
             echo "::error::Linux/macOS tarball is missing or empty"
             exit 1
           }
-          [[ -s millennium-helpers.zip ]] || {
+          [[ -s millennium-helpers-windows.zip ]] || {
             echo "::error::Windows zip is missing or empty"
             exit 1
           }
 
-          LINUX_SHA=$(sha256sum millennium-helpers.tar.gz | cut -d' ' -f1)
-          WINDOWS_SHA=$(sha256sum millennium-helpers.zip | cut -d' ' -f1)
+          LINUX_SHA=$(sha256sum millennium-helpers-linux.tar.gz | cut -d' ' -f1)
+          WINDOWS_SHA=$(sha256sum millennium-helpers-windows.zip | cut -d' ' -f1)
 
           for label_sha in "linux:${LINUX_SHA}" "windows:${WINDOWS_SHA}"; do
             label="${label_sha%%:*}"
@@ -181,12 +183,12 @@ jobs:
           echo "linux_sha=$LINUX_SHA" >> "$GITHUB_OUTPUT"
           echo "windows_sha=$WINDOWS_SHA" >> "$GITHUB_OUTPUT"
 
-          echo "$LINUX_SHA  millennium-helpers.tar.gz" > millennium-helpers.tar.gz.sha256
-          echo "$WINDOWS_SHA  millennium-helpers.zip" > millennium-helpers.zip.sha256
+          echo "$LINUX_SHA  millennium-helpers-linux.tar.gz" > millennium-helpers-linux.tar.gz.sha256
+          echo "$WINDOWS_SHA  millennium-helpers-windows.zip" > millennium-helpers-windows.zip.sha256
 
           # Round-trip verify the sidecar checksum files match the archives.
-          sha256sum -c millennium-helpers.tar.gz.sha256
-          sha256sum -c millennium-helpers.zip.sha256
+          sha256sum -c millennium-helpers-linux.tar.gz.sha256
+          sha256sum -c millennium-helpers-windows.zip.sha256
 
       - name: Create GitHub Release Draft
         uses: softprops/action-gh-release@v2
@@ -197,27 +199,29 @@ jobs:
           body: |
             ## Release Verification & Checksums
 
-            Platform-trimmed archives for manual install (package managers use the GitHub tag source archives):
+            Platform-trimmed archives — used by Homebrew, Scoop, Winget manifests, and the piped installers:
 
-            | Asset | Contents | SHA256 |
-            | :--- | :--- | :--- |
-            | `millennium-helpers.tar.gz` | Linux/macOS scripts, completions, man pages | `${{ env.LINUX_SHA }}` |
-            | `millennium-helpers.zip` | Windows PowerShell scripts | `${{ env.WINDOWS_SHA }}` |
+            | Asset | Platform | Contents | SHA256 |
+            | :--- | :--- | :--- | :--- |
+            | `millennium-helpers-linux.tar.gz` | Linux/macOS | scripts, completions, man pages | `${{ env.LINUX_SHA }}` |
+            | `millennium-helpers-windows.zip` | Windows | PowerShell scripts | `${{ env.WINDOWS_SHA }}` |
 
             ### Package Verification
             To verify the integrity of the downloaded assets, run:
             ```bash
             # On Linux/macOS
-            sha256sum -c millennium-helpers.tar.gz.sha256
+            sha256sum -c millennium-helpers-linux.tar.gz.sha256
 
             # On Windows (PowerShell)
-            Get-FileHash -Path .\millennium-helpers.zip -Algorithm SHA256
+            $h = (Get-FileHash .\millennium-helpers-windows.zip -Algorithm SHA256).Hash.ToLower()
+            Get-Content .\millennium-helpers-windows.zip.sha256
+            # Compare $h to the hash in the sidecar file
             ```
           files: |
-            millennium-helpers.tar.gz
-            millennium-helpers.zip
-            millennium-helpers.tar.gz.sha256
-            millennium-helpers.zip.sha256
+            millennium-helpers-linux.tar.gz
+            millennium-helpers-windows.zip
+            millennium-helpers-linux.tar.gz.sha256
+            millennium-helpers-windows.zip.sha256
 
   update-packaging:
     name: Open packaging update PR
@@ -255,54 +259,46 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Fetch source archives and compute hashes
+      - name: Verify draft release assets and reuse build hashes
         id: hashes
         env:
+          GH_TOKEN: ${{ secrets.PACKAGING_PAT }}
           VERSION: ${{ needs.build-release.outputs.version }}
+          TAG: ${{ needs.build-release.outputs.tag }}
+          LINUX_SHA: ${{ needs.build-release.outputs.linux_sha }}
+          WINDOWS_SHA: ${{ needs.build-release.outputs.windows_sha }}
         run: |
           set -euo pipefail
-          TGZ_URL="https://github.com/${{ github.repository }}/archive/refs/tags/v${VERSION}.tar.gz"
-          ZIP_URL="https://github.com/${{ github.repository }}/archive/refs/tags/v${VERSION}.zip"
+          mkdir -p /tmp/release-assets
+          gh release download "${TAG}" \
+            --repo "${{ github.repository }}" \
+            --dir /tmp/release-assets \
+            --pattern 'millennium-helpers-linux.tar.gz' \
+            --pattern 'millennium-helpers-windows.zip'
 
-          curl -fsSL -o /tmp/src.tar.gz "$TGZ_URL"
-          curl -fsSL -o /tmp/src.zip "$ZIP_URL"
+          GOT_LINUX="$(sha256sum /tmp/release-assets/millennium-helpers-linux.tar.gz | cut -d' ' -f1)"
+          GOT_WINDOWS="$(sha256sum /tmp/release-assets/millennium-helpers-windows.zip | cut -d' ' -f1)"
 
-          [[ -s /tmp/src.tar.gz ]] || {
-            echo "::error::Downloaded source tarball is empty: $TGZ_URL"
+          if [[ "$GOT_LINUX" != "$LINUX_SHA" ]]; then
+            echo "::error::Draft Linux asset SHA mismatch (build=$LINUX_SHA download=$GOT_LINUX)"
             exit 1
-          }
-          [[ -s /tmp/src.zip ]] || {
-            echo "::error::Downloaded source zip is empty: $ZIP_URL"
+          fi
+          if [[ "$GOT_WINDOWS" != "$WINDOWS_SHA" ]]; then
+            echo "::error::Draft Windows asset SHA mismatch (build=$WINDOWS_SHA download=$GOT_WINDOWS)"
             exit 1
-          }
-
-          LINUX_SHA="$(sha256sum /tmp/src.tar.gz | cut -d' ' -f1)"
-          WINDOWS_SHA="$(sha256sum /tmp/src.zip | cut -d' ' -f1)"
-
-          for label_sha in "linux:${LINUX_SHA}" "windows:${WINDOWS_SHA}"; do
-            label="${label_sha%%:*}"
-            sha="${label_sha#*:}"
-            if [[ ! "$sha" =~ ^[0-9a-f]{64}$ ]]; then
-              echo "::error::Invalid ${label} source SHA256: ${sha}"
-              exit 1
-            fi
-            if [[ "$sha" =~ ^0{64}$ ]]; then
-              echo "::error::Refusing placeholder all-zero ${label} source SHA256"
-              exit 1
-            fi
-          done
+          fi
 
           echo "linux_sha=$LINUX_SHA" >> "$GITHUB_OUTPUT"
           echo "windows_sha=$WINDOWS_SHA" >> "$GITHUB_OUTPUT"
-          echo "Source tarball SHA256=$LINUX_SHA"
-          echo "Source zip SHA256=$WINDOWS_SHA"
+          echo "Verified trimmed release assets for ${TAG}"
 
       - name: Update packaging manifests
         run: |
           bash scripts/ci/update-packaging-versions.sh \
             "${{ needs.build-release.outputs.version }}" \
             "${{ steps.hashes.outputs.linux_sha }}" \
-            "${{ steps.hashes.outputs.windows_sha }}"
+            "${{ steps.hashes.outputs.windows_sha }}" \
+            "${{ github.repository }}"
 
       - name: Verify version sync
         run: |
@@ -323,8 +319,9 @@ jobs:
             ## Summary
             Automated packaging bump for release **v${{ needs.build-release.outputs.version }}**.
 
-            - Updates `VERSION`, Homebrew Formula URL/SHA256 (no redundant `version` line), Scoop URL/hash, and Winget PackageVersion/InstallerUrl/InstallerSha256
-            - Source archive hashes are computed from the GitHub tag archives
+            - Updates `VERSION`, Homebrew Formula, Scoop, and Winget to the trimmed release assets
+              (`millennium-helpers-linux.tar.gz` / `millennium-helpers-windows.zip`)
+            - Hashes come from the draft release assets built by this workflow
 
             ## Automation
             If packaging CI passes, the release workflow will squash-merge this PR and publish the draft GitHub release.
@@ -333,7 +330,9 @@ jobs:
             ## Test plan
             - [ ] Confirm version-sync CI passes
             - [ ] Confirm Homebrew audit / Scoop / Winget manifest jobs pass
-            - [ ] Confirm PKGBUILD validation passes
+            - [ ] Confirm Scoop install test passes (trimmed zip layout)
+
+            Note: Arch `PKGBUILD` is the `-git` package and is intentionally outside this versioned bump.
 
   finalize:
     name: Merge packaging PR & publish release
@@ -370,7 +369,6 @@ jobs:
             "Detect changed packaging paths"
             "VERSION matches packaging manifests"
             "Validate Scoop / Winget manifests"
-            "winget validate (Windows)"
             "Test Scoop Package Install"
             "homebrew"
           )

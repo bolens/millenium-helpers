@@ -10,7 +10,7 @@
 
 stdenv.mkDerivation rec {
   pname = "millennium-helpers";
-  version = "0.1.0";
+  version = lib.removeSuffix "\n" (builtins.readFile ../VERSION);
 
   src = ../.;
 

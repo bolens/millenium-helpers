@@ -54,6 +54,10 @@ m = re.search(r'^\s*version\s+\"([^\"]+)\"', text, re.M)
 if m:
     print(m.group(1))
     raise SystemExit(0)
+m = re.search(r'releases/download/v([0-9][^\"/]+)/', text)
+if m:
+    print(m.group(1))
+    raise SystemExit(0)
 m = re.search(r'archive/refs/tags/v([0-9][^\"/]+)\.tar\.gz', text)
 if m:
     print(m.group(1))
@@ -63,5 +67,39 @@ print('')
 [[ -n "$FORMULA_VERSION" ]] || fail "could not parse version from $FORMULA"
 [[ "$FORMULA_VERSION" == "$VERSION" ]] || fail "Homebrew Formula version '$FORMULA_VERSION' != VERSION '$VERSION'"
 echo "Homebrew Formula version OK ($FORMULA_VERSION)"
+
+# --- Release asset URL shape (Homebrew + Scoop) ---
+python3 - "$VERSION" <<'PY' || fail "packaging release-asset URL checks failed"
+import json
+import re
+import sys
+from pathlib import Path
+
+version = sys.argv[1]
+errors = []
+
+formula = Path("Formula/millennium-helpers.rb").read_text(encoding="utf-8")
+if f"releases/download/v{version}/millennium-helpers-linux.tar.gz" not in formula:
+    errors.append("Formula URL must use trimmed Linux release asset")
+
+scoop = json.loads(Path("packaging/scoop/millennium-helpers.json").read_text(encoding="utf-8"))
+url = str(scoop.get("url", ""))
+if f"releases/download/v{version}/millennium-helpers-windows.zip" not in url:
+    errors.append("Scoop URL must use trimmed Windows release asset")
+bins = {b[1] if isinstance(b, list) else b for b in scoop.get("bin", [])}
+for required in ("millennium", "millennium-mcp", "millennium-diag"):
+    if required not in bins:
+        errors.append(f"Scoop bin missing {required!r}")
+
+installer = Path("packaging/winget/bolens.millenniumhelpers.installer.yaml").read_text(encoding="utf-8")
+if f"releases/download/v{version}/millennium-helpers-windows.zip" not in installer:
+    errors.append("Winget InstallerUrl must use trimmed Windows release asset")
+
+if errors:
+    for err in errors:
+        print(f"error: {err}", file=sys.stderr)
+    raise SystemExit(1)
+print("Release-asset URL shape OK")
+PY
 
 echo "All packaging versions match VERSION ($VERSION)."

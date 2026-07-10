@@ -27,32 +27,39 @@ if ($scriptPath -and (Test-Path -Path $scriptPath -PathType Leaf)) {
 }
 
 if ($isStandalone) {
-    Write-Host "Running in standalone/piped mode. Downloading repository..."
+    Write-Host "Running in standalone/piped mode. Downloading latest Windows release..."
     $tempDir = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "millennium-helpers-temp"
     Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue | Out-Null
     New-Item -Path $tempDir -ItemType Directory -Force | Out-Null
-    
-    $zipPath = Join-Path -Path $tempDir -ChildPath "archive.zip"
-    $url = "https://github.com/bolens/millenium-helpers/archive/refs/heads/main.zip"
-    
-    # Download
+
+    $zipPath = Join-Path -Path $tempDir -ChildPath "millennium-helpers-windows.zip"
+    $url = if ($env:MILLENNIUM_HELPERS_RELEASE_URL) {
+        $env:MILLENNIUM_HELPERS_RELEASE_URL
+    } else {
+        "https://github.com/bolens/millenium-helpers/releases/latest/download/millennium-helpers-windows.zip"
+    }
+
     Invoke-WebRequest -Uri $url -OutFile $zipPath -UseBasicParsing
-    
-    # Extract
     Expand-Archive -Path $zipPath -DestinationPath $tempDir -Force
-    
-    # Locate extracted folder (it will be like millenium-helpers-main)
-    $extractedFolder = Get-ChildItem -Path $tempDir -Directory | Select-Object -First 1
-    $extractedScript = Join-Path -Path $extractedFolder.FullName -ChildPath "scripts\windows\install.ps1"
-    
-    # Run the extracted installer with same parameters
+
+    $extractedScript = Join-Path -Path $tempDir -ChildPath "scripts\windows\install.ps1"
+    if (!(Test-Path -Path $extractedScript -PathType Leaf)) {
+        # Older source-archive layout used a single top-level folder.
+        $extractedFolder = Get-ChildItem -Path $tempDir -Directory | Select-Object -First 1
+        if ($extractedFolder) {
+            $extractedScript = Join-Path -Path $extractedFolder.FullName -ChildPath "scripts\windows\install.ps1"
+        }
+    }
+    if (!(Test-Path -Path $extractedScript -PathType Leaf)) {
+        throw "Release archive is missing scripts\windows\install.ps1 (url=$url)"
+    }
+
     $params = @{}
     if ($PSBoundParameters.ContainsKey("Uninstall")) { $params["Uninstall"] = $Uninstall }
     if ($PSBoundParameters.ContainsKey("Force")) { $params["Force"] = $Force }
-    
+
     & $extractedScript @params
-    
-    # Cleanup temp dir (deferred/best effort)
+
     Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue | Out-Null
     return
 }

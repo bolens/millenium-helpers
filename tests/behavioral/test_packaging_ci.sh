@@ -65,17 +65,18 @@ assert_equals "3.4.5" "$(tr -d '[:space:]' < "$WORK/VERSION")" "VERSION file upd
 
 formula=$(cat "$WORK/Formula/millennium-helpers.rb")
 assert_contains "$formula" "sha256 \"${LINUX_SHA}\"" "Formula receives lowercase linux sha256"
-assert_contains "$formula" "v3.4.5.tar.gz" "Formula URL points at the release tag tarball"
+assert_contains "$formula" "releases/download/v3.4.5/millennium-helpers-linux.tar.gz" "Formula URL points at trimmed Linux release asset"
 assert_contains "$formula" 'license "MIT"' "Formula declares MIT license"
 assert_not_contains "$formula" 'version "3.4.5"' "Formula has no redundant version line after packaging update"
 
 scoop=$(cat "$WORK/packaging/scoop/millennium-helpers.json")
 assert_contains "$scoop" "\"hash\": \"${WINDOWS_SHA}\"" "Scoop receives windows sha256"
-assert_contains "$scoop" "v3.4.5.zip" "Scoop URL points at the release tag zip"
+assert_contains "$scoop" "releases/download/v3.4.5/millennium-helpers-windows.zip" "Scoop URL points at trimmed Windows release asset"
+assert_contains "$scoop" "millennium-helpers-windows.zip.sha256" "Scoop autoupdate hash uses .sha256 sidecar"
 
 winget=$(cat "$WORK/packaging/winget/bolens.millenniumhelpers.installer.yaml")
 assert_contains "$winget" "InstallerSha256: \"${WINDOWS_SHA^^}\"" "Winget InstallerSha256 is quoted uppercase"
-assert_contains "$winget" "v3.4.5.zip" "Winget InstallerUrl points at the release tag zip"
+assert_contains "$winget" "releases/download/v3.4.5/millennium-helpers-windows.zip" "Winget InstallerUrl points at trimmed Windows release asset"
 assert_contains "$winget" "PackageVersion: 3.4.5" "Winget installer PackageVersion updated"
 assert_contains "$winget" "InstallerType: zip" "Winget installer uses zip (no portable .ps1 claims)"
 assert_not_contains "$winget" "NestedInstallerFiles" "Winget installer has no NestedInstallerFiles"
