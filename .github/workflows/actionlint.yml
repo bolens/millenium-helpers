@@ -33,8 +33,9 @@ jobs:
           curl -fsSL -o /tmp/actionlint.tar.gz \
             "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
           tar -xzf /tmp/actionlint.tar.gz -C /tmp actionlint
+          chmod +x /tmp/actionlint
           echo "/tmp" >> "$GITHUB_PATH"
-          actionlint -version
+          /tmp/actionlint -version
 
       - name: Run actionlint
         run: actionlint -color
