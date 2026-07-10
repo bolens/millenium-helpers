@@ -247,7 +247,7 @@ if (!$File) {
     Log-Info "Downloading Millennium v$latestVer archive..."
     $dlSuccess = Download-File -Url $url -Dest $localArchive -Msg "Fetching Millennium client archive" -GithubToken $githubToken
     if (!$dlSuccess) {
-        Log-Error "Error: Failed to download Millennium package."
+        Write-UpgradeFailureTips -Detail "Failed to download Millennium package."
         exit 1
     }
 } else {

@@ -3,6 +3,8 @@ param(
     [string]$Command = $null,
     [string]$Channel = "stable",
     [switch]$DryRun = $false,
+    [Alias("q")]
+    [switch]$Quiet = $false,
     [Alias("h")]
     [switch]$Help = $false,
     [Alias("V")]
@@ -20,12 +22,30 @@ if (Test-Path -Path $CommonPs1) {
     exit 1
 }
 
-# Resolve command positional parameters
+# Resolve command positional parameters / GNU-style flags
 if ($args.Count -gt 0) {
-    if (!$Command) { $Command = $args[0] }
-    if ($args.Count -gt 1) {
-        $Channel = $args[1]
+    $gnuFlags = @{
+        DryRun = [bool]$DryRun
+        Quiet = [bool]$Quiet
+        Help = [bool]$Help
+        Version = [bool]$Version
     }
+    $remaining = Apply-GnuStyleArgs -InputArgs ([string[]]$args) -Target $gnuFlags
+    if ($gnuFlags.DryRun) { $DryRun = $true }
+    if ($gnuFlags.Quiet) { $Quiet = $true; $global:Quiet = $true; $env:MILLENNIUM_QUIET = "1" }
+    if ($gnuFlags.Help) { $Help = $true }
+    if ($gnuFlags.Version) { $Version = $true }
+    if ($remaining.Count -gt 0) {
+        if (!$Command) { $Command = $remaining[0] }
+        if ($remaining.Count -gt 1) {
+            $Channel = $remaining[1]
+        }
+    }
+}
+
+if ($Quiet) {
+    $global:Quiet = $true
+    $env:MILLENNIUM_QUIET = "1"
 }
 
 if ($DryRun) {
@@ -58,9 +78,12 @@ Commands:
   config [get/set/list] Manage Millennium Helper configuration options
 
 Options:
-  -d, --dry-run         Perform dry-run without changing Task Scheduler or writing files
-  -V, --version         Show version information
-  -h, --help            Show this help message
+  -d, -DryRun           Perform dry-run without changing Task Scheduler or writing files
+  -q, -Quiet            Suppress informational output
+  -V, -Version          Show version information
+  -h, -Help             Show this help message
+
+GNU-style flags (--dry-run, --quiet) are also accepted.
 "@
     Write-Output $helpText
 }
@@ -138,10 +161,27 @@ function Show-Status {
         Write-Host "  Path        : $($task.TaskPath)"
         Write-Host "  State       : $($task.State)"
         Write-Host "  Action      : $(($task.Actions | Select-Object -First 1).Execute) $(($task.Actions | Select-Object -First 1).Arguments)"
+        $channelDisp = $Channel
+        $actionArgs = "$(($task.Actions | Select-Object -First 1).Arguments)"
+        if ($actionArgs -match '-Channel\s+(\S+)') {
+            $channelDisp = $Matches[1]
+        }
+        $logDir = Join-Path -Path $env:LOCALAPPDATA -ChildPath "millennium-helpers"
+        $logFile = Join-Path -Path $logDir -ChildPath "updater.log"
+        Write-Host ""
+        Write-Host "=== Scheduler summary ==="
+        Write-Host "  Channel     : $channelDisp"
+        if (Test-Path -Path $logFile) {
+            Write-Host "  Last log    : $logFile"
+            Write-Host "  View logs   : millennium diag logs"
+        } else {
+            Write-Host "  Last log    : (none yet — runs after the first scheduled update)"
+        }
+        Write-Host "  Disable     : millennium schedule disable"
     } else {
         Write-Host "  Scheduled task is not registered."
         Write-Host ""
-        Write-Host -ForegroundColor Yellow "Scheduler disabled. Enable with: millennium-schedule enable [stable|beta]"
+        Write-Host -ForegroundColor Yellow "Scheduler disabled. Enable with: millennium schedule enable [stable|beta]"
     }
 }
 

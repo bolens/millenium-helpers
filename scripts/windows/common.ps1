@@ -5,23 +5,69 @@ set-strictmode -version Latest
 [System.Threading.Thread]::CurrentThread.CurrentCulture = [System.Globalization.CultureInfo]::InvariantCulture
 [System.Threading.Thread]::CurrentThread.CurrentUICulture = [System.Globalization.CultureInfo]::InvariantCulture
 
-# Text formatting colors (honors NO_COLOR)
+# Text formatting colors (honors NO_COLOR / FORCE_COLOR / console TTY)
+$script:IsConsoleHost = $false
+try {
+    $script:IsConsoleHost = [Environment]::UserInteractive -and $Host.Name -match 'ConsoleHost|Visual Studio Code Host'
+} catch {
+    $script:IsConsoleHost = $false
+}
+
 if ($env:NO_COLOR) {
     $RED = ""
     $GREEN = ""
     $YELLOW = ""
     $BLUE = ""
     $NC = ""
-} else {
+} elseif ($env:FORCE_COLOR -or $script:IsConsoleHost) {
     $RED = "`e[0;31m"
     $GREEN = "`e[0;32m"
     $YELLOW = "`e[0;33m"
     $BLUE = "`e[0;34m"
     $NC = "`e[0m" # No Color
+} else {
+    $RED = ""
+    $GREEN = ""
+    $YELLOW = ""
+    $BLUE = ""
+    $NC = ""
 }
 
 $global:DryRun = $false
 $global:AssumeYes = $false
+$global:Quiet = $false
+
+function Test-MillenniumQuiet {
+    return ($global:Quiet -eq $true) -or [bool]$env:MILLENNIUM_QUIET
+}
+
+# Apply GNU-style flags from unbound $args (e.g. --json, --yes) onto script switches.
+function Apply-GnuStyleArgs {
+    param(
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [string[]]$InputArgs,
+        [hashtable]$Target
+    )
+    $remaining = New-Object System.Collections.Generic.List[string]
+    for ($i = 0; $i -lt $InputArgs.Count; $i++) {
+        switch -Regex ($InputArgs[$i]) {
+            '^--json$' { if ($Target.ContainsKey('Json')) { $Target['Json'] = $true } else { $remaining.Add($InputArgs[$i]) } }
+            '^(--dry-run|-d)$' { if ($Target.ContainsKey('DryRun')) { $Target['DryRun'] = $true } else { $remaining.Add($InputArgs[$i]) } }
+            '^(--yes|-y)$' { if ($Target.ContainsKey('Yes')) { $Target['Yes'] = $true } else { $remaining.Add($InputArgs[$i]) } }
+            '^(--quiet|-q)$' {
+                if ($Target.ContainsKey('Quiet')) { $Target['Quiet'] = $true }
+                $global:Quiet = $true
+                $env:MILLENNIUM_QUIET = "1"
+            }
+            '^(--help|-h)$' { if ($Target.ContainsKey('Help')) { $Target['Help'] = $true } else { $remaining.Add($InputArgs[$i]) } }
+            '^(--version|-V)$' { if ($Target.ContainsKey('Version')) { $Target['Version'] = $true } else { $remaining.Add($InputArgs[$i]) } }
+            '^(--all|-a)$' { if ($Target.ContainsKey('All')) { $Target['All'] = $true } else { $remaining.Add($InputArgs[$i]) } }
+            default { $remaining.Add($InputArgs[$i]) }
+        }
+    }
+    return $remaining.ToArray()
+}
 
 function Write-DebugMsg {
     param([string]$Msg)
@@ -86,6 +132,7 @@ function Log-Msg {
 
 function Log-Info {
     param([string]$Msg)
+    if (Test-MillenniumQuiet) { return }
     Log-Msg -Level "INFO" -Msg $Msg
 }
 
@@ -376,16 +423,47 @@ function Download-File {
             New-Item -ItemType Directory -Force -Path $parent | Out-Null
         }
 
-        Write-Progress -Activity $Msg -Status "Downloading..." -PercentComplete 0
-
-        if ($headers.Count -gt 0) {
-            Invoke-WebRequest -Uri $Url -OutFile $Dest -Headers $headers -UseBasicParsing -ErrorAction Stop
+        # Prefer streaming download with byte progress on interactive consoles.
+        $useProgress = $script:IsConsoleHost -and -not (Test-MillenniumQuiet)
+        if ($useProgress) {
+            Write-Progress -Activity $Msg -Status "Starting..." -PercentComplete 0
+            $req = [System.Net.HttpWebRequest]::Create($Url)
+            $req.Method = "GET"
+            $req.UserAgent = "millennium-helpers"
+            if ($headers.ContainsKey("Authorization")) {
+                $req.Headers["Authorization"] = $headers["Authorization"]
+            }
+            $resp = $req.GetResponse()
+            $total = $resp.ContentLength
+            $stream = $resp.GetResponseStream()
+            $fs = [System.IO.File]::Create($Dest)
+            $buffer = New-Object byte[] 81920
+            $readTotal = [int64]0
+            try {
+                while (($read = $stream.Read($buffer, 0, $buffer.Length)) -gt 0) {
+                    $fs.Write($buffer, 0, $read)
+                    $readTotal += $read
+                    if ($total -gt 0) {
+                        $pct = [int](($readTotal * 100L) / $total)
+                        Write-Progress -Activity $Msg -Status ("{0:N0} / {1:N0} bytes" -f $readTotal, $total) -PercentComplete $pct
+                    } else {
+                        Write-Progress -Activity $Msg -Status ("{0:N0} bytes" -f $readTotal) -PercentComplete -1
+                    }
+                }
+            } finally {
+                $fs.Dispose()
+                $stream.Dispose()
+                $resp.Dispose()
+            }
+            Write-Progress -Activity $Msg -Completed
         } else {
-            Invoke-WebRequest -Uri $Url -OutFile $Dest -UseBasicParsing -ErrorAction Stop
+            if ($headers.Count -gt 0) {
+                Invoke-WebRequest -Uri $Url -OutFile $Dest -Headers $headers -UseBasicParsing -ErrorAction Stop
+            } else {
+                Invoke-WebRequest -Uri $Url -OutFile $Dest -UseBasicParsing -ErrorAction Stop
+            }
         }
 
-        Write-Progress -Activity $Msg -Status "Complete" -PercentComplete 100
-        Write-Progress -Activity $Msg -Completed
         Write-Host -ForegroundColor Green "OK"
         return $true
     } catch {
@@ -394,6 +472,20 @@ function Download-File {
         Log-Error $_.Exception.Message
         return $false
     }
+}
+
+function Write-UpgradeFailureTips {
+    param([string]$Detail = "")
+    Write-Host ""
+    if ($Detail) {
+        Log-Error "Upgrade failed: $Detail"
+    } else {
+        Log-Error "Upgrade failed."
+    }
+    Write-Host "Next steps:"
+    Write-Host "  • millennium upgrade -Rollback list   # list backups"
+    Write-Host "  • millennium diag                     # check installation health"
+    Write-Host "  • Re-run with -Yes if Steam close confirmation blocked the update"
 }
 
 function Resolve-HelperPath {

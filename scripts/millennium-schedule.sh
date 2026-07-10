@@ -43,6 +43,7 @@ Commands:
 Options:
   -c, --cron            Force use of crontab instead of systemd
   -d, --dry-run         Perform dry-run without writing files or changing systemd state
+  -q, --quiet           Suppress informational output
   -V, --version         Show version information
   -h, --help            Show this help message
 EOF
@@ -51,6 +52,7 @@ EOF
 # Parse options and commands
 COMMAND=""
 DRY_RUN=false
+QUIET=false
 USE_CRON=false
 if [[ ! -d /run/systemd/system ]]; then
   USE_CRON=true
@@ -96,6 +98,11 @@ while [[ $# -gt 0 ]]; do
       DRY_RUN=true
       shift
       ;;
+    -q|--quiet)
+      QUIET=true
+      export MILLENNIUM_QUIET=1
+      shift
+      ;;
     -V|--version)
       print_helpers_version
       exit 0
@@ -106,7 +113,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     *)
       echo -e "${RED}Unknown option: $1${NC}" >&2
-      show_help
+      echo "Try '$(basename "$0") --help' for usage." >&2
       exit 1
       ;;
   esac
@@ -213,7 +220,7 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/bin/bash -c 'mkdir -p "${state_dir}" && { "${sched_self}" pre-update && /usr/bin/sudo -n "${script_file}" --channel "${channel}" && "${theme_cmd}" update && "${sched_self}" post-update; } >> "${state_dir}/updater.log" 2>&1'
+ExecStart=/bin/bash -c 'mkdir -p "${state_dir}" && { "${sched_self}" pre-update && /usr/bin/sudo -n "${script_file}" --channel "${channel}" --quiet && "${theme_cmd}" update --quiet && "${sched_self}" post-update; } >> "${state_dir}/updater.log" 2>&1'
 EOF
 
   echo -e "${BLUE}Creating systemd user timer file...${NC}"
@@ -338,7 +345,20 @@ show_status() {
       fi
     fi
     if [[ "$scheduler_configured" != "true" ]]; then
-      echo -e "\n${YELLOW}Scheduler disabled.${NC} Enable with: ${GREEN}millennium-schedule enable [stable|beta]${NC}"
+      echo -e "\n${YELLOW}Scheduler disabled.${NC} Enable with: ${GREEN}millennium schedule enable [stable|beta]${NC}"
+    else
+      local state_dir="${XDG_STATE_HOME:-$USER_HOME/.local/state}/millennium-helpers"
+      local log_file="${state_dir}/updater.log"
+      local channel_disp="${CONFIG_UPDATE_CHANNEL:-${CHANNEL:-stable}}"
+      echo -e "\n${BLUE}=== Scheduler summary ===${NC}"
+      echo -e "  Channel     : ${channel_disp}"
+      if [[ -f "$log_file" ]]; then
+        echo -e "  Last log    : ${log_file}"
+        echo -e "  View logs   : ${GREEN}millennium diag logs${NC}"
+      else
+        echo -e "  Last log    : (none yet — runs after the first scheduled update)"
+      fi
+      echo -e "  Disable     : ${GREEN}millennium schedule disable${NC}"
     fi
     return 0
   fi
@@ -370,7 +390,24 @@ show_status() {
   fi
 
   if [[ "$scheduler_configured" != "true" ]]; then
-    echo -e "\n${YELLOW}Scheduler disabled.${NC} Enable with: ${GREEN}millennium-schedule enable [stable|beta]${NC}"
+    echo -e "\n${YELLOW}Scheduler disabled.${NC} Enable with: ${GREEN}millennium schedule enable [stable|beta]${NC}"
+  else
+    local state_dir="${XDG_STATE_HOME:-$USER_HOME/.local/state}/millennium-helpers"
+    local log_file="${state_dir}/updater.log"
+    local channel_disp="${CONFIG_UPDATE_CHANNEL:-${CHANNEL:-stable}}"
+    # Prefer channel from installed service unit when present
+    if [[ -f "$SERVICE_PATH" ]] && grep -q -- '--channel' "$SERVICE_PATH" 2>/dev/null; then
+      channel_disp=$(grep -oE -- '--channel[[:space:]]+[a-z]+' "$SERVICE_PATH" | awk '{print $2; exit}' || echo "$channel_disp")
+    fi
+    echo -e "\n${BLUE}=== Scheduler summary ===${NC}"
+    echo -e "  Channel     : ${channel_disp}"
+    if [[ -f "$log_file" ]]; then
+      echo -e "  Last log    : ${log_file}"
+      echo -e "  View logs   : ${GREEN}millennium diag logs${NC}"
+    else
+      echo -e "  Last log    : (none yet — runs after the first scheduled update)"
+    fi
+    echo -e "  Disable     : ${GREEN}millennium schedule disable${NC}"
   fi
 }
 

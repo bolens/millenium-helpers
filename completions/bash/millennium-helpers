@@ -159,12 +159,12 @@ _millennium_dispatcher_comp() {
   COMPREPLY=()
   local cur="${COMP_WORDS[COMP_CWORD]}"
   if [[ ${COMP_CWORD} -eq 1 ]]; then
-    COMPREPLY=( $(compgen -W "diag upgrade schedule theme repair purge mcp help" -- "${cur}") )
+    COMPREPLY=( $(compgen -W "diag doctor upgrade schedule theme repair purge mcp help" -- "${cur}") )
     return 0
   fi
   local sub="${COMP_WORDS[1]}"
   case "$sub" in
-    diag) _millennium_diag_comp ;;
+    diag|doctor) _millennium_diag_comp ;;
     upgrade) _millennium_upgrade_comp ;;
     schedule) _millennium_schedule_comp ;;
     theme) _millennium_theme_comp ;;

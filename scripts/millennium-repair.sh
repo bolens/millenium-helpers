@@ -29,6 +29,7 @@ fi
 
 SKIP_THEME=false
 DRY_RUN=false
+QUIET=false
 ASSUME_YES=false
 
 show_help() {
@@ -41,6 +42,7 @@ Options:
   -s, --skip-theme  Skip theme refresh during repair
   -y, --yes         Skip confirmation when closing Steam
   -d, --dry-run     Simulate operations without modifying files
+  -q, --quiet       Suppress informational output
   -V, --version     Show version information
   -h, --help        Show this help message
 EOF
@@ -60,6 +62,11 @@ while [[ $# -gt 0 ]]; do
       DRY_RUN=true
       shift
       ;;
+    -q|--quiet)
+      QUIET=true
+      export MILLENNIUM_QUIET=1
+      shift
+      ;;
     -V|--version)
       print_helpers_version
       exit 0
@@ -70,7 +77,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     *)
       echo "Unknown option: $1" >&2
-      show_help
+      echo "Try '$(basename "$0") --help' for usage." >&2
       exit 1
       ;;
   esac

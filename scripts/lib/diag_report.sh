@@ -559,21 +559,21 @@ print_diag_next_steps() {
   local issues=0
   local suggestions=()
 
-  [[ "${BINARIES_OK:-true}" == "true" ]] || { ((issues++)) || true; suggestions+=("sudo millennium-upgrade --force   # repair/reinstall Millennium binaries"); }
-  [[ "${HOOKS_OK:-true}" == "true" ]] || { ((issues++)) || true; suggestions+=("sudo millennium-repair           # restore bootstrap hooks"); }
+  [[ "${BINARIES_OK:-true}" == "true" ]] || { ((issues++)) || true; suggestions+=("millennium upgrade --force        # repair/reinstall Millennium binaries"); }
+  [[ "${HOOKS_OK:-true}" == "true" ]] || { ((issues++)) || true; suggestions+=("millennium repair                # restore bootstrap hooks"); }
   [[ "${FLATPAK_OK:-true}" == "true" ]] || { ((issues++)) || true; suggestions+=("flatpak override --user --filesystem=/usr/lib/millennium com.valvesoftware.Steam"); }
-  [[ "${PERMISSIONS_OK:-true}" == "true" && "${SKINS_DIR_OK:-true}" == "true" ]] || { ((issues++)) || true; suggestions+=("sudo millennium-repair           # fix ownership / skins directory"); }
+  [[ "${PERMISSIONS_OK:-true}" == "true" && "${SKINS_DIR_OK:-true}" == "true" ]] || { ((issues++)) || true; suggestions+=("millennium repair                # fix ownership / skins directory"); }
   [[ "${SUDOERS_OK:-true}" == "true" ]] || { ((issues++)) || true; suggestions+=("sudo ./install.sh install        # restore passwordless sudoers drop-in"); }
-  [[ "${TIMER_ACTIVE:-true}" == "true" ]] || { ((issues++)) || true; suggestions+=("millennium-schedule enable       # enable daily auto-updates"); }
+  [[ "${TIMER_ACTIVE:-true}" == "true" ]] || { ((issues++)) || true; suggestions+=("millennium schedule enable       # enable daily auto-updates"); }
   [[ "${LINGER_OK:-true}" == "true" ]] || { ((issues++)) || true; suggestions+=("sudo loginctl enable-linger ${RUNNING_USER:-$USER}  # keep user timers after logout"); }
-  [[ "${SCRIPTS_UP_TO_DATE:-true}" == "true" ]] || { ((issues++)) || true; suggestions+=("sudo millennium-diag doctor      # update helper scripts"); }
-  [[ "${COMPLETIONS_OK:-true}" == "true" ]] || { ((issues++)) || true; suggestions+=("sudo millennium-diag doctor      # restore shell completions"); }
-  [[ "${CLEAN_OF_OBSOLETE:-true}" == "true" ]] || { ((issues++)) || true; suggestions+=("sudo millennium-diag doctor      # remove legacy wrapper files"); }
+  [[ "${SCRIPTS_UP_TO_DATE:-true}" == "true" ]] || { ((issues++)) || true; suggestions+=("millennium doctor                # update helper scripts"); }
+  [[ "${COMPLETIONS_OK:-true}" == "true" ]] || { ((issues++)) || true; suggestions+=("millennium doctor                # restore shell completions"); }
+  [[ "${CLEAN_OF_OBSOLETE:-true}" == "true" ]] || { ((issues++)) || true; suggestions+=("millennium doctor                # remove legacy wrapper files"); }
 
   echo ""
   if [[ "$issues" -eq 0 ]]; then
     echo -e "${GREEN}No issues detected. Your Millennium installation looks healthy.${NC}"
-    echo -e "Tip: run ${YELLOW}millennium-schedule status${NC} to review auto-updates, or ${YELLOW}millennium-theme list${NC} for skins."
+    echo -e "Tip: run ${YELLOW}millennium schedule status${NC} to review auto-updates, or ${YELLOW}millennium theme list${NC} for skins."
     return 0
   fi
 
@@ -586,7 +586,7 @@ print_diag_next_steps() {
     seen+="${s}|"
     echo -e "  • ${s}"
   done
-  echo -e "\nOr run ${GREEN}sudo millennium-diag doctor${NC} to attempt automatic repairs."
+  echo -e "\nOr run ${GREEN}millennium doctor${NC} (alias: sudo millennium-diag doctor) to attempt automatic repairs."
 }
 
 run_diagnostics() {

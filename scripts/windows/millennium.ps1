@@ -15,6 +15,7 @@ Usage: millennium <command> [args...]
 
 Commands:
   diag       Run diagnostics (millennium-diag)
+  doctor     Alias for: diag doctor
   upgrade    Upgrade / install Millennium (millennium-upgrade)
   schedule   Manage auto-update scheduler (millennium-schedule)
   theme      Manage skins/themes (millennium-theme)
@@ -25,10 +26,39 @@ Commands:
 
 Examples:
   millennium diag
+  millennium doctor
   millennium upgrade -Channel beta
   millennium schedule status
   millennium theme list
 "@
+}
+
+function Get-CommandSuggestion {
+    param([string]$InputCmd)
+    $cmds = @("diag", "doctor", "upgrade", "schedule", "theme", "repair", "purge", "mcp", "help")
+    $best = $null
+    $bestScore = 0
+    foreach ($c in $cmds) {
+        $score = 0
+        if ($c -eq $InputCmd) { return $c }
+        if ($c.StartsWith($InputCmd) -or $InputCmd.StartsWith($c)) {
+            $score = 3
+        } elseif ($c.Contains($InputCmd) -or $InputCmd.Contains($c)) {
+            $score = 2
+        } else {
+            $i = 0
+            while ($i -lt $c.Length -and $i -lt $InputCmd.Length -and $c[$i] -eq $InputCmd[$i]) {
+                $i++
+            }
+            $score = $i
+        }
+        if ($score -gt $bestScore) {
+            $bestScore = $score
+            $best = $c
+        }
+    }
+    if ($bestScore -ge 2) { return $best }
+    return $null
 }
 
 function Invoke-Sibling {
@@ -50,6 +80,12 @@ function Invoke-Sibling {
     exit $LASTEXITCODE
 }
 
+# Natural alias: millennium doctor → millennium-diag doctor
+if ($Command -eq "doctor") {
+    $Rest = @("doctor") + @($Rest)
+    $Command = "diag"
+}
+
 switch -Regex ($Command) {
     '^(help|-h|--help)$' {
         Show-Help
@@ -69,6 +105,10 @@ switch -Regex ($Command) {
     }
     Default {
         Write-Error "Unknown command: $Command"
+        $suggestion = Get-CommandSuggestion -InputCmd $Command
+        if ($suggestion) {
+            Write-Host "Did you mean '$suggestion'?"
+        }
         Write-Host "Run 'millennium help' for usage."
         exit 1
     }

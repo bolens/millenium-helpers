@@ -32,6 +32,7 @@ Commands:
 Options:
   --json                Output list command results in structured JSON format
   -d, --dry-run         Perform a dry-run (simulates operations without modifying files)
+  -q, --quiet           Suppress informational output
   -y, --yes             Skip confirmation when removing a theme
   -V, --version         Show version information
   -h, --help            Show this help message
@@ -46,6 +47,7 @@ EOF
 COMMAND=""
 ARG=""
 DRY_RUN=false
+QUIET=false
 ASSUME_YES=false
 OUTPUT_JSON=false
 
@@ -75,6 +77,11 @@ while [[ $# -gt 0 ]]; do
       DRY_RUN=true
       shift
       ;;
+    -q|--quiet)
+      QUIET=true
+      export MILLENNIUM_QUIET=1
+      shift
+      ;;
     -V|--version)
       print_helpers_version
       exit 0
@@ -85,7 +92,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     *)
       echo "Unknown option: $1" >&2
-      show_help
+      echo "Try '$(basename "$0") --help' for usage." >&2
       exit 1
       ;;
   esac

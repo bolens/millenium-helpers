@@ -30,6 +30,7 @@ done
 CHANNEL="${CONFIG_UPDATE_CHANNEL:-stable}"
 FORCE=false
 DRY_RUN=false
+QUIET=false
 ASSUME_YES=false
 ROLLBACK=false
 ROLLBACK_TARGET=""
@@ -50,6 +51,7 @@ Options:
   -f, --force            Force reinstall even if already up to date
   -y, --yes              Skip confirmation when closing Steam
   -d, --dry-run          Simulate operations without modifying files
+  -q, --quiet            Suppress informational output (warnings/errors still print)
   -V, --version          Show version information
   -h, --help             Show this help message
 EOF
@@ -67,6 +69,11 @@ while [[ $# -gt 0 ]]; do
       ;;
     -d|--dry-run)
       DRY_RUN=true
+      shift
+      ;;
+    -q|--quiet)
+      QUIET=true
+      export MILLENNIUM_QUIET=1
       shift
       ;;
     -c|--channel)
@@ -119,7 +126,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     *)
       echo "Unknown option: $1" >&2
-      show_help
+      echo "Try '$(basename "$0") --help' for usage." >&2
       exit 1
       ;;
   esac
@@ -140,6 +147,7 @@ failure_handler() {
   local exit_code=$?
   if [[ "$DRY_RUN" == "false" ]]; then
     send_notification "Millennium Update Failed" "An error occurred during the update process (exit code: $exit_code)."
+    print_upgrade_failure_tips "$exit_code"
   fi
 }
 trap 'failure_handler' ERR
