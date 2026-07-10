@@ -32,4 +32,21 @@ Describe "Diagnostics & Doctor" {
             $out.task_scheduled | Should -Be $false
         }
     }
+
+    Context "Diagnostics Sharing" {
+        BeforeAll {
+            Mock Get-ItemProperty { return [pscustomobject]@{ SteamPath = "C:\MockedSteam" } }
+            Mock Test-Path { return $true }
+            Mock Get-Process { return $null }
+            Mock Get-ScheduledTask { return $null }
+            Mock Invoke-RestMethod { return "https://paste.rs/mocklink" }
+        }
+
+        It "Correctly shares the report output and prints URL" {
+            $diagScript = Join-Path -Path $winScriptDir -ChildPath "millennium-diag.ps1"
+            $out = & $diagScript -Share -DryRun | Out-String
+            $out | Should -Contain "Diagnostic report successfully shared!"
+            $out | Should -Contain "https://paste.rs/mocklink"
+        }
+    }
 }
