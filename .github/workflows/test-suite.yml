@@ -64,18 +64,28 @@ jobs:
             image: archlinux:latest
     steps:
       - name: Install git
+        shell: bash
         run: |
           set -euo pipefail
           for attempt in 1 2 3 4 5; do
             case "${{ matrix.distro }}" in
               debian|ubuntu)
-                apt-get update -qq && apt-get install -y -qq git && exit 0 ;;
+                if apt-get update -qq && apt-get install -y -qq git; then
+                  exit 0
+                fi
+                ;;
               fedora)
-                dnf install -y -q git && exit 0 ;;
+                if dnf install -y -q git; then
+                  exit 0
+                fi
+                ;;
               archlinux)
-                pacman -Sy --noconfirm --quiet git && exit 0 ;;
+                if pacman -Sy --noconfirm --quiet git; then
+                  exit 0
+                fi
+                ;;
             esac
-            echo "git install attempt $attempt failed; retrying in $((attempt * 5))s..." >&2
+            echo "git install attempt ${attempt} failed; retrying in $((attempt * 5))s..." >&2
             sleep $((attempt * 5))
           done
           echo "git install failed after retries" >&2
@@ -132,14 +142,16 @@ jobs:
     steps:
       - name: Install dependencies (Debian/Ubuntu)
         if: matrix.distro == 'debian' || matrix.distro == 'ubuntu'
+        shell: bash
         run: |
           set -euo pipefail
-          pkgs='git jq python3 python3-yaml curl unzip tar coreutils procps util-linux sudo bash cron'
           for attempt in 1 2 3 4 5; do
-            if apt-get update -qq && apt-get install -y -qq $pkgs >/dev/null; then
+            if apt-get update -qq && apt-get install -y -qq \
+              git jq python3 python3-yaml curl unzip tar coreutils procps util-linux \
+              sudo bash cron >/dev/null; then
               exit 0
             fi
-            echo "apt install attempt $attempt failed; retrying in $((attempt * 5))s..." >&2
+            echo "apt install attempt ${attempt} failed; retrying in $((attempt * 5))s..." >&2
             sleep $((attempt * 5))
           done
           echo "apt install failed after retries" >&2
@@ -147,14 +159,16 @@ jobs:
 
       - name: Install dependencies (Fedora)
         if: matrix.distro == 'fedora'
+        shell: bash
         run: |
           set -euo pipefail
-          pkgs='git jq python3 python3-pyyaml curl unzip tar coreutils procps-ng util-linux sudo bash cronie shadow-utils'
           for attempt in 1 2 3 4 5; do
-            if dnf install -y -q $pkgs; then
+            if dnf install -y -q \
+              git jq python3 python3-pyyaml curl unzip tar coreutils procps-ng util-linux \
+              sudo bash cronie shadow-utils; then
               exit 0
             fi
-            echo "dnf install attempt $attempt failed; retrying in $((attempt * 5))s..." >&2
+            echo "dnf install attempt ${attempt} failed; retrying in $((attempt * 5))s..." >&2
             sleep $((attempt * 5))
           done
           echo "dnf install failed after retries" >&2
@@ -162,14 +176,16 @@ jobs:
 
       - name: Install dependencies (Arch)
         if: matrix.distro == 'archlinux'
+        shell: bash
         run: |
           set -euo pipefail
-          pkgs='git jq python python-yaml curl unzip tar coreutils procps-ng util-linux sudo bash cronie shadow'
           for attempt in 1 2 3 4 5; do
-            if pacman -Sy --noconfirm --quiet $pkgs; then
+            if pacman -Sy --noconfirm --quiet \
+              git jq python python-yaml curl unzip tar coreutils procps-ng util-linux \
+              sudo bash cronie shadow; then
               exit 0
             fi
-            echo "pacman install attempt $attempt failed; retrying in $((attempt * 5))s..." >&2
+            echo "pacman install attempt ${attempt} failed; retrying in $((attempt * 5))s..." >&2
             sleep $((attempt * 5))
           done
           echo "pacman install failed after retries" >&2
