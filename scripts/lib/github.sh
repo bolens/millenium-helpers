@@ -19,7 +19,7 @@ fetch_github_commit() {
   if command -v jq &>/dev/null; then
     curl -fsSL --retry 3 --retry-delay 2 ${headers[@]+"${headers[@]}"} \
       "https://api.github.com/repos/${owner}/${repo}/commits" | jq -r '.[0].sha' || true
-  else
+  elif command -v python3 &>/dev/null; then
     python3 -c "
 import urllib.request, json, os
 try:
@@ -33,6 +33,8 @@ try:
 except Exception:
     pass
 " || true
+  else
+    echo ""
   fi
 }
 
@@ -47,7 +49,7 @@ fetch_github_latest_stable_tag() {
   if command -v jq &>/dev/null; then
     curl -sL --retry 3 --retry-delay 2 ${headers[@]+"${headers[@]}"} \
       "https://api.github.com/repos/${owner}/${repo}/releases/latest" | jq -r '.tag_name' || true
-  else
+  elif command -v python3 &>/dev/null; then
     python3 -c "
 import urllib.request, json, os
 try:
@@ -61,6 +63,8 @@ try:
 except Exception:
     pass
 " || true
+  else
+    echo ""
   fi
 }
 
@@ -77,7 +81,7 @@ fetch_github_latest_beta_tag() {
       "https://api.github.com/repos/${owner}/${repo}/releases" \
       | jq -r '.[] | select(.prerelease == true and (.tag_name | contains("beta"))) | .tag_name' \
       | head -n 1 || true
-  else
+  elif command -v python3 &>/dev/null; then
     python3 -c "
 import urllib.request, json, os
 try:
@@ -95,5 +99,7 @@ try:
 except Exception:
     pass
 " || true
+  else
+    echo ""
   fi
 }

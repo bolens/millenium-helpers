@@ -600,6 +600,10 @@ check_helper_updates() {
 
   if [[ "$ONLINE" == "true" ]]; then
     TMP_SCRIPTS=$(mktemp -d)
+    if [[ -z "$TMP_SCRIPTS" || ! -d "$TMP_SCRIPTS" ]]; then
+      echo -e "${RED}Error: Failed to create temporary directory for updates check.${NC}" >&2
+      return 1
+    fi
     trap 'rm -rf "${TMP_SCRIPTS:-}"' EXIT INT TERM
     
     local latest_sha="main"

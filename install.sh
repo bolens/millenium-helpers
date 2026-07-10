@@ -9,15 +9,29 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [[ ! -f "${SCRIPT_DIR}/scripts/common.sh" ]]; then
   echo "Running in standalone/piped mode. Downloading repository..."
   TEMP_DIR=$(mktemp -d)
+  if [[ -z "$TEMP_DIR" || ! -d "$TEMP_DIR" ]]; then
+    echo "Error: Failed to create temporary directory for standalone installation." >&2
+    exit 1
+  fi
   # Best-effort cleanup
   trap 'rm -rf "$TEMP_DIR"' EXIT
   
+  download_ok=false
   if command -v curl >/dev/null 2>&1; then
-    curl -sSL https://github.com/bolens/millenium-helpers/archive/refs/heads/main.tar.gz | tar -xz -C "$TEMP_DIR" --strip-components=1
+    if curl -sSL https://github.com/bolens/millenium-helpers/archive/refs/heads/main.tar.gz | tar -xz -C "$TEMP_DIR" --strip-components=1; then
+      download_ok=true
+    fi
   elif command -v wget >/dev/null 2>&1; then
-    wget -qO- https://github.com/bolens/millenium-helpers/archive/refs/heads/main.tar.gz | tar -xz -C "$TEMP_DIR" --strip-components=1
+    if wget -qO- https://github.com/bolens/millenium-helpers/archive/refs/heads/main.tar.gz | tar -xz -C "$TEMP_DIR" --strip-components=1; then
+      download_ok=true
+    fi
   else
     echo "Error: curl or wget is required for standalone installation." >&2
+    exit 1
+  fi
+
+  if [[ "$download_ok" == "false" ]]; then
+    echo "Error: Failed to download and extract the installation repository from GitHub." >&2
     exit 1
   fi
   

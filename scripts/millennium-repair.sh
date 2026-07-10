@@ -215,6 +215,10 @@ if [[ "$REFRESH_THEME" == "true" ]]; then
     echo -e "          Target theme folder: ${THEME_DIR}"
   else
     TMP="$(mktemp -d)"
+    if [[ -z "$TMP" || ! -d "$TMP" ]]; then
+      echo "Error: Failed to create temporary directory for theme refresh." >&2
+      exit 1
+    fi
     trap 'rm -rf "$TMP"' EXIT INT TERM
 
     if ! download_file "https://github.com/${OWNER}/${REPO}/archive/${COMMIT}.zip" "$TMP/theme.zip" "Refreshing active theme ${ACTIVE_THEME}"; then
