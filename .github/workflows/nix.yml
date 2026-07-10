@@ -53,6 +53,15 @@ jobs:
       - name: Build Flake (release + git packages)
         run: |
           set -euo pipefail
-          nix build --experimental-features "nix-command flakes" --no-link .#millennium-helpers
           nix build --experimental-features "nix-command flakes" --no-link .#millennium-helpers-git
-          nix build --experimental-features "nix-command flakes" --no-link
+
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          URL="https://github.com/bolens/millenium-helpers/releases/download/v${VERSION}/millennium-helpers-linux.tar.gz"
+          if curl -fsI "$URL" >/dev/null 2>&1; then
+            nix build --experimental-features "nix-command flakes" --no-link .#millennium-helpers
+            nix build --experimental-features "nix-command flakes" --no-link
+          else
+            echo "::notice::Release asset not published yet ($URL); skipping release package / default build"
+            echo "Evaluated release package version:"
+            nix eval --experimental-features "nix-command flakes" .#millennium-helpers.version
+          fi

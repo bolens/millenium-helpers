@@ -52,7 +52,7 @@ jobs:
     steps:
       - name: Install build tooling
         run: |
-          pacman -Syu --noconfirm --quiet base-devel git namcap sudo
+          pacman -Syu --noconfirm --quiet base-devel git namcap sudo curl
 
       - name: Checkout code
         uses: actions/checkout@v7
@@ -84,4 +84,16 @@ jobs:
 
       - name: Test build PKGBUILD
         run: |
-          su builduser -c "cd /home/builduser/millenium-helpers/packaging/${{ matrix.package }} && makepkg -s --noconfirm"
+          set -euo pipefail
+          PKG="${{ matrix.package }}"
+          PKG_DIR="/home/builduser/millenium-helpers/packaging/${PKG}"
+          if [[ "$PKG" == "millennium-helpers" ]]; then
+            VERSION="$(tr -d '[:space:]' < VERSION)"
+            URL="https://github.com/bolens/millenium-helpers/releases/download/v${VERSION}/millennium-helpers-linux.tar.gz"
+            if ! curl -fsI "$URL" >/dev/null 2>&1; then
+              echo "::notice::Release asset not published yet ($URL); skipping makepkg for versioned package"
+              echo "namcap + .SRCINFO checks already passed."
+              exit 0
+            fi
+          fi
+          su builduser -c "cd '${PKG_DIR}' && makepkg -s --noconfirm"
