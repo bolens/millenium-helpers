@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Millennium (upstream)
+    url: https://github.com/SteamClientHomebrew/Millennium/issues
+    about: Bugs in the Millennium Steam client hook itself — not these helper scripts.
+  - name: Security troubleshooting
+    url: https://github.com/bolens/millenium-helpers/blob/main/docs/security_troubleshooting.md
+    about: Common permission, sudoers, and elevation issues before opening a ticket.
+  - name: MCP setup guide
+    url: https://github.com/bolens/millenium-helpers/blob/main/docs/mcp.md
+    about: Wiring the Millennium MCP server into AI assistants.

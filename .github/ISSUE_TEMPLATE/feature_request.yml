@@ -1,0 +1,67 @@
+name: Feature request
+description: Suggest an improvement or new capability for Millennium Helpers.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the problem first — solutions are easier to evaluate with context.
+        Feature work should keep **Linux and Windows parity** when practical (note intentional gaps).
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Commands / CLI
+        - Installer / onboarding
+        - Packaging
+        - MCP / AI tooling
+        - Docs / man pages / completions
+        - CI / release automation
+        - Other
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: platforms
+    attributes:
+      label: Target platforms
+      description: Where should this work?
+      options:
+        - label: Linux
+        - label: Windows
+        - label: macOS
+        - label: Steam Deck
+        - label: MCP / AI tooling
+        - label: Unsure / all
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What gap or friction are you trying to solve?
+      placeholder: I can't easily…
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: How should it work from a user perspective?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches you tried or rejected.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Examples from other tools, mock CLI output, links.

@@ -1,0 +1,130 @@
+name: Bug report
+description: Something in Millennium Helpers is broken or behaving unexpectedly.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. If the problem is in **Millennium itself** (the Steam hook), open it upstream instead:
+        https://github.com/SteamClientHomebrew/Millennium/issues
+
+        Redact tokens and personal paths from logs.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Where does the problem show up?
+      options:
+        - Commands / CLI (diag, upgrade, repair, purge, theme, schedule)
+        - Installer / uninstall
+        - Packaging (Homebrew, Scoop, Winget, Nix, AUR)
+        - MCP server
+        - Docs / man pages / completions
+        - CI / release automation
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Linux
+        - Windows
+        - macOS
+        - Steam Deck
+        - Multiple / unsure
+    validations:
+      required: true
+
+  - type: input
+    id: os_detail
+    attributes:
+      label: OS / distro detail
+      description: e.g. Fedora 42, Windows 11 24H2, SteamOS 3.x
+      placeholder: Fedora 42 (KDE)
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Helpers version
+      description: Output of `millennium-diag --version` or `millennium-upgrade --version`
+      placeholder: 2.2.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install_method
+    attributes:
+      label: Install method
+      options:
+        - curl installer (install.sh / install.ps1)
+        - Homebrew
+        - Scoop
+        - Winget
+        - Nix
+        - Arch PKGBUILD / AUR
+        - git clone
+        - Other / unknown
+    validations:
+      required: true
+
+  - type: dropdown
+    id: channel
+    attributes:
+      label: Millennium client channel
+      options:
+        - stable
+        - beta
+        - Not installed / N/A
+        - Unsure
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Clear summary of the bug.
+      placeholder: millennium upgrade fails when…
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps someone else can follow.
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior / logs
+      description: Paste command output. Prefer `millennium diag --json` or `millennium diag --share` when useful. Redact tokens.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Workarounds, recent upgrades, related PRs, screenshots.

@@ -1,0 +1,90 @@
+name: Packaging / install failure
+description: Homebrew, Scoop, Winget, Nix, AUR, or the curl/PowerShell installer failed.
+title: "[Packaging]: "
+labels: ["bug", "area: packaging"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this when **installing or updating the helpers** via a package manager or installer fails.
+        For runtime bugs in `millennium-*` commands after a successful install, use **Bug report** instead.
+
+  - type: dropdown
+    id: method
+    attributes:
+      label: Install / package method
+      options:
+        - curl installer (install.sh)
+        - PowerShell installer (install.ps1)
+        - Homebrew
+        - Scoop
+        - Winget
+        - Nix (flake / nix run)
+        - Arch PKGBUILD / makepkg
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Linux
+        - Windows
+        - macOS
+        - Steam Deck
+    validations:
+      required: true
+
+  - type: input
+    id: os_detail
+    attributes:
+      label: OS / distro detail
+      placeholder: Ubuntu 24.04, Windows 11, …
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version attempted
+      description: Tag, formula version, or `main` / commit if known
+      placeholder: 2.2.0
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: Exact command(s) run
+      description: Copy-paste the install/upgrade command.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: output
+    attributes:
+      label: Full error output
+      description: Include exit codes and any hash / URL mismatch messages.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      placeholder: Package installs and `millennium --help` works.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Quick checks
+      options:
+        - label: I retried after a few minutes (transient CDN / GitHub issues)
+        - label: The release tag / asset I targeted exists on GitHub Releases
+        - label: This is about helpers packaging, not Millennium upstream
