@@ -11,7 +11,7 @@ Installers:
 - Architecture: neutral
   InstallerType: zip
   InstallerUrl: https://github.com/bolens/millenium-helpers/releases/download/v2.6.1/millennium-helpers-windows.zip
-  InstallerSha256: "057B133F1522492EAE950E4945B49D84A00D7A3FA5C791707E436C2326A937DB"
+  InstallerSha256: "22D2759B6B8B2D2E908E48CB2C43CAEBF81B0E2CD2F876AF21F8751C1DF5619C"
   UpgradeBehavior: uninstallPrevious
 ManifestType: installer
 ManifestVersion: 1.5.0
