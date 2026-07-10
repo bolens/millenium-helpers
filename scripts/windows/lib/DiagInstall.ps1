@@ -75,6 +75,12 @@ function Test-HelpersWingetPackaged {
     return $false
 }
 
+function Test-HelpersManualInstalled {
+    if (-not $env:USERPROFILE) { return $false }
+    $manualBin = Join-Path -Path $env:USERPROFILE -ChildPath '.millennium-helpers\bin'
+    return (Test-Path -Path (Join-Path -Path $manualBin -ChildPath 'millennium-diag.ps1'))
+}
+
 function Test-HelpersScoopGit {
     if ($env:DIAG_TEST_SCOOP_GIT -eq 'true') { return $true }
     try {
