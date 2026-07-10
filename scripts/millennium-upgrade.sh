@@ -212,6 +212,10 @@ if [[ "$DRY_RUN" == "true" ]]; then
   prune_backups
 else
   TMP=$(mktemp -d)
+  if [[ -z "$TMP" || ! -d "$TMP" ]]; then
+    echo "Error: Failed to create temporary directory for download." >&2
+    exit 1
+  fi
   trap 'rm -rf "$TMP"' EXIT INT TERM
 
   if [[ -n "$LOCAL_FILE" ]]; then

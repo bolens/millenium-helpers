@@ -205,6 +205,10 @@ except Exception:
   else
     local TMP
     TMP="$(mktemp -d)"
+    if [[ -z "$TMP" || ! -d "$TMP" ]]; then
+      echo -e "${RED}Error: Failed to create temporary directory for theme update.${NC}" >&2
+      return 1
+    fi
     local theme_tmp="${target_dir}.tmp"
     local theme_bak="${target_dir}.bak"
 
@@ -406,6 +410,10 @@ if [[ "$COMMAND" == "install" ]]; then
     echo -e "${YELLOW}[DRY RUN] Would install ${owner}/${repo} to ${target_dir}${NC}"
   else
     TMP="$(mktemp -d)"
+    if [[ -z "$TMP" || ! -d "$TMP" ]]; then
+      echo -e "${RED}Error: Failed to create temporary directory for theme installation.${NC}" >&2
+      exit 1
+    fi
     trap 'rm -rf "$TMP"' EXIT INT TERM
 
     if ! download_file "https://github.com/${owner}/${repo}/archive/${COMMIT}.zip" "$TMP/theme.zip" "Downloading theme package"; then
