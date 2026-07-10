@@ -44,9 +44,9 @@ Describe "Diagnostics & Doctor" {
 
         It "Correctly shares the report output and prints URL" {
             $diagScript = Join-Path -Path $winScriptDir -ChildPath "millennium-diag.ps1"
-            $out = & $diagScript -Share -DryRun | Out-String
-            $out | Should -Contain "Diagnostic report successfully shared!"
-            $out | Should -Contain "https://paste.rs/mocklink"
+            $out = & $diagScript -Share -DryRun *>&1 | Out-String
+            $out | Should -Match "Diagnostic report successfully shared!"
+            $out | Should -Match "https://paste.rs/mocklink"
         }
     }
 }
