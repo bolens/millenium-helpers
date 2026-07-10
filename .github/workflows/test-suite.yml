@@ -200,7 +200,11 @@ jobs:
 
       - name: Install PyYAML for packaging suite
         if: matrix.suite == 'tests/behavioral/test_packaging_ci.sh'
-        run: pip3 install --user pyyaml
+        run: |
+          # macOS runners ship Homebrew Python (PEP 668); use a throwaway venv.
+          python3 -m venv "$RUNNER_TEMP/mh-pyyaml"
+          "$RUNNER_TEMP/mh-pyyaml/bin/pip" install --quiet pyyaml
+          echo "$RUNNER_TEMP/mh-pyyaml/bin" >> "$GITHUB_PATH"
 
       - name: Run ${{ matrix.suite }}
         run: |
