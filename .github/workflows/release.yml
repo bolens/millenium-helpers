@@ -211,12 +211,31 @@ jobs:
     needs: [build-release]
     if: needs.build-release.result == 'success' && needs.build-release.outputs.tag != 'v-draft'
     runs-on: ubuntu-latest
+    outputs:
+      pr_number: ${{ steps.cpr.outputs.pull-request-number }}
+      pr_url: ${{ steps.cpr.outputs.pull-request-url }}
+      pr_operation: ${{ steps.cpr.outputs.pull-request-operation }}
     steps:
+      - name: Require PACKAGING_PAT
+        env:
+          PACKAGING_PAT: ${{ secrets.PACKAGING_PAT }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${PACKAGING_PAT}" ]]; then
+            echo "::error::PACKAGING_PAT secret is required for automated release packaging."
+            echo "Without it, the packaging PR cannot trigger CI (GITHUB_TOKEN PRs do not),"
+            echo "so auto-merge and publish cannot run. Draft release assets were still created."
+            echo "Add a classic PAT with contents + pull-requests (and merge rights on main),"
+            echo "then re-run this workflow or finish packaging manually."
+            exit 1
+          fi
+
       - name: Checkout main
         uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
+          token: ${{ secrets.PACKAGING_PAT }}
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -278,10 +297,11 @@ jobs:
           bash scripts/ci/check-version-sync.sh
 
       - name: Create Pull Request
+        id: cpr
         uses: peter-evans/create-pull-request@v7
         with:
-          # Prefer PACKAGING_PAT so the opened PR triggers CI (GITHUB_TOKEN PRs do not).
-          token: ${{ secrets.PACKAGING_PAT != '' && secrets.PACKAGING_PAT || secrets.GITHUB_TOKEN }}
+          # PACKAGING_PAT is required so the opened PR triggers CI.
+          token: ${{ secrets.PACKAGING_PAT }}
           commit-message: "chore(packaging): bump to v${{ needs.build-release.outputs.version }}"
           branch: "chore/packaging-v${{ needs.build-release.outputs.version }}"
           delete-branch: true
@@ -293,10 +313,121 @@ jobs:
             - Updates `VERSION`, Homebrew Formula URL/SHA256 (no redundant `version` line), Scoop URL/hash, and Winget PackageVersion/InstallerUrl/InstallerSha256
             - Source archive hashes are computed from the GitHub tag archives
 
+            ## Automation
+            If packaging CI passes, the release workflow will squash-merge this PR and publish the draft GitHub release.
+            If CI fails, this PR and the draft release are left for manual recovery.
+
             ## Test plan
             - [ ] Confirm version-sync CI passes
             - [ ] Confirm Homebrew audit / Scoop / Winget manifest jobs pass
-            - [ ] Confirm man-page coverage CI passes
-            - [ ] Publish the draft GitHub release when ready
+            - [ ] Confirm PKGBUILD validation passes
 
-            > If CI did not start automatically, close/reopen this PR or push an empty commit (PRs opened with `GITHUB_TOKEN` do not trigger workflows unless `PACKAGING_PAT` is configured).
+  finalize:
+    name: Merge packaging PR & publish release
+    needs: [build-release, update-packaging]
+    if: needs.update-packaging.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Publish when packaging already current
+        if: needs.update-packaging.outputs.pr_number == ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.build-release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          echo "No packaging PR was opened (manifests already match v${{ needs.build-release.outputs.version }})."
+          echo "Publishing draft release ${TAG}..."
+          gh release edit "${TAG}" --repo "${{ github.repository }}" --draft=false
+          echo "::notice::Published ${TAG} without a packaging PR."
+
+      - name: Wait for packaging CI, merge, and publish
+        if: needs.update-packaging.outputs.pr_number != ''
+        env:
+          GH_TOKEN: ${{ secrets.PACKAGING_PAT }}
+          PR: ${{ needs.update-packaging.outputs.pr_number }}
+          PR_URL: ${{ needs.update-packaging.outputs.pr_url }}
+          TAG: ${{ needs.build-release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          REPO="${{ github.repository }}"
+
+          echo "Packaging PR #${PR}: ${PR_URL}"
+          echo "Waiting for CI checks to appear..."
+
+          checks_ready=0
+          for attempt in $(seq 1 36); do
+            count="$(
+              gh pr checks "${PR}" --repo "${REPO}" --json name --jq 'length' 2>/dev/null || echo 0
+            )"
+            if [[ "${count}" =~ ^[0-9]+$ && "${count}" -gt 0 ]]; then
+              checks_ready=1
+              echo "Checks detected (attempt ${attempt}/36, count=${count}):"
+              gh pr checks "${PR}" --repo "${REPO}" 2>&1 || true
+              break
+            fi
+            echo "Attempt ${attempt}/36: no checks yet..."
+            sleep 10
+          done
+
+          if [[ "${checks_ready}" -ne 1 ]]; then
+            gh pr comment "${PR}" --repo "${REPO}" --body "$(cat <<EOF
+          ## Release finalize: no CI checks
+
+          Timed out waiting for packaging CI to start on this PR.
+
+          **Manual recovery**
+          1. Ensure workflows ran (close/reopen this PR if needed)
+          2. Fix any failures, then squash-merge this PR
+          3. Publish the draft release: \`${TAG}\`
+
+          Draft release and this PR were left untouched.
+          EOF
+          )" || true
+            echo "::error::Timed out waiting for CI checks on PR #${PR}"
+            exit 1
+          fi
+
+          echo "Watching packaging CI on PR #${PR}..."
+          set +e
+          gh pr checks "${PR}" --repo "${REPO}" --watch --fail-fast --interval 30
+          checks_rc=$?
+          set -e
+
+          if [[ "${checks_rc}" -ne 0 ]]; then
+            {
+              echo "## Release finalize: packaging CI failed"
+              echo ""
+              echo "Automatic merge/publish was skipped. Current checks:"
+              echo ""
+              echo '```'
+              gh pr checks "${PR}" --repo "${REPO}" 2>&1 || true
+              echo '```'
+              echo ""
+              echo "**Manual recovery**"
+              echo "1. Fix the failing checks on this PR"
+              echo "2. Squash-merge this PR into \`main\`"
+              echo "3. Publish the draft GitHub release: \`${TAG}\`"
+              echo ""
+              echo "Draft release assets remain available; this PR was left open."
+            } > /tmp/pr-comment.md
+            gh pr comment "${PR}" --repo "${REPO}" --body-file /tmp/pr-comment.md || true
+            echo "::error::Packaging CI failed on PR #${PR}; left draft release ${TAG} for manual publish"
+            exit 1
+          fi
+
+          echo "All checks passed. Squash-merging PR #${PR}..."
+          gh pr merge "${PR}" --repo "${REPO}" --squash --delete-branch
+
+          echo "Publishing draft release ${TAG}..."
+          # Publishing uses GITHUB_TOKEN so the merge PAT is not required for releases.
+          GH_TOKEN="${{ secrets.GITHUB_TOKEN }}" gh release edit "${TAG}" --repo "${REPO}" --draft=false
+
+          gh pr comment "${PR}" --repo "${REPO}" --body "$(cat <<EOF
+          ## Release finalize: automatic publish
+
+          Packaging CI passed. This PR was squash-merged and draft release **${TAG}** was published.
+          EOF
+          )" || true
+
+          echo "::notice::Merged packaging PR #${PR} and published ${TAG}."

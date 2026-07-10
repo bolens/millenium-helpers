@@ -26,10 +26,15 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Download actionlint
-        id: get_actionlint
-        run: bash <(curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
-        shell: bash
+        env:
+          ACTIONLINT_VERSION: "1.7.12"
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/actionlint.tar.gz \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          tar -xzf /tmp/actionlint.tar.gz -C /tmp actionlint
+          echo "/tmp" >> "$GITHUB_PATH"
+          actionlint -version
 
       - name: Run actionlint
-        run: ${{ steps.get_actionlint.outputs.executable }} -color
-        shell: bash
+        run: actionlint -color

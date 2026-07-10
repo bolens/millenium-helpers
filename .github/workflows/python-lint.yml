@@ -5,10 +5,12 @@ on:
     branches: [ main ]
     paths:
       - 'scripts/*.py'
+      - '.github/workflows/python-lint.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'scripts/*.py'
+      - '.github/workflows/python-lint.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -25,16 +27,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.x'
-
-      - name: Install ruff
-        run: pip install ruff
-
       - name: Compile check
-        run: python -m py_compile scripts/millennium-mcp.py
+        run: python3 -m py_compile scripts/millennium-mcp.py
 
       - name: Run ruff check
-        run: ruff check scripts/*.py
+        uses: astral-sh/ruff-action@v3
+        with:
+          src: scripts/*.py

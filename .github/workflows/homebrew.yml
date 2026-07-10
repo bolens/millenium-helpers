@@ -5,13 +5,11 @@ on:
     branches: [ main ]
     paths:
       - 'Formula/**'
-      - 'VERSION'
       - '.github/workflows/homebrew.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'Formula/**'
-      - 'VERSION'
       - '.github/workflows/homebrew.yml'
 
 concurrency:
