@@ -1,4 +1,3 @@
-VERSION_PLACEHOLDER
 complete -c millennium-diag -f -a 'doctor' -d 'Run doctor to automatically repair issues'
 complete -c millennium-diag -f -a 'logs' -d 'Display recent Millennium and Steam WebHelper logs'
 complete -c millennium-diag -f -a '--fix' -d 'Run doctor to automatically repair issues'

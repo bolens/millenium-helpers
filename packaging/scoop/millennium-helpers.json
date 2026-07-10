@@ -1,9 +1,9 @@
 {
-    "version": "2.2.1",
+    "version": "2.3.0",
     "description": "Cross-platform utility scripts and Model Context Protocol (MCP) server for managing, upgrading, diagnosing, and controlling Millennium.",
     "homepage": "https://github.com/bolens/millenium-helpers",
     "license": "MIT",
-    "url": "https://github.com/bolens/millenium-helpers/releases/download/v2.2.1/millennium-helpers-windows.zip",
+    "url": "https://github.com/bolens/millenium-helpers/releases/download/v2.3.0/millennium-helpers-windows.zip",
     "hash": "29a4ea830246a9f56dc109340123b0c3e23c89a639bf749d792dc9e0fe3552b3",
     "bin": [
         [
@@ -38,6 +38,45 @@
             "scripts\\windows\\millennium-upgrade.ps1",
             "millennium-upgrade"
         ]
+    ],
+    "post_install": [
+        "$compSrc = Join-Path $dir 'completions\\powershell\\millennium-helpers.ps1'",
+        "if (Test-Path $compSrc) {",
+        "  $hook = '. \"$(scoop prefix millennium-helpers)\\completions\\powershell\\millennium-helpers.ps1\"'",
+        "  $profiles = @(",
+        "    (Join-Path $env:USERPROFILE 'Documents\\PowerShell\\Microsoft.PowerShell_profile.ps1'),",
+        "    (Join-Path $env:USERPROFILE 'Documents\\WindowsPowerShell\\Microsoft.PowerShell_profile.ps1')",
+        "  )",
+        "  foreach ($p in $profiles) {",
+        "    $parent = Split-Path $p -Parent",
+        "    if (!(Test-Path $parent)) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }",
+        "    $existing = if (Test-Path $p) { Get-Content $p -Raw } else { '' }",
+        "    if ($existing -notlike '*millennium-helpers.ps1*') {",
+        "      Add-Content -Path $p -Value \"`n# Millennium Helpers completions`n$hook`n\"",
+        "      Write-Host \"Registered PowerShell completions in $p\"",
+        "    }",
+        "  }",
+        "} else {",
+        "  Write-Host 'PowerShell completion script not found in package; skipping profile hooks.'",
+        "}"
+    ],
+    "pre_uninstall": [
+        "try { Unregister-ScheduledTask -TaskName 'MillenniumUpdate' -Confirm:$false -ErrorAction SilentlyContinue } catch {}",
+        "$profiles = @(",
+        "  (Join-Path $env:USERPROFILE 'Documents\\PowerShell\\Microsoft.PowerShell_profile.ps1'),",
+        "  (Join-Path $env:USERPROFILE 'Documents\\WindowsPowerShell\\Microsoft.PowerShell_profile.ps1')",
+        ")",
+        "foreach ($p in $profiles) {",
+        "  if (!(Test-Path $p)) { continue }",
+        "  $content = Get-Content $p -Raw -ErrorAction SilentlyContinue",
+        "  if ($content -and ($content -like '*millennium-helpers.ps1*' -or $content -like '*millennium-helpers.completion.ps1*')) {",
+        "    $filtered = ($content -split \"`n\" | Where-Object {",
+        "      $_ -notmatch 'millennium-helpers(\\.completion)?\\.ps1' -and",
+        "      $_ -notmatch '^\\s*# Millennium Helpers completions\\s*$'",
+        "    }) -join \"`n\"",
+        "    Set-Content -Path $p -Value $filtered -Encoding UTF8",
+        "  }",
+        "}"
     ],
     "autoupdate": {
         "url": "https://github.com/bolens/millenium-helpers/releases/download/v$version/millennium-helpers-windows.zip",

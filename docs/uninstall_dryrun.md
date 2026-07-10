@@ -52,7 +52,8 @@ If you installed via the standard installer script:
 
 2. **Remove the script binaries from `/usr/local/bin`**:
    ```bash
-   sudo rm -f /usr/local/bin/millennium-repair \
+   sudo rm -f /usr/local/bin/millennium \
+              /usr/local/bin/millennium-repair \
               /usr/local/bin/millennium-upgrade \
               /usr/local/bin/millennium-schedule \
               /usr/local/bin/millennium-purge \
@@ -61,15 +62,22 @@ If you installed via the standard installer script:
               /usr/local/bin/millennium-mcp
    ```
 
-3. **Remove the passwordless sudoers rules**:
+3. **Remove the shared helper library**:
+   ```bash
+   sudo rm -rf /usr/local/lib/millennium-helpers
+   ```
+   *(AUR packages use `/usr/lib/millennium-helpers` instead — prefer `pacman -R` for those installs.)*
+
+4. **Remove the passwordless sudoers rules**:
    ```bash
    sudo rm -f /etc/sudoers.d/millennium-helpers
    ```
 
-4. **Remove shell autocompletion configurations**:
+5. **Remove shell autocompletion configurations**:
    ```bash
    # Bash completions & symlinks
    sudo rm -f /usr/share/bash-completion/completions/millennium-helpers \
+              /usr/share/bash-completion/completions/millennium \
               /usr/share/bash-completion/completions/millennium-repair \
               /usr/share/bash-completion/completions/millennium-upgrade \
               /usr/share/bash-completion/completions/millennium-schedule \
@@ -80,6 +88,7 @@ If you installed via the standard installer script:
    
    # Zsh completions & symlinks
    sudo rm -f /usr/share/zsh/site-functions/_millennium-helpers \
+              /usr/share/zsh/site-functions/_millennium \
               /usr/share/zsh/site-functions/_millennium-repair \
               /usr/share/zsh/site-functions/_millennium-upgrade \
               /usr/share/zsh/site-functions/_millennium-schedule \
@@ -88,8 +97,9 @@ If you installed via the standard installer script:
               /usr/share/zsh/site-functions/_millennium-theme \
               /usr/share/zsh/site-functions/_millennium-mcp
    
-   # Fish completions
-   sudo rm -f /usr/share/fish/vendor_completions.d/millennium-repair.fish \
+   # Fish completions (including the millennium dispatcher)
+   sudo rm -f /usr/share/fish/vendor_completions.d/millennium.fish \
+              /usr/share/fish/vendor_completions.d/millennium-repair.fish \
               /usr/share/fish/vendor_completions.d/millennium-upgrade.fish \
               /usr/share/fish/vendor_completions.d/millennium-schedule.fish \
               /usr/share/fish/vendor_completions.d/millennium-purge.fish \
@@ -99,16 +109,18 @@ If you installed via the standard installer script:
    
    # Nushell completions
    sudo rm -f /usr/share/nushell/completions/millennium-helpers.nu \
-              /usr/local/share/nushell/completions/millennium-helpers.nu
+              /usr/local/share/nushell/completions/millennium-helpers.nu \
+              ${XDG_CONFIG_HOME:-~/.config}/nushell/completions/millennium-helpers.nu
 
    # Man pages
    sudo rm -f /usr/local/share/man/man1/millennium-*.1 \
               /usr/share/man/man1/millennium-*.1
    ```
 
-5. **Remove configuration files**:
+6. **Remove configuration and state files**:
    ```bash
    rm -rf ${XDG_CONFIG_HOME:-~/.config}/millennium-helpers
+   rm -rf ${XDG_STATE_HOME:-~/.local/state}/millennium-helpers
    ```
 
 ### 2. Linux (Arch Linux AUR Install)
@@ -119,9 +131,14 @@ If you installed via `millennium-helpers-git` from the AUR, all file locations (
 sudo pacman -R millennium-helpers-git
 ```
 
-This will cleanly and completely remove all system-wide files. You can optionally clean up user-level configuration files:
+This will cleanly and completely remove all system-wide files. You can optionally clean up user-level configuration and state:
 ```bash
 rm -rf ${XDG_CONFIG_HOME:-~/.config}/millennium-helpers
+rm -rf ${XDG_STATE_HOME:-~/.local/state}/millennium-helpers
+# User systemd timer units (if you enabled the scheduler)
+rm -f ${XDG_CONFIG_HOME:-~/.config}/systemd/user/millennium-update.timer \
+      ${XDG_CONFIG_HOME:-~/.config}/systemd/user/millennium-update.service
+systemctl --user daemon-reload 2>/dev/null || true
 ```
 
 ### 3. Linux (Nix Profile Install)
@@ -137,6 +154,7 @@ If you installed the helpers via `nix profile install github:bolens/millenium-he
 2. **Clean up user-level configs**:
    ```bash
    rm -rf ${XDG_CONFIG_HOME:-~/.config}/millennium-helpers
+   rm -rf ${XDG_STATE_HOME:-~/.local/state}/millennium-helpers
    ```
 
 ### 4. macOS / Linux (Homebrew Install)
@@ -156,6 +174,7 @@ If you installed the helpers via Homebrew (`Formula/millennium-helpers.rb` in th
 2. **Clean up user-level configs (optional)**:
    ```bash
    rm -rf ${XDG_CONFIG_HOME:-~/.config}/millennium-helpers
+   rm -rf ${XDG_STATE_HOME:-~/.local/state}/millennium-helpers
    ```
 
    Homebrew does not remove Millennium client hooks under Steam; use `sudo millennium-purge --yes` before uninstalling the formula if you also want those gone.
@@ -176,12 +195,38 @@ If you installed via the standard installer script:
    Unregister-ScheduledTask -TaskName "MillenniumUpdate" -Confirm:$false
    ```
 
-2. **Remove the binaries and wrappers directory**:
+2. **Remove PowerShell completion profile hooks** (Tab completion):
+   The installer may have added a line that dot-sources
+   `millennium-helpers.completion.ps1` into your PowerShell profile(s).
+   Remove those lines from:
+   - `$HOME\Documents\PowerShell\Microsoft.PowerShell_profile.ps1` (pwsh)
+   - `$HOME\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1` (Windows PowerShell 5.1)
+
+   Or run:
+   ```powershell
+   $profiles = @(
+     "$HOME\Documents\PowerShell\Microsoft.PowerShell_profile.ps1",
+     "$HOME\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1"
+   )
+   foreach ($p in $profiles) {
+     if (!(Test-Path $p)) { continue }
+     $content = Get-Content $p -Raw
+     if ($content -notlike "*millennium-helpers.completion.ps1*") { continue }
+     $filtered = ($content -split "`n" | Where-Object {
+       $_ -notmatch 'millennium-helpers\.completion\.ps1' -and
+       $_ -notmatch '^\s*# Millennium Helpers completions\s*$'
+     }) -join "`n"
+     Set-Content -Path $p -Value $filtered -Encoding UTF8
+   }
+   ```
+
+3. **Remove the binaries, wrappers, and completer directory**:
    ```powershell
    Remove-Item -Path "$HOME\.millennium-helpers" -Recurse -Force -ErrorAction SilentlyContinue
    ```
+   *(This also deletes `bin\millennium-helpers.completion.ps1`.)*
 
-3. **Remove from PATH environment variable**:
+4. **Remove from PATH environment variable**:
    Retrieve the current user `PATH` variable, filter out the `$HOME\.millennium-helpers\bin` path, and update the environment:
    ```powershell
    $targetPath = Join-Path -Path $HOME -ChildPath ".millennium-helpers\bin"
@@ -190,19 +235,21 @@ If you installed via the standard installer script:
    [Environment]::SetEnvironmentVariable("PATH", $newPath, [EnvironmentVariableTarget]::User)
    ```
 
-4. **Remove configuration files**:
+5. **Remove configuration files**:
    ```powershell
    Remove-Item -Path "$env:LOCALAPPDATA\millennium-helpers" -Recurse -Force -ErrorAction SilentlyContinue
    ```
 
 ### 6. Windows (Scoop Install)
 
-If you installed the helpers via Scoop, uninstallation is fully automated:
+If you installed the helpers via Scoop, uninstallation is mostly automated:
 
 1. **Uninstall package**:
    ```powershell
    scoop uninstall millennium-helpers
    ```
+   This runs `pre_uninstall` hooks that remove PowerShell completion profile
+   lines and the `MillenniumUpdate` scheduled task (if present).
 
 2. **Clean up user-level configs (optional)**:
    ```powershell
@@ -228,6 +275,8 @@ Optional config cleanup:
 ```powershell
 Remove-Item -Path "$env:LOCALAPPDATA\millennium-helpers" -Recurse -Force -ErrorAction SilentlyContinue
 ```
+
+If a PowerShell profile still references `millennium-helpers.completion.ps1`, remove that hook using the steps in the Windows manual cleanup section above.
 
 **Local manifest testing** (developers / pre-approval only): installs from the YAML in this repo instead of the community source. Use this to exercise `packaging/winget/` from a clone while polishing manifests — not for end-user installs.
 

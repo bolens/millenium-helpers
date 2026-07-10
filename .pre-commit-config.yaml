@@ -34,3 +34,10 @@ repos:
         language: system
         pass_filenames: false
         files: '^(man/.*|scripts/millennium-.*)$'
+
+      - id: sync-pkgver
+        name: sync PKGBUILD pkgver from HEAD
+        entry: bash scripts/ci/update-pkgbuild-pkgver.sh
+        language: system
+        pass_filenames: false
+        files: '^(packaging/PKGBUILD|packaging/\.SRCINFO)$'

@@ -231,7 +231,14 @@ confirm_close_steam() {
   local target_user="$1"
   local assume_yes="${2:-${ASSUME_YES:-false}}"
 
-  if [[ "$assume_yes" == "true" ]] || [[ ! -t 0 ]] || [[ -n "${TEST_SUITE_RUN:-}" ]]; then
+  # Auto-confirm when: --yes, non-interactive stdin, or test-suite mode.
+  # CONFIRM_CLOSE_FORCE_PROMPT=1 forces the interactive branch even without a
+  # TTY (unit tests; avoids depending on PTY availability in CI/sandboxes).
+  if [[ "$assume_yes" == "true" ]] || [[ -n "${TEST_SUITE_RUN:-}" ]]; then
+    close_steam_gracefully "$target_user"
+    return $?
+  fi
+  if [[ ! -t 0 && "${CONFIRM_CLOSE_FORCE_PROMPT:-}" != "1" ]]; then
     close_steam_gracefully "$target_user"
     return $?
   fi

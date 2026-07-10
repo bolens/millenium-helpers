@@ -12,13 +12,19 @@ done
 
 # Source shared helpers
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-COMMON_SH="${SCRIPT_DIR}/common.sh"
-if [[ ! -f "$COMMON_SH" ]]; then
-  COMMON_SH="/usr/local/lib/millennium-helpers/common.sh"
-  if [[ -f "/usr/lib/millennium-helpers/common.sh" ]]; then
-    COMMON_SH="/usr/lib/millennium-helpers/common.sh"
+COMMON_SH=""
+for _common_candidate in \
+  "${SCRIPT_DIR}/common.sh" \
+  "$(cd "${SCRIPT_DIR}/.." && pwd)/lib/millennium-helpers/common.sh" \
+  "/usr/local/lib/millennium-helpers/common.sh" \
+  "/usr/lib/millennium-helpers/common.sh"
+do
+  if [[ -f "$_common_candidate" ]]; then
+    COMMON_SH="$_common_candidate"
+    break
   fi
-fi
+done
+unset _common_candidate
 if [[ -f "$COMMON_SH" ]]; then
   # shellcheck disable=SC1090
   source "$COMMON_SH"

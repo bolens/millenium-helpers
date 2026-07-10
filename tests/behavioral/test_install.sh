@@ -97,6 +97,8 @@ assert_success "$rc" "install.sh uninstall --dry-run exits 0 without root"
 assert_contains "$out" "DRY RUN MODE" "install.sh uninstall --dry-run announces dry-run mode"
 assert_contains "$out" "Uninstalling" "install.sh uninstall --dry-run describes the uninstall action"
 assert_contains "$out" "Uninstalling man pages" "install.sh uninstall --dry-run uninstalls man pages"
+assert_contains "$out" "Disabling update scheduler" "install.sh uninstall --dry-run disables the update scheduler"
+assert_contains "$out" "millennium" "install.sh uninstall --dry-run mentions the millennium dispatcher binary"
 
 out=$(TARGET_DIR=/var/invalid/nonexistent bash "$INSTALL_SH" install 2>&1 < /dev/null || true)
 # As root, check_root is skipped and install fails on the unwritable path instead.
@@ -273,6 +275,118 @@ assert_contains "$out" "DRY RUN MODE" "Standalone install.sh successfully execut
 # Clean up
 rm -rf "$STANDALONE_DIR"
 rm -f "${MOCK_BIN}/curl"
+
+# --- Isolated prefix install / uninstall (real filesystem) ---
+
+PREFIX=$(mktemp -d)
+PREFIX_BIN="${PREFIX}/bin"
+PREFIX_LIB="${PREFIX}/lib/millennium-helpers"
+PREFIX_BASH="${PREFIX}/share/bash-completion/completions"
+PREFIX_ZSH="${PREFIX}/share/zsh/site-functions"
+PREFIX_FISH="${PREFIX}/share/fish/vendor_completions.d"
+PREFIX_NU="${PREFIX}/share/nushell/completions"
+PREFIX_MAN="${PREFIX}/share/man/man1"
+PREFIX_SUDOERS="${PREFIX}/sudoers.d/millennium-helpers"
+mkdir -p "$PREFIX_BIN" "$PREFIX_BASH" "$PREFIX_ZSH" "$PREFIX_FISH" "$PREFIX_NU" "$PREFIX_MAN" "$(dirname "$PREFIX_SUDOERS")"
+
+mock_cmd "id" '
+if [[ "$*" == "-u" ]]; then echo 0; exit 0; fi
+if [[ "$*" == "-un" ]]; then echo root; exit 0; fi
+/usr/bin/id "$@"
+'
+mock_cmd "visudo" "exit 0"
+mock_cmd "chown" "exit 0"
+# Avoid touching the real user bus / crontab during isolated uninstall
+mock_cmd "systemctl" "exit 0"
+mock_cmd "crontab" "exit 0"
+
+out=$(
+  TARGET_DIR="$PREFIX_BIN" \
+  MILLENNIUM_LIB_DIR="$PREFIX_LIB" \
+  MILLENNIUM_BASH_COMPLETION_DIR="$PREFIX_BASH" \
+  MILLENNIUM_ZSH_COMPLETION_DIR="$PREFIX_ZSH" \
+  MILLENNIUM_FISH_COMPLETION_DIR="$PREFIX_FISH" \
+  MILLENNIUM_NUSHELL_COMPLETION_DIR="$PREFIX_NU" \
+  MILLENNIUM_MAN_DIR="$PREFIX_MAN" \
+  MOCK_SUDOERS_FILE="$PREFIX_SUDOERS" \
+  SUDO_USER="installtestuser" \
+  FORCE_WIZARD=false \
+  bash "$INSTALL_SH" install 2>&1
+)
+rc=$?
+assert_success "$rc" "install.sh install into isolated prefix exits 0"
+
+for cmd in millennium millennium-repair millennium-upgrade millennium-schedule \
+           millennium-purge millennium-diag millennium-theme millennium-mcp; do
+  assert_file_exists "${PREFIX_BIN}/${cmd}" "isolated install places ${cmd} in TARGET_DIR"
+  assert_file_exists "${PREFIX_BASH}/${cmd}" "isolated install creates bash completion link for ${cmd}"
+  assert_file_exists "${PREFIX_ZSH}/_${cmd}" "isolated install creates zsh completion link for ${cmd}"
+  assert_file_exists "${PREFIX_FISH}/${cmd}.fish" "isolated install installs fish completion for ${cmd}"
+  assert_file_exists "${PREFIX_MAN}/${cmd}.1" "isolated install installs man page for ${cmd}"
+done
+assert_file_exists "${PREFIX_LIB}/common.sh" "isolated install installs shared common.sh"
+assert_file_exists "${PREFIX_LIB}/VERSION" "isolated install installs VERSION into lib dir"
+assert_file_exists "${PREFIX_BASH}/millennium-helpers" "isolated install installs bash completion base"
+assert_file_exists "${PREFIX_ZSH}/_millennium-helpers" "isolated install installs zsh completion base"
+assert_file_exists "${PREFIX_NU}/millennium-helpers.nu" "isolated install installs nushell completions"
+assert_file_exists "$PREFIX_SUDOERS" "isolated install writes sudoers file"
+
+# Smoke: installed script resolves shared lib via prefix-relative path
+out=$("${PREFIX_BIN}/millennium-diag" --help 2>&1)
+rc=$?
+assert_success "$rc" "installed millennium-diag --help works against prefix lib"
+assert_contains "$out" "Usage:" "installed millennium-diag --help prints usage"
+
+out=$(
+  TARGET_DIR="$PREFIX_BIN" \
+  MILLENNIUM_LIB_DIR="$PREFIX_LIB" \
+  MILLENNIUM_BASH_COMPLETION_DIR="$PREFIX_BASH" \
+  MILLENNIUM_ZSH_COMPLETION_DIR="$PREFIX_ZSH" \
+  MILLENNIUM_FISH_COMPLETION_DIR="$PREFIX_FISH" \
+  MILLENNIUM_NUSHELL_COMPLETION_DIR="$PREFIX_NU" \
+  MILLENNIUM_MAN_DIR="$PREFIX_MAN" \
+  MOCK_SUDOERS_FILE="$PREFIX_SUDOERS" \
+  SUDO_USER="installtestuser" \
+  bash "$INSTALL_SH" uninstall < /dev/null 2>&1
+)
+rc=$?
+assert_success "$rc" "install.sh uninstall from isolated prefix exits 0"
+assert_contains "$out" "Disabling update scheduler" "isolated uninstall disables the scheduler"
+
+for cmd in millennium millennium-repair millennium-upgrade millennium-schedule \
+           millennium-purge millennium-diag millennium-theme millennium-mcp; do
+  assert_file_not_exists "${PREFIX_BIN}/${cmd}" "isolated uninstall removes ${cmd}"
+  assert_file_not_exists "${PREFIX_BASH}/${cmd}" "isolated uninstall removes bash completion for ${cmd}"
+  assert_file_not_exists "${PREFIX_ZSH}/_${cmd}" "isolated uninstall removes zsh completion for ${cmd}"
+  assert_file_not_exists "${PREFIX_FISH}/${cmd}.fish" "isolated uninstall removes fish completion for ${cmd}"
+  assert_file_not_exists "${PREFIX_MAN}/${cmd}.1" "isolated uninstall removes man page for ${cmd}"
+done
+assert_file_not_exists "${PREFIX_LIB}/common.sh" "isolated uninstall removes shared lib"
+assert_file_not_exists "${PREFIX_BASH}/millennium-helpers" "isolated uninstall removes bash completion base"
+assert_file_not_exists "${PREFIX_ZSH}/_millennium-helpers" "isolated uninstall removes zsh completion base"
+assert_file_not_exists "${PREFIX_NU}/millennium-helpers.nu" "isolated uninstall removes nushell completions"
+assert_file_not_exists "$PREFIX_SUDOERS" "isolated uninstall removes sudoers file"
+
+rm -rf "$PREFIX"
+rm -f "${MOCK_BIN}/id" "${MOCK_BIN}/visudo" "${MOCK_BIN}/chown" "${MOCK_BIN}/systemctl" "${MOCK_BIN}/crontab"
+
+# --- Packaging inventory: Formula / PKGBUILD / Scoop keep install parity ---
+
+formula=$(cat "${REPO_ROOT}/Formula/millennium-helpers.rb")
+assert_contains "$formula" 'ln_sf "millennium-helpers", bash_completion/cmd' "Formula creates bash completion symlinks"
+assert_contains "$formula" 'ln_sf "_millennium-helpers", zsh_completion/"_#{cmd}"' "Formula creates zsh completion symlinks"
+assert_contains "$formula" 'share/"nushell/completions"' "Formula installs nushell completions"
+assert_contains "$formula" 'assert_predicate bash_completion/"millennium"' "Formula test checks millennium bash completion"
+
+pkgbuild=$(cat "${REPO_ROOT}/packaging/PKGBUILD")
+assert_contains "$pkgbuild" "/usr/local/bin/millennium " "PKGBUILD prepare mentions bare millennium binary"
+assert_contains "$pkgbuild" "millennium.fish" "PKGBUILD prepare mentions millennium.fish"
+
+scoop=$(cat "${REPO_ROOT}/packaging/scoop/millennium-helpers.json")
+assert_contains "$scoop" "post_install" "Scoop manifest registers post_install hooks"
+assert_contains "$scoop" "pre_uninstall" "Scoop manifest registers pre_uninstall hooks"
+assert_contains "$scoop" "millennium-helpers.ps1" "Scoop post_install wires PowerShell completions"
+assert_contains "$scoop" "MillenniumUpdate" "Scoop pre_uninstall removes MillenniumUpdate task"
 
 print_summary
 

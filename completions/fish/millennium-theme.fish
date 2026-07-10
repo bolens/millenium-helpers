@@ -1,4 +1,3 @@
-VERSION_PLACEHOLDER
 complete -c millennium-theme -f -a 'list' -d 'List installed themes'
 complete -c millennium-theme -f -a 'install' -d 'Install a theme from GitHub'
 complete -c millennium-theme -f -a 'remove' -d 'Remove an installed theme'

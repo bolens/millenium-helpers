@@ -1,6 +1,6 @@
 # Makefile for Millennium Helpers local development automation
 
-.PHONY: setup test test-windows lint format check-all check-version check-man check-winget test-debian test-ubuntu test-fedora test-all-distros
+.PHONY: setup test test-windows lint format check-all check-version check-man check-winget check-completions sync-pkgver test-debian test-ubuntu test-fedora test-all-distros
 
 setup:
 	@echo "Setting up local development dependencies..."
@@ -51,12 +51,20 @@ check-man:
 check-winget:
 	bash scripts/ci/check-winget-manifests.sh
 
+check-completions:
+	bash tests/unit/test_completions.sh
+
+# Refresh packaging/PKGBUILD pkgver + .SRCINFO from git HEAD (no build/install).
+sync-pkgver:
+	bash scripts/ci/update-pkgbuild-pkgver.sh
+
 lint:
 	shellcheck *.sh scripts/*.sh scripts/lib/*.sh scripts/ci/*.sh tests/*.sh tests/lib/*.sh tests/unit/*.sh tests/behavioral/*.sh
 	ruff check scripts/millennium-mcp.py
 	@test -s VERSION || (echo "VERSION file missing or empty" >&2; exit 1)
 	@$(MAKE) check-version
 	@$(MAKE) check-man
+	@$(MAKE) check-completions
 
 format:
 	ruff format scripts/millennium-mcp.py

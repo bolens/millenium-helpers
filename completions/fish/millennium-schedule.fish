@@ -1,4 +1,3 @@
-VERSION_PLACEHOLDER
 complete -c millennium-schedule -f -a 'enable' -d 'Enable daily auto-updater'
 complete -c millennium-schedule -f -a 'disable' -d 'Disable daily auto-updater'
 complete -c millennium-schedule -f -a 'status' -d 'Check scheduler status'
@@ -6,6 +5,7 @@ complete -c millennium-schedule -f -a 'setup' -d 'Run the interactive configurat
 complete -c millennium-schedule -f -a 'config' -d 'Manage Millennium Helper configuration options'
 complete -c millennium-schedule -f -n '__fish_seen_subcommand_from enable' -a 'stable beta' -d 'Select update channel'
 complete -c millennium-schedule -f -n '__fish_seen_subcommand_from config' -a 'get set list' -d 'Config action'
+complete -c millennium-schedule -s c -l cron -d 'Force use of crontab instead of systemd'
 complete -c millennium-schedule -s d -l dry-run -d 'Simulation mode'
 complete -c millennium-schedule -s q -l quiet -d 'Suppress informational output'
 complete -c millennium-schedule -s h -l help -d 'Show help message'

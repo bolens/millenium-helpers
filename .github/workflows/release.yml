@@ -147,6 +147,7 @@ jobs:
           zip -r millennium-helpers-windows.zip \
             scripts/windows/ \
             scripts/millennium-mcp.py \
+            completions/powershell/ \
             VERSION \
             LICENSE \
             README.md

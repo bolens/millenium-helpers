@@ -16,6 +16,13 @@ get_helpers_version() {
     "/usr/local/lib/millennium-helpers/VERSION"
     "/usr/lib/millennium-helpers/VERSION"
   )
+  if command -v brew >/dev/null 2>&1; then
+    local brew_prefix
+    brew_prefix="$(brew --prefix 2>/dev/null || true)"
+    if [[ -n "$brew_prefix" ]]; then
+      candidates+=("${brew_prefix}/lib/millennium-helpers/VERSION")
+    fi
+  fi
 
   local path
   for path in "${candidates[@]}"; do

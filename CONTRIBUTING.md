@@ -97,6 +97,7 @@ Optional local hooks: `pre-commit install` (see `.pre-commit-config.yaml`) runs 
 - Honor `NO_COLOR` (and `FORCE_COLOR` when forcing color).
 - PowerShell: `Set-StrictMode -Version Latest`; gate debug noise behind `MILLENNIUM_DEBUG` or `-Verbose`.
 - Do not commit packaging build artifacts (`packaging/*.pkg.tar.zst`, etc.).
+- Keep Arch `pkgver` / `.SRCINFO` current with `make sync-pkgver` (no full rebuild needed).
 
 ## Packaging notes
 

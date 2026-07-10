@@ -6,13 +6,19 @@ RUNNING_USER="${SUDO_USER:-$(id -un)}"
 
 # Source shared helpers
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-COMMON_SH="${SCRIPT_DIR}/common.sh"
-if [[ ! -f "$COMMON_SH" ]]; then
-  COMMON_SH="/usr/local/lib/millennium-helpers/common.sh"
-  if [[ -f "/usr/lib/millennium-helpers/common.sh" ]]; then
-    COMMON_SH="/usr/lib/millennium-helpers/common.sh"
+COMMON_SH=""
+for _common_candidate in \
+  "${SCRIPT_DIR}/common.sh" \
+  "$(cd "${SCRIPT_DIR}/.." && pwd)/lib/millennium-helpers/common.sh" \
+  "/usr/local/lib/millennium-helpers/common.sh" \
+  "/usr/lib/millennium-helpers/common.sh"
+do
+  if [[ -f "$_common_candidate" ]]; then
+    COMMON_SH="$_common_candidate"
+    break
   fi
-fi
+done
+unset _common_candidate
 if [[ -f "$COMMON_SH" ]]; then
   # shellcheck disable=SC1090
   source "$COMMON_SH"
@@ -23,9 +29,23 @@ fi
 
 USER_HOME="$(get_user_home "$RUNNING_USER")"
 
+# Run crontab as the real desktop user when invoked via sudo.
+crontab_for_user() {
+  if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" ]]; then
+    crontab -u "$RUNNING_USER" "$@"
+  else
+    crontab "$@"
+  fi
+}
+
 SERVICE_NAME="millennium-update.service"
 TIMER_NAME="millennium-update.timer"
-USER_CONFIG_DIR="${XDG_CONFIG_HOME:-$USER_HOME/.config}/systemd/user"
+# Under sudo, ignore root's XDG_CONFIG_HOME and always use the invoking user's tree.
+if [[ "$(id -u)" -eq 0 && -n "${SUDO_USER:-}" && "$SUDO_USER" != "root" ]]; then
+  USER_CONFIG_DIR="${USER_HOME}/.config/systemd/user"
+else
+  USER_CONFIG_DIR="${XDG_CONFIG_HOME:-$USER_HOME/.config}/systemd/user"
+fi
 SERVICE_PATH="${USER_CONFIG_DIR}/${SERVICE_NAME}"
 TIMER_PATH="${USER_CONFIG_DIR}/${TIMER_NAME}"
 
@@ -251,11 +271,15 @@ RandomizedDelaySec=1h
 WantedBy=timers.target
 EOF
 
+  if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" && "$DRY_RUN" == "false" ]]; then
+    execute chown -R "${RUNNING_USER}:${RUNNING_USER}" "$USER_CONFIG_DIR"
+  fi
+
   echo -e "${BLUE}Reloading systemd user daemon...${NC}"
-  execute systemctl --user daemon-reload
+  execute sysctl_user daemon-reload
 
   echo -e "${BLUE}Enabling and starting ${TIMER_NAME}...${NC}"
-  execute systemctl --user enable --now "$TIMER_NAME"
+  execute sysctl_user enable --now "$TIMER_NAME"
 
   if [[ "$DRY_RUN" == "true" ]]; then
     echo -e "${GREEN}Dry run: Timer enablement simulated successfully.${NC}"
@@ -303,12 +327,12 @@ disable_timer() {
   echo -e "${BLUE}Disabling and stopping Millennium update user timer and service...${NC}"
   
   if [[ "$DRY_RUN" == "false" ]]; then
-    if systemctl --user is-active --quiet "$TIMER_NAME" || systemctl --user is-enabled --quiet "$TIMER_NAME" 2>/dev/null; then
-      systemctl --user disable --now "$TIMER_NAME"
+    if sysctl_user is-active --quiet "$TIMER_NAME" || sysctl_user is-enabled --quiet "$TIMER_NAME" 2>/dev/null; then
+      sysctl_user disable --now "$TIMER_NAME"
     fi
     
-    if systemctl --user is-active --quiet "$SERVICE_NAME"; then
-      systemctl --user stop "$SERVICE_NAME"
+    if sysctl_user is-active --quiet "$SERVICE_NAME"; then
+      sysctl_user stop "$SERVICE_NAME"
     fi
   else
     echo -e "${YELLOW}[DRY RUN] Would stop and disable timer: ${TIMER_NAME}${NC}"
@@ -326,7 +350,7 @@ disable_timer() {
   fi
 
   echo -e "${BLUE}Reloading systemd user daemon...${NC}"
-  execute systemctl --user daemon-reload
+  execute sysctl_user daemon-reload
 
   if [[ "$DRY_RUN" == "true" ]]; then
     echo -e "${GREEN}Dry run: Timer disablement simulated successfully.${NC}"
@@ -351,9 +375,9 @@ show_status() {
 
     if command -v crontab &>/dev/null; then
       echo -e "\n${BLUE}=== Millennium Crontab Status ===${NC}"
-      if crontab -l 2>/dev/null | grep -q "millennium-schedule"; then
+      if crontab_for_user -l 2>/dev/null | grep -q "millennium-schedule"; then
         scheduler_configured=true
-        crontab -l 2>/dev/null | grep "millennium-schedule"
+        crontab_for_user -l 2>/dev/null | grep "millennium-schedule"
       else
         echo "No crontab entry configured."
       fi
@@ -380,7 +404,7 @@ show_status() {
   echo -e "${BLUE}=== Millennium User Update Timer Status ===${NC}"
   if [[ -f "$TIMER_PATH" ]]; then
     scheduler_configured=true
-    systemctl --user status "$TIMER_NAME" || true
+    sysctl_user status "$TIMER_NAME" || true
   else
     echo -e "${YELLOW}Timer is not installed/configured.${NC}"
   fi
@@ -388,16 +412,16 @@ show_status() {
   echo -e "\n${BLUE}=== Millennium User Update Service Status ===${NC}"
   if [[ -f "$SERVICE_PATH" ]]; then
     scheduler_configured=true
-    systemctl --user status "$SERVICE_NAME" || true
+    sysctl_user status "$SERVICE_NAME" || true
   else
     echo -e "${YELLOW}Service is not installed/configured.${NC}"
   fi
 
   if command -v crontab &>/dev/null; then
     echo -e "\n${BLUE}=== Millennium Crontab Status ===${NC}"
-    if crontab -l 2>/dev/null | grep -q "millennium-schedule"; then
+    if crontab_for_user -l 2>/dev/null | grep -q "millennium-schedule"; then
       scheduler_configured=true
-      crontab -l 2>/dev/null | grep "millennium-schedule"
+      crontab_for_user -l 2>/dev/null | grep "millennium-schedule"
     else
       echo "No crontab entry configured."
     fi
@@ -536,14 +560,14 @@ enable_cron() {
     echo -e "${YELLOW}[DRY RUN] Would append to crontab:${NC}\n  ${cron_cmd}"
   else
     local current_cron
-    current_cron=$(crontab -l 2>/dev/null || true)
+    current_cron=$(crontab_for_user -l 2>/dev/null || true)
     local clean_cron
     clean_cron=$(echo "$current_cron" | grep -v "millennium-schedule" || true)
     
     if [[ -n "$clean_cron" ]]; then
-      echo -e "${clean_cron}\n${cron_cmd}" | crontab -
+      echo -e "${clean_cron}\n${cron_cmd}" | crontab_for_user -
     else
-      echo -e "${cron_cmd}" | crontab -
+      echo -e "${cron_cmd}" | crontab_for_user -
     fi
     echo -e "${GREEN}Millennium cron job successfully configured to run daily!${NC}"
   fi
@@ -559,15 +583,15 @@ disable_cron() {
     echo -e "${YELLOW}[DRY RUN] Would remove millennium-schedule entries from crontab${NC}"
   else
     local current_cron
-    current_cron=$(crontab -l 2>/dev/null || true)
+    current_cron=$(crontab_for_user -l 2>/dev/null || true)
     
     if echo "$current_cron" | grep -q "millennium-schedule"; then
       local clean_cron
       clean_cron=$(echo "$current_cron" | grep -v "millennium-schedule" || true)
       if [[ -n "$clean_cron" ]]; then
-        echo "$clean_cron" | crontab -
+        echo "$clean_cron" | crontab_for_user -
       else
-        crontab -r || true
+        crontab_for_user -r || true
       fi
       echo -e "${GREEN}Millennium cron job removed.${NC}"
     else
@@ -622,12 +646,12 @@ run_setup_wizard() {
   local default_sched_desc="Y/n"
   
   local systemd_enabled=false
-  if command -v systemctl &>/dev/null && systemctl --user is-enabled millennium-update.timer &>/dev/null; then
+  if command -v systemctl &>/dev/null && sysctl_user is-enabled millennium-update.timer &>/dev/null; then
     systemd_enabled=true
   fi
   
   local cron_enabled=false
-  if command -v crontab &>/dev/null && crontab -l 2>/dev/null | grep -q "millennium-schedule"; then
+  if command -v crontab &>/dev/null && crontab_for_user -l 2>/dev/null | grep -q "millennium-schedule"; then
     cron_enabled=true
   fi
   

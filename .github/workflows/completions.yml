@@ -5,11 +5,15 @@ on:
     branches: [ main ]
     paths:
       - 'completions/**'
+      - 'tests/unit/test_completions.sh'
+      - 'tests/unit/zsh_completion_sim.zsh'
       - '.github/workflows/completions.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'completions/**'
+      - 'tests/unit/test_completions.sh'
+      - 'tests/unit/zsh_completion_sim.zsh'
       - '.github/workflows/completions.yml'
 
 concurrency:
@@ -47,12 +51,17 @@ jobs:
           zsh -n completions/zsh/_millennium-helpers
           zsh -c "autoload -U compinit && compinit -u && source completions/zsh/_millennium-helpers"
 
-      - name: Fish completions (syntax check)
+      - name: Fish completions (syntax + source)
         run: |
           for f in completions/fish/*.fish; do
             echo "Checking $f"
             fish -n "$f"
+            # Source to catch runtime errors fish -n misses (e.g. bare unknown commands)
+            fish -c "source $(pwd)/$f"
           done
 
       - name: Nushell completion (source check)
         run: nu -c "source completions/nushell/millennium-helpers.nu"
+
+      - name: Cross-shell parity + runtime smokes
+        run: bash tests/unit/test_completions.sh

@@ -3,6 +3,7 @@
 set -euo pipefail
 
 TARGET_DIR="${TARGET_DIR:-/usr/local/bin}"
+LIB_DIR="${MILLENNIUM_LIB_DIR:-/usr/local/lib/millennium-helpers}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # If running standalone/piped (e.g. curl ... | bash), download the latest trimmed
@@ -212,21 +213,26 @@ install_completions() {
   local user_name="${SUDO_USER:-$(id -un)}"
   local USER_HOME
   USER_HOME="$(get_user_home "$user_name")"
+  local user_nu_dir="${XDG_CONFIG_HOME:-${USER_HOME}/.config}/nushell/completions"
   
-  local base_bash_dir="/usr/share/bash-completion/completions"
-  local base_zsh_dir="/usr/share/zsh/site-functions"
-  local base_fish_dir="/usr/share/fish/vendor_completions.d"
-  local base_nu_dirs=("/usr/share/nushell/completions" "/usr/local/share/nushell/completions")
+  local base_bash_dir="${MILLENNIUM_BASH_COMPLETION_DIR:-/usr/share/bash-completion/completions}"
+  local base_zsh_dir="${MILLENNIUM_ZSH_COMPLETION_DIR:-/usr/share/zsh/site-functions}"
+  local base_fish_dir="${MILLENNIUM_FISH_COMPLETION_DIR:-/usr/share/fish/vendor_completions.d}"
+  local base_nu_dirs=("/usr/share/nushell/completions" "/usr/local/share/nushell/completions" "$user_nu_dir")
 
   if [[ "$(uname)" == "Darwin" ]]; then
     local brew_prefix="/opt/homebrew"
     if command -v brew &>/dev/null; then
       brew_prefix="$(brew --prefix)"
     fi
-    base_bash_dir="${brew_prefix}/etc/bash_completion.d"
-    base_zsh_dir="${brew_prefix}/share/zsh/site-functions"
-    base_fish_dir="${brew_prefix}/share/fish/vendor_completions.d"
-    base_nu_dirs=("${brew_prefix}/share/nushell/completions" "${USER_HOME}/.config/nushell/completions")
+    base_bash_dir="${MILLENNIUM_BASH_COMPLETION_DIR:-${brew_prefix}/etc/bash_completion.d}"
+    base_zsh_dir="${MILLENNIUM_ZSH_COMPLETION_DIR:-${brew_prefix}/share/zsh/site-functions}"
+    base_fish_dir="${MILLENNIUM_FISH_COMPLETION_DIR:-${brew_prefix}/share/fish/vendor_completions.d}"
+    base_nu_dirs=("${brew_prefix}/share/nushell/completions" "$user_nu_dir")
+  fi
+
+  if [[ -n "${MILLENNIUM_NUSHELL_COMPLETION_DIR:-}" ]]; then
+    base_nu_dirs=("${MILLENNIUM_NUSHELL_COMPLETION_DIR}")
   fi
 
   for comp in "${obsolete_completions[@]}"; do
@@ -334,17 +340,22 @@ install_completions() {
 
   # 4. Nushell Completions
   for cand_dir in "${base_nu_dirs[@]}"; do
-    if [[ -d "$cand_dir" || "$DRY_RUN" == "true" ]]; then
-      printf "Installing Nushell completions to %s... " "$cand_dir"
-      if execute mkdir -p "$cand_dir" && \
-         execute cp -f "${SCRIPT_DIR}/completions/nushell/millennium-helpers.nu" "$cand_dir/millennium-helpers.nu" && \
-         execute chmod 644 "$cand_dir/millennium-helpers.nu" && \
-         change_owner "$cand_dir/millennium-helpers.nu"; then
-        echo -e "${GREEN}OK${NC}"
-      else
-        echo -e "${RED}FAIL${NC}"
-        echo -e "${RED}Error: Failed to copy or configure Nushell completions in ${cand_dir}.${NC}" >&2
-      fi
+    local try_nu=false
+    if [[ "$DRY_RUN" == "true" || "$cand_dir" == "$user_nu_dir" || -d "$cand_dir" ]]; then
+      try_nu=true
+    fi
+    if [[ "$try_nu" != "true" ]]; then
+      continue
+    fi
+    printf "Installing Nushell completions to %s... " "$cand_dir"
+    if execute mkdir -p "$cand_dir" && \
+       execute cp -f "${SCRIPT_DIR}/completions/nushell/millennium-helpers.nu" "$cand_dir/millennium-helpers.nu" && \
+       execute chmod 644 "$cand_dir/millennium-helpers.nu" && \
+       change_owner "$cand_dir/millennium-helpers.nu"; then
+      echo -e "${GREEN}OK${NC}"
+    else
+      echo -e "${RED}FAIL${NC}"
+      echo -e "${RED}Error: Failed to copy or configure Nushell completions in ${cand_dir}.${NC}" >&2
     fi
   done
 }
@@ -355,8 +366,10 @@ install_man_pages() {
     return 0
   fi
 
-  local man_dir="/usr/local/share/man/man1"
-  if [[ "$(uname)" == "Darwin" ]]; then
+  local man_dir="${MILLENNIUM_MAN_DIR:-/usr/local/share/man/man1}"
+  if [[ -n "${MILLENNIUM_MAN_DIR:-}" ]]; then
+    :
+  elif [[ "$(uname)" == "Darwin" ]]; then
     local brew_prefix="/opt/homebrew"
     if command -v brew &>/dev/null; then
       brew_prefix="$(brew --prefix)"
@@ -396,7 +409,9 @@ install_man_pages() {
 
 uninstall_man_pages() {
   local man_dirs=("/usr/local/share/man/man1" "/usr/share/man/man1")
-  if [[ "$(uname)" == "Darwin" ]]; then
+  if [[ -n "${MILLENNIUM_MAN_DIR:-}" ]]; then
+    man_dirs=("${MILLENNIUM_MAN_DIR}")
+  elif [[ "$(uname)" == "Darwin" ]]; then
     local brew_prefix="/opt/homebrew"
     if command -v brew &>/dev/null; then
       brew_prefix="$(brew --prefix)"
@@ -490,7 +505,7 @@ install_scripts() {
   done
 
   # Copy shared helper library and its modules
-  local lib_dir="/usr/local/lib/millennium-helpers"
+  local lib_dir="$LIB_DIR"
   printf "Installing shared helper library to %s... " "${lib_dir}/common.sh"
   if execute mkdir -p "${lib_dir}/lib" && \
      execute cp -f "${SCRIPT_DIR}/scripts/common.sh" "${lib_dir}/common.sh" && \
@@ -664,23 +679,28 @@ EOF
 }
 
 uninstall_completions() {
-  local base_bash_dir="/usr/share/bash-completion/completions"
-  local base_zsh_dir="/usr/share/zsh/site-functions"
-  local base_fish_dir="/usr/share/fish/vendor_completions.d"
-  local base_nu_dirs=("/usr/share/nushell/completions" "/usr/local/share/nushell/completions")
+  local base_bash_dir="${MILLENNIUM_BASH_COMPLETION_DIR:-/usr/share/bash-completion/completions}"
+  local base_zsh_dir="${MILLENNIUM_ZSH_COMPLETION_DIR:-/usr/share/zsh/site-functions}"
+  local base_fish_dir="${MILLENNIUM_FISH_COMPLETION_DIR:-/usr/share/fish/vendor_completions.d}"
   local user_name="${SUDO_USER:-$(id -un)}"
   local USER_HOME
   USER_HOME="$(get_user_home "$user_name")"
+  local user_nu_dir="${XDG_CONFIG_HOME:-${USER_HOME}/.config}/nushell/completions"
+  local base_nu_dirs=("/usr/share/nushell/completions" "/usr/local/share/nushell/completions" "$user_nu_dir")
 
   if [[ "$(uname)" == "Darwin" ]]; then
     local brew_prefix="/opt/homebrew"
     if command -v brew &>/dev/null; then
       brew_prefix="$(brew --prefix)"
     fi
-    base_bash_dir="${brew_prefix}/etc/bash_completion.d"
-    base_zsh_dir="${brew_prefix}/share/zsh/site-functions"
-    base_fish_dir="${brew_prefix}/share/fish/vendor_completions.d"
-    base_nu_dirs=("${brew_prefix}/share/nushell/completions" "${USER_HOME}/.config/nushell/completions")
+    base_bash_dir="${MILLENNIUM_BASH_COMPLETION_DIR:-${brew_prefix}/etc/bash_completion.d}"
+    base_zsh_dir="${MILLENNIUM_ZSH_COMPLETION_DIR:-${brew_prefix}/share/zsh/site-functions}"
+    base_fish_dir="${MILLENNIUM_FISH_COMPLETION_DIR:-${brew_prefix}/share/fish/vendor_completions.d}"
+    base_nu_dirs=("${brew_prefix}/share/nushell/completions" "$user_nu_dir")
+  fi
+
+  if [[ -n "${MILLENNIUM_NUSHELL_COMPLETION_DIR:-}" ]]; then
+    base_nu_dirs=("${MILLENNIUM_NUSHELL_COMPLETION_DIR}")
   fi
 
   echo -e "${BLUE}Uninstalling shell autocompletions...${NC}"
@@ -734,7 +754,7 @@ uninstall_completions() {
 
   # 4. Nushell Completions
   for cand_dir in "${base_nu_dirs[@]}"; do
-    if [[ -d "$cand_dir" || "$DRY_RUN" == "true" ]]; then
+    if [[ -d "$cand_dir" || -f "${cand_dir}/millennium-helpers.nu" || "$DRY_RUN" == "true" || "$cand_dir" == "$user_nu_dir" ]]; then
       printf "Removing Nushell completions from %s... " "$cand_dir"
       if execute rm -f "${cand_dir}/millennium-helpers.nu"; then
         echo -e "${GREEN}OK${NC}"
@@ -769,6 +789,28 @@ uninstall_scripts() {
     fi
   fi
 
+  # Disable scheduler (systemd/LaunchAgent + cron) while binaries still exist.
+  local user_name="${SUDO_USER:-$(id -un)}"
+  local schedule_bin="${TARGET_DIR}/millennium-schedule"
+  local schedule_src="${SCRIPT_DIR}/scripts/millennium-schedule.sh"
+  local schedule_cmd=""
+  if [[ -x "$schedule_bin" ]]; then
+    schedule_cmd="$schedule_bin"
+  elif [[ -f "$schedule_src" ]]; then
+    schedule_cmd="bash $schedule_src"
+  fi
+  if [[ -n "$schedule_cmd" || "$DRY_RUN" == "true" ]]; then
+    echo -e "${BLUE}Disabling update scheduler (systemd/LaunchAgent and cron)...${NC}"
+    local dry_flag=""
+    [[ "$DRY_RUN" == "true" ]] && dry_flag="--dry-run"
+    if [[ "$user_name" != "root" && "$(id -u)" -eq 0 ]]; then
+      execute runuser -l "$user_name" -c "${schedule_cmd:-bash $schedule_src} disable ${dry_flag}" || true
+    else
+      # shellcheck disable=SC2086
+      execute ${schedule_cmd:-bash "$schedule_src"} disable $dry_flag || true
+    fi
+  fi
+
   echo -e "${BLUE}Uninstalling Millennium helper scripts from ${TARGET_DIR}...${NC}"
   
   local removed_any=false
@@ -788,7 +830,7 @@ uninstall_scripts() {
     fi
   done
 
-  local lib_dir="/usr/local/lib/millennium-helpers"
+  local lib_dir="$LIB_DIR"
   if [[ -d "$lib_dir" || "$DRY_RUN" == "true" ]]; then
     printf "Removing shared helper library: %s... " "${lib_dir}"
     if execute rm -rf "$lib_dir"; then
@@ -815,8 +857,7 @@ uninstall_scripts() {
   uninstall_man_pages
   removed_any=true
 
-  # Clean up systemd user timers/services for the invoking user
-  local user_name="${SUDO_USER:-$(id -un)}"
+  # Best-effort leftover unit cleanup if schedule disable could not run
   if [[ "$user_name" != "root" ]]; then
     local user_home
     user_home="$(get_user_home "$user_name")"
@@ -836,13 +877,12 @@ uninstall_scripts() {
       local timer_file="${user_systemd_dir}/millennium-update.timer"
       local service_file="${user_systemd_dir}/millennium-update.service"
       
-      if [[ -f "$timer_file" || -f "$service_file" || "$DRY_RUN" == "true" ]]; then
-        echo "Disabling and removing systemd user update timer/service..."
-        execute runuser -l "$user_name" -c "systemctl --user disable --now millennium-update.timer" || true
-        execute runuser -l "$user_name" -c "systemctl --user stop millennium-update.service" || true
-        
+      if [[ -f "$timer_file" || -f "$service_file" ]]; then
+        echo "Removing leftover systemd user update timer/service..."
+        execute sysctl_user disable --now millennium-update.timer || true
+        execute sysctl_user stop millennium-update.service || true
         execute rm -f "$timer_file" "$service_file"
-        execute runuser -l "$user_name" -c "systemctl --user daemon-reload" || true
+        execute sysctl_user daemon-reload || true
         removed_any=true
       fi
     fi

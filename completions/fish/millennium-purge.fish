@@ -1,4 +1,3 @@
-VERSION_PLACEHOLDER
 complete -c millennium-purge -s d -l dry-run -d 'Simulation mode'
 complete -c millennium-purge -s y -l yes -d 'Skip confirmation prompt'
 complete -c millennium-purge -s q -l quiet -d 'Suppress informational output'

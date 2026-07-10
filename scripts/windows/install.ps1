@@ -123,6 +123,21 @@ function Log-Error ($msg) {
 if ($Uninstall) {
     Log-Info "Starting uninstallation of Millennium Helpers..."
 
+    # Remove daily auto-update scheduled task (best-effort)
+    try {
+        if (Get-Command Get-ScheduledTask -ErrorAction SilentlyContinue) {
+            $existing = Get-ScheduledTask -TaskName "MillenniumUpdate" -ErrorAction SilentlyContinue
+            if ($existing) {
+                if ($env:PSTESTS -ne "true") {
+                    Unregister-ScheduledTask -TaskName "MillenniumUpdate" -Confirm:$false
+                }
+                Log-Info "Removed scheduled task: MillenniumUpdate"
+            }
+        }
+    } catch {
+        Log-Warn "Could not remove MillenniumUpdate scheduled task: $($_.Exception.Message)"
+    }
+
     # Remove from PATH
     if ($IsWindows) {
         $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
@@ -144,6 +159,27 @@ if ($Uninstall) {
             Log-Info "Removed installation directory: $installDir"
         } catch {
             Log-Warn "Could not fully remove $installDir. Some files may be in use."
+        }
+    }
+
+    # Drop profile hooks that load the completer (only under this user's home)
+    $userHome = if ($env:USERPROFILE) { $env:USERPROFILE } else { $HOME }
+    $profiles = @(
+        (Join-Path -Path $userHome -ChildPath "Documents\PowerShell\Microsoft.PowerShell_profile.ps1"),
+        (Join-Path -Path $userHome -ChildPath "Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1")
+    )
+    if ($PROFILE -and $PROFILE.StartsWith($userHome)) {
+        $profiles = @($PROFILE) + $profiles
+    }
+    foreach ($profilePath in ($profiles | Select-Object -Unique)) {
+        if (!(Test-Path -Path $profilePath)) { continue }
+        $content = Get-Content -Path $profilePath -Raw -ErrorAction SilentlyContinue
+        if ($content -and $content -like "*millennium-helpers.completion.ps1*") {
+            $filtered = ($content -split "`n" | Where-Object {
+                $_ -notmatch 'millennium-helpers\.completion\.ps1' -and $_ -notmatch '^\s*# Millennium Helpers completions\s*$'
+            }) -join "`n"
+            Set-Content -Path $profilePath -Value $filtered -Encoding UTF8
+            Log-Info "Removed completion hook from $profilePath"
         }
     }
 
@@ -238,6 +274,47 @@ if %ERRORLEVEL% equ 0 (
 "@
     Set-Content -Path $wrapperPath -Value $cmdContent -Encoding ASCII
     Log-Info "Created wrapper command: $wrapperName"
+}
+
+# Install PowerShell argument completers next to the scripts
+$completionSrc = Join-Path -Path $srcDir -ChildPath "..\..\completions\powershell\millennium-helpers.ps1"
+if (!(Test-Path -Path $completionSrc)) {
+    $completionSrc = Join-Path -Path $srcDir -ChildPath "millennium-helpers.completion.ps1"
+}
+$completionDest = Join-Path -Path $binDir -ChildPath "millennium-helpers.completion.ps1"
+if (Test-Path -Path $completionSrc) {
+    Copy-Item -Path $completionSrc -Destination $completionDest -Force
+    Log-Info "Installed: millennium-helpers.completion.ps1"
+
+    # Register a profile hook so Tab completion works in new sessions.
+    # Only touch profiles under the install user's home (respects USERPROFILE overrides in tests).
+    $userHome = if ($env:USERPROFILE) { $env:USERPROFILE } else { $HOME }
+    $profiles = @(
+        (Join-Path -Path $userHome -ChildPath "Documents\PowerShell\Microsoft.PowerShell_profile.ps1"),
+        (Join-Path -Path $userHome -ChildPath "Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1")
+    )
+    if ($PROFILE -and $PROFILE.StartsWith($userHome)) {
+        $profiles = @($PROFILE) + $profiles
+    }
+    $profiles = $profiles | Select-Object -Unique
+    $hook = ". `"$completionDest`""
+    foreach ($profilePath in $profiles) {
+        if ([string]::IsNullOrWhiteSpace($profilePath)) { continue }
+        $profileDir = Split-Path -Parent -Path $profilePath
+        if (!(Test-Path -Path $profileDir)) {
+            New-Item -Path $profileDir -ItemType Directory -Force | Out-Null
+        }
+        $existing = ""
+        if (Test-Path -Path $profilePath) {
+            $existing = Get-Content -Path $profilePath -Raw -ErrorAction SilentlyContinue
+        }
+        if ($existing -notlike "*millennium-helpers.completion.ps1*") {
+            Add-Content -Path $profilePath -Value "`n# Millennium Helpers completions`n$hook`n"
+            Log-Info "Registered PowerShell completion hook in $profilePath"
+        }
+    }
+} else {
+    Log-Warn "PowerShell completion script not found; Tab completions were not installed."
 }
 
 # Add to PATH

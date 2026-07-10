@@ -11,13 +11,20 @@ fi
 # Source modular components
 _COMMON_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Support sourcing when installed under system directories or in repository
+# Support sourcing when installed under system directories, Homebrew prefix, or repo
 _COMMON_LIB_DIR="${_COMMON_SCRIPT_DIR}/lib"
 if [[ ! -d "$_COMMON_LIB_DIR" ]]; then
-  _COMMON_LIB_DIR="/usr/local/lib/millennium-helpers/lib"
-  if [[ ! -d "$_COMMON_LIB_DIR" ]]; then
-    _COMMON_LIB_DIR="/usr/lib/millennium-helpers/lib"
-  fi
+  for _lib_candidate in \
+    "$(cd "${_COMMON_SCRIPT_DIR}/.." && pwd)/lib/millennium-helpers/lib" \
+    "/usr/local/lib/millennium-helpers/lib" \
+    "/usr/lib/millennium-helpers/lib"
+  do
+    if [[ -d "$_lib_candidate" ]]; then
+      _COMMON_LIB_DIR="$_lib_candidate"
+      break
+    fi
+  done
+  unset _lib_candidate
 fi
 
 if [[ -f "${_COMMON_LIB_DIR}/logging.sh" ]]; then

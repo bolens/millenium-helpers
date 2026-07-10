@@ -1,7 +1,7 @@
 # Maintainer: bolens <https://github.com/bolens>
 pkgname=millennium-helpers-git
 _pkgname=millennium-helpers
-pkgver=r114.g61b2cb2
+pkgver=r215.g376730f
 pkgrel=1
 pkgdesc="Cross-platform utility scripts and Model Context Protocol (MCP) server for managing, upgrading, diagnosing, and controlling Millennium on Linux and Windows"
 arch=('any')
@@ -32,15 +32,15 @@ prepare() {
     plain "  sudo ./install.sh -u  (from the root of the source directory)"
     plain ""
     plain "If you no longer have the source directory, you can manually remove the conflicting files:"
-    plain "  sudo rm -f /etc/sudoers.d/millennium-helpers"
-    plain "  sudo rm -f /usr/local/bin/millennium-"*
-    plain "  sudo rm -rf /usr/local/lib/millennium-helpers"
-    plain "  sudo rm -f /usr/share/bash-completion/completions/millennium-"*
-    plain "  sudo rm -f /usr/share/zsh/site-functions/_millennium-"*
-    plain "  sudo rm -f /usr/share/fish/vendor_completions.d/millennium-"*
-    plain "  sudo rm -f /usr/share/nushell/completions/millennium-helpers.nu"
-    plain "  sudo rm -f /usr/share/man/man1/millennium-*.1"
-    plain "  sudo rm -f /usr/local/share/man/man1/millennium-*.1"
+    plain '  sudo rm -f /etc/sudoers.d/millennium-helpers'
+    plain '  sudo rm -f /usr/local/bin/millennium /usr/local/bin/millennium-*'
+    plain '  sudo rm -rf /usr/local/lib/millennium-helpers'
+    plain '  sudo rm -f /usr/share/bash-completion/completions/millennium /usr/share/bash-completion/completions/millennium-*'
+    plain '  sudo rm -f /usr/share/zsh/site-functions/_millennium /usr/share/zsh/site-functions/_millennium-*'
+    plain '  sudo rm -f /usr/share/fish/vendor_completions.d/millennium.fish /usr/share/fish/vendor_completions.d/millennium-*.fish'
+    plain '  sudo rm -f /usr/share/nushell/completions/millennium-helpers.nu'
+    plain '  sudo rm -f /usr/share/man/man1/millennium.1 /usr/share/man/man1/millennium-*.1'
+    plain '  sudo rm -f /usr/local/share/man/man1/millennium.1 /usr/local/share/man/man1/millennium-*.1'
     exit 1
   fi
 }
@@ -85,13 +85,8 @@ package() {
   done
 
   # Install Fish completions
-  install -Dm644 completions/fish/millennium-repair.fish "${pkgdir}/usr/share/fish/vendor_completions.d/millennium-repair.fish"
-  install -Dm644 completions/fish/millennium-upgrade.fish "${pkgdir}/usr/share/fish/vendor_completions.d/millennium-upgrade.fish"
-  install -Dm644 completions/fish/millennium-schedule.fish "${pkgdir}/usr/share/fish/vendor_completions.d/millennium-schedule.fish"
-  install -Dm644 completions/fish/millennium-purge.fish "${pkgdir}/usr/share/fish/vendor_completions.d/millennium-purge.fish"
-  install -Dm644 completions/fish/millennium-diag.fish "${pkgdir}/usr/share/fish/vendor_completions.d/millennium-diag.fish"
-  install -Dm644 completions/fish/millennium-theme.fish "${pkgdir}/usr/share/fish/vendor_completions.d/millennium-theme.fish"
-  install -Dm644 completions/fish/millennium-mcp.fish "${pkgdir}/usr/share/fish/vendor_completions.d/millennium-mcp.fish"
+  install -d "${pkgdir}/usr/share/fish/vendor_completions.d"
+  install -m644 completions/fish/*.fish "${pkgdir}/usr/share/fish/vendor_completions.d/"
 
   # Install Nushell completions
   install -Dm644 completions/nushell/millennium-helpers.nu "${pkgdir}/usr/share/nushell/completions/millennium-helpers.nu"

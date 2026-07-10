@@ -90,6 +90,7 @@ jobs:
         suite:
           - tests/unit/test_common.sh
           - tests/unit/test_mocks.sh
+          - tests/unit/test_completions.sh
           - tests/behavioral/test_install.sh
           - tests/behavioral/test_theme.sh
           - tests/behavioral/test_schedule.sh
@@ -162,6 +163,7 @@ jobs:
           - tests/windows/millennium-theme.Tests.ps1
           - tests/windows/millennium-schedule.Tests.ps1
           - tests/windows/install.Tests.ps1
+          - tests/windows/completions.Tests.ps1
           - tests/windows/millennium-mcp.Tests.ps1
           - tests/windows/millennium-repair.Tests.ps1
           - tests/windows/millennium-purge.Tests.ps1
@@ -184,6 +186,7 @@ jobs:
         suite:
           - tests/unit/test_common.sh
           - tests/unit/test_mocks.sh
+          - tests/unit/test_completions.sh
           - tests/behavioral/test_install.sh
           - tests/behavioral/test_theme.sh
           - tests/behavioral/test_schedule.sh

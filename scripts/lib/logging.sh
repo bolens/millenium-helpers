@@ -274,6 +274,58 @@ get_user_home() {
   echo "$home"
 }
 
+# Run systemctl --user for the real target user, even when invoked via sudo.
+# Under sudo, root has no $XDG_RUNTIME_DIR / session bus, so bare
+# `systemctl --user` fails. Prefer systemd's --machine=user@.host syntax,
+# then fall back to runuser with an explicit runtime dir.
+#
+# MILLENNIUM_USER_RUNTIME_ROOT overrides the /run/user prefix (tests only).
+sysctl_user() {
+  local target_user="${RUNNING_USER:-${SUDO_USER:-$(id -un)}}"
+
+  if [[ "$(id -u)" -ne 0 || "$target_user" == "root" ]]; then
+    systemctl --user "$@"
+    return $?
+  fi
+
+  # Root → another user's systemd instance (supported path from systemd docs).
+  local out rc=0
+  out="$(systemctl --user -M "${target_user}@.host" "$@" 2>&1)" || rc=$?
+  if [[ "$rc" -eq 0 || ( "$out" != *"Failed to connect"* && "$out" != *"not defined"* && "$out" != *"Connection refused"* && "$out" != *"No such file"* ) ]]; then
+    [[ -n "$out" ]] && printf '%s\n' "$out"
+    return "$rc"
+  fi
+
+  local user_uid
+  user_uid="$(id -u "$target_user" 2>/dev/null || true)"
+  if [[ -z "$user_uid" ]]; then
+    echo "Error: cannot resolve uid for user '${target_user}'." >&2
+    return 1
+  fi
+
+  local runtime_root="${MILLENNIUM_USER_RUNTIME_ROOT:-/run/user}"
+  local runtime_dir="${runtime_root}/${user_uid}"
+  local bus_addr="unix:path=${runtime_dir}/bus"
+  if [[ ! -S "${runtime_dir}/bus" && ! -d "$runtime_dir" ]]; then
+    echo "Error: no user session for '${target_user}' (missing ${runtime_dir})." >&2
+    echo "Log in as that user, or enable lingering: sudo loginctl enable-linger ${target_user}" >&2
+    echo "Or re-run without sudo: millennium-schedule $*" >&2
+    return 1
+  fi
+
+  if command -v runuser &>/dev/null; then
+    runuser -u "$target_user" -- env \
+      "XDG_RUNTIME_DIR=${runtime_dir}" \
+      "DBUS_SESSION_BUS_ADDRESS=${bus_addr}" \
+      systemctl --user "$@"
+    return $?
+  fi
+
+  echo "Error: cannot talk to ${target_user}'s systemd user instance." >&2
+  echo "$out" >&2
+  return 1
+}
+
 get_file_owner() {
   local file="$1"
   local os

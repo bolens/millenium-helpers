@@ -336,70 +336,34 @@ else
   export TEST_SUITE_RUN=true
 fi
 
-# Interactive decline via a PTY (python3 pty works on Linux and macOS;
-# BSD script(1) on macOS lacks GNU -c and is not portable).
-if command -v python3 >/dev/null 2>&1; then
-  unset TEST_SUITE_RUN
-  confirm_out=$(
-    MOCK_BIN="$MOCK_BIN" REPO_ROOT="$REPO_ROOT" python3 - <<'PY'
-import os, pty, select, sys
-
-env = os.environ.copy()
-env["PATH"] = env["MOCK_BIN"] + os.pathsep + env.get("PATH", "")
-env.pop("TEST_SUITE_RUN", None)
-
-script = r"""
-source "$REPO_ROOT/scripts/common.sh"
-confirm_close_steam closetest false
-echo CONFIRM_RC=$?
-"""
-
-pid, fd = pty.fork()
-if pid == 0:
-    os.execvpe("bash", ["bash", "-c", script], env)
-
-output = b""
-# Answer the [y/N] prompt with "n"
-answered = False
-try:
-    while True:
-        ready, _, _ = select.select([fd], [], [], 2.0)
-        if not ready:
-            if not answered:
-                os.write(fd, b"n\n")
-                answered = True
-                continue
-            break
-        try:
-            chunk = os.read(fd, 1024)
-        except OSError:
-            break
-        if not chunk:
-            break
-        output += chunk
-        if (not answered) and b"[y/N]" in output:
-            os.write(fd, b"n\n")
-            answered = True
-finally:
-    try:
-        os.close(fd)
-    except OSError:
-        pass
-    try:
-        os.waitpid(pid, 0)
-    except ChildProcessError:
-        pass
-
-sys.stdout.buffer.write(output)
-PY
-  ) || true
+# Interactive decline: force the prompt path without requiring a PTY
+# (CI/sandboxes often cannot allocate pty devices).
+saved_test_suite="${TEST_SUITE_RUN:-}"
+unset TEST_SUITE_RUN
+confirm_out=$(
+  printf 'n\n' | CONFIRM_CLOSE_FORCE_PROMPT=1 confirm_close_steam closetest false 2>&1
+  echo "CONFIRM_RC=$?"
+)
+if [[ -n "$saved_test_suite" ]]; then
+  export TEST_SUITE_RUN="$saved_test_suite"
+else
   export TEST_SUITE_RUN=true
-  confirm_flat=$(printf '%s' "$confirm_out" | tr -d '\r')
-  assert_contains "$confirm_flat" "CONFIRM_RC=1" "confirm_close_steam declines when user answers n on a TTY"
-  assert_contains "$confirm_flat" "Aborted" "confirm_close_steam decline message mentions Aborted"
-  assert_not_contains "$confirm_flat" "Steam closed successfully" "confirm_close_steam decline does not close Steam"
 fi
+confirm_flat=$(printf '%s' "$confirm_out" | tr -d '\r')
+assert_contains "$confirm_flat" "CONFIRM_RC=1" "confirm_close_steam declines when user answers n on a TTY"
+assert_contains "$confirm_flat" "Aborted" "confirm_close_steam decline message mentions Aborted"
+assert_not_contains "$confirm_flat" "Steam closed successfully" "confirm_close_steam decline does not close Steam"
 
+# Also accept "y" on the forced-prompt path
+unset TEST_SUITE_RUN
+confirm_out=$(
+  printf 'y\n' | CONFIRM_CLOSE_FORCE_PROMPT=1 confirm_close_steam closetest false 2>&1
+  echo "CONFIRM_RC=$?"
+)
+export TEST_SUITE_RUN=true
+confirm_flat=$(printf '%s' "$confirm_out" | tr -d '\r')
+assert_contains "$confirm_flat" "CONFIRM_RC=0" "confirm_close_steam accepts y on forced prompt"
+assert_contains "$confirm_flat" "Steam closed successfully" "confirm_close_steam forced-prompt yes closes Steam"
 rm -f "${MOCK_BIN}/confirm_close.calls" "${MOCK_BIN}/getent"
 mock_cmd "runuser" 'exit 0'
 mock_cmd "pgrep" 'exit 1'
@@ -622,13 +586,15 @@ assert_equals "/mock/dscl/home" "$home_dir" "get_user_home resolves home using d
 unmock_cmd "getent"
 unmock_cmd "dscl"
 
-# 3. Fallback path using shell tilde expansion
+# 3. Fallback path using shell tilde expansion.
+# Compare against tilde expansion for the same user — $HOME can diverge
+# (e.g. root with HOME inherited from sudo/SUDO_USER).
 mock_cmd "getent" "exit 1"
 mock_cmd "dscl" "exit 1"
-# Fallback for current user should return the real $HOME
 current_user=$(id -un)
+expected_home=$(eval echo "~${current_user}")
 home_dir=$(get_user_home "$current_user")
-assert_equals "$HOME" "$home_dir" "get_user_home falls back to tilde expansion"
+assert_equals "$expected_home" "$home_dir" "get_user_home falls back to tilde expansion"
 unmock_cmd "getent"
 unmock_cmd "dscl"
 
@@ -730,6 +696,154 @@ assert_file_not_exists "${PRUNE_LIB}/millennium.bak_v1.0.0" "prune_backups delet
 unset MOCK_LIB_DIR
 export DRY_RUN=true
 rm -rf "$PRUNE_LIB"
+
+# --- sysctl_user() ---
+#
+# Direct path: non-root, or root targeting root → bare `systemctl --user`.
+# Machine path: root targeting another user → `systemctl --user -M user@.host`.
+# Fallback: machine bus unreachable → runuser with XDG_RUNTIME_DIR set.
+
+# 1) Direct path (this process's user / root→root)
+unset RUNNING_USER SUDO_USER
+mock_cmd "systemctl" 'echo "systemctl: $*"; exit 0'
+out=$(sysctl_user daemon-reload 2>&1)
+rc=$?
+assert_success "$rc" "sysctl_user daemon-reload exits 0 on direct path"
+assert_contains "$out" "systemctl: --user daemon-reload" "sysctl_user direct path invokes systemctl --user"
+assert_not_contains "$out" "-M" "sysctl_user direct path does not use --machine"
+
+mock_cmd "systemctl" 'echo "disabled"; exit 1'
+out=$(sysctl_user is-enabled millennium-update.timer 2>&1)
+rc=$?
+assert_failure "$rc" "sysctl_user preserves non-zero exit from systemctl is-enabled"
+assert_contains "$out" "disabled" "sysctl_user surfaces systemctl is-enabled output"
+
+# 2) Root → other user: prefer --machine=user@.host
+export RUNNING_USER="alice"
+mock_cmd "systemctl" '
+echo "systemctl: $*" >> "'"${MOCK_BIN}"'/systemctl.calls"
+if [[ "$*" == *"-M alice@.host"* ]]; then
+  echo "active"
+  exit 0
+fi
+echo "unexpected: $*" >&2
+exit 99
+'
+rm -f "${MOCK_BIN}/systemctl.calls" "${MOCK_BIN}/runuser.calls"
+mock_cmd "runuser" 'echo "runuser: $*" >> "'"${MOCK_BIN}"'/runuser.calls"; exit 0'
+out=$(sysctl_user is-active millennium-update.timer 2>&1)
+rc=$?
+assert_success "$rc" "sysctl_user root→user succeeds via --machine"
+assert_contains "$out" "active" "sysctl_user --machine path returns systemctl output"
+calls=$(cat "${MOCK_BIN}/systemctl.calls" 2>/dev/null || true)
+assert_contains "$calls" "--user -M alice@.host is-active millennium-update.timer" \
+  "sysctl_user root→user invokes systemctl --user -M alice@.host"
+assert_file_not_exists "${MOCK_BIN}/runuser.calls" \
+  "sysctl_user does not fall back to runuser when --machine succeeds"
+
+# 3) --machine returns a real failure (disabled): must NOT treat as bus error
+mock_cmd "systemctl" '
+echo "systemctl: $*" >> "'"${MOCK_BIN}"'/systemctl.calls"
+if [[ "$*" == *"-M alice@.host"* ]]; then
+  echo "disabled"
+  exit 1
+fi
+exit 99
+'
+rm -f "${MOCK_BIN}/systemctl.calls" "${MOCK_BIN}/runuser.calls"
+mock_cmd "runuser" 'echo "runuser: $*" >> "'"${MOCK_BIN}"'/runuser.calls"; exit 0'
+out=$(sysctl_user is-enabled millennium-update.timer 2>&1)
+rc=$?
+assert_failure "$rc" "sysctl_user preserves is-enabled failure via --machine"
+assert_contains "$out" "disabled" "sysctl_user returns disabled from --machine path"
+assert_file_not_exists "${MOCK_BIN}/runuser.calls" \
+  "sysctl_user does not fall back to runuser on ordinary is-enabled failure"
+
+# 4) --machine bus unreachable + no runtime dir → clear error (no runuser)
+mock_cmd "systemctl" '
+echo "Failed to connect to user scope bus via local transport: \$DBUS_SESSION_BUS_ADDRESS and \$XDG_RUNTIME_DIR not defined" >&2
+exit 1
+'
+# id -u alice → fixed test uid (shadow real id only for the alice lookup)
+mock_cmd "id" '
+if [[ "$1" == "-u" && "$2" == "alice" ]]; then
+  echo "4242"
+  exit 0
+fi
+# Preserve real id for euid / other queries
+exec /usr/bin/id "$@"
+'
+rm -f "${MOCK_BIN}/runuser.calls"
+mock_cmd "runuser" 'echo "runuser: $*" >> "'"${MOCK_BIN}"'/runuser.calls"; exit 0'
+unset MILLENNIUM_USER_RUNTIME_ROOT
+out=$(sysctl_user daemon-reload 2>&1)
+rc=$?
+assert_failure "$rc" "sysctl_user fails when user session runtime dir is missing"
+assert_contains "$out" "no user session for 'alice'" "sysctl_user reports missing user session"
+assert_contains "$out" "enable-linger" "sysctl_user suggests enabling linger"
+assert_file_not_exists "${MOCK_BIN}/runuser.calls" \
+  "sysctl_user does not call runuser when runtime dir is missing"
+
+# 5) --machine bus unreachable + runtime dir present → runuser fallback
+fake_runtime=$(mktemp -d)
+mkdir -p "${fake_runtime}/4242"
+export MILLENNIUM_USER_RUNTIME_ROOT="$fake_runtime"
+mock_cmd "systemctl" '
+# First invocation is the --machine attempt (captured via command substitution).
+if [[ "$*" == *"-M"* ]]; then
+  echo "Failed to connect to bus: Connection refused" >&2
+  exit 1
+fi
+# Invoked inside runuser fallback
+echo "systemctl-via-runuser: $*"
+exit 0
+'
+rm -f "${MOCK_BIN}/runuser.calls"
+mock_cmd "runuser" '
+echo "runuser: $*" >> "'"${MOCK_BIN}"'/runuser.calls"
+# Execute the remaining command (env … systemctl …) so the fallback is real
+shift  # -u
+shift  # alice
+shift  # --
+exec "$@"
+'
+out=$(sysctl_user daemon-reload 2>&1)
+rc=$?
+assert_success "$rc" "sysctl_user succeeds via runuser fallback when --machine bus is down"
+assert_contains "$out" "systemctl-via-runuser: --user daemon-reload" \
+  "sysctl_user runuser fallback runs systemctl --user"
+runuser_call=$(cat "${MOCK_BIN}/runuser.calls" 2>/dev/null || true)
+assert_contains "$runuser_call" "-u alice" "sysctl_user runuser targets alice"
+assert_contains "$runuser_call" "XDG_RUNTIME_DIR=${fake_runtime}/4242" \
+  "sysctl_user runuser sets XDG_RUNTIME_DIR for alice"
+assert_contains "$runuser_call" "DBUS_SESSION_BUS_ADDRESS=unix:path=${fake_runtime}/4242/bus" \
+  "sysctl_user runuser sets DBUS_SESSION_BUS_ADDRESS for alice"
+
+# 6) SUDO_USER is honored when RUNNING_USER is unset (sudo install/uninstall path)
+unset RUNNING_USER
+export SUDO_USER="bob"
+mock_cmd "systemctl" '
+echo "systemctl: $*" >> "'"${MOCK_BIN}"'/systemctl.calls"
+if [[ "$*" == *"-M bob@.host"* ]]; then
+  exit 0
+fi
+exit 99
+'
+rm -f "${MOCK_BIN}/systemctl.calls"
+out=$(sysctl_user daemon-reload 2>&1)
+rc=$?
+assert_success "$rc" "sysctl_user uses SUDO_USER when RUNNING_USER is unset"
+calls=$(cat "${MOCK_BIN}/systemctl.calls" 2>/dev/null || true)
+assert_contains "$calls" "-M bob@.host" "sysctl_user --machine targets SUDO_USER"
+
+# Cleanup sysctl_user test state
+unset RUNNING_USER SUDO_USER MILLENNIUM_USER_RUNTIME_ROOT
+rm -rf "$fake_runtime"
+unmock_cmd "id"
+unmock_cmd "systemctl"
+unmock_cmd "runuser"
+mock_cmd "systemctl" "exit 0"
+mock_cmd "runuser" "exit 0"
 
 print_summary
 

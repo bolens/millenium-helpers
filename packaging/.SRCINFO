@@ -1,6 +1,6 @@
 pkgbase = millennium-helpers-git
 	pkgdesc = Cross-platform utility scripts and Model Context Protocol (MCP) server for managing, upgrading, diagnosing, and controlling Millennium on Linux and Windows
-	pkgver = r114.g61b2cb2
+	pkgver = r215.g376730f
 	pkgrel = 1
 	url = https://github.com/bolens/millenium-helpers
 	install = millennium-helpers.install

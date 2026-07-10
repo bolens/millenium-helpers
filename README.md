@@ -70,7 +70,7 @@ $ millennium diag
 | Clone | `git clone … && sudo ./install.sh` |
 | Nix | `nix run github:bolens/millenium-helpers -- --help` |
 | Homebrew | `brew tap bolens/millenium-helpers https://github.com/bolens/millenium-helpers && brew install millennium-helpers` |
-| Arch (local PKGBUILD) | `cd packaging && makepkg -si` |
+| Arch (local PKGBUILD) | `make sync-pkgver && cd packaging && makepkg -si` |
 
 <details>
 <summary>Prerequisites & details</summary>
@@ -237,14 +237,16 @@ Created by `millennium-schedule setup`:
 
 Manage with `millennium-schedule config list|get|set`. File mode is set to `600` (owner read/write only).
 
-### Shell completions (Linux)
+### Shell completions
 
-The installer deploys completions for:
+**Linux / macOS** — the installer deploys completions for:
 
 - **Bash** → `/usr/share/bash-completion/completions/`
 - **Zsh** → `/usr/share/zsh/site-functions/` (needs `compinit` in `~/.zshrc`)
 - **Fish** → `/usr/share/fish/vendor_completions.d/`
 - **Nushell** → `/usr/share/nushell/completions/` or `/usr/local/share/nushell/completions/`
+
+**Windows** — `install.ps1` installs [`completions/powershell/millennium-helpers.ps1`](completions/powershell/millennium-helpers.ps1) as `~/.millennium-helpers/bin/millennium-helpers.completion.ps1` and registers a PowerShell profile hook. Restart the terminal (or dot-source the completer) for Tab completion on `millennium`, `millennium-schedule`, and the other helpers.
 
 ---
 

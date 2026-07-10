@@ -53,17 +53,40 @@ Describe "Windows Installer" {
 
             Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium-mcp.ps1") | Should -Be $true
             Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium-mcp.py") | Should -Be $true
+            Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium-helpers.completion.ps1") | Should -Be $true
+
+            $pwshProfile = Join-Path -Path $tempHome -ChildPath "Documents\PowerShell\Microsoft.PowerShell_profile.ps1"
+            $winProfile = Join-Path -Path $tempHome -ChildPath "Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1"
+            Test-Path -Path $pwshProfile | Should -Be $true
+            (Get-Content -Path $pwshProfile -Raw) | Should -BeLike "*millennium-helpers.completion.ps1*"
+            Test-Path -Path $winProfile | Should -Be $true
+            (Get-Content -Path $winProfile -Raw) | Should -BeLike "*millennium-helpers.completion.ps1*"
 
             $installOut | Should -BeLike "*Getting started*"
             $installOut | Should -BeLike "*millennium diag*"
             $installOut | Should -BeLike "*millennium upgrade*"
             $installOut | Should -BeLike "*Long names*"
 
+            # Seed scheduled-task cmdlets for uninstall coverage (including non-Windows CI)
+            function global:Get-ScheduledTask {
+                param($TaskName, $ErrorAction)
+                return [pscustomobject]@{ TaskName = "MillenniumUpdate" }
+            }
+            function global:Unregister-ScheduledTask {
+                param($TaskName, $Confirm)
+            }
+
             # 2. Run Uninstall
-            & $installScript -Uninstall
+            $uninstallOut = (& $installScript -Uninstall *>&1) | Out-String
 
             # Verify clean up
             Test-Path -Path $expectedInstallDir | Should -Be $false
+            (Get-Content -Path $pwshProfile -Raw -ErrorAction SilentlyContinue) | Should -Not -BeLike "*millennium-helpers.completion.ps1*"
+            (Get-Content -Path $winProfile -Raw -ErrorAction SilentlyContinue) | Should -Not -BeLike "*millennium-helpers.completion.ps1*"
+            $uninstallOut | Should -BeLike "*Removed scheduled task: MillenniumUpdate*"
+
+            Remove-Item -Path function:global:Get-ScheduledTask -ErrorAction SilentlyContinue
+            Remove-Item -Path function:global:Unregister-ScheduledTask -ErrorAction SilentlyContinue
 
         } finally {
             # Restore USERPROFILE

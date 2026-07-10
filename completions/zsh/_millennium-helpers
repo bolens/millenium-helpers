@@ -60,7 +60,9 @@ _millennium_helpers() {
       _arguments \
         '1:subcommand:(enable disable status setup config)' \
         '2:arg:(stable beta get set list)' \
+        {-c,--cron}'[Force use of crontab instead of systemd]' \
         {-d,--dry-run}'[Simulation mode]' \
+        {-q,--quiet}'[Suppress informational output]' \
         {-V,--version}'[Show version information]' \
         {-h,--help}'[Show help message]'
       ;;

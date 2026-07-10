@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-07-10
+
+### Added
+- PowerShell Tab completions with installer profile hooks (Windows + Scoop)
+- Cross-shell completion tests (bash/zsh/fish/nushell) and nested zsh simulation
+- Homebrew bash/zsh completion symlinks and Nushell completion install
+- Isolated prefix install/uninstall coverage in `test_install.sh`
+
+### Fixed
+- Fish completions no longer ship bare `VERSION_PLACEHOLDER` tokens
+- `sudo millennium-schedule` reaches the user systemd bus via shared `sysctl_user`
+- Uninstall disables cron as well as systemd/LaunchAgent schedulers
+- Windows uninstall removes the `MillenniumUpdate` scheduled task
+- Shared library resolution works from Homebrew-style `prefix/bin` layouts
+- Cron enable/disable under sudo targets the invoking user's crontab
+- PKGBUILD conflict cleanup docs include bare `millennium` artifacts
+
+### Changed
+- Linux installer also installs Nushell completions into the user config path
+- Release Windows zip includes `completions/powershell/`
+- Manual uninstall docs cover PowerShell hooks, state dirs, and Scoop hooks
+
 ## [2.2.1] - 2026-07-10
 
 ### Security
