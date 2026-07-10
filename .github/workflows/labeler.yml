@@ -1,0 +1,18 @@
+name: "CI: Pull Request Labeler"
+on:
+  pull_request_target:
+    types: [opened, synchronized]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  label:
+    name: Auto-Label Pull Request
+    runs-on: ubuntu-latest
+    steps:
+      - name: Labeler
+        uses: actions/labeler@v5
+        with:
+          repo-token: "${{ secrets.GITHUB_TOKEN }}"
