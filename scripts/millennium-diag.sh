@@ -204,6 +204,11 @@ fi
 out_of_date_scripts=()
 unwritable_dirs=()
 missing_skins_dirs=()
+broken_hooks=()
+missing_hooks=()
+missing_completions=()
+out_of_date_completions=()
+broken_symlinks=()
 TMP_SCRIPTS=""
 
 # Used by sourced diag_report.sh (check_scripts_integrity).
