@@ -1,42 +1,70 @@
 # GitHub PR Labeler Configuration
 # Ref: https://github.com/actions/labeler
+# Label colors/descriptions: .github/labels.yml
 
 "area: windows":
   - changed-files:
-      - any-glob-to-any-file: 'scripts/windows/**/*'
-      - any-glob-to-any-file: 'tests/windows/**/*'
-      - any-glob-to-any-file: 'packaging/scoop/**/*'
-      - any-glob-to-any-file: 'packaging/winget/**/*'
+      - any-glob-to-any-file:
+          - "scripts/windows/**"
+          - "tests/windows/**"
 
-"area: nix":
+"area: scripts":
   - changed-files:
-      - any-glob-to-any-file: 'flake.nix'
-      - any-glob-to-any-file: 'flake.lock'
-      - any-glob-to-any-file: 'default.nix'
+      - any-glob-to-any-file:
+          - "scripts/*.sh"
+          - "scripts/lib/**"
+          - "scripts/common.sh"
+
+"area: packaging":
+  - any:
+      - changed-files:
+          - any-glob-to-any-file:
+              - "packaging/scoop/**"
+              - "packaging/winget/**"
+      - head-branch:
+          - "^chore/packaging-"
 
 "area: homebrew":
   - changed-files:
-      - any-glob-to-any-file: 'Formula/**/*'
+      - any-glob-to-any-file: "Formula/**"
 
 "area: archlinux":
   - changed-files:
-      - any-glob-to-any-file: 'packaging/PKGBUILD'
-      - any-glob-to-any-file: 'packaging/.SRCINFO'
-      - any-glob-to-any-file: 'packaging/*.install'
-      - any-glob-to-any-file: 'packaging/*.sudoers'
+      - any-glob-to-any-file:
+          - "packaging/PKGBUILD"
+          - "packaging/.SRCINFO"
+          - "packaging/*.install"
+          - "packaging/*.sudoers"
+
+"area: nix":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "flake.nix"
+          - "flake.lock"
+          - "default.nix"
 
 "area: mcp":
   - changed-files:
-      - any-glob-to-any-file: 'scripts/millennium-mcp.py'
-      - any-glob-to-any-file: 'tests/behavioral/test_mcp.sh'
+      - any-glob-to-any-file:
+          - "scripts/millennium-mcp.py"
+          - "scripts/windows/millennium-mcp.ps1"
+          - "tests/behavioral/test_mcp.sh"
+          - "tests/windows/millennium-mcp.Tests.ps1"
 
 "area: docs":
   - changed-files:
-      - any-glob-to-any-file: 'README.md'
-      - any-glob-to-any-file: 'docs/**/*'
-      - any-glob-to-any-file: 'man/**/*'
+      - any-glob-to-any-file:
+          - "README.md"
+          - "CONTRIBUTING.md"
+          - "docs/**"
+          - "man/**"
+
+"area: tests":
+  - changed-files:
+      - any-glob-to-any-file: "tests/**"
 
 "area: ci-cd":
   - changed-files:
-      - any-glob-to-any-file: '.github/workflows/**/*'
-      - any-glob-to-any-file: 'scripts/ci/**/*'
+      - any-glob-to-any-file:
+          - ".github/**"
+          - "scripts/ci/**"

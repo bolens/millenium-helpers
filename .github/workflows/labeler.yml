@@ -1,14 +1,16 @@
 name: "CI: Pull Request Labeler"
+
 on:
   pull_request_target:
-    types: [opened, synchronize]
+    types: [opened, synchronize, reopened, ready_for_review]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
   contents: read
+  issues: write
   pull-requests: write
 
 jobs:
@@ -16,7 +18,28 @@ jobs:
     name: Auto-Label Pull Request
     runs-on: ubuntu-latest
     steps:
-      - name: Labeler
+      - name: Checkout base (label definitions)
+        uses: actions/checkout@v7
+        with:
+          # pull_request_target: use base branch only (trusted).
+          ref: ${{ github.base_ref }}
+          persist-credentials: false
+
+      - name: Sync label colors and descriptions
+        if: hashFiles('.github/labels.yml') != ''
+        uses: crazy-max/ghaction-github-labeler@v6.0.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          yaml-file: .github/labels.yml
+          # Never delete labels from PRs; push workflow owns deletions.
+          skip-delete: true
+
+      - name: Apply path and branch labels
         uses: actions/labeler@v5
         with:
-          repo-token: "${{ secrets.GITHUB_TOKEN }}"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          configuration-path: .github/labeler.yml
+          # Drop area labels when matching paths leave the PR.
+          sync-labels: true
+          # Match .github paths (needed for area: ci-cd).
+          dot: true
