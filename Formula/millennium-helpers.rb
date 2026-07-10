@@ -73,8 +73,8 @@ class MillenniumHelpers < Formula
 
   test do
     system "#{bin}/millennium-diag", "--help"
-    assert_predicate lib/"millennium-helpers/common.sh", :exist?
-    assert_predicate bash_completion/"millennium", :exist?
-    assert_predicate zsh_completion/"_millennium", :exist?
+    assert_path_exists lib/"millennium-helpers/common.sh"
+    assert_path_exists bash_completion/"millennium"
+    assert_path_exists zsh_completion/"_millennium"
   end
 end

@@ -69,6 +69,8 @@ Windows: run the Pester suite under `tests/windows/` on a Windows host or CI.
 
 `VERSION` at the repo root is the helpers package version (aligned with Scoop, Winget, Homebrew, and Nix). Bump it when cutting a release; installers copy it next to the shared libraries so `--version` / `-Version` work after install. Prefer git tags `vX.Y.Z` for releases.
 
+**Cutting a release:** follow [docs/release_runbook.md](docs/release_runbook.md) end-to-end (local `make lint` / `make test` / `make test-windows`, version bump, CI green, then tag). Do not tag until ShellCheck and the test suite pass locally and on `main`.
+
 Tagging `vX.Y.Z` runs the release workflow:
 
 1. Wait for the Test Suite on that commit

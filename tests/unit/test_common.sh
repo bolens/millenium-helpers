@@ -760,11 +760,13 @@ assert_file_not_exists "${MOCK_BIN}/runuser.calls" \
   "sysctl_user does not fall back to runuser on ordinary is-enabled failure"
 
 # 4) --machine bus unreachable + no runtime dir → clear error (no runuser)
+# shellcheck disable=SC2016 # mock body must stay single-quoted so vars expand at runtime
 mock_cmd "systemctl" '
 echo "Failed to connect to user scope bus via local transport: \$DBUS_SESSION_BUS_ADDRESS and \$XDG_RUNTIME_DIR not defined" >&2
 exit 1
 '
 # id -u alice → fixed test uid (shadow real id only for the alice lookup)
+# shellcheck disable=SC2016 # mock body must stay single-quoted so vars expand at runtime
 mock_cmd "id" '
 if [[ "$1" == "-u" && "$2" == "alice" ]]; then
   echo "4242"

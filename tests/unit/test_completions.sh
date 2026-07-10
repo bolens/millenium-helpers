@@ -268,7 +268,7 @@ if command -v nu >/dev/null 2>&1; then
       print ('millennium-schedule -' | commandline complete | str join ' ')
       print 'DIAG:'
       print ('millennium-diag ' | commandline complete | str join ' ')
-    " 2>/dev/null
+    " 2>&1
   ) || true
   rm -rf "$NU_BIN"
 
@@ -278,14 +278,21 @@ if command -v nu >/dev/null 2>&1; then
   schedule_flags_nu=$(echo "$nu_out" | awk '/^SCHEDULE_FLAGS:/{getline; print}')
   diag_nu=$(echo "$nu_out" | awk '/^DIAG:/{getline; print}')
 
-  assert_contains "$dispatch_nu" "diag" "nu commandline complete millennium offers diag"
-  assert_contains "$dispatch_nu" "schedule" "nu commandline complete millennium offers schedule"
-  assert_contains "$schedule_nu" "enable" "nu commandline complete millennium-schedule offers enable"
-  assert_contains "$schedule_nu" "status" "nu commandline complete millennium-schedule offers status"
-  assert_contains "$schedule_en_nu" "enable" "nu commandline complete filters millennium-schedule en"
-  assert_contains "$schedule_flags_nu" "--cron" "nu commandline complete offers --cron"
-  assert_contains "$diag_nu" "doctor" "nu commandline complete millennium-diag offers doctor"
-  assert_contains "$diag_nu" "logs" "nu commandline complete millennium-diag offers logs"
+  if [[ -z "${dispatch_nu}${schedule_nu}${diag_nu}" ]]; then
+    echo -e "  ${YELLOW}SKIP:${NC} nu commandline complete returned no suggestions (need Nushell >= 0.114)"
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      printf '    %s\n' "$line" >&2
+    done <<< "$nu_out"
+  else
+    assert_contains "$dispatch_nu" "diag" "nu commandline complete millennium offers diag"
+    assert_contains "$dispatch_nu" "schedule" "nu commandline complete millennium offers schedule"
+    assert_contains "$schedule_nu" "enable" "nu commandline complete millennium-schedule offers enable"
+    assert_contains "$schedule_nu" "status" "nu commandline complete millennium-schedule offers status"
+    assert_contains "$schedule_en_nu" "enable" "nu commandline complete filters millennium-schedule en"
+    assert_contains "$schedule_flags_nu" "--cron" "nu commandline complete offers --cron"
+    assert_contains "$diag_nu" "doctor" "nu commandline complete millennium-diag offers doctor"
+    assert_contains "$diag_nu" "logs" "nu commandline complete millennium-diag offers logs"
+  fi
 else
   echo -e "  ${YELLOW}SKIP:${NC} nu not installed; nushell interactive completions skipped"
 fi

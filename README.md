@@ -255,6 +255,7 @@ Manage with `millennium-schedule config list|get|set`. File mode is set to `600`
 | Topic | Doc |
 | --- | --- |
 | Dry-run & manual uninstall | [docs/uninstall_dryrun.md](docs/uninstall_dryrun.md) |
+| Release runbook | [docs/release_runbook.md](docs/release_runbook.md) |
 | MCP server setup & tools | [docs/mcp.md](docs/mcp.md) |
 | Security policy | [SECURITY.md](SECURITY.md) |
 | Security & troubleshooting | [docs/security_troubleshooting.md](docs/security_troubleshooting.md) |

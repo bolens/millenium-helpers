@@ -376,7 +376,7 @@ formula=$(cat "${REPO_ROOT}/Formula/millennium-helpers.rb")
 assert_contains "$formula" 'ln_sf "millennium-helpers", bash_completion/cmd' "Formula creates bash completion symlinks"
 assert_contains "$formula" 'ln_sf "_millennium-helpers", zsh_completion/"_#{cmd}"' "Formula creates zsh completion symlinks"
 assert_contains "$formula" 'share/"nushell/completions"' "Formula installs nushell completions"
-assert_contains "$formula" 'assert_predicate bash_completion/"millennium"' "Formula test checks millennium bash completion"
+assert_contains "$formula" 'assert_path_exists bash_completion/"millennium"' "Formula test checks millennium bash completion"
 
 pkgbuild=$(cat "${REPO_ROOT}/packaging/PKGBUILD")
 assert_contains "$pkgbuild" "/usr/local/bin/millennium " "PKGBUILD prepare mentions bare millennium binary"

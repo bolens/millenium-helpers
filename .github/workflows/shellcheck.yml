@@ -33,3 +33,5 @@ jobs:
         uses: ludeeus/action-shellcheck@2.0.0
         with:
           ignore_paths: completions/ packaging/
+          # zsh_completion_sim.zsh is zsh-only; ShellCheck cannot lint it (SC1071).
+          ignore_names: zsh_completion_sim.zsh

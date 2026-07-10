@@ -39,7 +39,8 @@ jobs:
       - name: Install Nushell
         uses: hustcer/setup-nu@v3
         with:
-          version: '0.113.1'
+          # 0.114+ supports `string | commandline complete` used by test_completions.sh
+          version: '0.114.0'
 
       - name: Bash completion (syntax + source)
         run: |
