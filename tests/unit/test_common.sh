@@ -439,11 +439,11 @@ assert_contains "$fail_tips" "millennium diag" "print_upgrade_failure_tips sugge
 assert_contains "$fail_tips" "--yes" "print_upgrade_failure_tips mentions --yes"
 
 # --- quiet mode (log_info) ---
-QUIET=true
+export QUIET=true
 quiet_out=$(log_info "should-be-silent" 2>&1)
 assert_equals "" "$quiet_out" "log_info is silent when QUIET=true"
-QUIET=false
-MILLENNIUM_QUIET=1
+export QUIET=false
+export MILLENNIUM_QUIET=1
 quiet_out=$(log_info "should-be-silent-env" 2>&1)
 assert_equals "" "$quiet_out" "log_info is silent when MILLENNIUM_QUIET is set"
 unset MILLENNIUM_QUIET

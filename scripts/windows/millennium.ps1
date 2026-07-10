@@ -125,7 +125,7 @@ switch -Regex ($Command) {
         Invoke-Sibling -Name "millennium-$Command" -ArgsList $Rest
     }
     Default {
-        Write-Error "Unknown command: $Command"
+        Write-Host "Unknown command: $Command"
         $suggestion = Get-CommandSuggestion -InputCmd $Command
         if ($suggestion) {
             Write-Host "Did you mean '$suggestion'?"
