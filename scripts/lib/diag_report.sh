@@ -321,8 +321,22 @@ check_helper_updates() {
     local latest_sha="main"
     local api_data
     if api_data=$(curl -sL --retry 3 --retry-delay 2 "https://api.github.com/repos/bolens/millenium-helpers/commits/main" 2>/dev/null); then
-      local parsed_sha
-      parsed_sha=$(echo "$api_data" | grep -m 1 '"sha":' | cut -d'"' -f4 || true)
+      local parsed_sha=""
+      # Prefer python/jq over echo|grep -m1: grep closes early and can make
+      # bash emit "Broken pipe" on stderr, which pollutes --json 2>&1 captures.
+      if command -v python3 &>/dev/null; then
+        parsed_sha=$(printf '%s' "$api_data" | python3 -c "
+import json, sys
+try:
+    print(json.load(sys.stdin).get('sha', ''))
+except Exception:
+    pass
+" 2>/dev/null || true)
+      elif command -v jq &>/dev/null; then
+        parsed_sha=$(printf '%s' "$api_data" | jq -r '.sha // empty' 2>/dev/null || true)
+      else
+        parsed_sha=$(grep -m 1 '"sha":' <<<"$api_data" | cut -d'"' -f4 || true)
+      fi
       if [[ "$parsed_sha" =~ ^[0-9a-f]{40}$ ]]; then
         latest_sha="$parsed_sha"
       fi

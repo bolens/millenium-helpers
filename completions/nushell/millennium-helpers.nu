@@ -97,4 +97,4 @@ export extern "millennium" [
 
 def _millennium_dispatcher_commands [] {
   [ "diag", "upgrade", "schedule", "theme", "repair", "purge", "mcp", "help" ]
-]
+}
