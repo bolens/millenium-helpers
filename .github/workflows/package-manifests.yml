@@ -73,7 +73,9 @@ jobs:
         shell: pwsh
         run: |
           $yaml = Get-Content packaging/winget/bolens.millenniumhelpers.installer.yaml -Raw
-          if ($yaml -match 'InstallerSha256:\s*([0-9a-fA-F]{64})') {
+          # Allow optional quotes: all-zero placeholder is quoted so YAML
+          # does not parse it as integer 0.
+          if ($yaml -match 'InstallerSha256:\s*"?([0-9a-fA-F]{64})"?') {
             $sha = $Matches[1]
             $isPlaceholder = ($sha -eq ('0' * 64))
             $placeholder = if ($isPlaceholder) { 'true' } else { 'false' }

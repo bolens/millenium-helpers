@@ -409,17 +409,22 @@ mock_cmd "steam" 'exit 0'
 # shellcheck source=../../scripts/lib/diag_report.sh
 source "${REPO_ROOT}/scripts/lib/diag_report.sh"
 
-BINARIES_OK=true HOOKS_OK=true FLATPAK_OK=true PERMISSIONS_OK=true SKINS_DIR_OK=true \
-SUDOERS_OK=true TIMER_ACTIVE=true LINGER_OK=true SCRIPTS_UP_TO_DATE=true \
-COMPLETIONS_OK=true CLEAN_OF_OBSOLETE=true RUNNING_USER=testuser \
-  next_out=$(print_diag_next_steps 2>&1)
+# Flags are read as globals inside print_diag_next_steps (not lexical locals).
+next_out=$(
+  BINARIES_OK=true HOOKS_OK=true FLATPAK_OK=true PERMISSIONS_OK=true SKINS_DIR_OK=true \
+  SUDOERS_OK=true TIMER_ACTIVE=true LINGER_OK=true SCRIPTS_UP_TO_DATE=true \
+  COMPLETIONS_OK=true CLEAN_OF_OBSOLETE=true RUNNING_USER=testuser \
+  print_diag_next_steps 2>&1
+)
 assert_contains "$next_out" "No issues detected" "print_diag_next_steps reports healthy when all flags are ok"
 assert_contains "$next_out" "millennium-schedule status" "print_diag_next_steps healthy tip mentions schedule status"
 
-BINARIES_OK=false HOOKS_OK=false FLATPAK_OK=true PERMISSIONS_OK=true SKINS_DIR_OK=true \
-SUDOERS_OK=true TIMER_ACTIVE=false LINGER_OK=true SCRIPTS_UP_TO_DATE=true \
-COMPLETIONS_OK=true CLEAN_OF_OBSOLETE=true RUNNING_USER=testuser \
-  next_out=$(print_diag_next_steps 2>&1)
+next_out=$(
+  BINARIES_OK=false HOOKS_OK=false FLATPAK_OK=true PERMISSIONS_OK=true SKINS_DIR_OK=true \
+  SUDOERS_OK=true TIMER_ACTIVE=false LINGER_OK=true SCRIPTS_UP_TO_DATE=true \
+  COMPLETIONS_OK=true CLEAN_OF_OBSOLETE=true RUNNING_USER=testuser \
+  print_diag_next_steps 2>&1
+)
 assert_contains "$next_out" "issue(s) detected" "print_diag_next_steps reports issue count when flags fail"
 assert_contains "$next_out" "millennium-diag doctor" "print_diag_next_steps suggests doctor"
 assert_contains "$next_out" "millennium-upgrade" "print_diag_next_steps suggests upgrade for bad binaries"
