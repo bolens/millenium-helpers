@@ -718,6 +718,24 @@ rc=$?
 assert_failure "$rc" "sysctl_user preserves non-zero exit from systemctl is-enabled"
 assert_contains "$out" "disabled" "sysctl_user surfaces systemctl is-enabled output"
 
+# 2–6) Root → other user. CI runners are not root, so fake euid 0 via id.
+# shellcheck disable=SC2016 # mock body must stay single-quoted so vars expand at runtime
+mock_cmd "id" '
+if [[ "$1" == "-u" && $# -eq 1 ]]; then
+  echo "0"
+  exit 0
+fi
+if [[ "$1" == "-u" && "$2" == "alice" ]]; then
+  echo "4242"
+  exit 0
+fi
+if [[ "$1" == "-u" && "$2" == "bob" ]]; then
+  echo "4243"
+  exit 0
+fi
+exec /usr/bin/id "$@"
+'
+
 # 2) Root → other user: prefer --machine=user@.host
 export RUNNING_USER="alice"
 mock_cmd "systemctl" '
@@ -764,16 +782,6 @@ assert_file_not_exists "${MOCK_BIN}/runuser.calls" \
 mock_cmd "systemctl" '
 echo "Failed to connect to user scope bus via local transport: \$DBUS_SESSION_BUS_ADDRESS and \$XDG_RUNTIME_DIR not defined" >&2
 exit 1
-'
-# id -u alice → fixed test uid (shadow real id only for the alice lookup)
-# shellcheck disable=SC2016 # mock body must stay single-quoted so vars expand at runtime
-mock_cmd "id" '
-if [[ "$1" == "-u" && "$2" == "alice" ]]; then
-  echo "4242"
-  exit 0
-fi
-# Preserve real id for euid / other queries
-exec /usr/bin/id "$@"
 '
 rm -f "${MOCK_BIN}/runuser.calls"
 mock_cmd "runuser" 'echo "runuser: $*" >> "'"${MOCK_BIN}"'/runuser.calls"; exit 0'

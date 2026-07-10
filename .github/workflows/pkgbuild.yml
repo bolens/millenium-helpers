@@ -8,13 +8,14 @@ on:
       - 'packaging/.SRCINFO'
       - 'packaging/*.install'
       - 'packaging/*.sudoers'
+      - 'scripts/ci/update-pkgbuild-pkgver.sh'
+      - 'VERSION'
       - 'scripts/millennium*.sh'
       - 'scripts/millennium-mcp.py'
       - 'scripts/common.sh'
       - 'scripts/lib/**'
       - 'completions/**'
       - 'man/**'
-      - 'LICENSE'
       - '.github/workflows/pkgbuild.yml'
   pull_request:
     branches: [ main ]
@@ -23,13 +24,14 @@ on:
       - 'packaging/.SRCINFO'
       - 'packaging/*.install'
       - 'packaging/*.sudoers'
+      - 'scripts/ci/update-pkgbuild-pkgver.sh'
+      - 'VERSION'
       - 'scripts/millennium*.sh'
       - 'scripts/millennium-mcp.py'
       - 'scripts/common.sh'
       - 'scripts/lib/**'
       - 'completions/**'
       - 'man/**'
-      - 'LICENSE'
       - '.github/workflows/pkgbuild.yml'
 
 concurrency:

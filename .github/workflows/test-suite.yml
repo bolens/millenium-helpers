@@ -10,18 +10,28 @@ on:
       - 'scripts/**'
       - 'tests/**'
       - 'completions/**'
+      - 'man/**'
       - 'install.sh'
       - 'VERSION'
+      - 'Formula/**'
+      - 'packaging/**'
       - '.github/workflows/test-suite.yml'
+      - '.github/workflows/release.yml'
+      - '.github/workflows/package-install-windows.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'scripts/**'
       - 'tests/**'
       - 'completions/**'
+      - 'man/**'
       - 'install.sh'
       - 'VERSION'
+      - 'Formula/**'
+      - 'packaging/**'
       - '.github/workflows/test-suite.yml'
+      - '.github/workflows/release.yml'
+      - '.github/workflows/package-install-windows.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

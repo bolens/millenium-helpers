@@ -106,10 +106,42 @@ assert_contains "$release_gate" "test-suite.yml" "release gate waits on test-sui
 assert_contains "$release_gate" "shellcheck.yml" "release gate waits on shellcheck.yml"
 assert_contains "$release_gate" "completions.yml" "release gate waits on completions.yml"
 
-# Scoop CI staging must mirror the same MCP + PowerShell completions payload
+# --- Workflow path-filter sanity (avoid docs-only / LICENSE over-triggers) ---
 scoop_ci=$(cat "${REPO_ROOT}/.github/workflows/package-install-windows.yml")
 assert_contains "$scoop_ci" "millennium-mcp.py" "Scoop CI stages millennium-mcp.py beside scripts/windows"
 assert_contains "$scoop_ci" "completions\\powershell" "Scoop CI stages PowerShell completions in the trimmed zip"
 assert_not_contains "$scoop_ci" "- 'README.md'" "Scoop CI path filters do not trigger on README-only docs edits"
+assert_not_contains "$scoop_ci" "- 'LICENSE'" "Scoop CI path filters do not trigger on LICENSE-only edits"
+
+nix_wf=$(cat "${REPO_ROOT}/.github/workflows/nix.yml")
+assert_contains "$nix_wf" "- 'VERSION'" "Nix CI path filters include VERSION"
+assert_not_contains "$nix_wf" "- 'LICENSE'" "Nix CI path filters do not trigger on LICENSE-only edits"
+
+pkg_wf=$(cat "${REPO_ROOT}/.github/workflows/pkgbuild.yml")
+assert_contains "$pkg_wf" "- 'VERSION'" "PKGBUILD CI path filters include VERSION"
+assert_not_contains "$pkg_wf" "- 'LICENSE'" "PKGBUILD CI path filters do not trigger on LICENSE-only edits"
+
+suite_wf=$(cat "${REPO_ROOT}/.github/workflows/test-suite.yml")
+assert_contains "$suite_wf" "- 'man/**'" "Test suite path filters include man pages"
+assert_contains "$suite_wf" "- 'Formula/**'" "Test suite path filters include Formula"
+assert_contains "$suite_wf" "- 'packaging/**'" "Test suite path filters include all packaging manifests"
+assert_contains "$suite_wf" "- '.github/workflows/release.yml'" "Test suite path filters include release.yml"
+
+ps_lint=$(cat "${REPO_ROOT}/.github/workflows/powershell-lint.yml")
+assert_contains "$ps_lint" "completions/powershell" "PowerShell lint path filters include completions/powershell"
+
+# Remaining packaging CIs: no docs/LICENSE over-triggers; VERSION where the package embeds it
+for wf in homebrew.yml package-manifests.yml version-sync.yml man-pages.yml python-lint.yml; do
+  body=$(cat "${REPO_ROOT}/.github/workflows/${wf}")
+  assert_not_contains "$body" "- 'LICENSE'" "${wf} path filters do not trigger on LICENSE-only edits"
+  assert_not_contains "$body" "- 'README.md'" "${wf} path filters do not trigger on README-only docs edits"
+done
+
+hb=$(cat "${REPO_ROOT}/.github/workflows/homebrew.yml")
+assert_contains "$hb" "- 'Formula/**'" "Homebrew CI path filters include Formula"
+
+vs=$(cat "${REPO_ROOT}/.github/workflows/version-sync.yml")
+assert_contains "$vs" "- 'VERSION'" "version-sync path filters include VERSION"
+assert_contains "$vs" "- 'Formula/**'" "version-sync path filters include Formula"
 
 print_summary

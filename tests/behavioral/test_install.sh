@@ -329,7 +329,11 @@ assert_file_exists "${PREFIX_LIB}/VERSION" "isolated install installs VERSION in
 assert_file_exists "${PREFIX_BASH}/millennium-helpers" "isolated install installs bash completion base"
 assert_file_exists "${PREFIX_ZSH}/_millennium-helpers" "isolated install installs zsh completion base"
 assert_file_exists "${PREFIX_NU}/millennium-helpers.nu" "isolated install installs nushell completions"
-assert_file_exists "$PREFIX_SUDOERS" "isolated install writes sudoers file"
+if [[ "$(uname)" != "Darwin" ]]; then
+  assert_file_exists "$PREFIX_SUDOERS" "isolated install writes sudoers file"
+else
+  assert_file_not_exists "$PREFIX_SUDOERS" "isolated install skips sudoers on macOS"
+fi
 
 # Smoke: installed script resolves shared lib via prefix-relative path
 out=$("${PREFIX_BIN}/millennium-diag" --help 2>&1)
@@ -365,7 +369,9 @@ assert_file_not_exists "${PREFIX_LIB}/common.sh" "isolated uninstall removes sha
 assert_file_not_exists "${PREFIX_BASH}/millennium-helpers" "isolated uninstall removes bash completion base"
 assert_file_not_exists "${PREFIX_ZSH}/_millennium-helpers" "isolated uninstall removes zsh completion base"
 assert_file_not_exists "${PREFIX_NU}/millennium-helpers.nu" "isolated uninstall removes nushell completions"
-assert_file_not_exists "$PREFIX_SUDOERS" "isolated uninstall removes sudoers file"
+if [[ "$(uname)" != "Darwin" ]]; then
+  assert_file_not_exists "$PREFIX_SUDOERS" "isolated uninstall removes sudoers file"
+fi
 
 rm -rf "$PREFIX"
 rm -f "${MOCK_BIN}/id" "${MOCK_BIN}/visudo" "${MOCK_BIN}/chown" "${MOCK_BIN}/systemctl" "${MOCK_BIN}/crontab"

@@ -6,26 +6,26 @@ on:
     paths:
       - '**.nix'
       - 'flake.lock'
+      - 'VERSION'
       - 'scripts/millennium*.sh'
       - 'scripts/millennium-mcp.py'
       - 'scripts/common.sh'
       - 'scripts/lib/**'
       - 'completions/**'
       - 'man/**'
-      - 'LICENSE'
       - '.github/workflows/nix.yml'
   pull_request:
     branches: [ main ]
     paths:
       - '**.nix'
       - 'flake.lock'
+      - 'VERSION'
       - 'scripts/millennium*.sh'
       - 'scripts/millennium-mcp.py'
       - 'scripts/common.sh'
       - 'scripts/lib/**'
       - 'completions/**'
       - 'man/**'
-      - 'LICENSE'
       - '.github/workflows/nix.yml'
 
 concurrency:
