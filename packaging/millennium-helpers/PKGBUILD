@@ -19,7 +19,7 @@ install=millennium-helpers.install
 backup=('etc/sudoers.d/millennium-helpers')
 source=("${url}/releases/download/v${pkgver}/millennium-helpers-linux.tar.gz"
         "millennium-helpers.sudoers")
-sha256sums=('ff0321cf4032fb4b54682183a12686cbf8147a66be2e35109e14365515f9e2e3'
+sha256sums=('784a00921545d881256fa7fc89d75189fb01f8eba7b6f526a091850db060cec2'
             'd2a3e23decbd8d3e8ec59919f3bc244be21b9a1f6fa5e70ddd039243b7a87c9d')
 
 prepare() {
