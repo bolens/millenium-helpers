@@ -354,7 +354,7 @@ rotate_logs() {
 
   local max_size=$((5 * 1024 * 1024)) # 5MB
   local file_size
-  file_size=$(stat -c %s "$log_file" 2>/dev/null || echo 0)
+  file_size=$(get_file_size "$log_file")
 
   if [[ "$file_size" -gt "$max_size" ]]; then
     # Rotate older logs

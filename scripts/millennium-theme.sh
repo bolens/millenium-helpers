@@ -136,8 +136,8 @@ _resolve_theme_dir() {
   local component="$1"
   local candidate="${SKINS_DIR}/${component}"
   local resolved resolved_skins
-  resolved="$(realpath -m -- "$candidate")"
-  resolved_skins="$(realpath -m -- "$SKINS_DIR")"
+  resolved="$(portable_realpath_m "$candidate")"
+  resolved_skins="$(portable_realpath_m "$SKINS_DIR")"
   if [[ "$resolved" != "$resolved_skins" && "$resolved" != "${resolved_skins}/"* ]]; then
     echo -e "${RED}Error: Resolved theme path '${resolved}' escapes the skins directory.${NC}" >&2
     exit 1

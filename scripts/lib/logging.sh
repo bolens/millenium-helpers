@@ -184,3 +184,52 @@ get_user_home() {
   echo "$home"
 }
 
+get_file_owner() {
+  local file="$1"
+  if [[ "$(uname)" == "Darwin" ]]; then
+    stat -f '%Su' "$file" 2>/dev/null || echo ""
+  else
+    stat -c '%U' "$file" 2>/dev/null || echo ""
+  fi
+}
+
+get_file_mtime() {
+  local file="$1"
+  if [[ "$(uname)" == "Darwin" ]]; then
+    stat -f '%m' "$file" 2>/dev/null || echo 0
+  else
+    stat -c '%Y' "$file" 2>/dev/null || echo 0
+  fi
+}
+
+get_file_size() {
+  local file="$1"
+  if [[ "$(uname)" == "Darwin" ]]; then
+    stat -f '%z' "$file" 2>/dev/null || echo 0
+  else
+    stat -c '%s' "$file" 2>/dev/null || echo 0
+  fi
+}
+
+get_file_perms() {
+  local file="$1"
+  if [[ "$(uname)" == "Darwin" ]]; then
+    stat -f '%Lp' "$file" 2>/dev/null || echo ""
+  else
+    stat -c '%a' "$file" 2>/dev/null || echo ""
+  fi
+}
+
+portable_realpath_m() {
+  local target_path="$1"
+  if [[ -e "$target_path" ]]; then
+    realpath "$target_path" 2>/dev/null || python3 -c "import os, sys; print(os.path.realpath(sys.argv[1]))" "$target_path"
+  else
+    local parent dir_base resolved_parent
+    parent=$(dirname "$target_path")
+    dir_base=$(basename "$target_path")
+    resolved_parent=$(realpath "$parent" 2>/dev/null || python3 -c "import os, sys; print(os.path.realpath(sys.argv[1]))" "$parent")
+    echo "${resolved_parent}/${dir_base}"
+  fi
+}
+

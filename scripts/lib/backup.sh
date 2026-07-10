@@ -89,7 +89,8 @@ prune_backups() {
 
     for b in "${sorted_backups[@]}"; do
       local mtime
-      if mtime=$(stat -c %Y "$b" 2>/dev/null); then
+      mtime=$(get_file_mtime "$b")
+      if [[ "$mtime" -gt 0 ]]; then
         if [[ "$mtime" -lt "$limit_sec" ]]; then
           if [[ "$DRY_RUN" == "true" ]]; then
             echo -e "${YELLOW}[DRY RUN] Would delete old backup: ${b}${NC}"

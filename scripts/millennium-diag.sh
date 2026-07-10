@@ -238,7 +238,7 @@ if [[ "$COMMAND" == "logs" ]]; then
   latest_log=""
   latest_mtime=0
   for f in "${log_files[@]}"; do
-    mtime=$(stat -c '%Y' "$f" 2>/dev/null || echo 0)
+    mtime=$(get_file_mtime "$f")
     if (( mtime > latest_mtime )); then
       latest_mtime=$mtime
       latest_log=$f
@@ -447,7 +447,8 @@ check_directory_permissions() {
 
   if [[ -d "$millennium_user_config" ]]; then
     local config_owner
-    config_owner=$(stat -c '%U' "$millennium_user_config" 2>/dev/null || echo "unknown")
+    config_owner=$(get_file_owner "$millennium_user_config")
+    [[ -z "$config_owner" ]] && config_owner="unknown"
     if [[ ! -w "$millennium_user_config" ]]; then
       PERMISSIONS_OK=false
       unwritable_dirs+=("$millennium_user_config")
@@ -470,7 +471,8 @@ check_directory_permissions() {
     
     if [[ -d "$skins_dir" ]]; then
       local skins_owner
-      skins_owner=$(stat -c '%U' "$skins_dir" 2>/dev/null || echo "unknown")
+      skins_owner=$(get_file_owner "$skins_dir")
+      [[ -z "$skins_owner" ]] && skins_owner="unknown"
       if [[ ! -w "$skins_dir" ]]; then
         PERMISSIONS_OK=false
         unwritable_dirs+=("$skins_dir")
@@ -484,7 +486,8 @@ check_directory_permissions() {
       parent_dir=$(dirname "$skins_dir")
       if [[ -d "$parent_dir" ]]; then
         local parent_owner
-        parent_owner=$(stat -c '%U' "$parent_dir" 2>/dev/null || echo "unknown")
+        parent_owner=$(get_file_owner "$parent_dir")
+        [[ -z "$parent_owner" ]] && parent_owner="unknown"
         if [[ ! -w "$parent_dir" ]]; then
           PERMISSIONS_OK=false
           unwritable_dirs+=("$parent_dir")

@@ -40,7 +40,7 @@ _is_safe_relaunch_state_file() {
   [[ -L "$state_file" ]] && return 1
   [[ -f "$state_file" ]] || return 1
   local owner
-  owner="$(stat -c '%U' "$state_file" 2>/dev/null || true)"
+  owner="$(get_file_owner "$state_file")"
   [[ -z "$owner" || "$owner" == "$target_user" || "$owner" == "root" ]]
 }
 
