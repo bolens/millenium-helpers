@@ -20,7 +20,6 @@ concurrency:
 
 permissions:
   contents: read
-  security-events: write
 
 jobs:
   psscriptanalyzer:
@@ -30,36 +29,33 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
 
-      - name: Run PSScriptAnalyzer (scripts/windows)
-        uses: microsoft/psscriptanalyzer-action@v1.1
-        with:
-          path: scripts/windows
-          recurse: true
-          severity: '"Error"'
-          enableExit: true
-          excludeRule: '"PSAvoidUsingWriteHost","PSUseApprovedVerbs","PSAvoidUsingCmdletAliases","PSUseShouldProcessForStateChangingFunctions"'
-          output: results-windows.sarif
+      # Invoke-ScriptAnalyzer directly — avoids microsoft/psscriptanalyzer-action's
+      # hard dependency on ConvertToSARIF (PSGallery install flakes).
+      - name: Run PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+          Import-Module PSScriptAnalyzer
 
-      - name: Run PSScriptAnalyzer (completions/powershell)
-        uses: microsoft/psscriptanalyzer-action@v1.1
-        with:
-          path: completions/powershell
-          recurse: true
-          severity: '"Error"'
-          enableExit: true
-          excludeRule: '"PSAvoidUsingWriteHost","PSUseApprovedVerbs","PSAvoidUsingCmdletAliases","PSUseShouldProcessForStateChangingFunctions"'
-          output: results-completions.sarif
-
-      - name: Upload SARIF (windows)
-        if: always()
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: results-windows.sarif
-        continue-on-error: true
-
-      - name: Upload SARIF (completions)
-        if: always()
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: results-completions.sarif
-        continue-on-error: true
+          $exclude = @(
+            'PSAvoidUsingWriteHost',
+            'PSUseApprovedVerbs',
+            'PSAvoidUsingCmdletAliases',
+            'PSUseShouldProcessForStateChangingFunctions'
+          )
+          $paths = @('scripts/windows', 'completions/powershell')
+          $failed = $false
+          foreach ($path in $paths) {
+            if (!(Test-Path -Path $path)) { continue }
+            Write-Host "=== Analyze $path ==="
+            $results = @(Invoke-ScriptAnalyzer -Path $path -Recurse -Severity Error -ExcludeRule $exclude)
+            if ($results.Count -gt 0) {
+              $failed = $true
+              $results | Format-Table -AutoSize Severity, RuleName, ScriptName, Line, Message
+            } else {
+              Write-Host "No Error-severity findings in $path"
+            }
+          }
+          if ($failed) { exit 1 }
