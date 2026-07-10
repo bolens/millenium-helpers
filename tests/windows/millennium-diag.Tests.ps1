@@ -75,6 +75,8 @@ Describe "Diagnostics & Doctor" {
         BeforeAll {
             # task_scheduled=false: Get-ScheduledTask function (defined in BeforeAll) returns null.
             $env:DIAG_TEST_STEAM_PATH = [System.IO.Path]::GetTempPath().TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
+            # Keep steam_running deterministic when a real Steam process exists on the host.
+            Mock Get-Process { return $null }
         }
         AfterAll {
             $env:DIAG_TEST_STEAM_PATH = $null

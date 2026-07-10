@@ -105,9 +105,21 @@ function Ensure-HelpersTrackMeta {
         return
     }
 
-    $installRoot = Join-Path $env:USERPROFILE '.millennium-helpers'
-    $trackLib = Join-Path $script:DiagLibDir 'InstallTrack.ps1'
-    if (Test-Path -LiteralPath $trackLib) {
+    $userProfile = if ($env:USERPROFILE) { $env:USERPROFILE } else { $HOME }
+    if (-not $userProfile) {
+        if ($script:IsScoopGit -or $script:IsWingetGit) {
+            $script:HelpersTrack = 'main'
+            $script:HelpersTrackRef = 'main'
+        } else {
+            $script:HelpersTrack = 'release'
+            $script:HelpersTrackRef = 'latest'
+        }
+        return
+    }
+
+    $installRoot = Join-Path $userProfile '.millennium-helpers'
+    $trackLib = if ($script:DiagLibDir) { Join-Path $script:DiagLibDir 'InstallTrack.ps1' } else { '' }
+    if ($trackLib -and (Test-Path -LiteralPath $trackLib)) {
         . $trackLib
         $method = 'manual'
         if ($script:IsScoopGit) { $method = 'scoop-git' }

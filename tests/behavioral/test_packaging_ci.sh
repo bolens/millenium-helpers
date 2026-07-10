@@ -14,6 +14,17 @@ CHECK="${REPO_ROOT}/scripts/ci/check-version-sync.sh"
 SYNC_SRC="${REPO_ROOT}/scripts/ci/sync-stable-srcinfo.sh"
 WINGET_CHECK="${REPO_ROOT}/scripts/ci/check-winget-manifests.sh"
 
+# Portable in-place sed (GNU sed -i vs BSD/macOS sed -i '').
+sed_inplace() {
+  local expr="$1"
+  local file="$2"
+  if sed --version >/dev/null 2>&1; then
+    sed -i "$expr" "$file"
+  else
+    sed -i '' "$expr" "$file"
+  fi
+}
+
 # Copy packaging surfaces + CI scripts into an isolated tree.
 seed_packaging_tree() {
   local dest="$1"
@@ -183,7 +194,7 @@ assert_success "$rc" "sync-stable-srcinfo --check passes when .SRCINFO matches P
 assert_contains "$out" "stable .SRCINFO OK" "sync-stable-srcinfo --check reports OK"
 
 # Stale source URL (the v2.5.0 CI failure mode).
-sed -i 's|releases/download/v1.2.3/|releases/download/v0.9.9/|' \
+sed_inplace 's|releases/download/v1.2.3/|releases/download/v0.9.9/|' \
   "$SYNC_WORK/packaging/millennium-helpers/.SRCINFO"
 out=$(cd "$SYNC_WORK" && bash scripts/ci/sync-stable-srcinfo.sh --check 2>&1); rc=$?
 assert_failure "$rc" "sync-stable-srcinfo --check fails on stale source URL"
@@ -196,19 +207,32 @@ assert_contains "$(cat "$SYNC_WORK/packaging/millennium-helpers/.SRCINFO")" \
   "sync-stable-srcinfo write restores expanded source URL"
 
 # Stale pkgver line.
-sed -i 's/\tpkgver = .*/\tpkgver = 0.0.1/' "$SYNC_WORK/packaging/millennium-helpers/.SRCINFO"
+sed_inplace 's/\tpkgver = .*/\tpkgver = 0.0.1/' "$SYNC_WORK/packaging/millennium-helpers/.SRCINFO"
 out=$(cd "$SYNC_WORK" && bash scripts/ci/sync-stable-srcinfo.sh --check 2>&1); rc=$?
 assert_failure "$rc" "sync-stable-srcinfo --check fails on stale pkgver"
 
-# Stale tarball sha256sums.
+# Stale tarball sha256sums (first sha256sums line only; portable across GNU/BSD sed).
 (cd "$SYNC_WORK" && bash scripts/ci/sync-stable-srcinfo.sh) >/dev/null
-sed -i '0,/sha256sums = [0-9a-fA-F]\{64\}/s//sha256sums = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/' \
-  "$SYNC_WORK/packaging/millennium-helpers/.SRCINFO"
+python3 - "$SYNC_WORK/packaging/millennium-helpers/.SRCINFO" <<'PY'
+import re, sys
+from pathlib import Path
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+text2, n = re.subn(
+    r"(?m)^(\tsha256sums = )[0-9a-fA-F]{64}$",
+    r"\g<1>aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    text,
+    count=1,
+)
+if n != 1:
+    raise SystemExit(f"expected one sha256sums line to rewrite, got {n}")
+path.write_text(text2, encoding="utf-8")
+PY
 out=$(cd "$SYNC_WORK" && bash scripts/ci/sync-stable-srcinfo.sh --check 2>&1); rc=$?
 assert_failure "$rc" "sync-stable-srcinfo --check fails on stale tarball sha256"
 
 # PRE_COMMIT abort when write changes files.
-sed -i 's|releases/download/v1.2.3/|releases/download/v0.1.0/|' \
+sed_inplace 's|releases/download/v1.2.3/|releases/download/v0.1.0/|' \
   "$SYNC_WORK/packaging/millennium-helpers/.SRCINFO"
 out=$(cd "$SYNC_WORK" && PRE_COMMIT=1 bash scripts/ci/sync-stable-srcinfo.sh 2>&1); rc=$?
 assert_failure "$rc" "sync-stable-srcinfo under PRE_COMMIT exits non-zero after rewrite"
@@ -225,10 +249,10 @@ WINGET_SHA_BEFORE="$(grep -E '^\s*InstallerSha256:' "$BUMP_WORK/packaging/winget
 PKG_SHA_BEFORE="$(grep -E "^sha256sums=\('" "$BUMP_WORK/packaging/millennium-helpers/PKGBUILD" | head -1)"
 NIX_HASH_BEFORE="$(grep -E '^\s*srcHash\s*=' "$BUMP_WORK/nix/release-info.nix" | head -1)"
 # Deliberately stale .SRCINFO source URL before bump.
-sed -i 's|releases/download/v1.0.0/|releases/download/v0.9.9/|' \
+sed_inplace 's|releases/download/v1.0.0/|releases/download/v0.9.9/|' \
   "$BUMP_WORK/packaging/millennium-helpers/.SRCINFO"
 # Bump pkgrel so we can assert reset.
-sed -i 's/^pkgrel=.*/pkgrel=7/' "$BUMP_WORK/packaging/millennium-helpers/PKGBUILD"
+sed_inplace 's/^pkgrel=.*/pkgrel=7/' "$BUMP_WORK/packaging/millennium-helpers/PKGBUILD"
 
 out=$(cd "$BUMP_WORK" && bash scripts/ci/bump-version.sh "v9.8.7" 2>&1); rc=$?
 assert_success "$rc" "bump-version.sh succeeds (strips leading v)"
@@ -280,13 +304,13 @@ assert_success "$rc" "check-version-sync passes on seeded consistent tree"
 assert_contains "$out" "pyproject.toml version OK" "check-version-sync validates pyproject.toml"
 assert_contains "$out" ".SRCINFO OK" "check-version-sync validates stable .SRCINFO"
 
-sed -i 's/^version = .*/version = "0.0.0"/' "$CHECK_WORK/pyproject.toml"
+sed_inplace 's/^version = .*/version = "0.0.0"/' "$CHECK_WORK/pyproject.toml"
 out=$(cd "$CHECK_WORK" && bash scripts/ci/check-version-sync.sh 2>&1); rc=$?
 assert_failure "$rc" "check-version-sync fails when pyproject.toml mismatches VERSION"
 assert_contains "$out" "pyproject.toml" "check-version-sync names pyproject.toml on mismatch"
-sed -i 's/^version = .*/version = "4.5.6"/' "$CHECK_WORK/pyproject.toml"
+sed_inplace 's/^version = .*/version = "4.5.6"/' "$CHECK_WORK/pyproject.toml"
 
-sed -i 's|releases/download/v4.5.6/|releases/download/v4.5.5/|' \
+sed_inplace 's|releases/download/v4.5.6/|releases/download/v4.5.5/|' \
   "$CHECK_WORK/packaging/millennium-helpers/.SRCINFO"
 out=$(cd "$CHECK_WORK" && bash scripts/ci/check-version-sync.sh 2>&1); rc=$?
 assert_failure "$rc" "check-version-sync fails when stable .SRCINFO source URL is stale"

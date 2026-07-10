@@ -136,7 +136,9 @@ function Write-HelpersInstallMeta {
         installed_at   = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
         migrated_from  = if ($MigratedFrom) { $MigratedFrom } else { $null }
     }
-    ($data | ConvertTo-Json -Depth 5) + "`n" | Set-Content -Path $path -Encoding utf8
+    # Use System.IO so tests that mock Get-Content/Set-Content cannot break meta I/O.
+    $json = ($data | ConvertTo-Json -Depth 5) + "`n"
+    [System.IO.File]::WriteAllText($path, $json)
 }
 
 function Read-HelpersInstallMeta {
@@ -145,7 +147,12 @@ function Read-HelpersInstallMeta {
     if (!(Test-Path -LiteralPath $path -PathType Leaf)) {
         return $null
     }
-    return (Get-Content -LiteralPath $path -Raw | ConvertFrom-Json)
+    try {
+        $raw = [System.IO.File]::ReadAllText($path)
+        return ($raw | ConvertFrom-Json)
+    } catch {
+        return $null
+    }
 }
 
 function Migrate-HelpersInstallMetaIfNeeded {
@@ -165,7 +172,11 @@ function Migrate-HelpersInstallMetaIfNeeded {
     }
     $version = ''
     if (Test-Path -LiteralPath $versionFile -PathType Leaf) {
-        $version = (Get-Content -LiteralPath $versionFile -Raw).Trim()
+        try {
+            $version = [System.IO.File]::ReadAllText($versionFile).Trim()
+        } catch {
+            $version = ''
+        }
     }
 
     $track = 'release'
