@@ -3,5 +3,5 @@
 {
   version = "2.6.2";
   # SRI hash of millennium-helpers-linux.tar.gz
-  srcHash = "sha256-gcIGNTJuqUXyNyn2xHAhoLor1N/M8bNnvNSN/e42OCc=";
+  srcHash = "sha256-wHfD9TbnUed2+rsylgCxjXRS1FWi4t0ZCEkTMlafTlU=";
 }

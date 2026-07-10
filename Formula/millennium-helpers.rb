@@ -2,7 +2,7 @@ class MillenniumHelpers < Formula
   desc "Cross-platform utilities and MCP server for Millennium Steam Client hook"
   homepage "https://github.com/bolens/millenium-helpers"
   url "https://github.com/bolens/millenium-helpers/releases/download/v2.6.2/millennium-helpers-linux.tar.gz"
-  sha256 "81c20635326ea945f23729f6c47021a0ba2bd4dfccf1b367bcd48dfdee363827"
+  sha256 "c077c3f536e751e776fabb329600b18d7452d455a2e2dd1908491332569f4e55"
   license "MIT"
   head "https://github.com/bolens/millenium-helpers.git", branch: "main"
 
