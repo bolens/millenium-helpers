@@ -1,6 +1,6 @@
 # Makefile for Millennium Helpers local development automation
 
-.PHONY: setup test lint format check-all check-version check-man check-winget test-debian test-ubuntu test-fedora test-all-distros
+.PHONY: setup test test-windows lint format check-all check-version check-man check-winget test-debian test-ubuntu test-fedora test-all-distros
 
 setup:
 	@echo "Setting up local development dependencies..."
@@ -23,6 +23,14 @@ setup:
 test:
 	bash tests/run_tests.sh
 
+test-windows:
+	@if command -v pwsh >/dev/null 2>&1; then \
+		pwsh -NoProfile -Command "Invoke-Pester -Path tests/windows -Output Detailed"; \
+	else \
+		echo "pwsh not found; skip Windows Pester suite (install PowerShell 7+)." >&2; \
+		exit 1; \
+	fi
+
 test-debian:
 	docker run --rm -v $$(pwd):/workspace -w /workspace debian:12 bash tests/run_tests.sh
 
@@ -44,7 +52,7 @@ check-winget:
 	bash scripts/ci/check-winget-manifests.sh
 
 lint:
-	shellcheck *.sh scripts/*.sh scripts/lib/*.sh scripts/ci/*.sh tests/*.sh tests/unit/*.sh tests/behavioral/*.sh
+	shellcheck *.sh scripts/*.sh scripts/lib/*.sh scripts/ci/*.sh tests/*.sh tests/lib/*.sh tests/unit/*.sh tests/behavioral/*.sh
 	ruff check scripts/millennium-mcp.py
 	@test -s VERSION || (echo "VERSION file missing or empty" >&2; exit 1)
 	@$(MAKE) check-version

@@ -1,0 +1,8 @@
+# Default owners for the whole repository
+* @bolens
+
+# Packaging and release automation
+/.github/workflows/ @bolens
+/packaging/ @bolens
+/Formula/ @bolens
+/scripts/ci/ @bolens

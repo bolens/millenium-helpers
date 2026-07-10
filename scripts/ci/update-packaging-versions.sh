@@ -29,7 +29,10 @@ VERSION="${VERSION#v}"
   exit 1
 }
 # Reject placeholder hashes so packaging never ships all-zero checksums.
-if [[ "${LINUX_SHA,,}" =~ ^0{64}$ || "${WINDOWS_SHA,,}" =~ ^0{64}$ ]]; then
+# Use tr (not ${var,,}) so this works on macOS Bash 3.2.
+LINUX_SHA_LC="$(printf '%s' "$LINUX_SHA" | tr '[:upper:]' '[:lower:]')"
+WINDOWS_SHA_LC="$(printf '%s' "$WINDOWS_SHA" | tr '[:upper:]' '[:lower:]')"
+if [[ "$LINUX_SHA_LC" =~ ^0{64}$ || "$WINDOWS_SHA_LC" =~ ^0{64}$ ]]; then
   echo "error: refusing placeholder all-zero sha256" >&2
   exit 1
 fi
@@ -38,9 +41,8 @@ fi
   exit 1
 }
 
-LINUX_SHA="${LINUX_SHA,,}"
-WINDOWS_SHA="${WINDOWS_SHA,,}"
-
+LINUX_SHA="$LINUX_SHA_LC"
+WINDOWS_SHA="$WINDOWS_SHA_LC"
 ASSET_TGZ="millennium-helpers-linux.tar.gz"
 ASSET_ZIP="millennium-helpers-windows.zip"
 TAG_URL_TGZ="https://github.com/${REPO}/releases/download/v${VERSION}/${ASSET_TGZ}"

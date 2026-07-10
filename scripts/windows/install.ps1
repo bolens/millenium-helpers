@@ -38,8 +38,33 @@ if ($isStandalone) {
     } else {
         "https://github.com/bolens/millenium-helpers/releases/latest/download/millennium-helpers-windows.zip"
     }
+    $shaUrl = if ($env:MILLENNIUM_HELPERS_RELEASE_SHA_URL) {
+        $env:MILLENNIUM_HELPERS_RELEASE_SHA_URL
+    } else {
+        "$url.sha256"
+    }
 
     Invoke-WebRequest -Uri $url -OutFile $zipPath -UseBasicParsing
+
+    $shaPath = Join-Path -Path $tempDir -ChildPath "millennium-helpers-windows.zip.sha256"
+    try {
+        Invoke-WebRequest -Uri $shaUrl -OutFile $shaPath -UseBasicParsing
+    } catch {
+        throw "Failed to download the SHA256 checksum sidecar (url=$shaUrl): $_"
+    }
+    if (!(Test-Path -Path $shaPath -PathType Leaf)) {
+        throw "SHA256 checksum sidecar was not downloaded (url=$shaUrl)"
+    }
+    $expectedSha = ((Get-Content -Path $shaPath -Raw).Trim() -split '\s+')[0]
+    if ([string]::IsNullOrWhiteSpace($expectedSha) -or $expectedSha -notmatch '^[0-9a-fA-F]{64}$') {
+        throw "Checksum sidecar did not contain a valid SHA256 hash (url=$shaUrl)"
+    }
+    $actualSha = (Get-FileHash -Path $zipPath -Algorithm SHA256).Hash
+    if ($actualSha.ToLowerInvariant() -ne $expectedSha.ToLowerInvariant()) {
+        throw "SHA256 mismatch for downloaded release archive. Expected=$expectedSha Actual=$actualSha"
+    }
+    Write-Host "SHA256 checksum verified."
+
     Expand-Archive -Path $zipPath -DestinationPath $tempDir -Force
 
     $extractedScript = Join-Path -Path $tempDir -ChildPath "scripts\windows\install.ps1"

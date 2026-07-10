@@ -1,0 +1,16 @@
+[project]
+name = "millennium-helpers"
+version = "2.2.0"
+description = "Cross-platform helpers and MCP server for Millennium"
+requires-python = ">=3.9"
+readme = "README.md"
+license = { text = "MIT" }
+
+# Keep Ruff aligned with the default rule set used by CI (astral-sh/ruff-action).
+# Avoid enabling style rules that would churn the existing MCP server.
+[tool.ruff]
+target-version = "py39"
+src = ["scripts"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]

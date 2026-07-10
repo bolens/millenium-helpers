@@ -215,22 +215,58 @@ STANDALONE_DIR=$(mktemp -d)
 # Copy install.sh to the temp directory WITHOUT any other files
 cp "$INSTALL_SH" "$STANDALONE_DIR/install.sh"
 
-# Mock curl to avoid internet access and return a mock tarball of the local workspace
+# Build a trimmed-layout mock tarball (matches release.yml Linux payload)
 MOCK_TARBALL="${STANDALONE_DIR}/mock_repo.tar.gz"
-MOCK_SRC_DIR="${STANDALONE_DIR}/millenium-helpers-main"
-mkdir -p "$MOCK_SRC_DIR"
-cp -r "$REPO_ROOT/install.sh" "$REPO_ROOT/scripts" "$REPO_ROOT/completions" "$REPO_ROOT/LICENSE" "$MOCK_SRC_DIR/"
-tar -czf "$MOCK_TARBALL" -C "$STANDALONE_DIR" millenium-helpers-main
+MOCK_PAYLOAD="${STANDALONE_DIR}/payload"
+mkdir -p "$MOCK_PAYLOAD/scripts" "$MOCK_PAYLOAD/completions" "$MOCK_PAYLOAD/man"
+cp "$REPO_ROOT/install.sh" "$REPO_ROOT/VERSION" "$REPO_ROOT/LICENSE" "$MOCK_PAYLOAD/"
+cp "$REPO_ROOT/README.md" "$MOCK_PAYLOAD/" 2>/dev/null || true
+cp "$REPO_ROOT/scripts/common.sh" \
+  "$REPO_ROOT/scripts/millennium.sh" \
+  "$REPO_ROOT/scripts/millennium-diag.sh" \
+  "$REPO_ROOT/scripts/millennium-mcp.py" \
+  "$REPO_ROOT/scripts/millennium-purge.sh" \
+  "$REPO_ROOT/scripts/millennium-repair.sh" \
+  "$REPO_ROOT/scripts/millennium-schedule.sh" \
+  "$REPO_ROOT/scripts/millennium-theme.sh" \
+  "$REPO_ROOT/scripts/millennium-upgrade.sh" \
+  "$MOCK_PAYLOAD/scripts/"
+cp -r "$REPO_ROOT/scripts/lib" "$MOCK_PAYLOAD/scripts/"
+cp -r "$REPO_ROOT/completions/." "$MOCK_PAYLOAD/completions/" 2>/dev/null || true
+cp -r "$REPO_ROOT/man/." "$MOCK_PAYLOAD/man/" 2>/dev/null || true
+tar -czf "$MOCK_TARBALL" -C "$MOCK_PAYLOAD" .
 
-# Mock curl to return our local mock tarball
-mock_cmd "curl" "cat '$MOCK_TARBALL'"
+# Mock curl: serve archive or matching .sha256 sidecar based on URL / -o path
+# shellcheck disable=SC2016
+mock_cmd "curl" '
+out=""
+url=""
+prev=""
+for arg in "$@"; do
+  if [[ "$prev" == "-o" ]]; then out="$arg"; fi
+  if [[ "$arg" == http* ]]; then url="$arg"; fi
+  prev="$arg"
+done
+if [[ -z "$out" ]]; then
+  echo "mock curl: missing -o" >&2
+  exit 1
+fi
+if [[ "$url" == *.sha256 || "$out" == *.sha256 ]]; then
+  archive="'"$MOCK_TARBALL"'"
+  hash=$(sha256sum "$archive" | awk "{print \$1}")
+  echo "${hash}  millennium-helpers-linux.tar.gz" > "$out"
+  exit 0
+fi
+cat "'"$MOCK_TARBALL"'" > "$out"
+'
 
 # Run install.sh in the standalone directory in dry-run mode
 out=$(TARGET_DIR="$STANDALONE_DIR" bash "$STANDALONE_DIR/install.sh" install --dry-run 2>&1)
 rc=$?
 
 assert_success "$rc" "Standalone install.sh runs successfully"
-assert_contains "$out" "Running in standalone/piped mode. Downloading repository..." "Standalone install.sh detects piped mode"
+assert_contains "$out" "Running in standalone/piped mode. Downloading latest Linux release..." "Standalone install.sh detects piped mode"
+assert_contains "$out" "SHA256 checksum verified." "Standalone install.sh verifies release checksum"
 assert_contains "$out" "DRY RUN MODE" "Standalone install.sh successfully executes the downloaded script"
 
 # Clean up

@@ -349,6 +349,7 @@ function Run-Setup-Wizard {
             "github_token" = $githubToken;
         }
         $configObj | ConvertTo-Json | Set-Content -Path $configFile -Force
+        Protect-HelpersConfigFile -Path $configFile
         Write-Host "`nConfiguration saved successfully to: $configFile" -ForegroundColor Green
     } else {
         Write-Host "`n[DRY RUN] Would write config to $($configFile):" -ForegroundColor Yellow
@@ -480,6 +481,7 @@ function Manage-Config {
                 New-Item -ItemType Directory -Force -Path $configDir | Out-Null
             }
             $data | ConvertTo-Json | Set-Content -Path $configFile -Force
+            Protect-HelpersConfigFile -Path $configFile
             Log-Info "Config option $key set to '$val' successfully."
         }
         return
