@@ -20,8 +20,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: write
 
 jobs:
   # Fast fail-early check: verify every script parses cleanly on all
@@ -185,24 +183,5 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Run ${{ matrix.suite }}
-        id: run-test
         run: |
-          set -o pipefail
-          bash "${{ matrix.suite }}" 2>&1 | tee test_output.log
-        continue-on-error: true
-
-      - name: Push logs on failure
-        if: steps.run-test.outcome == 'failure'
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-          SUITE_CLEAN=$(echo "${{ matrix.suite }}" | tr '/' '-')
-          git checkout --orphan "macos-log-$SUITE_CLEAN"
-          git rm -rf .
-          mv test_output.log log.txt
-          git add log.txt
-          git commit -m "chore: upload failure log for ${{ matrix.suite }}"
-          git push -f origin "macos-log-$SUITE_CLEAN"
-          exit 1
-
-
+          bash "${{ matrix.suite }}"
