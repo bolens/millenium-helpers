@@ -1,4 +1,4 @@
-name: "CI: ShellCheck Linting"
+name: "CI: Shell Script Linting"
 
 on:
   push:

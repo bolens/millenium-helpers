@@ -1,4 +1,4 @@
-name: "CD: Nix Flake Lock Update"
+name: "CD: Nix Flake Lock Auto-Update"
 
 on:
   schedule:

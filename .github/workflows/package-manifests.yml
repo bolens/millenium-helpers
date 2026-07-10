@@ -1,4 +1,4 @@
-name: "CI: Package Manifest Validation"
+name: "CI: Package Manifests Validation"
 
 on:
   push:

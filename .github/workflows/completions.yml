@@ -1,4 +1,4 @@
-name: "CI: Completions Validation"
+name: "CI: Shell Completions Validation"
 
 on:
   push:
