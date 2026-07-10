@@ -527,14 +527,14 @@ function Write-UpgradeFailureTips {
         Log-Error "Upgrade failed."
     }
     Write-Host "Next steps:"
-    Write-Host "  • millennium upgrade -Rollback list   # list backups"
-    Write-Host "  • millennium diag                     # check installation health"
-    Write-Host "  • Re-run with -Yes if Steam close confirmation blocked the update"
+    Write-Host "  * millennium upgrade -Rollback list   # list backups"
+    Write-Host "  * millennium diag                     # check installation health"
+    Write-Host "  * Re-run with -Yes if Steam close confirmation blocked the update"
 }
 
 # Suggest the closest known token for typos.
 # Scoring (higher wins): 4 = prefix/extension, 3 = substring, else shared leading
-# chars; subsequence matches (e.g. lst→list) score 3 minus length gap (floor 2).
+# chars; subsequence matches (e.g. lst->list) score 3 minus length gap (floor 2).
 # Returns $null unless bestScore >= 2 (avoids weak one-char coincidences).
 function Get-ClosestToken {
     param(
@@ -552,7 +552,7 @@ function Get-ClosestToken {
         } elseif ($c.Contains($InputToken) -or $InputToken.Contains($c)) {
             $score = 3
         } else {
-            # Count identical leading characters (e.g. "upg" vs "upgrade" → 3).
+            # Count identical leading characters (e.g. "upg" vs "upgrade" -> 3).
             $i = 0
             while ($i -lt $c.Length -and $i -lt $InputToken.Length -and $c[$i] -eq $InputToken[$i]) {
                 $i++

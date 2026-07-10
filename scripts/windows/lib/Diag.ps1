@@ -1,14 +1,14 @@
-# Diag.ps1 — Loader: dot-sources all diag modules and exposes the top-level API.
+# Diag.ps1 - Loader: dot-sources all diag modules and exposes the top-level API.
 #
 # Callers MUST set before sourcing or before calling Invoke-DiagnosticsChecks:
-#   $script:DiagLibDir    — directory containing the lib/*.ps1 files
-#   $script:SteamPath     — resolved Steam installation path
-#   $script:MillenniumDir — SteamPath\millennium
-#   $script:WsockDll      — SteamPath\wsock32.dll
-#   $script:SkinsDir      — SteamPath\steamui\skins
-#   $script:Channel       — update channel (stable / beta)
-#   $script:VersionStr    — installed Millennium version string (or 'Not Installed')
-#   $script:ScriptDir     — directory containing the top-level *.ps1 scripts
+#   $script:DiagLibDir    - directory containing the lib/*.ps1 files
+#   $script:SteamPath     - resolved Steam installation path
+#   $script:MillenniumDir - SteamPath\millennium
+#   $script:WsockDll      - SteamPath\wsock32.dll
+#   $script:SkinsDir      - SteamPath\steamui\skins
+#   $script:Channel       - update channel (stable / beta)
+#   $script:VersionStr    - installed Millennium version string (or 'Not Installed')
+#   $script:ScriptDir     - directory containing the top-level *.ps1 scripts
 
 # Initialize shared path state with safe defaults.
 # $script:DiagLibDir must be set by the caller BEFORE sourcing this file.
@@ -53,7 +53,7 @@ function Invoke-DiagnosticsChecks {
 }
 
 function Write-DiagReport {
-    # Human-readable output only — never called in JSON mode.
+    # Human-readable output only - never called in JSON mode.
     Write-Host '=== Millennium Diagnostics Report ==='
     Write-Host ''
 
@@ -78,7 +78,7 @@ function Write-DiagReport {
         $tagLabel = if ($script:LatestReleaseTag) { $script:LatestReleaseTag } else { 'unknown' }
         Print-DiagItem -Status 'ok' -Label 'Helper scripts' -Value "Up to date ($tagLabel)"
     } elseif ($script:InstallMethod -eq 'mixed') {
-        Print-DiagItem -Status 'error' -Label 'Helper scripts' -Value 'Mixed install — resolve conflict before updating'
+        Print-DiagItem -Status 'error' -Label 'Helper scripts' -Value 'Mixed install - resolve conflict before updating'
     } elseif ($script:OutOfDateScripts.Count -gt 0) {
         $tagLabel = if ($script:LatestReleaseTag) { $script:LatestReleaseTag } else { 'unknown' }
         foreach ($s in $script:OutOfDateScripts) {

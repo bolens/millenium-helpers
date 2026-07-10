@@ -373,5 +373,5 @@ Write-Host "  2. Install/update:   ${green}millennium upgrade${reset}   (if Mill
 Write-Host "  3. Review scheduler: ${green}millennium schedule status${reset}"
 Write-Host "  Tip: manage skins with ${green}millennium theme list${reset}"
 Write-Host ""
-Write-Host "Long names (millennium-diag, …) still work as aliases."
+Write-Host "Long names (millennium-diag, ...) still work as aliases."
 Write-Host "Dispatcher: ${cyan}millennium diag|upgrade|doctor|schedule|theme|...${reset}"

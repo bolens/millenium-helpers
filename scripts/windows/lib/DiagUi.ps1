@@ -1,4 +1,4 @@
-# DiagUi.ps1 — Diagnostic display helpers
+# DiagUi.ps1 - Diagnostic display helpers
 
 function Print-DiagItem {
     param(

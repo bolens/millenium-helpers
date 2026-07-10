@@ -1,6 +1,6 @@
-# DiagEnv.ps1 — Permissions, skins directory, scheduled task, and obsolete file checks
+# DiagEnv.ps1 - Permissions, skins directory, scheduled task, and obsolete file checks
 #
-# Populates (no console output — printing is handled by Write-DiagReport):
+# Populates (no console output - printing is handled by Write-DiagReport):
 #   $script:PermissionsOk      bool
 #   $script:UnwritableDirs     string[]
 #   $script:SkinsDirOk         bool

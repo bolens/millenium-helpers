@@ -1,6 +1,6 @@
-# DiagUpdates.ps1 — Helper script update checks against latest GitHub release
+# DiagUpdates.ps1 - Helper script update checks against latest GitHub release
 #
-# Populates (no console output — printing done in Write-DiagReport):
+# Populates (no console output - printing done in Write-DiagReport):
 #   $script:ScriptsUpToDate  bool
 #   $script:OutOfDateScripts string[]
 

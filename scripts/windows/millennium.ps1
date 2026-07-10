@@ -51,7 +51,7 @@ function Get-CommandSuggestion {
         } elseif ($c.Contains($InputCmd) -or $InputCmd.Contains($c)) {
             $score = 3
         } else {
-            # Identical leading characters (e.g. "upg" vs "upgrade" → 3).
+            # Identical leading characters (e.g. "upg" vs "upgrade" -> 3).
             $i = 0
             while ($i -lt $c.Length -and $i -lt $InputCmd.Length -and $c[$i] -eq $InputCmd[$i]) {
                 $i++
@@ -101,7 +101,7 @@ function Invoke-Sibling {
     exit $LASTEXITCODE
 }
 
-# Natural alias: millennium doctor → millennium-diag doctor
+# Natural alias: millennium doctor -> millennium-diag doctor
 if ($Command -eq "doctor") {
     $Rest = @("doctor") + @($Rest)
     $Command = "diag"

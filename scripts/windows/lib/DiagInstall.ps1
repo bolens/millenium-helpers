@@ -1,4 +1,4 @@
-# DiagInstall.ps1 — Install method detection (scoop / winget / manual / mixed / none)
+# DiagInstall.ps1 - Install method detection (scoop / winget / manual / mixed / none)
 #
 # Populates:
 #   $script:InstallMethod      string   scoop|winget|manual|mixed|none

@@ -1,5 +1,5 @@
-# DiagDoctor.ps1 — Doctor orchestrator
-#   Flow: healthy check → force flags → Steam close → cleanup → runtime repair → relaunch
+# DiagDoctor.ps1 - Doctor orchestrator
+#   Flow: healthy check -> force flags -> Steam close -> cleanup -> runtime repair -> relaunch
 
 function Invoke-DoctorRepairs {
     Write-Host "`n=== Running Millennium Doctor (Automatic Repairs) ==="

@@ -42,7 +42,7 @@
     "post_install": [
         "$compSrc = Join-Path $dir 'completions\\powershell\\millennium-helpers.ps1'",
         "if (Test-Path $compSrc) {",
-        "  $hook = '. \"$(scoop prefix millennium-helpers)\\completions\\powershell\\millennium-helpers.ps1\"'",
+        "  $hook = '. \"' + $compSrc + '\"'",
         "  $profiles = @(",
         "    (Join-Path $env:USERPROFILE 'Documents\\PowerShell\\Microsoft.PowerShell_profile.ps1'),",
         "    (Join-Path $env:USERPROFILE 'Documents\\WindowsPowerShell\\Microsoft.PowerShell_profile.ps1')",

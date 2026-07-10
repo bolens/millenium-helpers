@@ -1,4 +1,4 @@
-# DiagRelease.ps1 — GitHub release tag fetch and release zip download/extraction
+# DiagRelease.ps1 - GitHub release tag fetch and release zip download/extraction
 #
 # Populates / manages:
 #   $script:LatestReleaseTag     (also set by DiagInstall.ps1 to '')

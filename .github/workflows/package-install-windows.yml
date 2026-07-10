@@ -86,7 +86,7 @@ jobs:
           New-Item -ItemType Directory -Path "C:\MockSteam" -Force | Out-Null
 
       - name: Verify Scoop commands run
-        shell: powershell
+        shell: powershell -NoProfile -Command ". '{0}'"
         run: |
           $ErrorActionPreference = "Stop"
           $env:PATH += ";$HOME\scoop\shims"
@@ -96,6 +96,15 @@ jobs:
             throw "Missing modular diag library at $diagLib (scripts/windows/lib not packaged)"
           }
           Write-Host "Diag lib OK: $diagLib"
+          # Parse-check diag modules under Windows PowerShell 5.1 (catches UTF-8/ANSI issues).
+          Get-ChildItem (Join-Path $prefix "scripts\windows\lib\*.ps1") | ForEach-Object {
+            $errs = $null
+            $null = [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$null, [ref]$errs)
+            if ($errs -and $errs.Count -gt 0) {
+              throw "Parse error in $($_.Name): $($errs[0])"
+            }
+          }
+          Write-Host "Diag lib parse OK (Windows PowerShell)"
           millennium help
           millennium-mcp -Help
           millennium-diag -DryRun

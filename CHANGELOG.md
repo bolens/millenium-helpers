@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pacman upgrades no longer blocked by unmanaged completion leftovers; doctor refuses to overwrite package-owned files
 - Empty `DIAG_TEST_OBSOLETE_LIST` correctly means “no obsolete candidates” in tests
 - Winget package ID uses `bolens.millenniumhelpers`
+- Windows PowerShell 5.1 no longer fails to parse diag modules (ASCII-only sources; Scoop profile hook no longer calls `scoop` at profile load)
 
 ### Changed
 - Thin loaders: Linux `diag.sh` (replaces `diag_report.sh`), Windows `Diag.ps1` (replaces `DiagReport.ps1`)

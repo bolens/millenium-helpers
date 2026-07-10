@@ -1,4 +1,4 @@
-# DiagDoctorRepair.ps1 — Doctor runtime repair phase:
+# DiagDoctorRepair.ps1 - Doctor runtime repair phase:
 #   1. Millennium binaries (via millennium-upgrade.ps1)
 #   2. Missing skins directory
 #   3. Missing scheduled task
@@ -51,7 +51,7 @@ function Invoke-DoctorRepair {
             Write-Host "`n[DOCTOR] Syncing helper scripts from latest release zip..."
             _Invoke-ManualScriptSync
         } elseif ($script:InstallMethod -eq 'mixed') {
-            Write-Host "`n[DOCTOR] Skipping script sync — resolve mixed install first."
+            Write-Host "`n[DOCTOR] Skipping script sync - resolve mixed install first."
         }
     }
 
@@ -59,7 +59,7 @@ function Invoke-DoctorRepair {
     if (!$script:CompletionsOk -or $global:Force) {
         Write-Host "`n[DOCTOR] Repairing PowerShell completions..."
         if ($script:InstallMethod -in @('scoop', 'winget')) {
-            Write-Host '  Packaged install — reinstall/upgrade the package to restore completions, e.g.:'
+            Write-Host '  Packaged install - reinstall/upgrade the package to restore completions, e.g.:'
             Print-PackageUpgradeHint
             # Still try to restore a missing profile hook pointing at the packaged completer
             if ($script:CompletionHookMissing -and $script:CompletionFilePath -and (Test-Path -Path $script:CompletionFilePath)) {
@@ -94,7 +94,7 @@ function _Invoke-RegisterCompletionHook {
         Log-Info "Registering completion hook in $profilePath"
         Execute-Cmd -ScriptBlock {
             Add-Content -Path $profilePath -Value "`n# Millennium Helpers completions`n$hook`n"
-        } -Description "Add-Content completion hook → $profilePath"
+        } -Description "Add-Content completion hook -> $profilePath"
     }
 }
 
@@ -134,7 +134,7 @@ function _Invoke-RepairCompletions {
             Log-Info "Restoring completion file: $dest"
             Execute-Cmd -ScriptBlock {
                 Copy-Item -Path $src -Destination $dest -Force
-            } -Description "Copy-Item completions → $dest"
+            } -Description "Copy-Item completions -> $dest"
             $script:CompletionFilePath = $dest
         } else {
             Log-Warn 'Could not locate completion source in release zip or checkout; skipping file restore.'

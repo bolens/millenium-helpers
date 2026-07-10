@@ -1,4 +1,4 @@
-# DiagCompletions.ps1 — PowerShell completion file + profile-hook health
+# DiagCompletions.ps1 - PowerShell completion file + profile-hook health
 #
 # Populates:
 #   $script:CompletionsOk          bool
@@ -16,7 +16,7 @@ function Get-DiagCompletionCandidates {
 
     if ($script:ScriptDir) {
         $paths.Add((Join-Path -Path $script:ScriptDir -ChildPath 'millennium-helpers.completion.ps1'))
-        # Scoop / release-zip / checkout: completions next to scripts\windows → repo root
+        # Scoop / release-zip / checkout: completions next to scripts\windows -> repo root
         $repoRoot = Split-Path -Parent (Split-Path -Parent $script:ScriptDir)
         if ($repoRoot) {
             $paths.Add((Join-Path -Path $repoRoot -ChildPath 'completions\powershell\millennium-helpers.ps1'))

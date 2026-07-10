@@ -1,4 +1,4 @@
-# DiagNextSteps.ps1 — Prioritized next-steps footer for the diagnostics report
+# DiagNextSteps.ps1 - Prioritized next-steps footer for the diagnostics report
 
 function Print-PackageUpgradeHint {
     switch ($script:InstallMethod) {
@@ -17,7 +17,7 @@ function Print-DiagNextSteps {
     # Priority 1: mixed install blocks everything else
     if ($script:InstallMethod -eq 'mixed') {
         $issues++
-        $suggestions.Add('Resolve mixed install (scoop/winget/manual conflict) — remove duplicates first')
+        $suggestions.Add('Resolve mixed install (scoop/winget/manual conflict) - remove duplicates first')
     }
 
     # Priority 2: helper scripts outdated
@@ -78,7 +78,7 @@ function Print-DiagNextSteps {
     foreach ($s in $suggestions) {
         if ($seen.ContainsKey($s)) { continue }
         $seen[$s] = $true
-        Write-Host "  • $s"
+        Write-Host "  * $s"
     }
     Write-Host ''
     Write-Host "Or run 'millennium doctor' to attempt automatic repairs."

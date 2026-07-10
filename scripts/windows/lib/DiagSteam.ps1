@@ -1,6 +1,6 @@
-# DiagSteam.ps1 — Steam client status and Millennium binary integrity checks
+# DiagSteam.ps1 - Steam client status and Millennium binary integrity checks
 #
-# Populates (no console output — printing is handled by Write-DiagReport):
+# Populates (no console output - printing is handled by Write-DiagReport):
 #   $script:SteamRunning   bool
 #   $script:SteamPid       int|$null
 #   $script:BinariesOk     bool

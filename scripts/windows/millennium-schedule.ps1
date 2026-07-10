@@ -175,7 +175,7 @@ function Show-Status {
             Write-Host "  Last log    : $logFile"
             Write-Host "  View logs   : millennium diag logs"
         } else {
-            Write-Host "  Last log    : (none yet — runs after the first scheduled update)"
+            Write-Host "  Last log    : (none yet - runs after the first scheduled update)"
         }
         Write-Host "  Disable     : millennium schedule disable"
     } else {

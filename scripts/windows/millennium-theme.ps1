@@ -368,7 +368,7 @@ if ($Command -eq "install") {
     }
 
     Log-Info "Theme '$repo' successfully installed."
-    Write-Host "Next: enable it in Steam → Millennium → Themes (or Settings)."
+    Write-Host "Next: enable it in Steam -> Millennium -> Themes (or Settings)."
     Write-Host "Tip: millennium theme list shows installed themes; the active one is marked."
     exit 0
 }
