@@ -74,7 +74,7 @@ $ millennium diag
 | Nix (tip of flake / git) | `nix profile install github:bolens/millenium-helpers#millennium-helpers-git` |
 | Homebrew | `brew tap bolens/millenium-helpers https://github.com/bolens/millenium-helpers && brew install millennium-helpers` |
 | Arch (versioned PKGBUILD) | `cd packaging/millennium-helpers && makepkg -si` |
-| Arch (`-git` from checkout) | `make sync-pkgver && cd packaging/millennium-helpers-git && makepkg -si` |
+| Arch (`-git` from checkout) | `cd packaging/millennium-helpers-git && makepkg -si` |
 
 <details>
 <summary>Prerequisites & details</summary>

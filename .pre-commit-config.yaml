@@ -110,15 +110,15 @@ repos:
         pass_filenames: false
         stages: [pre-commit]
 
-      - id: sync-pkgver
-        name: sync PKGBUILD pkgver from HEAD
-        entry: bash scripts/ci/update-pkgbuild-pkgver.sh
+      - id: sync-git-srcinfo
+        name: sync -git Arch .SRCINFO from PKGBUILD
+        entry: bash scripts/ci/sync-git-srcinfo.sh
         language: system
         pass_filenames: false
-        # Always run: pkgver is derived from git rev-list/HEAD, not only when
-        # packaging files are staged. Writes parent-HEAD pkgver into the commit
-        # (a commit cannot embed its own short SHA). See CONTRIBUTING.md.
-        always_run: true
+        # AUR VCS policy: do not bump -git pkgver every commit. Only refresh
+        # .SRCINFO when the packaging recipe changes. pkgver() owns the version
+        # at makepkg time. See CONTRIBUTING.md § Versioning.
+        files: '^packaging/millennium-helpers-git/(PKGBUILD|\.SRCINFO|.*\.install|.*\.sudoers)$'
         stages: [pre-commit]
 
       # --- pre-push (install with: pre-commit install --hook-type pre-push) ---

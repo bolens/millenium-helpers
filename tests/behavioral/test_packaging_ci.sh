@@ -394,7 +394,14 @@ assert_contains "$vs" "bump-version.sh" "version-sync path filters include bump-
 
 pre_commit=$(cat "${REPO_ROOT}/.pre-commit-config.yaml")
 assert_contains "$pre_commit" "sync-stable-srcinfo" "pre-commit includes sync-stable-srcinfo hook"
+assert_contains "$pre_commit" "sync-git-srcinfo" "pre-commit includes sync-git-srcinfo hook"
+assert_contains "$pre_commit" "packaging/millennium-helpers-git" "pre-commit -git SRCINFO sync is recipe-scoped"
+assert_not_contains "$pre_commit" "sync-pkgver" "pre-commit no longer always-syncs -git pkgver"
+assert_not_contains "$pre_commit" "update-pkgbuild-pkgver" "pre-commit no longer runs update-pkgbuild-pkgver"
 assert_contains "$pre_commit" "packaging/millennium-helpers" "pre-commit version-sync watches Arch packaging"
+assert_file_exists "${REPO_ROOT}/scripts/ci/sync-git-srcinfo.sh" "sync-git-srcinfo.sh exists"
+assert_contains "$(cat "${REPO_ROOT}/Makefile")" "sync-git-srcinfo" "Makefile exposes sync-git-srcinfo target"
+assert_not_contains "$(cat "${REPO_ROOT}/Makefile")" "sync-pkgver:" "Makefile no longer exposes sync-pkgver target"
 
 makefile=$(cat "${REPO_ROOT}/Makefile")
 assert_contains "$makefile" "bump-version" "Makefile exposes bump-version target"

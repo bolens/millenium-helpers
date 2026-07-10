@@ -140,7 +140,7 @@ Doctor syncs helpers against the recorded track (pinned tags stay pinned). Legac
 | `make bump-version VERSION=X.Y.Z` | `scripts/ci/bump-version.sh` | Pre-tag bump: write `VERSION` + packaging **versions/URLs**; **keep existing hashes**; regenerate stable Arch `.SRCINFO`; run `check-version` |
 | `make check-version` | `scripts/ci/check-version-sync.sh` | Assert packaging version strings + release-asset URL shape match `VERSION` (also runs inside `make lint`) |
 | `make sync-stable-srcinfo` | `scripts/ci/sync-stable-srcinfo.sh` | Regenerate `packaging/millennium-helpers/.SRCINFO` from `PKGBUILD` (`--check` fails if stale) |
-| `make sync-pkgver` | `scripts/ci/update-pkgbuild-pkgver.sh` | Refresh Arch `-git` `pkgver` + `.SRCINFO` from git HEAD |
+| `make sync-git-srcinfo` | `scripts/ci/sync-git-srcinfo.sh` | Regenerate Arch `-git` `.SRCINFO` when the recipe changes (`pkgver` drift ignored; `pkgver()` owns the version at build time) |
 
 Post-tag (release CD only): `scripts/ci/update-packaging-versions.sh <ver> <linux_sha> <windows_sha>`
 fills real SHA256s / SRI hashes for Formula, Scoop, Winget, versioned Arch, and Nix.
@@ -202,7 +202,7 @@ Local checks:
 make check-version         # VERSION ↔ packaging (see Versioning above)
 make bump-version VERSION=X.Y.Z   # pre-tag bump (then edit CHANGELOG)
 make sync-stable-srcinfo   # regenerate versioned Arch .SRCINFO only
-make sync-pkgver           # refresh Arch -git pkgver from HEAD
+make sync-git-srcinfo      # regenerate -git .SRCINFO after recipe edits
 make check-man             # every command has a man page
 make check-winget          # Winget manifest structure (docs-only; no winget validate)
 ```
@@ -215,11 +215,9 @@ pre-commit install
 pre-commit install --hook-type pre-push
 ```
 
-**pre-commit** runs: remote [pre-commit-hooks](https://github.com/pre-commit/pre-commit-hooks) sanity checks (private keys, merge conflicts, large files, symlinks, trailing whitespace, EOF newlines, LF line endings), plus local shellcheck, ruff check + format `--check`, VERSION presence, versioned Arch `.SRCINFO` sync, packaging version sync, winget manifests, completions tests (when `completions/` changes), man-page coverage, actionlint (workflows; skipped if not installed), gitleaks on staged changes (skipped if not installed), and **PKGBUILD `pkgver` sync on every commit**.
+**pre-commit** runs: remote [pre-commit-hooks](https://github.com/pre-commit/pre-commit-hooks) sanity checks (private keys, merge conflicts, large files, symlinks, trailing whitespace, EOF newlines, LF line endings), plus local shellcheck, ruff check + format `--check`, VERSION presence, versioned Arch `.SRCINFO` sync, Arch `-git` `.SRCINFO` sync when that recipe changes, packaging version sync, winget manifests, completions tests (when `completions/` changes), man-page coverage, actionlint (workflows; skipped if not installed), and gitleaks on staged changes (skipped if not installed).
 
 **pre-push** runs: `make lint`, and `make test-windows` when the push range touches `scripts/windows/`, `tests/windows/`, or `completions/powershell/` (skipped if `pwsh` is missing).
-
-When `sync-pkgver` updates `packaging/millennium-helpers-git/PKGBUILD` / `.SRCINFO`, the commit is aborted once so you can re-stage those files and retry (normal pre-commit autofix flow). Committed `pkgver` matches **HEAD at hook time** (the parent of the new commit)—a commit cannot embed its own short SHA. `pkgver()` in the PKGBUILD still recalculates from the tip at `makepkg` time.
 
 ## Style
 
@@ -228,7 +226,7 @@ When `sync-pkgver` updates `packaging/millennium-helpers-git/PKGBUILD` / `.SRCIN
 - Honor `NO_COLOR` (and `FORCE_COLOR` when forcing color).
 - PowerShell: `Set-StrictMode -Version Latest`; gate debug noise behind `MILLENNIUM_DEBUG` or `-Verbose`.
 - Do not commit packaging build artifacts (`packaging/*.pkg.tar.zst`, etc.).
-- Keep Arch `-git` `pkgver` / `.SRCINFO` current with `make sync-pkgver` (no full rebuild needed). With `pre-commit install`, this runs automatically on every commit.
+- Do **not** bump Arch `-git` `pkgver` on every commit ([AUR VCS policy](https://wiki.archlinux.org/title/AUR_submission_guidelines)). `pkgver()` recalculates at `makepkg` time; regenerate `.SRCINFO` only when the `-git` recipe changes (`make sync-git-srcinfo`).
 - Keep versioned Arch `.SRCINFO` current with `make sync-stable-srcinfo` (or `make bump-version`). Pre-commit regenerates it when the stable PKGBUILD changes.
 
 ## Packaging notes
@@ -242,8 +240,9 @@ When `sync-pkgver` updates `packaging/millennium-helpers-git/PKGBUILD` / `.SRCIN
 - `scripts/ci/bump-version.sh` — pre-tag version/URL bump (keeps hashes); prefer `make bump-version VERSION=X.Y.Z`.
 - `scripts/ci/check-version-sync.sh` — packaging ↔ `VERSION` gate; prefer `make check-version` (also part of `make lint`).
 - `scripts/ci/sync-stable-srcinfo.sh` — regenerate or `--check` versioned Arch `.SRCINFO`; prefer `make sync-stable-srcinfo`.
+- `scripts/ci/sync-git-srcinfo.sh` — regenerate or `--check` Arch `-git` `.SRCINFO` (ignores `pkgver` drift); prefer `make sync-git-srcinfo`.
 - `scripts/ci/update-packaging-versions.sh` — post-tag: Formula / Scoop release / Winget / versioned Arch / Nix release-info from a release tag + asset hashes (release CD).
-- Versioned Arch (`packaging/millennium-helpers`) is bumped with Formula / Scoop / Winget on release (Linux tarball URL + sha256). Arch `-git` stays tip-of-main and is outside that bump.
+- Versioned Arch (`packaging/millennium-helpers`) is bumped with Formula / Scoop / Winget on release (Linux tarball URL + sha256). Arch `-git` stays tip-of-main and is outside that bump; do not commit mere `-git` `pkgver` bumps.
 - Man-page CI (`scripts/ci/check-man-pages.sh`) fails on mandoc `ERROR`/`FATAL` only; `WARNING`/`STYLE` are printed as notes.
 
 ## Pull requests

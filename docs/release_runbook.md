@@ -56,13 +56,14 @@ make check-completions
 Arch packaging helpers (also run via pre-commit when relevant):
 
 ```bash
-make sync-pkgver           # tip-of-main -git pkgver from HEAD
+make sync-git-srcinfo      # -git .SRCINFO from PKGBUILD (recipe changes only)
 make sync-stable-srcinfo   # versioned package .SRCINFO from PKGBUILD
 ```
 
-With `pre-commit install` + `pre-commit install --hook-type pre-push`, `-git` `pkgver` and
-stable `.SRCINFO` sync on commit when needed, and `make lint` (includes `check-version`) runs
-on every push (see [CONTRIBUTING.md § Versioning](../CONTRIBUTING.md#versioning)).
+With `pre-commit install` + `pre-commit install --hook-type pre-push`, stable `.SRCINFO`
+(and `-git` `.SRCINFO` when that recipe changes) sync on commit, and `make lint`
+(includes `check-version`) runs on every push (see [CONTRIBUTING.md § Versioning](../CONTRIBUTING.md#versioning)).
+Do **not** bump Arch `-git` `pkgver` on every commit — `pkgver()` is authoritative at `makepkg` time.
 
 ---
 

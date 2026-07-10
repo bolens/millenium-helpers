@@ -1,6 +1,6 @@
 # Makefile for Millennium Helpers local development automation
 
-.PHONY: setup test test-windows lint format check-all check-version check-man check-winget check-completions sync-pkgver sync-stable-srcinfo bump-version test-debian test-ubuntu test-fedora test-all-distros
+.PHONY: setup test test-windows lint format check-all check-version check-man check-winget check-completions sync-git-srcinfo sync-stable-srcinfo bump-version test-debian test-ubuntu test-fedora test-all-distros
 
 setup:
 	@echo "Setting up local development dependencies..."
@@ -56,10 +56,10 @@ check-winget:
 check-completions:
 	bash tests/unit/test_completions.sh
 
-# Refresh packaging/millennium-helpers-git pkgver + .SRCINFO from git HEAD (no build/install).
-# See CONTRIBUTING.md § Versioning.
-sync-pkgver:
-	bash scripts/ci/update-pkgbuild-pkgver.sh
+# Regenerate packaging/millennium-helpers-git/.SRCINFO when the -git recipe changes.
+# Does not bump pkgver every commit (AUR VCS policy). See CONTRIBUTING.md § Versioning.
+sync-git-srcinfo:
+	bash scripts/ci/sync-git-srcinfo.sh
 
 # Regenerate packaging/millennium-helpers/.SRCINFO from PKGBUILD.
 # See CONTRIBUTING.md § Versioning.

@@ -6,7 +6,7 @@ on:
     paths:
       - 'packaging/millennium-helpers/**'
       - 'packaging/millennium-helpers-git/**'
-      - 'scripts/ci/update-pkgbuild-pkgver.sh'
+      - 'scripts/ci/sync-git-srcinfo.sh'
       - 'VERSION'
       - 'scripts/millennium*.sh'
       - 'scripts/millennium-mcp.py'
@@ -20,7 +20,7 @@ on:
     paths:
       - 'packaging/millennium-helpers/**'
       - 'packaging/millennium-helpers-git/**'
-      - 'scripts/ci/update-pkgbuild-pkgver.sh'
+      - 'scripts/ci/sync-git-srcinfo.sh'
       - 'VERSION'
       - 'scripts/millennium*.sh'
       - 'scripts/millennium-mcp.py'

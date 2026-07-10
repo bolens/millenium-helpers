@@ -1,6 +1,6 @@
 pkgbase = millennium-helpers
 	pkgdesc = Cross-platform utility scripts and Model Context Protocol (MCP) server for managing, upgrading, diagnosing, and controlling Millennium on Linux and Windows
-	pkgver = 2.6.0
+	pkgver = 2.6.1
 	pkgrel = 1
 	url = https://github.com/bolens/millenium-helpers
 	install = millennium-helpers.install
@@ -18,7 +18,7 @@ pkgbase = millennium-helpers
 	optdepends = cronie: alternative daily update timer scheduler via cron (fallback)
 	conflicts = millennium-helpers-git
 	backup = etc/sudoers.d/millennium-helpers
-	source = https://github.com/bolens/millenium-helpers/releases/download/v2.6.0/millennium-helpers-linux.tar.gz
+	source = https://github.com/bolens/millenium-helpers/releases/download/v2.6.1/millennium-helpers-linux.tar.gz
 	source = millennium-helpers.sudoers
 	sha256sums = 784a00921545d881256fa7fc89d75189fb01f8eba7b6f526a091850db060cec2
 	sha256sums = d2a3e23decbd8d3e8ec59919f3bc244be21b9a1f6fa5e70ddd039243b7a87c9d

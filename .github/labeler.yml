@@ -35,7 +35,7 @@
       - any-glob-to-any-file:
           - "packaging/millennium-helpers/**"
           - "packaging/millennium-helpers-git/**"
-          - "scripts/ci/update-pkgbuild-pkgver.sh"
+          - "scripts/ci/sync-git-srcinfo.sh"
 
 "area: nix":
   - changed-files:

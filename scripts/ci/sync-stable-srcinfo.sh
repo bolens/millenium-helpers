@@ -132,7 +132,7 @@ fi
 
 after="$(cat "$SRCINFO")"
 if [[ "$before" != "$after" ]]; then
-  # Pre-commit: abort so the user re-stages (same pattern as sync-pkgver).
+  # Pre-commit: abort so the user re-stages (same pattern as sync-git-srcinfo).
   if [[ -n "${PRE_COMMIT:-}" ]]; then
     echo "${SRCINFO} updated — re-stage it and retry the commit." >&2
     exit 1
