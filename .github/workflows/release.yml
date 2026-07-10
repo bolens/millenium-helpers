@@ -121,7 +121,7 @@ jobs:
             --exclude='.github*' \
             --exclude='tests*' \
             --exclude='packaging*' \
-            *
+            ./*
 
       - name: Create Windows Release Zip
         run: |
