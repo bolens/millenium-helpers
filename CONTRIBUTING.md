@@ -12,9 +12,54 @@ make check-all  # shellcheck + ruff + full test suite
 ```
 
 Alternatives:
-- **Dev Container**: open the repo in a container (installs Pester, PSScriptAnalyzer, and pre-commit hooks on create). Then run `make check-all`.
-- **Nix**: `nix develop` for a shell with bash, python, shellcheck, and ruff.
+- **Dev Container**: open the repo in a container (PowerShell, Docker-in-Docker, shellcheck, ruff, zsh/fish/nushell, Pester). Then run `make check-all`.
+- **Nix**: `nix develop` for a shell with bash, python, shellcheck, and ruff (does **not** include `pwsh` or Docker).
 - **Windows Pester**: `make test-windows` (requires PowerShell 7+ / `pwsh`).
+
+## Development requirements
+
+Tools fall into three tiers. Install what matches the work you are doing.
+
+### Core (needed for `make check-all`)
+
+| Tool | Used for | Install notes |
+| --- | --- | --- |
+| Bash 4+ (3.2 OK on macOS for scripts under test) | Running scripts and `tests/run_tests.sh` | System shell |
+| `make` | Local targets | Usually via build-essential / Xcode CLT |
+| `git` | Clone, hooks, PKGBUILD pkgver | System package |
+| Python 3 | MCP server, packaging YAML checks, some tests | `python3` + PyYAML for `make check-winget` |
+| [ShellCheck](https://www.shellcheck.net/) | `make lint` | `make setup`, or brew/pacman/apt/dnf |
+| [Ruff](https://docs.astral.sh/ruff/) | Lint/format `millennium-mcp.py` | `make setup`, or brew/pacman/apt/dnf |
+| `jq`, `curl`, `unzip` | Script runtime + tests | System packages |
+
+`make setup` only installs **shellcheck** and **ruff**. Everything else above is assumed present on a normal Linux/macOS/devcontainer host.
+
+### Recommended (full local parity with CI)
+
+| Tool | Used for | Install notes |
+| --- | --- | --- |
+| **PowerShell 7+ (`pwsh`)** | `make test-windows`, Windows script work | [Install PowerShell](https://learn.microsoft.com/powershell/scripting/install/installing-powershell); Dev Container feature includes it |
+| **Pester** | Windows unit tests | `Install-Module Pester -Scope CurrentUser` (Dev Container post-create does this) |
+| **zsh**, **fish**, **Nushell (≥ 0.114)** | Completion syntax/runtime smokes in `make check-completions` / CI completions workflow | Distro packages or [Nushell releases](https://www.nushell.sh/); missing shells are skipped with a warning, not a hard fail |
+| `gh` | Release runbook / inspecting Actions | [GitHub CLI](https://cli.github.com/) |
+| `pre-commit` | Optional git hooks | `pip install pre-commit && pre-commit install` |
+
+### Optional (release / cross-distro)
+
+| Tool | Used for | Install notes |
+| --- | --- | --- |
+| **Docker** | `make test-debian` / `test-ubuntu` / `test-fedora` / `test-all-distros` | Docker Engine or Docker Desktop; Dev Container enables Docker-in-Docker |
+| `mandoc` | Local man-page lint (also in CI) | Distro package |
+
+### What each environment provides
+
+| Environment | Core lint/test | `pwsh` + Pester | Docker distro matrix | Extra shells (zsh/fish/nu) |
+| --- | --- | --- | --- | --- |
+| Host + `make setup` | Yes (after deps) | Manual | Manual | Manual |
+| **Dev Container** (`.devcontainer/`) | Yes | Yes | Yes (DinD) | Yes |
+| **`nix develop`** | Yes (shellcheck/ruff) | No | No | No |
+
+Before a release, follow [docs/release_runbook.md](docs/release_runbook.md): at minimum `make lint`, `make test`, and `make test-windows`; use `make test-all-distros` when Docker is available.
 
 ## Security
 
@@ -31,9 +76,9 @@ See [SECURITY.md](SECURITY.md) for vulnerability reporting and [docs/security_tr
 | `scripts/millennium-mcp.py` | MCP server for AI assistants |
 | `man/` | Manual pages (`millennium-*.1`) for every user-facing command |
 | `Formula/` | Homebrew formula (`millennium-helpers.rb`) |
-| `completions/` | Bash / Zsh / Fish / Nushell completions |
+| `completions/` | Bash / Zsh / Fish / Nushell / PowerShell completions |
 | `tests/` | Unit + behavioral suites (`tests/run_tests.sh`) |
-| `tests/windows/` | Pester tests for PowerShell scripts |
+| `tests/windows/` | Pester tests for PowerShell scripts (`make test-windows`) |
 
 ## Adding or changing a command
 
@@ -56,14 +101,15 @@ When adding a feature, check both platforms. Document intentional gaps in the PR
 
 ## Testing
 
-```bash
-make test           # local suite
-make lint           # shellcheck + ruff
-make check-all      # lint + test
-make test-all-distros  # local + Debian/Ubuntu/Fedora Docker runs (optional)
-```
+See [Development requirements](#development-requirements) for tools each target needs.
 
-Windows: run the Pester suite under `tests/windows/` on a Windows host or CI.
+```bash
+make test              # local Bash unit + behavioral suite
+make lint              # shellcheck + ruff (+ version/man/completions gates)
+make check-all         # lint + test
+make test-windows      # Pester under tests/windows/ (requires pwsh)
+make test-all-distros  # local + Debian/Ubuntu/Fedora via Docker (requires Docker)
+```
 
 ## Versioning
 

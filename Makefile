@@ -4,6 +4,8 @@
 
 setup:
 	@echo "Setting up local development dependencies..."
+	@echo "Note: make setup only installs shellcheck + ruff."
+	@echo "See CONTRIBUTING.md#development-requirements for pwsh, Docker, zsh/fish/nu, etc."
 	@if command -v brew >/dev/null 2>&1; then \
 		echo "Detected Homebrew. Installing shellcheck and ruff..."; \
 		brew install shellcheck ruff; \

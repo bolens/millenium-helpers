@@ -12,6 +12,8 @@ For packaging/automation background, see [CONTRIBUTING.md](../CONTRIBUTING.md#ve
 - [ ] On `main`, up to date with `origin/main`
 - [ ] You know the target version (semver; bump minor for features, patch for fixes)
 - [ ] `PACKAGING_PAT` is configured in repo secrets (required for auto packaging PR + publish)
+- [ ] Dev tools installed per [CONTRIBUTING.md § Development requirements](../CONTRIBUTING.md#development-requirements)
+  (`make setup`, plus **`pwsh`** for Windows tests; **Docker** if you will run `make test-all-distros`)
 
 ---
 
@@ -20,7 +22,7 @@ For packaging/automation background, see [CONTRIBUTING.md](../CONTRIBUTING.md#ve
 Run these from the repo root. **Do not skip lint/shellcheck.**
 
 ```bash
-# Install tools if needed
+# Install shellcheck + ruff if needed (see CONTRIBUTING for pwsh / Docker / shells)
 make setup
 
 # ShellCheck + ruff + VERSION/man/completions gates
@@ -29,7 +31,7 @@ make lint
 # Full local unit + behavioral suite
 make test
 
-# Windows Pester (requires pwsh)
+# Windows Pester (requires pwsh + Pester module)
 make test-windows
 
 # Optional but recommended before a major/minor release:
@@ -37,7 +39,7 @@ make test-windows
 make test-all-distros
 ```
 
-`make check-all` is shorthand for `make lint` + `make test`. Prefer running `make test-windows` as well before tagging.
+`make check-all` is shorthand for `make lint` + `make test`. Prefer running `make test-windows` as well before tagging. If `pwsh` or Docker is missing, install them (or use the Dev Container) rather than skipping those gates for a release.
 
 Extra packaging gates (also covered by some CI workflows):
 
@@ -167,6 +169,7 @@ Never force-push `main`. Prefer a new patch tag (`vX.Y.Z+1`) if the draft was al
 ## Quick copy-paste (happy path)
 
 ```bash
+# Tools: see CONTRIBUTING.md#development-requirements (pwsh, Docker, shellcheck, …)
 make setup
 make check-all
 make test-windows
