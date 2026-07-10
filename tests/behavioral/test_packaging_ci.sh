@@ -77,10 +77,9 @@ winget=$(cat "$WORK/packaging/winget/bolens.millenniumhelpers.installer.yaml")
 assert_contains "$winget" "InstallerSha256: \"${WINDOWS_SHA^^}\"" "Winget InstallerSha256 is quoted uppercase"
 assert_contains "$winget" "v3.4.5.zip" "Winget InstallerUrl points at the release tag zip"
 assert_contains "$winget" "PackageVersion: 3.4.5" "Winget installer PackageVersion updated"
-assert_contains "$winget" "InstallerType: zip" "Winget installer uses zip for multi-command portable"
-assert_contains "$winget" "NestedInstallerType: portable" "Winget NestedInstallerType is portable"
-assert_contains "$winget" 'millenium-helpers-3.4.5\scripts\windows\millennium-diag.ps1' \
-  "Winget NestedInstallerFiles use versioned GitHub archive root"
+assert_contains "$winget" "InstallerType: zip" "Winget installer uses zip (no portable .ps1 claims)"
+assert_not_contains "$winget" "NestedInstallerFiles" "Winget installer has no NestedInstallerFiles"
+assert_not_contains "$winget" "PortableCommandAliases" "Winget installer has no PortableCommandAliases"
 
 # --- check-winget-manifests accepts quoted placeholder on main ---
 

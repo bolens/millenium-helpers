@@ -95,7 +95,6 @@ import sys
 from pathlib import Path
 
 version, sha, url, today = sys.argv[1], sys.argv[2].upper(), sys.argv[3], sys.argv[4]
-archive_root = f"millenium-helpers-{version}"
 
 
 def set_package_version(text: str, ver: str) -> str:
@@ -122,12 +121,6 @@ text = re.sub(
     rf'\1InstallerSha256: "{sha}"',
     text,
     count=1,
-)
-# GitHub tag zips extract under millenium-helpers-<version>/ (v prefix stripped).
-text = re.sub(
-    r"(RelativeFilePath:\s*)millenium-helpers-[^\\/\s]+([\\/]scripts[\\/]windows[\\/])",
-    rf"\1{archive_root}\2",
-    text,
 )
 installer.write_text(text, encoding="utf-8")
 print(f"Updated {installer}")
@@ -177,8 +170,6 @@ if f"v{version}.zip" not in installer:
     errors.append("Winget InstallerUrl missing expected tag zip")
 if f"PackageVersion: {version}" not in installer:
     errors.append("Winget installer PackageVersion mismatch")
-if f"millenium-helpers-{version}\\scripts\\windows\\" not in installer.replace("/", "\\"):
-    errors.append("Winget NestedInstallerFiles missing versioned archive root paths")
 
 file_ver = Path("VERSION").read_text(encoding="utf-8").strip()
 if file_ver != version:
