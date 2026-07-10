@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 # Structural validation for Winget multi-file manifests (beyond YAML parse).
+# WinGet portable NestedInstallerFiles only allow .exe, so this package cannot
+# pass `winget validate` as a multi-script PowerShell portable. We still check
+# YAML structure and version sync here; CI skips `winget validate`.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -30,15 +33,6 @@ import yaml
 
 expected_version, version_path, installer_path, locale_path = sys.argv[1:5]
 errors: list[str] = []
-
-EXPECTED_ALIASES = {
-    "millennium-diag",
-    "millennium-purge",
-    "millennium-repair",
-    "millennium-schedule",
-    "millennium-theme",
-    "millennium-upgrade",
-}
 
 
 def load(path: str) -> dict:
@@ -76,70 +70,41 @@ if installer.get("ManifestType") != "installer":
 if locale.get("ManifestType") != "defaultLocale":
     errors.append(f"{locale_path}: ManifestType must be 'defaultLocale'")
 
-if installer.get("InstallerType") != "zip":
-    errors.append(f"{installer_path}: InstallerType must be 'zip' (multi-command portable)")
-if installer.get("NestedInstallerType") != "portable":
-    errors.append(f"{installer_path}: NestedInstallerType must be 'portable'")
-
-nested = installer.get("NestedInstallerFiles")
-if not isinstance(nested, list) or not nested:
-    errors.append(f"{installer_path}: NestedInstallerFiles must be a non-empty list")
-else:
-    aliases: set[str] = set()
-    for item in nested:
-        if not isinstance(item, dict):
-            errors.append(f"{installer_path}: NestedInstallerFiles entries must be mappings")
-            continue
-        rel = str(item.get("RelativeFilePath", "")).replace("/", "\\")
-        alias = str(item.get("PortableCommandAlias", ""))
-        if not rel:
-            errors.append(f"{installer_path}: NestedInstallerFiles entry missing RelativeFilePath")
-            continue
-        if not alias:
-            errors.append(f"{installer_path}: NestedInstallerFiles entry missing PortableCommandAlias")
-            continue
-        aliases.add(alias)
-        # Strip GitHub archive root (millenium-helpers-<ref>\...) to verify repo path.
-        parts = Path(rel.replace("\\", "/")).parts
-        if len(parts) < 2 or not parts[0].startswith("millenium-helpers-"):
-            errors.append(
-                f"{installer_path}: RelativeFilePath '{rel}' must start with "
-                "millenium-helpers-<ref>\\"
-            )
-            continue
-        repo_rel = Path(*parts[1:])
-        if not repo_rel.exists():
-            errors.append(
-                f"{installer_path}: NestedInstallerFiles[{alias}] path "
-                f"'{repo_rel}' not found in repo"
-            )
-        expected_suffix = Path("scripts") / "windows" / f"{alias}.ps1"
-        if repo_rel != expected_suffix:
-            errors.append(
-                f"{installer_path}: NestedInstallerFiles[{alias}] should point at "
-                f"{expected_suffix.as_posix()} (got {repo_rel.as_posix()})"
-            )
-    missing = EXPECTED_ALIASES - aliases
-    extra = aliases - EXPECTED_ALIASES
-    if missing:
-        errors.append(f"{installer_path}: missing PortableCommandAlias entries: {sorted(missing)}")
-    if extra:
-        errors.append(f"{installer_path}: unexpected PortableCommandAlias entries: {sorted(extra)}")
+# PowerShell helpers cannot use NestedInstallerFiles (.exe only). Keep a plain
+# zip installer entry for URL/hash tracking without portable command claims.
+if installer.get("InstallerType") not in (None, "zip"):
+    # Allow InstallerType on the Installers[] entry instead of the root.
+    pass
+if installer.get("NestedInstallerFiles"):
+    errors.append(
+        f"{installer_path}: NestedInstallerFiles are not supported for this "
+        "PowerShell package (WinGet portable allows .exe only)"
+    )
+if installer.get("PortableCommandAliases") is not None:
+    errors.append(f"{installer_path}: PortableCommandAliases is not a valid WinGet field")
 
 installers = installer.get("Installers")
 if not isinstance(installers, list) or not installers:
     errors.append(f"{installer_path}: Installers must be a non-empty list")
 else:
     entry = installers[0]
+    itype = entry.get("InstallerType") or installer.get("InstallerType")
+    if itype != "zip":
+        errors.append(f"{installer_path}: InstallerType must be 'zip'")
     url = entry.get("InstallerUrl", "")
     if not isinstance(url, str) or not url.startswith("https://"):
         errors.append(f"{installer_path}: InstallerUrl must be an https URL")
     sha = str(entry.get("InstallerSha256", ""))
-    # Unquoted all-zero hashes may parse as int 0 in YAML
     if isinstance(entry.get("InstallerSha256"), int):
         sha = f"{entry['InstallerSha256']:064x}"
     if not re.fullmatch(r"[0-9a-fA-F]{64}", sha):
         errors.append(f"{installer_path}: InstallerSha256 must be 64 hex characters (got {sha!r})")
+    commands = entry.get("Commands")
+    if commands:
+        errors.append(
+            f"{installer_path}: omit Commands for zip-only manifests "
+            "(portable multi-command is not supported without .exe)"
+        )
 
 for field in ("PackageName", "Publisher", "License", "ShortDescription"):
     if not locale.get(field):
@@ -156,4 +121,5 @@ if set(sha) == {"0"}:
     print("note: InstallerSha256 is still a placeholder (all zeros)")
 
 print("Winget manifest structural checks passed.")
+print("note: winget validate is skipped in CI (portable NestedInstallerFiles require .exe)")
 PY

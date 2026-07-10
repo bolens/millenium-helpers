@@ -94,31 +94,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
 
-      - name: Check whether InstallerSha256 is a placeholder
-        id: hash
+      - name: Skip winget validate (PowerShell package)
         shell: pwsh
         run: |
-          $yaml = Get-Content packaging/winget/bolens.millenniumhelpers.installer.yaml -Raw
-          # Allow optional quotes: all-zero placeholder is quoted so YAML
-          # does not parse it as integer 0.
-          if ($yaml -match 'InstallerSha256:\s*"?([0-9a-fA-F]{64})"?') {
-            $sha = $Matches[1]
-            $isPlaceholder = ($sha -eq ('0' * 64))
-            $placeholder = if ($isPlaceholder) { 'true' } else { 'false' }
-            "sha=$sha" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-            "placeholder=$placeholder" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-            Write-Host "InstallerSha256=$sha placeholder=$placeholder"
-          } else {
-            throw "InstallerSha256 not found in installer manifest"
-          }
-
-      - name: Validate with winget
-        if: steps.hash.outputs.placeholder != 'true'
-        shell: pwsh
-        run: winget validate --manifest packaging/winget
-
-      - name: Skip winget validate (placeholder hash)
-        if: steps.hash.outputs.placeholder == 'true'
-        shell: pwsh
-        run: |
-          Write-Host "::notice::Skipping winget validate while InstallerSha256 is a placeholder (all zeros). It will run after a release packaging bump."
+          Write-Host @"
+          ::notice::Skipping ``winget validate``.
+          WinGet portable NestedInstallerFiles only allow ``.exe`` files.
+          This package is PowerShell-based; Scoop is the supported multi-command Windows install path.
+          YAML structure is still checked on Ubuntu via check-winget-manifests.sh.
+          "@

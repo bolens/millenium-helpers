@@ -1,27 +1,14 @@
 # bolens.millenniumhelpers.installer.yaml
-# Multi-command portable package: zip archive + NestedInstallerFiles.
-# GitHub source zips extract under millenium-helpers-<ref>/ (tag vX.Y.Z → X.Y.Z; branch main → main).
+# WinGet portable nested files only allow .exe; this package is PowerShell.
+# Scoop is the supported multi-command Windows install path. These manifests
+# track URL/hash for docs; CI skips ``winget validate``.
 PackageIdentifier: bolens.millenniumhelpers
 PackageVersion: 2.2.0
 MinimumOSVersion: 10.0.0.0
 ReleaseDate: 2026-07-09
-InstallerType: zip
-NestedInstallerType: portable
-NestedInstallerFiles:
-- RelativeFilePath: millenium-helpers-main\scripts\windows\millennium-diag.ps1
-  PortableCommandAlias: millennium-diag
-- RelativeFilePath: millenium-helpers-main\scripts\windows\millennium-purge.ps1
-  PortableCommandAlias: millennium-purge
-- RelativeFilePath: millenium-helpers-main\scripts\windows\millennium-repair.ps1
-  PortableCommandAlias: millennium-repair
-- RelativeFilePath: millenium-helpers-main\scripts\windows\millennium-schedule.ps1
-  PortableCommandAlias: millennium-schedule
-- RelativeFilePath: millenium-helpers-main\scripts\windows\millennium-theme.ps1
-  PortableCommandAlias: millennium-theme
-- RelativeFilePath: millenium-helpers-main\scripts\windows\millennium-upgrade.ps1
-  PortableCommandAlias: millennium-upgrade
 Installers:
 - Architecture: neutral
+  InstallerType: zip
   InstallerUrl: https://github.com/bolens/millenium-helpers/archive/refs/heads/main.zip
   InstallerSha256: "0000000000000000000000000000000000000000000000000000000000000000" # Dummy value to be populated by publisher
   UpgradeBehavior: uninstallPrevious
