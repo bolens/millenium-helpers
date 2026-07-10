@@ -199,6 +199,8 @@ assert_contains "$out" "beta release tag" "millennium-upgrade.sh --beta flag set
 rm -f "${MOCK_BIN}/curl"
 
 # --- Steam active process detection and game running checks ---
+# Mock uname to return Linux to test these Linux paths portably
+mock_cmd "uname" 'echo "Linux"'
 # 1. When Steam is running but NO game is running, dry-run succeeds
 mock_cmd "pgrep" "exit 0"
 mock_cmd "curl" 'echo "{\"tag_name\": \"v9.9.9\"}"'
@@ -224,5 +226,6 @@ rm -rf "${MOCK_PROC}"
 unset MOCK_PROC
 rm -f "${MOCK_BIN}/pgrep"
 rm -f "${MOCK_BIN}/curl"
+unmock_cmd "uname"
 
 print_summary

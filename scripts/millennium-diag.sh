@@ -92,6 +92,24 @@ done
 if [[ "$SHARE_REPORT" == "true" ]]; then
   echo "Generating and uploading diagnostic report..."
   
+  safe_sed_i() {
+    local use_E=false
+    if [[ "$1" == "-E" ]]; then
+      use_E=true
+      shift
+    fi
+    local pattern="$1"
+    local file="$2"
+    local temp_file
+    temp_file=$(mktemp 2>/dev/null || mktemp -t tmp.XXXXXX)
+    if [[ "$use_E" == "true" ]]; then
+      sed -E "$pattern" "$file" > "$temp_file"
+    else
+      sed "$pattern" "$file" > "$temp_file"
+    fi
+    mv -f "$temp_file" "$file"
+  }
+  
   clean_args=()
   for arg in "${ORIGINAL_ARGS[@]}"; do
     if [[ "$arg" != "-s" && "$arg" != "--share" ]]; then
@@ -113,11 +131,11 @@ if [[ "$SHARE_REPORT" == "true" ]]; then
   fi
   
   # Replace home path and username to prevent info leakage
-  sed -i "s|$user_home|~|g; s|$user_name|user|g" "$report_file"
+  safe_sed_i "s|$user_home|~|g; s|$user_name|user|g" "$report_file"
 
   # Redact any GitHub Personal Access Tokens (PATs) and configuration tokens
-  sed -i -E "s/ghp_[A-Za-z0-9_]+/\[REDACTED\]/g" "$report_file"
-  sed -i -E "s/github_pat_[A-Za-z0-9_]+/\[REDACTED\]/g" "$report_file"
+  safe_sed_i -E "s/ghp_[A-Za-z0-9_]+/\[REDACTED\]/g" "$report_file"
+  safe_sed_i -E "s/github_pat_[A-Za-z0-9_]+/\[REDACTED\]/g" "$report_file"
 
   user_config_dir="${XDG_CONFIG_HOME:-$user_home/.config}/millennium-helpers"
   loaded_token=""
@@ -132,10 +150,10 @@ except Exception:
 " 2>/dev/null)
   fi
   if [[ -n "$loaded_token" && ${#loaded_token} -ge 4 ]]; then
-    sed -i "s|$loaded_token|\[REDACTED\]|g" "$report_file"
+    safe_sed_i "s|$loaded_token|\[REDACTED\]|g" "$report_file"
   fi
   if [[ -n "${GITHUB_TOKEN:-}" && ${#GITHUB_TOKEN} -ge 4 ]]; then
-    sed -i "s|$GITHUB_TOKEN|\[REDACTED\]|g" "$report_file"
+    safe_sed_i "s|$GITHUB_TOKEN|\[REDACTED\]|g" "$report_file"
   fi
   
   # Upload using curl
