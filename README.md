@@ -148,6 +148,14 @@ Uninstall:
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\install.ps1 -Uninstall
 ```
 
+**Winget:** end users install with `winget install bolens.millenniumhelpers` (community package). To try the manifests from this repo **before** they are in the winget community repository — for example while polishing a PR — clone the repo and run:
+
+```powershell
+winget install --manifest packaging/winget/
+```
+
+That path only loads the YAML in `packaging/winget/`; it is not the normal install command.
+
 </details>
 
 ---

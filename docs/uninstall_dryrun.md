@@ -211,20 +211,28 @@ If you installed the helpers via Scoop, uninstallation is fully automated:
 
 ### 7. Windows (Winget Install)
 
-If you installed the helpers via Winget (`winget install bolens.millenniumhelpers`), uninstallation is:
-
-1. **Uninstall package**:
-   ```powershell
-   winget uninstall bolens.millenniumhelpers
-   ```
-
-2. **Clean up user-level configs (optional)**:
-   ```powershell
-   Remove-Item -Path "$env:LOCALAPPDATA\millennium-helpers" -Recurse -Force -ErrorAction SilentlyContinue
-   ```
-
-Local manifest testing (before community-repo approval) still works from a clone:
+**Normal install** (once the package is in the winget community repository):
 
 ```powershell
+winget install bolens.millenniumhelpers
+```
+
+**Uninstall:**
+
+```powershell
+winget uninstall bolens.millenniumhelpers
+```
+
+Optional config cleanup:
+
+```powershell
+Remove-Item -Path "$env:LOCALAPPDATA\millennium-helpers" -Recurse -Force -ErrorAction SilentlyContinue
+```
+
+**Local manifest testing** (developers / pre-approval only): installs from the YAML in this repo instead of the community source. Use this to exercise `packaging/winget/` from a clone while polishing manifests — not for end-user installs.
+
+```powershell
+# from the repo root
 winget install --manifest packaging/winget/
+winget uninstall bolens.millenniumhelpers
 ```
