@@ -3,15 +3,15 @@
   "build": {
     "dockerfile": "Dockerfile"
   },
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
   "features": {
-    "ghcr.io/devcontainers/features/powershell:1": {
-      "version": "latest"
-    },
+    "ghcr.io/devcontainers/features/powershell:1": {},
     "ghcr.io/devcontainers/features/nix:1": {
-      "version": "latest"
+      "multiUser": true,
+      "extraNixConfig": "experimental-features = nix-command flakes"
     },
     "ghcr.io/devcontainers/features/docker-in-docker:2": {
-      "version": "latest"
+      "moby": true
     }
   },
   "customizations": {
@@ -22,10 +22,27 @@
         "ms-vscode.powershell",
         "jnoortheen.nix-ide",
         "themisanthrope.fish-lsp",
-        "ms-plugins.nushell"
-      ]
+        "ms-plugins.nushell",
+        "ms-azuretools.vscode-docker",
+        "github.vscode-github-actions"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "files.eol": "\n",
+        "shellcheck.enable": true,
+        "shellcheck.executablePath": "shellcheck",
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff",
+          "editor.codeActionsOnSave": {
+            "source.fixAll.ruff": "explicit",
+            "source.organizeImports.ruff": "explicit"
+          }
+        },
+        "powershell.powerShellDefaultVersion": "PowerShell",
+        "nix.enableLanguageServer": true
+      }
     }
   },
   "remoteUser": "developer",
-  "postCreateCommand": "pwsh -Command \"Install-Module -Name Pester -Force -SkipPublisherCheck -Scope CurrentUser\" && make check-all"
+  "postCreateCommand": "bash .devcontainer/post-create.sh"
 }
