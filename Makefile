@@ -1,6 +1,6 @@
 # Makefile for Millennium Helpers local development automation
 
-.PHONY: setup test test-windows lint format check-all check-version check-man check-winget check-completions sync-pkgver test-debian test-ubuntu test-fedora test-all-distros
+.PHONY: setup test test-windows lint format check-all check-version check-man check-winget check-completions sync-pkgver sync-stable-srcinfo bump-version test-debian test-ubuntu test-fedora test-all-distros
 
 setup:
 	@echo "Setting up local development dependencies..."
@@ -59,6 +59,15 @@ check-completions:
 # Refresh packaging/millennium-helpers-git pkgver + .SRCINFO from git HEAD (no build/install).
 sync-pkgver:
 	bash scripts/ci/update-pkgbuild-pkgver.sh
+
+# Regenerate packaging/millennium-helpers/.SRCINFO from PKGBUILD.
+sync-stable-srcinfo:
+	bash scripts/ci/sync-stable-srcinfo.sh
+
+# Pre-tag bump: VERSION + packaging URLs/versions (keeps hashes). Usage: make bump-version VERSION=X.Y.Z
+bump-version:
+	@test -n "$(VERSION)" || (echo "usage: make bump-version VERSION=X.Y.Z" >&2; exit 2)
+	bash scripts/ci/bump-version.sh "$(VERSION)"
 
 lint:
 	shellcheck *.sh scripts/*.sh scripts/lib/*.sh scripts/ci/*.sh tests/*.sh tests/lib/*.sh tests/unit/*.sh tests/behavioral/*.sh

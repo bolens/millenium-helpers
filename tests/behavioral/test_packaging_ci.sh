@@ -47,6 +47,7 @@ trap 'rm -rf "$WORK"' EXIT
 mkdir -p "$WORK/Formula" "$WORK/packaging/scoop" "$WORK/packaging/winget" \
   "$WORK/packaging/millennium-helpers" "$WORK/nix" "$WORK/scripts/ci"
 cp "$UPDATE" "$WORK/scripts/ci/"
+cp "${REPO_ROOT}/scripts/ci/sync-stable-srcinfo.sh" "$WORK/scripts/ci/"
 cp "${REPO_ROOT}/Formula/millennium-helpers.rb" "$WORK/Formula/"
 cp "${REPO_ROOT}/packaging/scoop/millennium-helpers.json" "$WORK/packaging/scoop/"
 cp "${REPO_ROOT}/packaging/winget/"*.yaml "$WORK/packaging/winget/"
@@ -93,9 +94,86 @@ assert_contains "$aur" "pkgver=3.4.5" "Arch versioned PKGBUILD pkgver updated"
 assert_contains "$aur" "${LINUX_SHA}" "Arch versioned PKGBUILD receives linux sha256"
 aur_srcinfo=$(cat "$WORK/packaging/millennium-helpers/.SRCINFO")
 assert_contains "$aur_srcinfo" "pkgver = 3.4.5" "Arch versioned .SRCINFO pkgver updated"
+assert_contains "$aur_srcinfo" "releases/download/v3.4.5/millennium-helpers-linux.tar.gz" "Arch .SRCINFO source URL expanded to new version"
 nix_info=$(cat "$WORK/nix/release-info.nix")
 assert_contains "$nix_info" 'version = "3.4.5"' "Nix release-info.nix version updated"
 assert_contains "$nix_info" "sha256-" "Nix release-info.nix has SRI srcHash"
+
+# --- bump-version.sh (pre-tag) updates versions/URLs and regenerates .SRCINFO ---
+
+BUMP="${REPO_ROOT}/scripts/ci/bump-version.sh"
+CHECK="${REPO_ROOT}/scripts/ci/check-version-sync.sh"
+SYNC_SRC="${REPO_ROOT}/scripts/ci/sync-stable-srcinfo.sh"
+
+BUMP_WORK=$(mktemp -d)
+# shellcheck disable=SC2064
+trap 'rm -rf "$WORK" "$BUMP_WORK"' EXIT
+
+mkdir -p "$BUMP_WORK/Formula" "$BUMP_WORK/packaging/scoop" "$BUMP_WORK/packaging/winget" \
+  "$BUMP_WORK/packaging/millennium-helpers" "$BUMP_WORK/nix" "$BUMP_WORK/scripts/ci"
+cp "$BUMP" "$CHECK" "$SYNC_SRC" "$BUMP_WORK/scripts/ci/"
+cp "${REPO_ROOT}/Formula/millennium-helpers.rb" "$BUMP_WORK/Formula/"
+cp "${REPO_ROOT}/packaging/scoop/millennium-helpers.json" "$BUMP_WORK/packaging/scoop/"
+cp "${REPO_ROOT}/packaging/winget/"*.yaml "$BUMP_WORK/packaging/winget/"
+cp "${REPO_ROOT}/packaging/millennium-helpers/PKGBUILD" "$BUMP_WORK/packaging/millennium-helpers/"
+cp "${REPO_ROOT}/packaging/millennium-helpers/.SRCINFO" "$BUMP_WORK/packaging/millennium-helpers/"
+cp "${REPO_ROOT}/packaging/millennium-helpers/millennium-helpers.sudoers" "$BUMP_WORK/packaging/millennium-helpers/"
+cp "${REPO_ROOT}/nix/release-info.nix" "$BUMP_WORK/nix/"
+cp "${REPO_ROOT}/pyproject.toml" "$BUMP_WORK/"
+# Seed an older version so bump has something to change.
+printf '1.0.0\n' > "$BUMP_WORK/VERSION"
+# Keep hashes from the copied manifests; only versions/URLs should move.
+sed -i 's/pkgver=.*/pkgver=1.0.0/' "$BUMP_WORK/packaging/millennium-helpers/PKGBUILD"
+sed -i 's/\tpkgver = .*/\tpkgver = 1.0.0/' "$BUMP_WORK/packaging/millennium-helpers/.SRCINFO"
+sed -i 's|releases/download/v[^/]*/|releases/download/v1.0.0/|' \
+  "$BUMP_WORK/packaging/millennium-helpers/.SRCINFO" \
+  "$BUMP_WORK/Formula/millennium-helpers.rb"
+python3 - "$BUMP_WORK" <<'PY'
+import json, re, sys
+from pathlib import Path
+root = Path(sys.argv[1])
+scoop = json.loads((root / "packaging/scoop/millennium-helpers.json").read_text())
+scoop["version"] = "1.0.0"
+scoop["url"] = scoop["url"].replace(
+    scoop["url"].split("/download/")[1].split("/")[0], "v1.0.0"
+) if False else re.sub(r"/v[^/]+/", "/v1.0.0/", scoop["url"])
+(root / "packaging/scoop/millennium-helpers.json").write_text(json.dumps(scoop, indent=4) + "\n")
+for rel in (
+    "packaging/winget/bolens.millenniumhelpers.yaml",
+    "packaging/winget/bolens.millenniumhelpers.installer.yaml",
+    "packaging/winget/bolens.millenniumhelpers.locale.en-US.yaml",
+):
+    p = root / rel
+    text = p.read_text()
+    text = re.sub(r"(?m)^PackageVersion:\s*.*$", "PackageVersion: 1.0.0", text, count=1)
+    text = re.sub(r"/v[^/]+/", "/v1.0.0/", text)
+    p.write_text(text)
+ri = root / "nix/release-info.nix"
+ri.write_text(re.sub(r'version = "[^"]+"', 'version = "1.0.0"', ri.read_text(), count=1))
+py = root / "pyproject.toml"
+py.write_text(re.sub(r'(?m)^version = "[^"]+"', 'version = "1.0.0"', py.read_text(), count=1))
+PY
+
+# Deliberately stale .SRCINFO source URL (the bug we automate against).
+sed -i 's|releases/download/v1.0.0/|releases/download/v0.9.9/|' \
+  "$BUMP_WORK/packaging/millennium-helpers/.SRCINFO"
+out=$(cd "$BUMP_WORK" && bash scripts/ci/sync-stable-srcinfo.sh --check 2>&1); rc=$?
+assert_failure "$rc" "sync-stable-srcinfo --check fails on stale source URL"
+
+out=$(cd "$BUMP_WORK" && bash scripts/ci/bump-version.sh "9.8.7" 2>&1); rc=$?
+assert_success "$rc" "bump-version.sh succeeds"
+assert_equals "9.8.7" "$(tr -d '[:space:]' < "$BUMP_WORK/VERSION")" "bump-version updates VERSION"
+assert_contains "$(cat "$BUMP_WORK/pyproject.toml")" 'version = "9.8.7"' "bump-version updates pyproject.toml"
+assert_contains "$(cat "$BUMP_WORK/Formula/millennium-helpers.rb")" \
+  "releases/download/v9.8.7/millennium-helpers-linux.tar.gz" "bump-version updates Formula URL"
+assert_contains "$(cat "$BUMP_WORK/packaging/millennium-helpers/PKGBUILD")" "pkgver=9.8.7" \
+  "bump-version updates Arch PKGBUILD pkgver"
+assert_contains "$(cat "$BUMP_WORK/packaging/millennium-helpers/.SRCINFO")" \
+  "releases/download/v9.8.7/millennium-helpers-linux.tar.gz" \
+  "bump-version regenerates .SRCINFO source URL (not left on old tag)"
+assert_contains "$(cat "$BUMP_WORK/nix/release-info.nix")" 'version = "9.8.7"' \
+  "bump-version updates nix/release-info.nix version"
+assert_contains "$out" "All packaging versions match VERSION" "bump-version runs check-version-sync"
 
 # --- check-winget-manifests accepts quoted placeholder on main ---
 
@@ -165,5 +243,16 @@ assert_contains "$hb" "- 'Formula/**'" "Homebrew CI path filters include Formula
 vs=$(cat "${REPO_ROOT}/.github/workflows/version-sync.yml")
 assert_contains "$vs" "- 'VERSION'" "version-sync path filters include VERSION"
 assert_contains "$vs" "- 'Formula/**'" "version-sync path filters include Formula"
+assert_contains "$vs" "- 'pyproject.toml'" "version-sync path filters include pyproject.toml"
+assert_contains "$vs" "sync-stable-srcinfo.sh" "version-sync path filters include sync-stable-srcinfo.sh"
+assert_contains "$vs" "bump-version.sh" "version-sync path filters include bump-version.sh"
+
+pre_commit=$(cat "${REPO_ROOT}/.pre-commit-config.yaml")
+assert_contains "$pre_commit" "sync-stable-srcinfo" "pre-commit includes sync-stable-srcinfo hook"
+assert_contains "$pre_commit" "packaging/millennium-helpers" "pre-commit version-sync watches Arch packaging"
+
+makefile=$(cat "${REPO_ROOT}/Makefile")
+assert_contains "$makefile" "bump-version" "Makefile exposes bump-version target"
+assert_contains "$makefile" "sync-stable-srcinfo" "Makefile exposes sync-stable-srcinfo target"
 
 print_summary

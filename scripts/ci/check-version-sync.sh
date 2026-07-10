@@ -21,6 +21,18 @@ VERSION="$(tr -d '[:space:]' < VERSION)"
 
 echo "VERSION=$VERSION"
 
+# --- pyproject.toml ---
+PYPROJECT="pyproject.toml"
+[[ -f "$PYPROJECT" ]] || fail "missing $PYPROJECT"
+PYPROJECT_VERSION="$(python3 -c "
+import re, sys
+text = open(sys.argv[1], encoding='utf-8').read()
+m = re.search(r'(?m)^version\s*=\s*\"([^\"]+)\"', text)
+print(m.group(1) if m else '')
+" "$PYPROJECT")"
+[[ "$PYPROJECT_VERSION" == "$VERSION" ]] || fail "pyproject.toml version '$PYPROJECT_VERSION' != VERSION '$VERSION'"
+echo "pyproject.toml version OK ($PYPROJECT_VERSION)"
+
 # --- Scoop ---
 SCOOP_JSON="packaging/scoop/millennium-helpers.json"
 [[ -f "$SCOOP_JSON" ]] || fail "missing $SCOOP_JSON"
@@ -81,6 +93,12 @@ if ! grep -qE 'releases/download/v(\$\{pkgver\}|\$pkgver|'"${VERSION}"')/millenn
   fail "Arch PKGBUILD missing trimmed Linux release asset URL for v${VERSION}"
 fi
 echo "Arch packaging/millennium-helpers pkgver OK ($AUR_PKGVER)"
+
+# --- Versioned Arch .SRCINFO (must match PKGBUILD; catches hand-edited drift) ---
+AUR_SRCINFO="packaging/millennium-helpers/.SRCINFO"
+[[ -f "$AUR_SRCINFO" ]] || fail "missing $AUR_SRCINFO"
+bash scripts/ci/sync-stable-srcinfo.sh --check || fail "Arch .SRCINFO out of date with PKGBUILD (run: bash scripts/ci/sync-stable-srcinfo.sh)"
+echo "Arch packaging/millennium-helpers .SRCINFO OK"
 
 # --- Nix release-info ---
 NIX_RELEASE="nix/release-info.nix"

@@ -5,23 +5,29 @@ on:
     branches: [ main ]
     paths:
       - 'VERSION'
+      - 'pyproject.toml'
       - 'Formula/**'
       - 'packaging/scoop/**'
       - 'packaging/winget/**'
       - 'packaging/millennium-helpers/**'
       - 'nix/release-info.nix'
       - 'scripts/ci/check-version-sync.sh'
+      - 'scripts/ci/sync-stable-srcinfo.sh'
+      - 'scripts/ci/bump-version.sh'
       - '.github/workflows/version-sync.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'VERSION'
+      - 'pyproject.toml'
       - 'Formula/**'
       - 'packaging/scoop/**'
       - 'packaging/winget/**'
       - 'packaging/millennium-helpers/**'
       - 'nix/release-info.nix'
       - 'scripts/ci/check-version-sync.sh'
+      - 'scripts/ci/sync-stable-srcinfo.sh'
+      - 'scripts/ci/bump-version.sh'
       - '.github/workflows/version-sync.yml'
 
 concurrency:

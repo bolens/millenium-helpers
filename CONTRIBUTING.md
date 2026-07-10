@@ -115,7 +115,16 @@ make test-all-distros  # local + Debian/Ubuntu/Fedora via Docker (requires Docke
 
 ## Versioning
 
-`VERSION` at the repo root is the helpers package version (aligned with Scoop, Winget, Homebrew, and Nix). Bump it when cutting a release; installers copy it next to the shared libraries so `--version` / `-Version` work after install. Prefer git tags `vX.Y.Z` for releases.
+`VERSION` at the repo root is the helpers package version (aligned with Scoop, Winget, Homebrew, Arch, and Nix). Bump it when cutting a release; installers copy it next to the shared libraries so `--version` / `-Version` work after install. Prefer git tags `vX.Y.Z` for releases.
+
+**Pre-tag bump (preferred):**
+
+```bash
+make bump-version VERSION=X.Y.Z   # VERSION + packaging URLs/versions; keeps hashes
+# edit CHANGELOG.md, then commit
+```
+
+Do not hand-edit `packaging/millennium-helpers/.SRCINFO` — use `make bump-version` or `make sync-stable-srcinfo`.
 
 **Cutting a release:** follow [docs/release_runbook.md](docs/release_runbook.md) end-to-end (local `make lint` / `make test` / `make test-windows`, version bump, CI green, then tag). Do not tag until ShellCheck and the test suite pass locally and on `main`.
 
@@ -133,7 +142,7 @@ Repo secret `PACKAGING_PAT` is **required** for the automatic path: a classic PA
 
 Local checks:
 ```bash
-make check-version   # VERSION ↔ Scoop / Winget / Homebrew
+make check-version   # VERSION ↔ Scoop / Winget / Homebrew / Arch / Nix / pyproject
 make check-man       # every command has a man page
 make check-winget    # Winget manifest structure (docs-only; no winget validate)
 ```
@@ -146,7 +155,7 @@ pre-commit install
 pre-commit install --hook-type pre-push
 ```
 
-**pre-commit** runs: remote [pre-commit-hooks](https://github.com/pre-commit/pre-commit-hooks) sanity checks (private keys, merge conflicts, large files, symlinks, trailing whitespace, EOF newlines, LF line endings), plus local shellcheck, ruff check + format `--check`, VERSION presence, packaging version sync, winget manifests, completions tests (when `completions/` changes), man-page coverage, actionlint (workflows; skipped if not installed), gitleaks on staged changes (skipped if not installed), and **PKGBUILD `pkgver` sync on every commit**.
+**pre-commit** runs: remote [pre-commit-hooks](https://github.com/pre-commit/pre-commit-hooks) sanity checks (private keys, merge conflicts, large files, symlinks, trailing whitespace, EOF newlines, LF line endings), plus local shellcheck, ruff check + format `--check`, VERSION presence, versioned Arch `.SRCINFO` sync, packaging version sync, winget manifests, completions tests (when `completions/` changes), man-page coverage, actionlint (workflows; skipped if not installed), gitleaks on staged changes (skipped if not installed), and **PKGBUILD `pkgver` sync on every commit**.
 
 **pre-push** runs: `make lint`, and `make test-windows` when the push range touches `scripts/windows/`, `tests/windows/`, or `completions/powershell/` (skipped if `pwsh` is missing).
 
@@ -160,6 +169,7 @@ When `sync-pkgver` updates `packaging/millennium-helpers-git/PKGBUILD` / `.SRCIN
 - PowerShell: `Set-StrictMode -Version Latest`; gate debug noise behind `MILLENNIUM_DEBUG` or `-Verbose`.
 - Do not commit packaging build artifacts (`packaging/*.pkg.tar.zst`, etc.).
 - Keep Arch `-git` `pkgver` / `.SRCINFO` current with `make sync-pkgver` (no full rebuild needed). With `pre-commit install`, this runs automatically on every commit.
+- Keep versioned Arch `.SRCINFO` current with `make sync-stable-srcinfo` (or `make bump-version`). Pre-commit regenerates it when the stable PKGBUILD changes.
 
 ## Packaging notes
 

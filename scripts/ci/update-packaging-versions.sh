@@ -157,9 +157,7 @@ PY
 
 # --- Versioned Arch PKGBUILD (release tarball; -git is separate) ---
 python3 - "$VERSION" "$LINUX_SHA" <<'PY'
-import os
 import re
-import subprocess
 import sys
 from pathlib import Path
 
@@ -180,41 +178,10 @@ text = re.sub(
 
 pkgbuild.write_text(text, encoding="utf-8")
 print(f"Updated {pkgbuild}")
-
-srcinfo = pkg_dir / ".SRCINFO"
-try:
-    if os.geteuid() == 0:
-        raise FileNotFoundError("makepkg unavailable as root")
-    generated = subprocess.check_output(
-        ["makepkg", "--printsrcinfo"],
-        cwd=pkg_dir,
-        text=True,
-    )
-    srcinfo.write_text(generated, encoding="utf-8")
-    print(f"Regenerated {srcinfo}")
-except (FileNotFoundError, subprocess.CalledProcessError, OSError) as exc:
-    # Fallback when makepkg is unavailable (e.g. non-Arch runners): patch fields.
-    if not srcinfo.is_file():
-        raise SystemExit(f"error: cannot regenerate {srcinfo}: {exc}") from exc
-    info = srcinfo.read_text(encoding="utf-8")
-    info = re.sub(r"(?m)^(\tpkgver = ).*$", rf"\g<1>{version}", info, count=1)
-    info = re.sub(r"(?m)^(\tpkgrel = ).*$", r"\g<1>1", info, count=1)
-    info = re.sub(
-        r"(?m)^(source = https://github\.com/.+/releases/download/)v[^/]+(/millennium-helpers-linux\.tar\.gz)$",
-        rf"\g<1>v{version}\g<2>",
-        info,
-        count=1,
-    )
-    # First sha256sums line is the tarball.
-    info = re.sub(
-        r"(?m)^(sha256sums = )[0-9a-fA-F]{64}$",
-        rf"\g<1>{linux_sha}",
-        info,
-        count=1,
-    )
-    srcinfo.write_text(info, encoding="utf-8")
-    print(f"Patched {srcinfo} (makepkg unavailable)")
 PY
+
+# Regenerate .SRCINFO from the updated PKGBUILD (makepkg or patch fallback).
+bash scripts/ci/sync-stable-srcinfo.sh
 
 # --- Nix release-info.nix (SRI hash of Linux release tarball) ---
 python3 - "$VERSION" "$LINUX_SHA" <<'PY'

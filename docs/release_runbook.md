@@ -65,19 +65,29 @@ With `pre-commit install` + `pre-commit install --hook-type pre-push`, `pkgver` 
 
 ## 2. Version bump
 
-Update all versioned surfaces together:
+Prefer the automated pre-tag bump (updates VERSION, pyproject, Formula/Scoop/Winget URLs,
+versioned Arch PKGBUILD + `.SRCINFO`, and Nix `release-info.nix` version; **keeps existing
+hashes** until release CD fills them):
 
-| File | What to change |
+```bash
+make bump-version VERSION=X.Y.Z
+# then edit CHANGELOG.md under ## [X.Y.Z] - YYYY-MM-DD
+make check-version
+```
+
+| File | What changes |
 | --- | --- |
-| `VERSION` | `X.Y.Z` |
-| `CHANGELOG.md` | Move notes under `## [X.Y.Z] - YYYY-MM-DD` |
-| `pyproject.toml` | `version = "X.Y.Z"` |
-| `Formula/millennium-helpers.rb` | `releases/download/vX.Y.Z/...` URL (sha256 updated later by packaging PR) |
+| `VERSION` | `X.Y.Z` (via `bump-version`) |
+| `pyproject.toml` | `version = "X.Y.Z"` (via `bump-version`) |
+| `CHANGELOG.md` | Move notes under `## [X.Y.Z] - YYYY-MM-DD` (**manual**) |
+| `Formula/millennium-helpers.rb` | release asset URL (sha256 later via packaging PR) |
 | `packaging/scoop/millennium-helpers.json` | `version` + Windows zip URL |
-| `nix/release-info.nix` | version + SRI hash of Linux release tarball |
 | `packaging/winget/*.yaml` | `PackageVersion` + installer URL / `ReleaseDate` |
+| `packaging/millennium-helpers/{PKGBUILD,.SRCINFO}` | `pkgver` + expanded source URL |
+| `nix/release-info.nix` | `version` (srcHash later via packaging PR) |
 
-Keep existing SHA256s for now if assets are not published yet. `make check-version` only requires version strings and URL shape.
+Do **not** hand-edit `.SRCINFO` — `bump-version` / `make sync-stable-srcinfo` regenerates it.
+Nix/Arch CI skips fetching the release tarball until the GitHub asset exists (expected before tag).
 
 ```bash
 make check-version
@@ -195,7 +205,7 @@ make check-all
 make test-windows
 # make test-all-distros   # optional cross-distro Docker
 
-# … bump VERSION / CHANGELOG / packaging URLs …
+# … make bump-version VERSION=X.Y.Z ; edit CHANGELOG …
 
 make check-version
 make lint
