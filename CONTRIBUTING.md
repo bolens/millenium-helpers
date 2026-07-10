@@ -19,23 +19,26 @@ Alternatives:
 
 | Path | Role |
 | --- | --- |
-| `install.sh` | Linux installer / uninstall |
+| `install.sh` | Linux/macOS installer / uninstall |
 | `scripts/*.sh` | Linux/macOS user-facing commands |
 | `scripts/lib/` | Shared Bash libraries (logging, Steam, GitHub, backups) |
 | `scripts/windows/*.ps1` | Windows PowerShell counterparts |
 | `scripts/millennium-mcp.py` | MCP server for AI assistants |
+| `man/` | Manual pages (`millennium-*.1`) for every user-facing command |
+| `Formula/` | Homebrew formula (`millennium-helpers.rb`) |
 | `completions/` | Bash / Zsh / Fish / Nushell completions |
 | `tests/` | Unit + behavioral suites (`tests/run_tests.sh`) |
 | `tests/windows/` | Pester tests for PowerShell scripts |
 
 ## Adding or changing a command
 
-1. Implement the change in the Linux script under `scripts/` (and the Windows `.ps1` when applicable).
+1. Implement the change in the Linux/macOS script under `scripts/` (and the Windows `.ps1` when applicable).
 2. Keep `--help` / `-h` accurate and exit `0` on help.
 3. On unknown options, print usage and exit non-zero.
 4. Update matching files under `completions/` so flags stay in sync.
-5. Add or extend behavioral tests under `tests/behavioral/` (and Pester under `tests/windows/` for PowerShell).
-6. Prefer `--dry-run` for destructive paths; require confirmation (or `-y`/`--yes`) for irreversible actions like purge.
+5. Keep `man/millennium-<name>.1` in sync (`.TH` date like `"July 9, 2026"`; `make check-man` / CI mandoc lint).
+6. Add or extend behavioral tests under `tests/behavioral/` (and Pester under `tests/windows/` for PowerShell).
+7. Prefer `--dry-run` for destructive paths; require confirmation (or `-y`/`--yes`) for irreversible actions like purge.
 
 ## Linux / Windows parity
 
@@ -75,12 +78,19 @@ Optional local hooks: `pre-commit install` (see `.pre-commit-config.yaml`) runs 
 ## Style
 
 - Bash: `set -euo pipefail`; source `common.sh` / `scripts/lib/*` rather than duplicating helpers.
+- macOS ships Bash 3.2: under `set -u`, empty `"${arr[@]}"` / `"${arr[*]}"` is unbound. Prefer `${arr[@]+"${arr[@]}"}` (or a length guard) when an array may be empty. Avoid `"${arr[@]:-}"` (it iterates once with an empty value).
 - Honor `NO_COLOR` (and `FORCE_COLOR` when forcing color).
 - PowerShell: `Set-StrictMode -Version Latest`; gate debug noise behind `MILLENNIUM_DEBUG` or `-Verbose`.
 - Do not commit packaging build artifacts (`packaging/*.pkg.tar.zst`, etc.).
 
+## Packaging notes
+
+- Homebrew Formula version is taken from the stable `url` tag (`…/vX.Y.Z.tar.gz`). Do **not** add a redundant `version "X.Y.Z"` line — `brew audit` rejects it. Keep `license "MIT"`.
+- `scripts/ci/update-packaging-versions.sh` updates Formula URL/SHA256 (and strips any stray `version` line), Scoop, and Winget from a release tag.
+- Man-page CI (`scripts/ci/check-man-pages.sh`) fails on mandoc `ERROR`/`FATAL` only; `WARNING`/`STYLE` are printed as notes.
+
 ## Pull requests
 
 - Keep PRs focused; include a short summary and test plan.
-- Mention any completion or docs updates.
-- CI must pass (multi-distro test matrix, ShellCheck, Ruff, completions, packaging checks).
+- Mention any completion, man-page, or docs updates.
+- CI must pass (multi-distro + macOS test matrix, ShellCheck, Ruff, man pages, Homebrew audit, completions, packaging checks).

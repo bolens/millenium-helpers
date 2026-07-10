@@ -152,6 +152,31 @@ for tool_case in \
   mock_cmd "$bin_name" "exit 0"
 done
 
+# CI runners often have no /usr/bin/millennium-* at all. Force that path even
+# on developer hosts that do have system installs, so the missing-binary
+# TEST_SUITE_RUN branch stays covered. Clear the MOCK_BIN stub too — otherwise
+# _run_under_test_suite would execute it instead of taking the skip path.
+rm -f "${MOCK_BIN}/millennium-repair"
+missing_bin_log=$(
+  {
+    python3 - "$MCP_PY" << 'PYEOF' >/dev/null
+import importlib.util
+import sys
+
+mcp_path = sys.argv[1]
+spec = importlib.util.spec_from_file_location("millennium_mcp", mcp_path)
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+mod.find_executable = lambda _cmd: None
+mod.handle_tool_call("millennium_repair", {})
+PYEOF
+  } 2>&1
+)
+assert_contains "$missing_bin_log" "sudo -n" "missing system binary still logs sudo -n under TEST_SUITE_RUN"
+assert_contains "$missing_bin_log" "Skipping host execution" "missing system binary skips host execution under TEST_SUITE_RUN"
+assert_contains "$missing_bin_log" "millennium-repair" "missing system binary logs the tool name in the command line"
+mock_cmd "millennium-repair" "exit 0"
+
 # --- tools/call: unknown tool name ---
 
 resp=$(run_mcp '{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"not_a_real_tool","arguments":{}}}')

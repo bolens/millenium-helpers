@@ -290,12 +290,13 @@ jobs:
             ## Summary
             Automated packaging bump for release **v${{ needs.build-release.outputs.version }}**.
 
-            - Updates `VERSION`, Homebrew Formula URL/SHA256, Scoop URL/hash, and Winget PackageVersion/InstallerUrl/InstallerSha256
+            - Updates `VERSION`, Homebrew Formula URL/SHA256 (no redundant `version` line), Scoop URL/hash, and Winget PackageVersion/InstallerUrl/InstallerSha256
             - Source archive hashes are computed from the GitHub tag archives
 
             ## Test plan
             - [ ] Confirm version-sync CI passes
             - [ ] Confirm Homebrew audit / Scoop / Winget manifest jobs pass
+            - [ ] Confirm man-page coverage CI passes
             - [ ] Publish the draft GitHub release when ready
 
             > If CI did not start automatically, close/reopen this PR or push an empty commit (PRs opened with `GITHUB_TOKEN` do not trigger workflows unless `PACKAGING_PAT` is configured).

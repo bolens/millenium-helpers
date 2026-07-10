@@ -66,6 +66,8 @@ assert_equals "3.4.5" "$(tr -d '[:space:]' < "$WORK/VERSION")" "VERSION file upd
 formula=$(cat "$WORK/Formula/millennium-helpers.rb")
 assert_contains "$formula" "sha256 \"${LINUX_SHA}\"" "Formula receives lowercase linux sha256"
 assert_contains "$formula" "v3.4.5.tar.gz" "Formula URL points at the release tag tarball"
+assert_contains "$formula" 'license "MIT"' "Formula declares MIT license"
+assert_not_contains "$formula" 'version "3.4.5"' "Formula has no redundant version line after packaging update"
 
 scoop=$(cat "$WORK/packaging/scoop/millennium-helpers.json")
 assert_contains "$scoop" "\"hash\": \"${WINDOWS_SHA}\"" "Scoop receives windows sha256"

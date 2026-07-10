@@ -81,7 +81,8 @@ check_root() {
       return 0
     fi
     echo -e "${RED}Error: This script must be run with sudo to install system-wide to ${TARGET_DIR}.${NC}" >&2
-    echo -e "Please run: sudo $0 ${ORIGINAL_ARGS[*]}" >&2
+    # Bash 3.2 (macOS): empty "${arr[*]}" is unbound under set -u.
+    echo -e "Please run: sudo $0 ${ORIGINAL_ARGS[*]+${ORIGINAL_ARGS[*]}}" >&2
     exit 1
   fi
 }

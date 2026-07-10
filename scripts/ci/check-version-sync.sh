@@ -45,6 +45,8 @@ echo "Winget PackageVersion OK ($VERSION)"
 FORMULA="Formula/millennium-helpers.rb"
 [[ -f "$FORMULA" ]] || fail "missing $FORMULA"
 # Prefer an explicit version "x.y.z" line; fall back to the tag in the stable url.
+# (brew audit rejects a redundant version when the URL already encodes the tag,
+# so packaging updates keep only the URL-derived version.)
 FORMULA_VERSION="$(python3 -c "
 import re, sys
 text = open(sys.argv[1], encoding='utf-8').read()

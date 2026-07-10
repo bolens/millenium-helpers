@@ -75,6 +75,20 @@ To install them into your profile:
 nix profile install github:bolens/millenium-helpers
 ```
 
+#### Install via Homebrew (macOS / Linux)
+This repository includes a Homebrew formula at `Formula/millennium-helpers.rb` (MIT-licensed; version comes from the release tag in the `url`). After a release tag is published and packaging hashes are filled in:
+
+```bash
+# From a local checkout
+brew install --formula ./Formula/millennium-helpers.rb
+
+# Or tap this repo directly (one-time), then install
+brew tap bolens/millenium-helpers https://github.com/bolens/millenium-helpers
+brew install millennium-helpers
+```
+
+Uninstall with `brew uninstall millennium-helpers` (see [Manual Uninstall](docs/uninstall_dryrun.md#4-macos--linux-homebrew-install)).
+
 #### Enable the Daily Auto-Updater Timer
 Always run the scheduling commands as your **normal user** (without `sudo`) so that systemd configures the background timer inside your own user session space:
 ```bash
@@ -286,7 +300,7 @@ Downloads, checksum-validates, and installs the latest stable or beta version of
 Manages daily update timers and triggers (`systemd` user timers on Linux, **Windows Task Scheduler** tasks on Windows).
 
 ### 5. [scripts/millennium-purge.sh](scripts/millennium-purge.sh) / `millennium-purge.ps1`
-De-registers Millennium from all local Steam users and completely purges its files and directories from the system.
+De-registers Millennium from all local Steam users and completely purges its files and directories from the system. Non-interactive sessions require `-y` / `--yes` (Linux/macOS) or `-Yes` (Windows); the MCP `millennium_purge` tool always passes that flag.
 
 ### 6. [scripts/millennium-diag.sh](scripts/millennium-diag.sh) / `millennium-diag.ps1`
 Runs a comprehensive system health check (reports running status of Steam, the installed version of Millennium, configurations, and permissions) with auto-fix (doctor) and secure pastebin log sharing options.
@@ -307,7 +321,7 @@ For details on security boundaries, privilege delegation, and troubleshooting co
 
 For **Steam Deck** and **Flatpak Steam** (hooks, sandbox overrides, Desktop Mode, post-OS-update recovery), see the [Steam Deck & Flatpak Guide](docs/steam_deck.md).
 
-Manual pages are installed with the helpers (`man millennium-diag`, `man millennium-upgrade`, …).
+Manual pages ship with the helpers (`man/millennium-*.1`) and are installed by `install.sh`, Homebrew, and packaging recipes (`man millennium-diag`, `man millennium-upgrade`, …).
 
 ---
 

@@ -102,7 +102,12 @@ prune_backups() {
           for item in "${sorted_backups[@]}"; do
             [[ "$item" != "$b" ]] && temp_sorted+=("$item")
           done
-          sorted_backups=("${temp_sorted[@]}")
+          # Bash 3.2 (macOS): empty "${arr[@]}" is unbound under set -u.
+          if [[ ${#temp_sorted[@]} -gt 0 ]]; then
+            sorted_backups=("${temp_sorted[@]}")
+          else
+            sorted_backups=()
+          fi
         fi
       fi
     done

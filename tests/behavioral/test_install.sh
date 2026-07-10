@@ -105,6 +105,11 @@ if [[ "$*" == "-un" ]]; then echo installtestuser; exit 0; fi
 out=$(TARGET_DIR=/var/invalid/nonexistent bash "$INSTALL_SH" install 2>&1 < /dev/null || true)
 assert_contains "$out" "sudo" "install.sh without --dry-run and without root tells the user to use sudo"
 assert_contains "$out" "install.sh install" "install.sh's sudo hint preserves the original arguments (e.g. 'install')"
+
+# No args: bash 3.2 + set -u must not abort when echoing empty ORIGINAL_ARGS.
+out=$(TARGET_DIR=/var/invalid/nonexistent bash "$INSTALL_SH" 2>&1 < /dev/null || true)
+assert_contains "$out" "sudo" "install.sh with no args without root still tells the user to use sudo"
+assert_contains "$out" "install.sh" "install.sh with no args still names itself in the sudo hint"
 rm -f "${MOCK_BIN}/id"
 
 # --- Interactive Wizard (Dry run) ---
