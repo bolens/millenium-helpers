@@ -125,6 +125,9 @@ assert_contains "$resp" "invalid channel" "millennium_upgrade's rejection messag
 log=$(run_mcp_stderr '{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"millennium_upgrade","arguments":{"channel":"beta"}}}')
 assert_contains "$log" "millennium-upgrade --channel beta" "millennium_upgrade (channel:beta) invokes millennium-upgrade --channel beta"
 
+log=$(run_mcp_stderr '{"jsonrpc":"2.0","id":83,"method":"tools/call","params":{"name":"millennium_upgrade","arguments":{"channel":"main"}}}')
+assert_contains "$log" "millennium-upgrade --channel main" "millennium_upgrade (channel:main) invokes millennium-upgrade --channel main"
+
 log=$(run_mcp_stderr '{"jsonrpc":"2.0","id":80,"method":"tools/call","params":{"name":"millennium_upgrade","arguments":{"channel":"beta","force":true}}}')
 assert_contains "$log" "millennium-upgrade --channel beta --force" "millennium_upgrade (force:true) passes --force flag"
 

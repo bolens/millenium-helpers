@@ -1,4 +1,4 @@
-.TH MILLENNIUM\-SCHEDULE 1 "July 9, 2026" "millennium-helpers" "User Commands"
+.TH MILLENNIUM\-SCHEDULE 1 "July 10, 2026" "millennium-helpers" "User Commands"
 .SH NAME
 millennium-schedule \- manage Millennium helper auto-update timers
 .SH SYNOPSIS
@@ -7,10 +7,17 @@ millennium-schedule \- manage Millennium helper auto-update timers
 .SH DESCRIPTION
 Configures daily auto-update scheduling via systemd user timers (Linux),
 crontab fallback, LaunchAgents/cron (macOS), or Windows Task Scheduler.
+The scheduled job runs
+.B millennium-upgrade
+on the configured Millennium
+.B client
+channel (\fBstable\fR / \fBbeta\fR / \fBmain\fR), which is separate from the
+helpers install track.
 .SH COMMANDS
 .TP
-.BR enable " [" \fIstable\fR | \fIbeta\fR "]"
-Enable the daily updater (defaults to stable, or config channel).
+.BR enable " [" \fIstable\fR | \fIbeta\fR | \fImain\fR "]"
+Enable the daily updater (defaults to stable, or config
+.BR update_channel ).
 .TP
 .B disable
 Disable the scheduled updater.
@@ -19,7 +26,7 @@ Disable the scheduled updater.
 Show scheduler status. When disabled, prints the enable command.
 .TP
 .B setup
-Run the interactive configuration wizard (channel, scheduler, GitHub PAT).
+Run the interactive configuration wizard (client channel, scheduler, GitHub PAT).
 .TP
 .BR config " " \fIget\fR|\fIset\fR|\fIlist\fR " ..."
 Manage helper configuration keys
@@ -27,6 +34,12 @@ Manage helper configuration keys
 .BR github_token ,
 .BR backup_limit ,
 .BR backup_max_age_days ).
+.B update_channel
+must be
+.BR stable ,
+.BR beta ,
+or
+.BR main .
 .SH OPTIONS
 .TP
 .BR \-d ", " \-\-dry\-run
@@ -41,6 +54,9 @@ Show help message.
 .TP
 Enable daily stable updates:
 .B millennium-schedule enable stable
+.TP
+Switch client channel without reinstalling helpers:
+.B millennium-schedule config set update_channel main
 .TP
 Check whether the timer is active:
 .B millennium-schedule status

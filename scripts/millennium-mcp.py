@@ -30,7 +30,7 @@ LONG_TIMEOUT_SECONDS = 600
 # close/relaunch Steam outside of the normal enable/disable flow).
 VALID_THEME_ACTIONS = {"list", "install", "remove", "update"}
 VALID_SCHEDULE_ACTIONS = {"enable", "disable", "status"}
-VALID_CHANNELS = {"stable", "beta"}
+VALID_CHANNELS = {"stable", "beta", "main"}
 
 
 class DiagArgs(TypedDict, total=False):
@@ -101,13 +101,13 @@ def get_tools_list():
         },
         {
             "name": "millennium_upgrade",
-            "description": "Upgrade, reinstall, or roll back the Millennium client on the stable or beta release channel.",
+            "description": "Upgrade, reinstall, or roll back the Millennium client on the stable, beta, or main release channel.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
                     "channel": {
                         "type": "string",
-                        "enum": ["stable", "beta"],
+                        "enum": ["stable", "beta", "main"],
                         "description": "The release channel to upgrade to (defaults to stable).",
                     },
                     "force": {
@@ -134,7 +134,7 @@ def get_tools_list():
                     },
                     "channel": {
                         "type": "string",
-                        "enum": ["stable", "beta"],
+                        "enum": ["stable", "beta", "main"],
                         "description": "Release channel to target (only for 'enable').",
                     },
                     "cron": {

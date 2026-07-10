@@ -1,6 +1,6 @@
 [project]
 name = "millennium-helpers"
-version = "2.5.0"
+version = "2.6.0"
 description = "Cross-platform helpers and MCP server for Millennium"
 requires-python = ">=3.9"
 readme = "README.md"

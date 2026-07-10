@@ -1,6 +1,6 @@
 # PowerShell script to upgrade or reinstall the Millennium client on Windows
 param(
-    [ValidateSet("stable", "beta")]
+    [ValidateSet("stable", "beta", "main")]
     [string]$Channel = "stable",
     [switch]$Force = $false,
     [string]$File = $null,
@@ -19,12 +19,12 @@ set-strictmode -version Latest
 
 if ($Help) {
     Write-Host @"
-Usage: millennium-upgrade.ps1 [-Channel stable|beta] [-Force] [-File PATH] [-Rollback ID|list] [-DryRun] [-Yes] [-Quiet] [-Version] [-Help]
+Usage: millennium-upgrade.ps1 [-Channel stable|beta|main] [-Force] [-File PATH] [-Rollback ID|list] [-DryRun] [-Yes] [-Quiet] [-Version] [-Help]
 
-Install official Millennium (stable or beta) releases over system files.
+Install official Millennium (stable, beta, or main) releases over system files.
 
 Options:
-  -Channel CHANNEL  Update channel: stable or beta (default: stable)
+  -Channel CHANNEL  Update channel: stable, beta, or main (default: stable)
   -Force            Force reinstall even if already up to date
   -File PATH        Install from a local archive instead of downloading
   -Rollback ID      Roll back to a previous backup (or pass "list" to list backups)
@@ -98,8 +98,8 @@ if (Test-Path -Path $configFile) {
     } catch {}
 }
 
-if ($Channel -ne "stable" -and $Channel -ne "beta") {
-    Log-Error "Error: Invalid channel '$Channel'. Must be 'stable' or 'beta'."
+if ($Channel -ne "stable" -and $Channel -ne "beta" -and $Channel -ne "main") {
+    Log-Error "Error: Invalid channel '$Channel'. Must be 'stable', 'beta', or 'main'."
     exit 1
 }
 
@@ -208,8 +208,29 @@ if ($File) {
             $url = "https://api.github.com/repos/$owner/$repo/releases/latest"
             $release = Invoke-RestMethod -Uri $url -Headers $headers -UseBasicParsing -ErrorAction Stop
             $latestVer = $release.tag_name.TrimStart('v')
+        } elseif ($Channel -eq "main") {
+            # Tip-of-dev: newest non-beta prerelease, else any prerelease
+            $url = "https://api.github.com/repos/$owner/$repo/releases"
+            $releases = Invoke-RestMethod -Uri $url -Headers $headers -UseBasicParsing -ErrorAction Stop
+            foreach ($r in $releases) {
+                if ($r.prerelease -and ($r.tag_name -notlike "*beta*")) {
+                    $latestVer = $r.tag_name.TrimStart('v')
+                    break
+                }
+            }
+            if (!$latestVer) {
+                foreach ($r in $releases) {
+                    if ($r.prerelease) {
+                        $latestVer = $r.tag_name.TrimStart('v')
+                        break
+                    }
+                }
+            }
+            if (!$latestVer -and $releases.Count -gt 0) {
+                $latestVer = $releases[0].tag_name.TrimStart('v')
+            }
         } else {
-            # Query releases and find the newest prerelease / beta release
+            # Beta: newest prerelease / beta release
             $url = "https://api.github.com/repos/$owner/$repo/releases"
             $releases = Invoke-RestMethod -Uri $url -Headers $headers -UseBasicParsing -ErrorAction Stop
             foreach ($r in $releases) {
@@ -219,7 +240,6 @@ if ($File) {
                 }
             }
             if (!$latestVer -and $releases.Count -gt 0) {
-                # Fall back to latest release if no prerelease exists
                 $latestVer = $releases[0].tag_name.TrimStart('v')
             }
         }

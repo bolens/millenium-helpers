@@ -147,6 +147,8 @@ function Get-DiagJsonObject {
         install_method     = $script:InstallMethod
         mixed_install_ok   = $script:MixedInstallOk
         helpers_checkout   = $script:HelpersCheckout
+        helpers_track      = $script:HelpersTrack
+        helpers_ref        = $script:HelpersTrackRef
         latest_release_tag = $script:LatestReleaseTag
         update_channel     = $script:Channel
         version            = $script:VersionStr

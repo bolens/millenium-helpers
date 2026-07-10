@@ -123,3 +123,82 @@ if set(sha) == {"0"}:
 print("Winget manifest structural checks passed.")
 print("note: winget validate is skipped in CI (portable NestedInstallerFiles require .exe)")
 PY
+
+# --- Tip-of-main git package (not VERSION-gated) ---
+GIT_DIR="packaging/winget-git"
+GIT_ID="bolens.millenniumhelpers.git"
+GIT_VERSION_FILE="$GIT_DIR/bolens.millenniumhelpers.git.yaml"
+GIT_INSTALLER_FILE="$GIT_DIR/bolens.millenniumhelpers.git.installer.yaml"
+GIT_LOCALE_FILE="$GIT_DIR/bolens.millenniumhelpers.git.locale.en-US.yaml"
+
+for f in "$GIT_VERSION_FILE" "$GIT_INSTALLER_FILE" "$GIT_LOCALE_FILE"; do
+  [[ -f "$f" ]] || fail "missing $f"
+done
+
+python3 - "$GIT_ID" "$GIT_VERSION_FILE" "$GIT_INSTALLER_FILE" "$GIT_LOCALE_FILE" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+import yaml
+
+expected_id, version_path, installer_path, locale_path = sys.argv[1:5]
+errors: list[str] = []
+
+
+def load(path: str) -> dict:
+    with open(path, encoding="utf-8") as fh:
+        data = yaml.safe_load(fh)
+    if not isinstance(data, dict):
+        raise SystemExit(f"error: {path} did not parse to a mapping")
+    return data
+
+
+version = load(version_path)
+installer = load(installer_path)
+locale = load(locale_path)
+
+for path, data in (
+    (version_path, version),
+    (installer_path, installer),
+    (locale_path, locale),
+):
+    pid = data.get("PackageIdentifier")
+    if pid != expected_id:
+        errors.append(f"{path}: PackageIdentifier '{pid}' != '{expected_id}'")
+    if not data.get("ManifestVersion"):
+        errors.append(f"{path}: ManifestVersion is missing")
+
+if version.get("ManifestType") != "version":
+    errors.append(f"{version_path}: ManifestType must be 'version'")
+if installer.get("ManifestType") != "installer":
+    errors.append(f"{installer_path}: ManifestType must be 'installer'")
+if locale.get("ManifestType") != "defaultLocale":
+    errors.append(f"{locale_path}: ManifestType must be 'defaultLocale'")
+
+installers = installer.get("Installers")
+if not isinstance(installers, list) or not installers:
+    errors.append(f"{installer_path}: Installers must be a non-empty list")
+else:
+    entry = installers[0]
+    url = str(entry.get("InstallerUrl", ""))
+    if "archive/refs/heads/main.zip" not in url:
+        errors.append(f"{installer_path}: InstallerUrl must point at main.zip archive")
+    sha = str(entry.get("InstallerSha256", ""))
+    if isinstance(entry.get("InstallerSha256"), int):
+        sha = f"{entry['InstallerSha256']:064x}"
+    if not re.fullmatch(r"[0-9a-fA-F]{64}", sha):
+        errors.append(f"{installer_path}: InstallerSha256 must be 64 hex characters")
+
+for field in ("PackageName", "Publisher", "License", "ShortDescription"):
+    if not locale.get(field):
+        errors.append(f"{locale_path}: missing required field {field}")
+
+if errors:
+    for err in errors:
+        print(f"::error::{err}", file=sys.stderr)
+        print(f"error: {err}", file=sys.stderr)
+    raise SystemExit(1)
+
+print("Winget git (tip-of-main) manifest structural checks passed.")
+PY

@@ -121,7 +121,17 @@ next to the shared libraries so `--version` / `-Version` work after install. Pre
 tags `vX.Y.Z` that match `VERSION`.
 
 Tip-of-main packages (`packaging/millennium-helpers-git`, Scoop `millennium-helpers-git`,
-Nix `#millennium-helpers-git`) are **not** tied to `VERSION`; they track git HEAD.
+Winget `bolens.millenniumhelpers.git`, Nix `#millennium-helpers-git`) are **not** tied to
+`VERSION`; they track git HEAD.
+
+### Helpers install tracks vs client channel
+
+| Concept | Values | Where |
+| --- | --- | --- |
+| **Helpers track** | `release` (default), `main`, `tag`, `checkout` | `install-meta.json`; `install.sh --track` / `--tag`; `install.ps1 -Track` / `-Tag` |
+| **Client channel** | `stable`, `beta`, `main` | `config.json` → `update_channel`; `millennium-upgrade --channel`; schedule enable |
+
+Doctor syncs helpers against the recorded track (pinned tags stay pinned). Legacy installs without meta are auto-migrated on first install/diag/doctor touch.
 
 ### Make targets
 
@@ -228,7 +238,7 @@ When `sync-pkgver` updates `packaging/millennium-helpers-git/PKGBUILD` / `.SRCIN
 - Scoop is the supported multi-command Windows install path (`millennium`, `millennium-mcp`, and the individual commands).
 - Scoop `millennium-helpers-git` is a nightly tip-of-`main` install (GitHub archive); it is outside the versioned release bump.
 - Nix `packages.millennium-helpers` uses the Linux release tarball (`nix/release-info.nix`); `packages.millennium-helpers-git` builds from the flake source (commit in the version string). Default package is the release build.
-- Winget manifests track the Windows zip URL/hash for documentation only. WinGet portable nested files allow `.exe` only, so these PowerShell scripts cannot pass `winget validate` as a multi-command portable package.
+- Winget release manifests track the Windows zip URL/hash for documentation only. Tip-of-main manifests are under `packaging/winget-git/` and are not VERSION-gated. WinGet portable nested files allow `.exe` only, so these PowerShell scripts cannot pass `winget validate` as a multi-command portable package.
 - `scripts/ci/bump-version.sh` — pre-tag version/URL bump (keeps hashes); prefer `make bump-version VERSION=X.Y.Z`.
 - `scripts/ci/check-version-sync.sh` — packaging ↔ `VERSION` gate; prefer `make check-version` (also part of `make lint`).
 - `scripts/ci/sync-stable-srcinfo.sh` — regenerate or `--check` versioned Arch `.SRCINFO`; prefer `make sync-stable-srcinfo`.

@@ -12,10 +12,12 @@ For general usage instructions, see the main [README.md](../README.md). For trou
 | --- | --- | --- |
 | `millennium_diag` | Runs read-only diagnostics or applies auto-repairs in doctor mode. | `doctor` (boolean, optional): set `true` to auto-repair. |
 | `millennium_theme` | Manages theme/skin directories (list, install, remove, update). | `action` (string, required): `list`, `install`, `remove`, `update`. <br> `theme` (string, optional): repo or name. <br> `all` (boolean, optional): update all themes. |
-| `millennium_upgrade` | Upgrades, reinstalls, or rolls back the Millennium client system-wide. | `channel` (string, optional): `stable` (default) or `beta`. <br> `force` (boolean, optional): force reinstall/upgrade. <br> `rollback` (string, optional): list backups ('list') or specify backup name to roll back to. |
-| `millennium_schedule` | Manages background auto-update timers. | `action` (string, required): `enable`, `disable`, `status`. <br> `channel` (string, optional): `stable` or `beta`. <br> `cron` (boolean, optional): force crontab (Linux only). |
+| `millennium_upgrade` | Upgrades, reinstalls, or rolls back the Millennium client system-wide. | `channel` (string, optional): `stable` (default), `beta`, or `main` (client channel — not the helpers install track). <br> `force` (boolean, optional): force reinstall/upgrade. <br> `rollback` (string, optional): list backups ('list') or specify backup name to roll back to. |
+| `millennium_schedule` | Manages background auto-update timers. | `action` (string, required): `enable`, `disable`, `status`. <br> `channel` (string, optional): client channel `stable`, `beta`, or `main`. <br> `cron` (boolean, optional): force crontab (Linux only). |
 | `millennium_repair` | Runs system-wide permissions and symlink repairs. | None. |
 | `millennium_purge` | Completely uninstalls all Millennium client hooks and files. | `confirm` (boolean, required): must be `true` to purge. <br> `dry_run` (boolean, optional): simulate without deleting. Escalates via `sudo -n` / elevated PowerShell like the other write tools. |
+
+**Helpers track vs client channel:** MCP `channel` arguments always mean the Millennium **client** `update_channel` (`stable` / `beta` / `main`). Helpers install track (`release` / `main` / `tag`) is chosen at install time (`install.sh --track`, `install.ps1 -Track`) and is not an MCP tool parameter.
 
 ---
 

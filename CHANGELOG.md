@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.6.0] - 2026-07-10
+
+### Added
+- Helpers install tracks (`release` / `main` / `tag` / `checkout`) with `install-meta.json`, `--track`/`--tag` (Unix) and `-Track`/`-Tag` (Windows)
+- Auto-migrate legacy installs without meta on first install/diag/doctor touch
+- Winget tip-of-main manifests (`packaging/winget-git/`, `bolens.millenniumhelpers.git`)
+- Millennium client channel `main` (tip-of-development) alongside `stable`/`beta` — separate from helpers track
+- Diag JSON fields `helpers_track` / `helpers_ref`; track-aware doctor sync
+
+### Changed
+- Doctor and update checks follow the recorded helpers track (pinned tags stay pinned; `-git` packages are not compared to release tags)
+
+### Fixed
+- `sync-stable-srcinfo` no longer truncates `.SRCINFO` when `makepkg --printsrcinfo` fails (e.g. missing `install=` file in test trees)
+
 ## [2.5.0] - 2026-07-10
 
 ### Added

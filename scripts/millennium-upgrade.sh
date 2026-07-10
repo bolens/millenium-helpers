@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install official Millennium (stable or beta) releases over system files.
+# Install official Millennium (stable, beta, or main) releases over system files.
 set -euo pipefail
 
 # Source shared helpers
@@ -46,12 +46,13 @@ show_help() {
   cat << EOF
 Usage: $(basename "$0") [OPTIONS]
 
-Install official Millennium (stable or beta) releases over system files.
+Install official Millennium (stable, beta, or main) releases over system files.
 
 Options:
-  -c, --channel CHANNEL  Update channel: stable or beta (default: ${CONFIG_UPDATE_CHANNEL:-stable})
+  -c, --channel CHANNEL  Update channel: stable, beta, or main (default: ${CONFIG_UPDATE_CHANNEL:-stable})
   --stable               Alias for --channel stable
   --beta                 Alias for --channel beta
+  --main                 Alias for --channel main
   -r, --rollback [ID]    Roll back to a previous backup (or pass "list" to list backups)
   --file PATH            Install from a local archive instead of downloading
   -f, --force            Force reinstall even if already up to date
@@ -87,11 +88,11 @@ while [[ $# -gt 0 ]]; do
         CHANNEL="$2"
         shift
       else
-        echo "Error: --channel requires an argument (stable/beta)." >&2
+        echo "Error: --channel requires an argument (stable/beta/main)." >&2
         exit 1
       fi
-      if [[ "$CHANNEL" != "stable" && "$CHANNEL" != "beta" ]]; then
-        echo "Error: Invalid channel '$CHANNEL'. Must be stable or beta." >&2
+      if [[ "$CHANNEL" != "stable" && "$CHANNEL" != "beta" && "$CHANNEL" != "main" ]]; then
+        echo "Error: Invalid channel '$CHANNEL'. Must be stable, beta, or main." >&2
         exit 1
       fi
       shift
@@ -102,6 +103,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --beta)
       CHANNEL="beta"
+      shift
+      ;;
+    --main)
+      CHANNEL="main"
       shift
       ;;
     -r|--rollback)
@@ -214,6 +219,9 @@ else
   if [[ "$CHANNEL" == "beta" ]]; then
     echo "Fetching latest Millennium beta release tag..."
     TAG=$(fetch_github_latest_beta_tag "SteamClientHomebrew" "Millennium")
+  elif [[ "$CHANNEL" == "main" ]]; then
+    echo "Fetching latest Millennium tip-of-development (main) release tag..."
+    TAG=$(fetch_github_latest_main_tag "SteamClientHomebrew" "Millennium")
   else
     echo "Fetching latest Millennium stable release tag..."
     TAG=$(fetch_github_latest_stable_tag "SteamClientHomebrew" "Millennium")

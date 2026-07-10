@@ -40,6 +40,11 @@ if [[ -f "${_COMMON_LIB_DIR}/version.sh" ]]; then
   source "${_COMMON_LIB_DIR}/version.sh"
 fi
 
+if [[ -f "${_COMMON_LIB_DIR}/install_track.sh" ]]; then
+  # shellcheck source=lib/install_track.sh
+  source "${_COMMON_LIB_DIR}/install_track.sh"
+fi
+
 if [[ -f "${_COMMON_LIB_DIR}/github.sh" ]]; then
   # shellcheck source=lib/github.sh
   source "${_COMMON_LIB_DIR}/github.sh"

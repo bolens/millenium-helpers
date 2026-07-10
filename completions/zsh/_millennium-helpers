@@ -45,9 +45,10 @@ _millennium_helpers() {
       ;;
     millennium-upgrade)
       _arguments \
-        {-c,--channel}'[Update channel (stable or beta)]:(stable beta)' \
+        {-c,--channel}'[Update channel (stable, beta, or main)]:(stable beta main)' \
         '--stable[Alias for --channel stable]' \
         '--beta[Alias for --channel beta]' \
+        '--main[Alias for --channel main]' \
         {-r,--rollback}'[Rollback to a specific version or list backups]:backup:_millennium_backup_ids' \
         '--file[Install from a local archive]:archive:_files' \
         {-f,--force}'[Force reinstall]' \
@@ -59,7 +60,7 @@ _millennium_helpers() {
     millennium-schedule)
       _arguments \
         '1:subcommand:(enable disable status setup config)' \
-        '2:arg:(stable beta get set list)' \
+        '2:arg:(stable beta main get set list)' \
         {-c,--cron}'[Force use of crontab instead of systemd]' \
         {-d,--dry-run}'[Simulation mode]' \
         {-q,--quiet}'[Suppress informational output]' \
@@ -137,9 +138,10 @@ _millennium_helpers() {
               ;;
             (upgrade)
               _arguments \
-                {-c,--channel}'[Update channel]:channel:(stable beta)' \
+                {-c,--channel}'[Update channel]:channel:(stable beta main)' \
                 '--stable[Alias for --channel stable]' \
                 '--beta[Alias for --channel beta]' \
+                '--main[Alias for --channel main]' \
                 {-r,--rollback}'[Roll back to a previous backup]:backup:_millennium_backup_ids' \
                 '--file[Install from a local archive]:file:_files' \
                 {-f,--force}'[Force reinstall]' \

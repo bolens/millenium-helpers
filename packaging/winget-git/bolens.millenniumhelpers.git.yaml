@@ -1,0 +1,8 @@
+# bolens.millenniumhelpers.git.yaml
+# Tip-of-main Winget package (mirrors Scoop millennium-helpers-git).
+# Not gated to VERSION — rolling tip install from GitHub archive.
+PackageIdentifier: bolens.millenniumhelpers.git
+PackageVersion: 0.0.0-git
+DefaultLocale: en-US
+ManifestType: version
+ManifestVersion: 1.5.0

@@ -132,7 +132,7 @@ Describe "Windows Installer" {
             $sb = [scriptblock]::Create((Get-Content $installScript -Raw))
 
             $out = (& $sb *>&1) | Out-String
-            $out | Should -BeLike "*Running in standalone/piped mode. Downloading latest Windows release*"
+            $out | Should -BeLike "*Running in standalone/piped mode. Downloading helpers (track=*"
             $out | Should -BeLike "*SHA256 checksum verified*"
             $out | Should -BeLike "*Mock installer executed successfully*"
         }

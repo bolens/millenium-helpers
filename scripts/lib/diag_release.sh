@@ -37,26 +37,49 @@ diag_fetch_release_tarball() {
     return 1
   fi
 
-  local tag="${LATEST_RELEASE_TAG:-main}"
-  local base_url="https://github.com/${HELPERS_REPO}/releases/download/${tag}"
-  local archive="${DIAG_RELEASE_WORKDIR}/millennium-helpers-linux.tar.gz"
-  local sha_file="${DIAG_RELEASE_WORKDIR}/millennium-helpers-linux.tar.gz.sha256"
+  local track="${HELPERS_TRACK:-release}"
+  local archive="${DIAG_RELEASE_WORKDIR}/helpers-archive.tar.gz"
+  local sha_file="${DIAG_RELEASE_WORKDIR}/helpers-archive.tar.gz.sha256"
   local extract_dir="${DIAG_RELEASE_WORKDIR}/extract"
+  local url=""
 
-  if ! curl -fsSL --retry 3 --retry-delay 2 "${base_url}/millennium-helpers-linux.tar.gz" -o "$archive" 2>/dev/null; then
+  case "$track" in
+    main)
+      url="https://github.com/${HELPERS_REPO}/archive/refs/heads/main.tar.gz"
+      ;;
+    tag)
+      local tag_ref="${HELPERS_TRACK_REF:-}"
+      [[ -n "$tag_ref" ]] || tag_ref="${LATEST_RELEASE_TAG:-}"
+      [[ -n "$tag_ref" ]] || return 1
+      url="https://github.com/${HELPERS_REPO}/releases/download/${tag_ref}/millennium-helpers-linux.tar.gz"
+      ;;
+    *)
+      local tag="${LATEST_RELEASE_TAG:-}"
+      if [[ -z "$tag" ]]; then
+        fetch_latest_release_tag || true
+        tag="${LATEST_RELEASE_TAG:-}"
+      fi
+      [[ -n "$tag" ]] || return 1
+      url="https://github.com/${HELPERS_REPO}/releases/download/${tag}/millennium-helpers-linux.tar.gz"
+      ;;
+  esac
+
+  if ! curl -fsSL --retry 3 --retry-delay 2 "$url" -o "$archive" 2>/dev/null; then
     _diag_cleanup_release_workdir
     return 1
   fi
 
-  if curl -fsSL --retry 3 --retry-delay 2 "${base_url}/millennium-helpers-linux.tar.gz.sha256" -o "$sha_file" 2>/dev/null; then
-    if [[ -s "$sha_file" ]] && command -v sha256sum >/dev/null 2>&1; then
-      (
-        cd "$DIAG_RELEASE_WORKDIR" || exit 1
-        sha256sum -c "$(basename "$sha_file")" >/dev/null 2>&1
-      ) || {
-        _diag_cleanup_release_workdir
-        return 1
-      }
+  if [[ "$track" != "main" ]]; then
+    if curl -fsSL --retry 3 --retry-delay 2 "${url}.sha256" -o "$sha_file" 2>/dev/null; then
+      if [[ -s "$sha_file" ]] && command -v sha256sum >/dev/null 2>&1; then
+        (
+          cd "$DIAG_RELEASE_WORKDIR" || exit 1
+          sha256sum -c "$(basename "$sha_file")" >/dev/null 2>&1
+        ) || {
+          _diag_cleanup_release_workdir
+          return 1
+        }
+      fi
     fi
   fi
 
@@ -68,6 +91,17 @@ diag_fetch_release_tarball() {
   if ! tar -xzf "$archive" -C "$extract_dir" 2>/dev/null; then
     _diag_cleanup_release_workdir
     return 1
+  fi
+
+  # Source archives nest under millenium-helpers-main/
+  if [[ "$track" == "main" ]]; then
+    local nested
+    for nested in "$extract_dir"/millenium-helpers-main "$extract_dir"/millenium-helpers-*; do
+      if [[ -d "$nested/scripts" ]]; then
+        DIAG_RELEASE_EXTRACT="$nested"
+        return 0
+      fi
+    done
   fi
 
   DIAG_RELEASE_EXTRACT="$extract_dir"

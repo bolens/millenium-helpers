@@ -54,7 +54,7 @@ show_help() {
 Usage: $(basename "$0") COMMAND [OPTIONS]
 
 Commands:
-  enable [stable|beta]  Enable the daily update timer (defaults to stable)
+  enable [stable|beta|main]  Enable the daily update timer (defaults to stable)
   disable               Disable the update timer/cron and service
   status                Show status of the systemd user service and cron job
   setup                 Run the interactive configuration wizard
@@ -106,7 +106,7 @@ while [[ $# -gt 0 ]]; do
         shift
       fi
       ;;
-    stable|beta)
+    stable|beta|main)
       CHANNEL="$1"
       shift
       ;;
@@ -134,9 +134,9 @@ while [[ $# -gt 0 ]]; do
     *)
       if [[ "$1" != -* ]]; then
         if [[ -n "$COMMAND" ]]; then
-          # Positional after a subcommand is usually a channel (stable|beta).
+          # Positional after a subcommand is usually a channel (stable|beta|main).
           echo -e "${RED}Unknown channel: $1${NC}" >&2
-          echo "Valid channels: stable, beta" >&2
+          echo "Valid channels: stable, beta, main" >&2
         else
           echo -e "${RED}Unknown command: $1${NC}" >&2
           suggestion="$(suggest_closest "$1" enable disable status setup config pre-update post-update || true)"
@@ -386,7 +386,7 @@ show_status() {
       fi
     fi
     if [[ "$scheduler_configured" != "true" ]]; then
-      echo -e "\n${YELLOW}Scheduler disabled.${NC} Enable with: ${GREEN}millennium schedule enable [stable|beta]${NC}"
+      echo -e "\n${YELLOW}Scheduler disabled.${NC} Enable with: ${GREEN}millennium schedule enable [stable|beta|main]${NC}"
     else
       local state_dir="${XDG_STATE_HOME:-$USER_HOME/.local/state}/millennium-helpers"
       local log_file="${state_dir}/updater.log"
@@ -431,7 +431,7 @@ show_status() {
   fi
 
   if [[ "$scheduler_configured" != "true" ]]; then
-    echo -e "\n${YELLOW}Scheduler disabled.${NC} Enable with: ${GREEN}millennium schedule enable [stable|beta]${NC}"
+    echo -e "\n${YELLOW}Scheduler disabled.${NC} Enable with: ${GREEN}millennium schedule enable [stable|beta|main]${NC}"
   else
     local state_dir="${XDG_STATE_HOME:-$USER_HOME/.local/state}/millennium-helpers"
     local log_file="${state_dir}/updater.log"
@@ -618,14 +618,18 @@ run_setup_wizard() {
   if [[ "${CONFIG_UPDATE_CHANNEL:-}" == "beta" ]]; then
     default_ch_num="2"
     default_ch_desc="Beta"
+  elif [[ "${CONFIG_UPDATE_CHANNEL:-}" == "main" ]]; then
+    default_ch_num="3"
+    default_ch_desc="Main"
   fi
 
   local channel=""
   while true; do
     echo -e "Choose Millennium Update Channel:"
-    echo -e "  1) Stable"
-    echo -e "  2) Beta"
-    printf "Selection [1-2, default: %s (%s)]: " "${default_ch_num}" "${default_ch_desc}" >&2
+    echo -e "  1) Stable   — latest published release"
+    echo -e "  2) Beta     — beta-tagged prereleases"
+    echo -e "  3) Main     — tip-of-development prereleases (non-beta when available)"
+    printf "Selection [1-3, default: %s (%s)]: " "${default_ch_num}" "${default_ch_desc}" >&2
     read -r ch_sel
     [[ -z "$ch_sel" ]] && ch_sel="$default_ch_num"
     case "$ch_sel" in
@@ -637,8 +641,12 @@ run_setup_wizard() {
         channel="beta"
         break
         ;;
+      3)
+        channel="main"
+        break
+        ;;
       *)
-        echo -e "${RED}Invalid selection. Please choose 1 or 2.${NC}\n"
+        echo -e "${RED}Invalid selection. Please choose 1, 2, or 3.${NC}\n"
         ;;
     esac
   done
@@ -848,8 +856,8 @@ print('')
         exit 1
       fi
       if [[ "$key" == "update_channel" ]]; then
-        if [[ "$val" != "stable" && "$val" != "beta" ]]; then
-          echo -e "${RED}Error: update_channel must be 'stable' or 'beta'.${NC}" >&2
+        if [[ "$val" != "stable" && "$val" != "beta" && "$val" != "main" ]]; then
+          echo -e "${RED}Error: update_channel must be 'stable', 'beta', or 'main'.${NC}" >&2
           exit 1
         fi
       elif [[ "$key" == "backup_limit" ]]; then

@@ -64,13 +64,31 @@ body:
       label: Install method
       options:
         - curl installer (install.sh / install.ps1)
+        - curl / pwsh with --track main or -Track main
         - Homebrew
-        - Scoop
-        - Winget
+        - Scoop (release)
+        - Scoop (millennium-helpers-git)
+        - Winget (bolens.millenniumhelpers)
+        - Winget git (bolens.millenniumhelpers.git)
         - Nix
-        - Arch PKGBUILD / AUR
+        - Arch PKGBUILD / AUR (versioned)
+        - Arch PKGBUILD / AUR (-git)
         - git clone
         - Other / unknown
+    validations:
+      required: true
+
+  - type: dropdown
+    id: helpers_track
+    attributes:
+      label: Helpers install track (if known)
+      description: From `millennium-diag --json` → helpers_track, or how you installed helpers
+      options:
+        - release (default / latest release)
+        - main (tip-of-main / -git package)
+        - tag (pinned release tag)
+        - checkout (local git install)
+        - Unsure / N/A
     validations:
       required: true
 
@@ -78,9 +96,11 @@ body:
     id: channel
     attributes:
       label: Millennium client channel
+      description: config update_channel — separate from helpers track
       options:
         - stable
         - beta
+        - main
         - Not installed / N/A
         - Unsure
     validations:

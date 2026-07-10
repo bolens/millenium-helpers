@@ -48,7 +48,8 @@ function Invoke-DoctorRepair {
         if ($script:InstallMethod -in @('scoop', 'winget')) {
             # Already handled in Invoke-DoctorCleanup
         } elseif ($script:InstallMethod -eq 'manual') {
-            Write-Host "`n[DOCTOR] Syncing helper scripts from latest release zip..."
+            $trackLabel = if ($script:HelpersTrack) { $script:HelpersTrack } else { 'release' }
+            Write-Host "`n[DOCTOR] Syncing helper scripts from helpers track '$trackLabel'..."
             _Invoke-ManualScriptSync
         } elseif ($script:InstallMethod -eq 'mixed') {
             Write-Host "`n[DOCTOR] Skipping script sync - resolve mixed install first."
@@ -193,5 +194,40 @@ function _Invoke-ManualScriptSync {
                     Copy-Item -Path $srcFile -Destination $destFile -Force
                 } -Description "Copy-Item lib\$($_.Name) from release zip"
             }
+    }
+
+    # Refresh install-meta for the same helpers track (do not jump pins).
+    if (-not $global:DryRun) {
+        $installRoot = Join-Path -Path $env:USERPROFILE -ChildPath '.millennium-helpers'
+        $trackLib = Join-Path -Path $binDir -ChildPath 'lib\InstallTrack.ps1'
+        if (Test-Path -LiteralPath $trackLib) {
+            . $trackLib
+            $metaTrack = if ($script:HelpersTrack) { $script:HelpersTrack } else { 'release' }
+            $metaRef = if ($script:HelpersTrackRef) { $script:HelpersTrackRef } else { '' }
+            $metaVer = ''
+            $metaUrl = ''
+            $verFile = Join-Path $binDir 'VERSION'
+            if (Test-Path -LiteralPath $verFile) {
+                $metaVer = (Get-Content -LiteralPath $verFile -Raw).Trim()
+            }
+            switch ($metaTrack) {
+                'tag' {
+                    $metaVer = $metaRef -replace '^v', ''
+                    $metaUrl = "https://github.com/bolens/millenium-helpers/releases/download/$metaRef/millennium-helpers-windows.zip"
+                }
+                'main' {
+                    if (-not $metaRef) { $metaRef = 'main' }
+                    $metaUrl = 'https://github.com/bolens/millenium-helpers/archive/refs/heads/main.zip'
+                }
+                default {
+                    if ($script:LatestReleaseTag) { $metaRef = $script:LatestReleaseTag }
+                    if ($script:LatestReleaseVersion) { $metaVer = $script:LatestReleaseVersion }
+                    if ($metaRef -and $metaRef -ne 'latest') {
+                        $metaUrl = "https://github.com/bolens/millenium-helpers/releases/download/$metaRef/millennium-helpers-windows.zip"
+                    }
+                }
+            }
+            Write-HelpersInstallMeta -InstallRoot $installRoot -Track $metaTrack -Ref $metaRef -Version $metaVer -SourceUrl $metaUrl
+        }
     }
 }

@@ -11,6 +11,9 @@ LATEST_RELEASE_TAG=""
 LATEST_RELEASE_VERSION=""
 DIAG_RELEASE_EXTRACT=""
 DIAG_RELEASE_WORKDIR=""
+HELPERS_TRACK=""
+HELPERS_TRACK_REF=""
+HELPERS_LIB_DIR=""
 
 _diag_parse_json_field() {
   local json="$1"
@@ -95,6 +98,65 @@ helpers_are_pacman_packaged() {
   pacman -Qo /usr/bin/millennium >/dev/null 2>&1
 }
 
+helpers_are_pacman_git() {
+  if [[ "${DIAG_TEST_PACMAN_GIT:-}" == "true" ]]; then
+    return 0
+  fi
+  command -v pacman >/dev/null 2>&1 || return 1
+  pacman -Q millennium-helpers-git &>/dev/null
+}
+
+_diag_helpers_lib_dir() {
+  if [[ -n "${DIAG_TEST_LIB_DIR:-}" ]]; then
+    echo "$DIAG_TEST_LIB_DIR"
+    return 0
+  fi
+  if [[ -d /usr/local/lib/millennium-helpers ]]; then
+    echo /usr/local/lib/millennium-helpers
+  elif [[ -d /usr/lib/millennium-helpers ]]; then
+    echo /usr/lib/millennium-helpers
+  fi
+}
+
+# Load or migrate install-meta; sets HELPERS_TRACK / HELPERS_TRACK_REF.
+ensure_helpers_track_meta() {
+  HELPERS_LIB_DIR="$(_diag_helpers_lib_dir)"
+  HELPERS_TRACK="${DIAG_TEST_HELPERS_TRACK:-}"
+  HELPERS_TRACK_REF="${DIAG_TEST_HELPERS_REF:-}"
+
+  if [[ -n "$HELPERS_TRACK" ]]; then
+    return 0
+  fi
+
+  if [[ -n "$HELPERS_LIB_DIR" ]] && declare -F migrate_helpers_install_meta_if_needed >/dev/null 2>&1; then
+    local method="manual"
+    if helpers_are_pacman_git; then
+      method="pacman-git"
+    elif [[ "$INSTALL_METHOD" == "pacman" ]] || helpers_are_pacman_packaged; then
+      method="pacman"
+    elif [[ -n "${HELPERS_CHECKOUT:-}" ]]; then
+      method="checkout"
+    fi
+    migrate_helpers_install_meta_if_needed "$HELPERS_LIB_DIR" "$method" "${HELPERS_CHECKOUT:-}" || true
+  fi
+
+  if [[ -n "$HELPERS_LIB_DIR" ]] && declare -F read_helpers_install_meta >/dev/null 2>&1; then
+    if read_helpers_install_meta "$HELPERS_LIB_DIR"; then
+      HELPERS_TRACK="${HELPERS_META_TRACK:-release}"
+      HELPERS_TRACK_REF="${HELPERS_META_REF:-}"
+      return 0
+    fi
+  fi
+
+  if helpers_are_pacman_git; then
+    HELPERS_TRACK="main"
+    HELPERS_TRACK_REF="main"
+  else
+    HELPERS_TRACK="release"
+    HELPERS_TRACK_REF="latest"
+  fi
+}
+
 detect_install_method() {
   if [[ -n "${DIAG_TEST_INSTALL_METHOD:-}" ]]; then
     INSTALL_METHOD="$DIAG_TEST_INSTALL_METHOD"
@@ -162,6 +224,7 @@ detect_install_method() {
   fi
 
   find_helpers_checkout || true
+  ensure_helpers_track_meta || true
 }
 
 check_install_method() {
@@ -170,10 +233,14 @@ check_install_method() {
 
   case "$INSTALL_METHOD" in
     pacman)
-      print_diag_item "ok" "Install method" "Pacman package (millennium-helpers-git)"
+      if helpers_are_pacman_git; then
+        print_diag_item "ok" "Install method" "Pacman package (millennium-helpers-git)"
+      else
+        print_diag_item "ok" "Install method" "Pacman package (millennium-helpers)"
+      fi
       ;;
     manual)
-      print_diag_item "ok" "Install method" "Manual install (install.sh / release tarball)"
+      print_diag_item "ok" "Install method" "Manual install (install.sh)"
       ;;
     mixed)
       print_diag_item "error" "Install method" "Mixed pacman and manual installs detected"
@@ -185,6 +252,10 @@ check_install_method() {
       print_diag_item "warn" "Install method" "Unknown (${INSTALL_METHOD})"
       ;;
   esac
+
+  if [[ -n "${HELPERS_TRACK:-}" ]]; then
+    print_diag_item "ok" "Helpers track" "${HELPERS_TRACK}${HELPERS_TRACK_REF:+ (${HELPERS_TRACK_REF})}"
+  fi
 
   if [[ -n "$HELPERS_CHECKOUT" ]]; then
     print_diag_item "ok" "Local packaging checkout" "${HELPERS_CHECKOUT}"

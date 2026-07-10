@@ -226,7 +226,17 @@ assert_equals "beta" "$(echo "$out" | tr -d '[:space:]')" "config get update_cha
 out=$(run_schedule config set update_channel invalid_val 2>&1)
 rc=$?
 assert_failure "$rc" "config set update_channel with invalid value fails"
-assert_contains "$out" "must be 'stable' or 'beta'" "config set prints validation error"
+assert_contains "$out" "stable" "config set validation mentions stable"
+assert_contains "$out" "main" "config set validation mentions main"
+
+# 4b. config set update_channel main
+out=$(run_schedule config set update_channel main 2>&1)
+rc=$?
+assert_success "$rc" "millennium-schedule config set update_channel main exits 0"
+out=$(run_schedule config get update_channel 2>&1)
+assert_equals "main" "$(echo "$out" | tr -d '[:space:]')" "config get update_channel returns main"
+out=$(run_schedule config set update_channel beta 2>&1)
+assert_success "$?" "restore update_channel to beta after main test"
 
 # 5. config set backup_limit
 out=$(run_schedule config set backup_limit 10 2>&1)

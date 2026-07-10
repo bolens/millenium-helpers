@@ -1,4 +1,4 @@
-.TH MILLENNIUM\-UPGRADE 1 "July 9, 2026" "millennium-helpers" "User Commands"
+.TH MILLENNIUM\-UPGRADE 1 "July 10, 2026" "millennium-helpers" "User Commands"
 .SH NAME
 millennium-upgrade \- install or roll back Millennium Steam client releases
 .SH SYNOPSIS
@@ -6,12 +6,25 @@ millennium-upgrade \- install or roll back Millennium Steam client releases
 [\fIOPTIONS\fR]
 .SH DESCRIPTION
 Downloads, checksum-validates, and installs official Millennium releases
-(stable or beta) over system files. Supports force reinstall and rollback
-from local backups.
+(\fBstable\fR, \fBbeta\fR, or \fBmain\fR tip-of-development) over system files.
+Supports force reinstall and rollback from local backups.
+.PP
+This is the Millennium
+.B client
+update channel. It is separate from the helpers install
+.B track
+(\fBrelease\fR / \fBmain\fR / \fBtag\fR) chosen when installing the helper scripts.
 .SH OPTIONS
 .TP
 .BR \-c ", " \-\-channel " " \fICHANNEL\fR
-Update channel: \fBstable\fR or \fBbeta\fR.
+Update channel:
+.BR stable ,
+.BR beta ,
+or
+.B main
+(default: config
+.B update_channel
+, else stable).
 .TP
 .B \-\-stable
 Alias for
@@ -20,6 +33,10 @@ Alias for
 .B \-\-beta
 Alias for
 .BR \-\-channel " beta" .
+.TP
+.B \-\-main
+Alias for
+.BR \-\-channel " main" .
 .TP
 .BR \-r ", " \-\-rollback " [" \fIID\fR "]"
 Roll back to a previous backup, or pass
@@ -51,6 +68,9 @@ Install/update stable:
 Force reinstall on beta:
 .B sudo millennium-upgrade \-\-channel beta \-\-force \-\-yes
 .TP
+Tip-of-development client builds:
+.B sudo millennium-upgrade \-\-channel main
+.TP
 List backups then roll back:
 .B sudo millennium-upgrade \-\-rollback list
 .SH NOTES
@@ -64,6 +84,11 @@ If GitHub API calls fail with 401/403, set a PAT via
 .B millennium-schedule setup
 or
 .B millennium-schedule config set github_token .
+.PP
+The
+.B main
+client channel resolves the newest non-beta prerelease when available
+(otherwise any prerelease) from the upstream Millennium releases API.
 .SH SEE ALSO
 .BR millennium-repair (1),
 .BR millennium-diag (1),

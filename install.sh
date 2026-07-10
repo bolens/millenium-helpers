@@ -6,22 +6,80 @@ TARGET_DIR="${TARGET_DIR:-/usr/local/bin}"
 LIB_DIR="${MILLENNIUM_LIB_DIR:-/usr/local/lib/millennium-helpers}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# If running standalone/piped (e.g. curl ... | bash), download the latest trimmed
-# Linux release asset to a temp folder and run the installer from there.
+# Pre-parse track/tag for piped mode (before common.sh is available).
+_PIPE_TRACK="${MILLENNIUM_HELPERS_TRACK:-release}"
+_PIPE_TAG="${MILLENNIUM_HELPERS_TAG:-}"
+_pre_args=("$@")
+while [[ ${#_pre_args[@]} -gt 0 ]]; do
+  case "${_pre_args[0]}" in
+    --track)
+      _PIPE_TRACK="${_pre_args[1]:-}"
+      _pre_args=("${_pre_args[@]:2}")
+      ;;
+    --track=*)
+      _PIPE_TRACK="${_pre_args[0]#*=}"
+      _pre_args=("${_pre_args[@]:1}")
+      ;;
+    --tag)
+      _PIPE_TAG="${_pre_args[1]:-}"
+      _PIPE_TRACK="tag"
+      _pre_args=("${_pre_args[@]:2}")
+      ;;
+    --tag=*)
+      _PIPE_TAG="${_pre_args[0]#*=}"
+      _PIPE_TRACK="tag"
+      _pre_args=("${_pre_args[@]:1}")
+      ;;
+    *)
+      _pre_args=("${_pre_args[@]:1}")
+      ;;
+  esac
+done
+[[ -n "$_PIPE_TAG" ]] && _PIPE_TRACK="tag"
+_PIPE_TRACK="$(printf '%s' "$_PIPE_TRACK" | tr '[:upper:]' '[:lower:]')"
+
+# If running standalone/piped (e.g. curl ... | bash), download the helpers
+# archive for the selected track and run the installer from there.
 if [[ ! -f "${SCRIPT_DIR}/scripts/common.sh" ]]; then
-  echo "Running in standalone/piped mode. Downloading latest Linux release..."
+  echo "Running in standalone/piped mode. Downloading helpers (track=${_PIPE_TRACK})..."
   TEMP_DIR=$(mktemp -d)
   if [[ -z "$TEMP_DIR" || ! -d "$TEMP_DIR" ]]; then
     echo "Error: Failed to create temporary directory for standalone installation." >&2
     exit 1
   fi
-  # Best-effort cleanup
   trap 'rm -rf "$TEMP_DIR"' EXIT
 
-  RELEASE_URL="${MILLENNIUM_HELPERS_RELEASE_URL:-https://github.com/bolens/millenium-helpers/releases/latest/download/millennium-helpers-linux.tar.gz}"
-  SHA_URL="${MILLENNIUM_HELPERS_RELEASE_SHA_URL:-${RELEASE_URL}.sha256}"
-  ARCHIVE="$TEMP_DIR/millennium-helpers-linux.tar.gz"
-  SHA_FILE="$TEMP_DIR/millennium-helpers-linux.tar.gz.sha256"
+  HELPERS_REPO="${HELPERS_GITHUB_REPO:-bolens/millenium-helpers}"
+  IS_SOURCE=0
+  if [[ -n "${MILLENNIUM_HELPERS_RELEASE_URL:-}" ]]; then
+    RELEASE_URL="$MILLENNIUM_HELPERS_RELEASE_URL"
+    SHA_URL="${MILLENNIUM_HELPERS_RELEASE_SHA_URL:-${RELEASE_URL}.sha256}"
+    NEEDS_SHA=1
+  else
+    case "$_PIPE_TRACK" in
+      main)
+        RELEASE_URL="https://github.com/${HELPERS_REPO}/archive/refs/heads/main.tar.gz"
+        SHA_URL=""
+        NEEDS_SHA=0
+        IS_SOURCE=1
+        ;;
+      tag)
+        _tag="$_PIPE_TAG"
+        _tag="${_tag#v}"
+        [[ -n "$_tag" ]] || { echo "Error: --tag required for track=tag" >&2; exit 1; }
+        RELEASE_URL="https://github.com/${HELPERS_REPO}/releases/download/v${_tag}/millennium-helpers-linux.tar.gz"
+        SHA_URL="${RELEASE_URL}.sha256"
+        NEEDS_SHA=1
+        ;;
+      release|*)
+        RELEASE_URL="https://github.com/${HELPERS_REPO}/releases/latest/download/millennium-helpers-linux.tar.gz"
+        SHA_URL="${RELEASE_URL}.sha256"
+        NEEDS_SHA=1
+        ;;
+    esac
+  fi
+
+  ARCHIVE="$TEMP_DIR/helpers-download.tar.gz"
   download_ok=false
   if command -v curl >/dev/null 2>&1; then
     if curl -fsSL "$RELEASE_URL" -o "$ARCHIVE"; then
@@ -37,59 +95,76 @@ if [[ ! -f "${SCRIPT_DIR}/scripts/common.sh" ]]; then
   fi
 
   if [[ "$download_ok" != "true" || ! -s "$ARCHIVE" ]]; then
-    echo "Error: Failed to download the Linux release asset from GitHub." >&2
+    echo "Error: Failed to download helpers archive from GitHub." >&2
     echo "URL: $RELEASE_URL" >&2
     exit 1
   fi
 
-  sha_ok=false
-  if command -v curl >/dev/null 2>&1; then
-    if curl -fsSL "$SHA_URL" -o "$SHA_FILE"; then
-      sha_ok=true
+  if [[ "$NEEDS_SHA" -eq 1 ]]; then
+    SHA_FILE="$TEMP_DIR/helpers-download.tar.gz.sha256"
+    sha_ok=false
+    if command -v curl >/dev/null 2>&1; then
+      if curl -fsSL "$SHA_URL" -o "$SHA_FILE"; then
+        sha_ok=true
+      fi
+    elif command -v wget >/dev/null 2>&1; then
+      if wget -qO "$SHA_FILE" "$SHA_URL"; then
+        sha_ok=true
+      fi
     fi
-  elif command -v wget >/dev/null 2>&1; then
-    if wget -qO "$SHA_FILE" "$SHA_URL"; then
-      sha_ok=true
+    if [[ "$sha_ok" != "true" || ! -s "$SHA_FILE" ]]; then
+      echo "Error: Failed to download the SHA256 checksum sidecar." >&2
+      echo "URL: $SHA_URL" >&2
+      exit 1
     fi
+    if ! command -v sha256sum >/dev/null 2>&1; then
+      echo "Error: sha256sum is required to verify the release archive." >&2
+      exit 1
+    fi
+    EXPECTED_SHA=$(awk '{print $1; exit}' "$SHA_FILE" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
+    ACTUAL_SHA=$(sha256sum "$ARCHIVE" | awk '{print $1}' | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
+    if [[ ! "$EXPECTED_SHA" =~ ^[0-9a-f]{64}$ ]]; then
+      echo "Error: Checksum sidecar did not contain a valid SHA256 hash." >&2
+      exit 1
+    fi
+    if [[ "$EXPECTED_SHA" != "$ACTUAL_SHA" ]]; then
+      echo "Error: SHA256 mismatch for downloaded release archive." >&2
+      echo "Expected: $EXPECTED_SHA" >&2
+      echo "Actual:   $ACTUAL_SHA" >&2
+      exit 1
+    fi
+    echo "SHA256 checksum verified."
+  else
+    echo "Tip-of-main archive: skipping release SHA256 sidecar."
   fi
 
-  if [[ "$sha_ok" != "true" || ! -s "$SHA_FILE" ]]; then
-    echo "Error: Failed to download the SHA256 checksum sidecar." >&2
-    echo "URL: $SHA_URL" >&2
-    exit 1
-  fi
-
-  if ! command -v sha256sum >/dev/null 2>&1; then
-    echo "Error: sha256sum is required to verify the release archive." >&2
-    exit 1
-  fi
-
-  EXPECTED_SHA=$(awk '{print $1; exit}' "$SHA_FILE" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
-  ACTUAL_SHA=$(sha256sum "$ARCHIVE" | awk '{print $1}' | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
-  if [[ ! "$EXPECTED_SHA" =~ ^[0-9a-f]{64}$ ]]; then
-    echo "Error: Checksum sidecar did not contain a valid SHA256 hash." >&2
-    exit 1
-  fi
-  if [[ "$EXPECTED_SHA" != "$ACTUAL_SHA" ]]; then
-    echo "Error: SHA256 mismatch for downloaded release archive." >&2
-    echo "Expected: $EXPECTED_SHA" >&2
-    echo "Actual:   $ACTUAL_SHA" >&2
-    exit 1
-  fi
-  echo "SHA256 checksum verified."
-
+  EXTRACT_ROOT="$TEMP_DIR"
   if ! tar -xzf "$ARCHIVE" -C "$TEMP_DIR"; then
-    echo "Error: Failed to extract the Linux release asset." >&2
+    echo "Error: Failed to extract the helpers archive." >&2
     exit 1
   fi
 
-  if [[ ! -f "$TEMP_DIR/install.sh" || ! -f "$TEMP_DIR/scripts/common.sh" ]]; then
-    echo "Error: Release archive is missing install.sh or scripts/common.sh." >&2
+  if [[ "$IS_SOURCE" -eq 1 ]]; then
+    # GitHub source archives extract to millenium-helpers-main/
+    for cand in "$TEMP_DIR"/millenium-helpers-main "$TEMP_DIR"/millenium-helpers-*; do
+      if [[ -f "${cand}/install.sh" && -f "${cand}/scripts/common.sh" ]]; then
+        EXTRACT_ROOT="$cand"
+        break
+      fi
+    done
+  fi
+
+  if [[ ! -f "$EXTRACT_ROOT/install.sh" || ! -f "$EXTRACT_ROOT/scripts/common.sh" ]]; then
+    echo "Error: Archive is missing install.sh or scripts/common.sh." >&2
     exit 1
   fi
 
-  # Run the installer from the temp directory with the original arguments
-  bash "$TEMP_DIR/install.sh" "$@"
+  # Persist track for the re-exec'd installer (writes install-meta.json).
+  export MILLENNIUM_HELPERS_TRACK="$_PIPE_TRACK"
+  [[ -n "$_PIPE_TAG" ]] && export MILLENNIUM_HELPERS_TAG="$_PIPE_TAG"
+  export MILLENNIUM_HELPERS_SOURCE_URL="$RELEASE_URL"
+
+  bash "$EXTRACT_ROOT/install.sh" "$@"
   exit 0
 fi
 
@@ -124,8 +199,17 @@ Options:
   -i, --install      Perform installation
   -u, --uninstall    Perform uninstallation
   -p, --purge        During uninstall, also purge all Millennium client files/hooks
+      --track TRACK  Helpers install track: release (default), main (tip-of-main)
+      --tag vX.Y.Z   Install a specific release tag (implies track=tag)
   -V, --version      Show version information
   -h, --help         Show this help message
+
+Environment:
+  MILLENNIUM_HELPERS_TRACK / MILLENNIUM_HELPERS_TAG
+  MILLENNIUM_HELPERS_RELEASE_URL / MILLENNIUM_HELPERS_RELEASE_SHA_URL
+
+Note: Millennium client update channel (stable|beta|main) is separate; configure
+via 'millennium schedule' / 'millennium upgrade --channel'.
 EOF
 }
 
@@ -166,6 +250,8 @@ ORIGINAL_ARGS=("$@")
 ACTION="install"
 DRY_RUN=false
 PURGE_REQUESTED=false
+INSTALL_TRACK="${MILLENNIUM_HELPERS_TRACK:-release}"
+INSTALL_TAG="${MILLENNIUM_HELPERS_TAG:-}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -185,6 +271,24 @@ while [[ $# -gt 0 ]]; do
       DRY_RUN=true
       shift
       ;;
+    --track)
+      INSTALL_TRACK="${2:-}"
+      shift 2
+      ;;
+    --track=*)
+      INSTALL_TRACK="${1#*=}"
+      shift
+      ;;
+    --tag)
+      INSTALL_TAG="${2:-}"
+      INSTALL_TRACK="tag"
+      shift 2
+      ;;
+    --tag=*)
+      INSTALL_TAG="${1#*=}"
+      INSTALL_TRACK="tag"
+      shift
+      ;;
     -V|--version)
       print_helpers_version
       exit 0
@@ -200,6 +304,11 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+[[ -n "$INSTALL_TAG" ]] && INSTALL_TRACK="tag"
+INSTALL_TRACK="$(printf '%s' "$INSTALL_TRACK" | tr '[:upper:]' '[:lower:]')"
+export MILLENNIUM_HELPERS_TRACK="$INSTALL_TRACK"
+[[ -n "$INSTALL_TAG" ]] && export MILLENNIUM_HELPERS_TAG="$INSTALL_TAG"
 
 check_root "$ACTION"
 
@@ -523,6 +632,43 @@ install_scripts() {
     echo -e "${RED}Error: Failed to copy or configure shared helper library directory ${lib_dir}.${NC}" >&2
     echo -e "${YELLOW}Please verify directory permissions for ${lib_dir}.${NC}" >&2
     exit 1
+  fi
+
+  # Record helpers install track (release|main|tag|checkout).
+  if [[ "$DRY_RUN" == "false" ]] && declare -F write_helpers_install_meta >/dev/null 2>&1; then
+    local meta_track="$INSTALL_TRACK" meta_ref="" meta_ver="" meta_url="${MILLENNIUM_HELPERS_SOURCE_URL:-}"
+    meta_ver="$(tr -d '[:space:]' < "${lib_dir}/VERSION" 2>/dev/null || true)"
+    # Local clone install without a piped source URL → checkout track.
+    if [[ "$meta_track" == "release" && -z "$meta_url" && -d "${SCRIPT_DIR}/.git" ]]; then
+      meta_track="checkout"
+    fi
+    case "$meta_track" in
+      tag)
+        meta_ref="$(helpers_normalize_tag "${INSTALL_TAG:-$meta_ver}" 2>/dev/null || printf 'v%s' "$meta_ver")"
+        ;;
+      main)
+        meta_ref="$(helpers_fetch_main_commit_sha 2>/dev/null || true)"
+        meta_ref="${meta_ref:-main}"
+        ;;
+      checkout)
+        if [[ -d "${SCRIPT_DIR}/.git" ]]; then
+          meta_ref="$(git -C "$SCRIPT_DIR" rev-parse --short HEAD 2>/dev/null || echo checkout)"
+        else
+          meta_ref="checkout"
+        fi
+        ;;
+      *)
+        meta_track="release"
+        if [[ -n "$meta_ver" ]]; then
+          meta_ref="v${meta_ver}"
+        else
+          meta_ref="latest"
+        fi
+        ;;
+    esac
+    write_helpers_install_meta "$lib_dir" "$meta_track" "$meta_ref" "$meta_ver" "$meta_url" "" || true
+    change_owner "$(helpers_install_meta_path "$lib_dir")" 2>/dev/null || true
+    execute chmod 644 "$(helpers_install_meta_path "$lib_dir")" 2>/dev/null || true
   fi
 
   install_completions

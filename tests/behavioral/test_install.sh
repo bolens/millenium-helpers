@@ -35,6 +35,8 @@ assert_success "$rc" "install.sh --help exits 0"
 assert_contains "$out" "Usage:" "install.sh --help prints usage banner"
 assert_contains "$out" "install" "install.sh --help documents the install command"
 assert_contains "$out" "uninstall" "install.sh --help documents the uninstall command"
+assert_contains "$out" "--track" "install.sh --help documents --track"
+assert_contains "$out" "--tag" "install.sh --help documents --tag"
 
 out=$(bash "$INSTALL_SH" --version 2>&1)
 rc=$?
@@ -268,7 +270,7 @@ out=$(TARGET_DIR="$STANDALONE_DIR" bash "$STANDALONE_DIR/install.sh" install --d
 rc=$?
 
 assert_success "$rc" "Standalone install.sh runs successfully"
-assert_contains "$out" "Running in standalone/piped mode. Downloading latest Linux release..." "Standalone install.sh detects piped mode"
+assert_contains "$out" "Running in standalone/piped mode. Downloading helpers (track=release)..." "Standalone install.sh detects piped mode"
 assert_contains "$out" "SHA256 checksum verified." "Standalone install.sh verifies release checksum"
 assert_contains "$out" "DRY RUN MODE" "Standalone install.sh successfully executes the downloaded script"
 
@@ -326,6 +328,9 @@ for cmd in millennium millennium-repair millennium-upgrade millennium-schedule \
 done
 assert_file_exists "${PREFIX_LIB}/common.sh" "isolated install installs shared common.sh"
 assert_file_exists "${PREFIX_LIB}/VERSION" "isolated install installs VERSION into lib dir"
+assert_file_exists "${PREFIX_LIB}/install-meta.json" "isolated install writes install-meta.json"
+meta_track=$(python3 -c "import json; print(json.load(open('${PREFIX_LIB}/install-meta.json')).get('track'))")
+assert_equals "checkout" "$meta_track" "local clone install records track=checkout"
 assert_file_exists "${PREFIX_BASH}/millennium-helpers" "isolated install installs bash completion base"
 assert_file_exists "${PREFIX_ZSH}/_millennium-helpers" "isolated install installs zsh completion base"
 assert_file_exists "${PREFIX_NU}/millennium-helpers.nu" "isolated install installs nushell completions"
@@ -401,5 +406,68 @@ assert_contains "$scoop_git" '"version": "nightly"' "Scoop git manifest uses nig
 assert_contains "$scoop_git" "archive/refs/heads/main.zip" "Scoop git manifest uses main branch archive"
 assert_contains "$scoop_git" "millenium-helpers-main" "Scoop git manifest sets extract_dir for GitHub archive"
 assert_contains "$scoop_git" "post_install" "Scoop git manifest registers post_install hooks"
+
+# --- Track flags in help / dry-run ---
+out=$(bash "$INSTALL_SH" install --dry-run --track main 2>&1)
+rc=$?
+assert_success "$rc" "install.sh install --dry-run --track main exits 0"
+
+out=$(bash "$INSTALL_SH" install --dry-run --tag v2.5.0 2>&1)
+rc=$?
+assert_success "$rc" "install.sh install --dry-run --tag v2.5.0 exits 0"
+
+# --- Piped --track main uses source archive (no SHA) ---
+STANDALONE_MAIN=$(mktemp -d)
+cp "$INSTALL_SH" "$STANDALONE_MAIN/install.sh"
+MOCK_MAIN_TGZ="${STANDALONE_MAIN}/main.tar.gz"
+# Source-archive layout: top-level millenium-helpers-main/
+MAIN_PAYLOAD="${STANDALONE_MAIN}/src/millenium-helpers-main"
+mkdir -p "$MAIN_PAYLOAD/scripts" "$MAIN_PAYLOAD/completions" "$MAIN_PAYLOAD/man"
+cp "$REPO_ROOT/install.sh" "$REPO_ROOT/VERSION" "$REPO_ROOT/LICENSE" "$MAIN_PAYLOAD/"
+cp "$REPO_ROOT/scripts/common.sh" \
+  "$REPO_ROOT/scripts/millennium.sh" \
+  "$REPO_ROOT/scripts/millennium-diag.sh" \
+  "$REPO_ROOT/scripts/millennium-mcp.py" \
+  "$REPO_ROOT/scripts/millennium-purge.sh" \
+  "$REPO_ROOT/scripts/millennium-repair.sh" \
+  "$REPO_ROOT/scripts/millennium-schedule.sh" \
+  "$REPO_ROOT/scripts/millennium-theme.sh" \
+  "$REPO_ROOT/scripts/millennium-upgrade.sh" \
+  "$MAIN_PAYLOAD/scripts/"
+cp -r "$REPO_ROOT/scripts/lib" "$MAIN_PAYLOAD/scripts/"
+cp -r "$REPO_ROOT/completions/." "$MAIN_PAYLOAD/completions/" 2>/dev/null || true
+cp -r "$REPO_ROOT/man/." "$MAIN_PAYLOAD/man/" 2>/dev/null || true
+tar -czf "$MOCK_MAIN_TGZ" -C "${STANDALONE_MAIN}/src" millenium-helpers-main
+
+# shellcheck disable=SC2016
+mock_cmd "curl" '
+out=""
+url=""
+prev=""
+for arg in "$@"; do
+  if [[ "$prev" == "-o" ]]; then out="$arg"; fi
+  if [[ "$arg" == http* ]]; then url="$arg"; fi
+  prev="$arg"
+done
+if [[ -z "$out" ]]; then echo "mock curl: missing -o" >&2; exit 1; fi
+if [[ "$url" == *commits/main* ]]; then
+  echo "{\"sha\":\"abc123deadbeef\"}" > "$out"
+  exit 0
+fi
+cat "'"$MOCK_MAIN_TGZ"'" > "$out"
+'
+
+out=$(TARGET_DIR="$STANDALONE_MAIN" bash "$STANDALONE_MAIN/install.sh" install --track main --dry-run 2>&1)
+rc=$?
+assert_success "$rc" "piped install --track main --dry-run exits 0"
+assert_contains "$out" "main" "piped --track main mentions main"
+assert_not_contains "$out" "SHA256 checksum verified." "piped --track main skips release SHA verify"
+
+rm -rf "$STANDALONE_MAIN"
+rm -f "${MOCK_BIN}/curl"
+
+# Winget tip-of-main package present
+assert_file_exists "${REPO_ROOT}/packaging/winget-git/bolens.millenniumhelpers.git.yaml" "winget-git version manifest exists"
+assert_contains "$(cat "${REPO_ROOT}/packaging/winget-git/bolens.millenniumhelpers.git.installer.yaml")" "main.zip" "winget-git installer points at main.zip"
 
 print_summary

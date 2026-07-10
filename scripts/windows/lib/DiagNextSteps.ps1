@@ -4,7 +4,7 @@ function Print-PackageUpgradeHint {
     switch ($script:InstallMethod) {
         'scoop'  { Write-Host '  scoop update millennium-helpers' }
         'winget' { Write-Host '  winget upgrade bolens.millenniumhelpers' }
-        'manual' { Write-Host '  millennium doctor                 # sync scripts from latest release' }
+        'manual' { Write-Host '  millennium doctor                 # sync scripts for current helpers track' }
         'mixed'  { Write-Host '  Resolve mixed install, then re-run: millennium doctor' }
         default  { Write-Host '  millennium doctor' }
     }
@@ -26,7 +26,7 @@ function Print-DiagNextSteps {
         switch ($script:InstallMethod) {
             'scoop'  { $suggestions.Add('scoop update millennium-helpers           # update helper scripts') }
             'winget' { $suggestions.Add('winget upgrade bolens.millenniumhelpers   # update helper scripts') }
-            default  { $suggestions.Add('millennium doctor                          # sync scripts from latest release') }
+            default  { $suggestions.Add('millennium doctor                          # sync scripts for current helpers track') }
         }
     }
 

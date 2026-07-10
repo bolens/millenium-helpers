@@ -1,0 +1,16 @@
+# bolens.millenniumhelpers.git.installer.yaml
+# Tip-of-main from GitHub archive/refs/heads/main.zip.
+# Same portable/zip constraints as the release Winget package — Scoop -git
+# remains the preferred tip-of-main Windows path for multi-command installs.
+PackageIdentifier: bolens.millenniumhelpers.git
+PackageVersion: 0.0.0-git
+MinimumOSVersion: 10.0.0.0
+Installers:
+- Architecture: neutral
+  InstallerType: zip
+  InstallerUrl: https://github.com/bolens/millenium-helpers/archive/refs/heads/main.zip
+  # Source archives have no release .sha256 sidecar; hash refreshed manually when needed.
+  InstallerSha256: "0000000000000000000000000000000000000000000000000000000000000000"
+  UpgradeBehavior: uninstallPrevious
+ManifestType: installer
+ManifestVersion: 1.5.0

@@ -26,6 +26,7 @@ seed_packaging_tree() {
   cp "${REPO_ROOT}/packaging/millennium-helpers/PKGBUILD" "$dest/packaging/millennium-helpers/"
   cp "${REPO_ROOT}/packaging/millennium-helpers/.SRCINFO" "$dest/packaging/millennium-helpers/"
   cp "${REPO_ROOT}/packaging/millennium-helpers/millennium-helpers.sudoers" "$dest/packaging/millennium-helpers/"
+  cp "${REPO_ROOT}/packaging/millennium-helpers/millennium-helpers.install" "$dest/packaging/millennium-helpers/"
   cp "${REPO_ROOT}/nix/release-info.nix" "$dest/nix/"
   cp "${REPO_ROOT}/pyproject.toml" "$dest/"
   cp "${REPO_ROOT}/VERSION" "$dest/"

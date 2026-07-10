@@ -115,6 +115,7 @@ assert_token_in_shells "--cron" "cron" "schedule flag --cron"
 
 assert_token_in_shells "stable" "stable" "channel stable"
 assert_token_in_shells "beta" "beta" "channel beta"
+assert_token_in_shells "main" "main" "channel main"
 
 assert_token_in_shells "doctor" "doctor" "diag action doctor"
 assert_token_in_shells "logs" "logs" "diag action logs"
@@ -171,6 +172,7 @@ assert_contains "$enable_line" "beta" "bash millennium-schedule enable offers be
 
 assert_contains "$channel_line" "stable" "bash millennium-upgrade --channel offers stable"
 assert_contains "$channel_line" "beta" "bash millennium-upgrade --channel offers beta"
+assert_contains "$channel_line" "main" "bash millennium-upgrade --channel offers main"
 
 # --- Fish runtime: complete -C ---
 if command -v fish >/dev/null 2>&1; then

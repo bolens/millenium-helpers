@@ -1,0 +1,16 @@
+# bolens.millenniumhelpers.git.locale.en-US.yaml
+PackageIdentifier: bolens.millenniumhelpers.git
+PackageVersion: 0.0.0-git
+PackageLocale: en-US
+Publisher: bolens
+PublisherUrl: https://github.com/bolens
+PackageName: Millennium Helpers (git / tip-of-main)
+License: MIT
+ShortDescription: Cross-platform Millennium helpers (development build from main).
+Description: >-
+  Installs tip-of-main from the GitHub archive (not a release tag).
+  Uninstall the release package first if present:
+  winget uninstall bolens.millenniumhelpers
+PackageUrl: https://github.com/bolens/millenium-helpers
+ManifestType: defaultLocale
+ManifestVersion: 1.5.0

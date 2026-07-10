@@ -40,7 +40,9 @@ check_helper_updates() {
 
     local installed_ver=""
     installed_ver="$(get_helpers_version)"
-    if [[ -n "${LATEST_RELEASE_VERSION:-}" && "$installed_ver" != "unknown" ]]; then
+    if helpers_are_pacman_git || [[ "${HELPERS_TRACK:-}" == "main" ]]; then
+      print_diag_item "ok" "  - Package version" "tip-of-main package (v${installed_ver}; not compared to release tag)"
+    elif [[ -n "${LATEST_RELEASE_VERSION:-}" && "$installed_ver" != "unknown" ]]; then
       if [[ "$installed_ver" == "$LATEST_RELEASE_VERSION" ]]; then
         print_diag_item "ok" "  - Package version" "v${installed_ver} (matches latest release ${LATEST_RELEASE_TAG})"
       else
@@ -83,7 +85,8 @@ check_helper_updates() {
     return
   fi
 
-  # Manual install: compare against latest release tarball (single fetch).
+  # Manual install: compare against track-appropriate archive.
+  ensure_helpers_track_meta || true
   TMP_SCRIPTS=$(mktemp -d)
   if [[ -z "$TMP_SCRIPTS" || ! -d "$TMP_SCRIPTS" ]]; then
     echo -e "${RED}Error: Failed to create temporary directory for updates check.${NC}" >&2
@@ -91,8 +94,38 @@ check_helper_updates() {
   fi
   trap 'rm -rf "${TMP_SCRIPTS:-}"; _diag_cleanup_release_workdir' EXIT INT TERM
 
+  local track="${HELPERS_TRACK:-release}"
+  local compare_label="${LATEST_RELEASE_TAG:-latest}"
+
+  if [[ "$track" == "checkout" ]]; then
+    print_diag_item "ok" "  - Helpers track" "checkout (local tree; skip remote release compare)"
+    local item cmd_name local_path
+    for item in "${UTILITIES[@]}"; do
+      cmd_name="${item%%:*}"
+      local_path="$(_diag_helper_local_path "$cmd_name")"
+      if [[ -n "$local_path" ]]; then
+        print_diag_item "ok" "  - ${cmd_name}" "Installed (checkout)"
+      else
+        SCRIPTS_UP_TO_DATE=false
+        out_of_date_scripts+=("$cmd_name")
+        print_diag_item "error" "  - ${cmd_name}" "Not Installed"
+      fi
+    done
+    return
+  fi
+
+  if [[ "$track" == "tag" ]]; then
+    compare_label="${HELPERS_TRACK_REF:-pinned}"
+    # Inform if a newer release exists, but do not fail the pin.
+    if [[ -n "${LATEST_RELEASE_TAG:-}" && -n "${HELPERS_TRACK_REF:-}" && "$LATEST_RELEASE_TAG" != "$HELPERS_TRACK_REF" ]]; then
+      print_diag_item "warn" "  - Pin" "Pinned ${HELPERS_TRACK_REF}; latest release is ${LATEST_RELEASE_TAG} (not auto-upgraded)"
+    fi
+  elif [[ "$track" == "main" ]]; then
+    compare_label="main"
+  fi
+
   if ! diag_fetch_release_tarball; then
-    print_diag_item "warn" "Release tarball" "Unable to download or verify latest release (${LATEST_RELEASE_TAG:-unknown})"
+    print_diag_item "warn" "Helpers archive" "Unable to download track archive (${track} / ${compare_label})"
     return
   fi
 
@@ -104,7 +137,8 @@ check_helper_updates() {
     release_path="$(_diag_release_source_path "$remote_rel")"
 
     if [[ -z "$release_path" ]]; then
-      print_diag_item "warn" "  - ${cmd_name}" "Missing from release tarball (${remote_rel})"
+      # Source archive layout uses scripts/ prefix already in UTILITIES paths.
+      print_diag_item "warn" "  - ${cmd_name}" "Missing from track archive (${remote_rel})"
       continue
     fi
 
@@ -112,13 +146,13 @@ check_helper_updates() {
       local_sha="$(_diag_file_sha256 "$local_path")"
       release_sha="$(_diag_file_sha256 "$release_path")"
       if [[ -n "$local_sha" && -n "$release_sha" && "$local_sha" == "$release_sha" ]]; then
-        print_diag_item "ok" "  - ${cmd_name}" "Up to date (${LATEST_RELEASE_TAG})"
+        print_diag_item "ok" "  - ${cmd_name}" "Up to date (${compare_label})"
       else
         SCRIPTS_UP_TO_DATE=false
         out_of_date_scripts+=("$cmd_name")
         tmp_dest="${TMP_SCRIPTS}/${cmd_name}"
         cp -f "$release_path" "$tmp_dest" 2>/dev/null || true
-        print_diag_item "error" "  - ${cmd_name}" "Out of date (release ${LATEST_RELEASE_TAG})"
+        print_diag_item "error" "  - ${cmd_name}" "Out of date (${compare_label})"
       fi
     else
       SCRIPTS_UP_TO_DATE=false

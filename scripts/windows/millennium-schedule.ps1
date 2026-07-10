@@ -71,7 +71,7 @@ function Show-Help {
 Usage: millennium-schedule COMMAND [ARGUMENTS] [OPTIONS]
 
 Commands:
-  enable [stable|beta]  Enable the daily update scheduler task (defaults to stable)
+  enable [stable|beta|main]  Enable the daily update scheduler task (defaults to stable)
   disable               Disable the scheduled update task
   status                Show status of the update scheduler task
   setup                 Run the interactive configuration wizard
@@ -181,7 +181,7 @@ function Show-Status {
     } else {
         Write-Host "  Scheduled task is not registered."
         Write-Host ""
-        Write-Host -ForegroundColor Yellow "Scheduler disabled. Enable with: millennium schedule enable [stable|beta]"
+        Write-Host -ForegroundColor Yellow "Scheduler disabled. Enable with: millennium schedule enable [stable|beta|main]"
     }
 }
 
@@ -254,6 +254,10 @@ function Run-Setup-Wizard {
                 $defaultChNum = "2"
                 $defaultChDesc = "Beta"
                 $existingChannel = "beta"
+            } elseif ($config -and $config.update_channel -eq "main") {
+                $defaultChNum = "3"
+                $defaultChDesc = "Main"
+                $existingChannel = "main"
             }
         } catch {}
     }
@@ -261,9 +265,10 @@ function Run-Setup-Wizard {
     $channelVal = ""
     while ($true) {
         Write-Host "Choose Millennium Update Channel:"
-        Write-Host "  1) Stable"
-        Write-Host "  2) Beta"
-        [System.Console]::Error.Write("Selection [1-2, default: $defaultChNum ($defaultChDesc)]: ")
+        Write-Host "  1) Stable   — latest published release"
+        Write-Host "  2) Beta     — beta-tagged prereleases"
+        Write-Host "  3) Main     — tip-of-development prereleases"
+        [System.Console]::Error.Write("Selection [1-3, default: $defaultChNum ($defaultChDesc)]: ")
         $chSel = Read-Host
         if ([string]::IsNullOrWhiteSpace($chSel)) {
             $chSel = $defaultChNum
@@ -274,8 +279,11 @@ function Run-Setup-Wizard {
         } elseif ($chSel -eq "2") {
             $channelVal = "beta"
             break
+        } elseif ($chSel -eq "3") {
+            $channelVal = "main"
+            break
         } else {
-            Write-Host "Invalid selection. Please choose 1 or 2." -ForegroundColor Red
+            Write-Host "Invalid selection. Please choose 1, 2, or 3." -ForegroundColor Red
         }
     }
     Write-Host "Selected channel: $channelVal`n"
@@ -440,8 +448,8 @@ function Manage-Config {
         }
 
         # Validate values
-        if ($key -eq "update_channel" -and $val -ne "stable" -and $val -ne "beta") {
-            Log-Error "Error: update_channel must be 'stable' or 'beta'."
+        if ($key -eq "update_channel" -and $val -ne "stable" -and $val -ne "beta" -and $val -ne "main") {
+            Log-Error "Error: update_channel must be 'stable', 'beta', or 'main'."
             exit 1
         }
         if ($key -eq "backup_limit") {

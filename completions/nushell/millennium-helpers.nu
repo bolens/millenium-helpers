@@ -12,9 +12,10 @@ export extern "millennium-repair" [
 
 # Upgrade Millennium client using specified channel
 export extern "millennium-upgrade" [
-  --channel(-c): string # Update channel (stable, beta)
+  --channel(-c): string # Update channel (stable, beta, main)
   --stable       # Alias for --channel stable
   --beta         # Alias for --channel beta
+  --main         # Alias for --channel main
   --rollback(-r): string # Rollback to a specific version or list backups
   --file: string # Install from a local archive
   --force(-f)    # Force reinstall
@@ -41,7 +42,7 @@ def _millennium_schedule_actions [] {
 }
 
 def _millennium_schedule_channels [] {
-  [ "stable", "beta", "get", "set", "list" ]
+  [ "stable", "beta", "main", "get", "set", "list" ]
 }
 
 # Purge Millennium files and restore original Steam client

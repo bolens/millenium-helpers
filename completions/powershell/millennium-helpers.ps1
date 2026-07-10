@@ -13,7 +13,7 @@ function Global:Get-MillenniumScheduleActions {
 }
 
 function Global:Get-MillenniumScheduleChannels {
-    @('stable', 'beta')
+    @('stable', 'beta', 'main')
 }
 
 function Global:Get-MillenniumConfigActions {
@@ -89,7 +89,7 @@ function Global:Complete-MillenniumNative {
                         }
                     }
                     'upgrade' {
-                        $candidates = @('--channel', '-c', '--stable', '--beta', '--rollback', '-r', '--file', '--force', '-f', '--yes', '-y', '--dry-run', '-d', '--quiet', '-q', '--version', '-V', '--help', '-h')
+                        $candidates = @('--channel', '-c', '--stable', '--beta', '--main', '--rollback', '-r', '--file', '--force', '-f', '--yes', '-y', '--dry-run', '-d', '--quiet', '-q', '--version', '-V', '--help', '-h')
                         if ($args.Count -ge 2 -and $args[-1] -in @('--channel', '-c')) {
                             $candidates = Get-MillenniumScheduleChannels
                         }
@@ -146,7 +146,7 @@ function Global:Complete-MillenniumNative {
             if ($args.Count -ge 1 -and $args[-1] -in @('--channel', '-c')) {
                 $candidates = Get-MillenniumScheduleChannels
             } else {
-                $candidates = @('--channel', '-c', '--stable', '--beta', '--rollback', '-r', '--file', '--force', '-f', '--yes', '-y', '--dry-run', '-d', '--quiet', '-q', '--version', '-V', '--help', '-h')
+                $candidates = @('--channel', '-c', '--stable', '--beta', '--main', '--rollback', '-r', '--file', '--force', '-f', '--yes', '-y', '--dry-run', '-d', '--quiet', '-q', '--version', '-V', '--help', '-h')
             }
         }
         '^millennium-theme$' {

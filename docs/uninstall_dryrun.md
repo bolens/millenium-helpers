@@ -274,6 +274,8 @@ winget install bolens.millenniumhelpers
 
 ```powershell
 winget uninstall bolens.millenniumhelpers
+# or tip-of-main:
+winget uninstall bolens.millenniumhelpers.git
 ```
 
 Optional config cleanup:
@@ -284,10 +286,14 @@ Remove-Item -Path "$env:LOCALAPPDATA\millennium-helpers" -Recurse -Force -ErrorA
 
 If a PowerShell profile still references `millennium-helpers.completion.ps1`, remove that hook using the steps in the Windows manual cleanup section above.
 
-**Local manifest testing** (developers / pre-approval only): installs from the YAML in this repo instead of the community source. Use this to exercise `packaging/winget/` from a clone while polishing manifests — not for end-user installs.
+**Local manifest testing** (developers / pre-approval only): installs from the YAML in this repo instead of the community source. Use this to exercise `packaging/winget/` or `packaging/winget-git/` from a clone while polishing manifests — not for end-user installs.
 
 ```powershell
 # from the repo root
 winget install --manifest packaging/winget/
 winget uninstall bolens.millenniumhelpers
+
+# tip-of-main package (uninstall release package first if both would conflict)
+winget install --manifest packaging/winget-git/
+winget uninstall bolens.millenniumhelpers.git
 ```

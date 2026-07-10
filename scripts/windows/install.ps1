@@ -1,24 +1,73 @@
 # Install/Uninstall script for Millennium Helpers on Windows
 param (
     [switch]$Uninstall,
-    [switch]$Force
+    [switch]$Force,
+    [switch]$Help,
+    [switch]$Version,
+    [switch]$DryRun,
+    [ValidateSet('release', 'main', 'tag', '')]
+    [string]$Track = '',
+    [string]$Tag = ''
 )
 
 $ErrorActionPreference = "Stop"
 
-# If running standalone/piped (e.g. via Invoke-Expression), download the full repository zip to temp and run
+if ($Help) {
+    Write-Host @"
+Usage: install.ps1 [-Uninstall] [-Track release|main] [-Tag vX.Y.Z] [-DryRun] [-Force] [-Version] [-Help]
+
+  -Track   Helpers install track: release (default), main (tip-of-main)
+  -Tag     Install a specific release tag (implies -Track tag)
+  -Force   Reinstall over an existing installation
+  -DryRun  Show actions without writing files
+
+Environment: MILLENNIUM_HELPERS_TRACK, MILLENNIUM_HELPERS_TAG,
+  MILLENNIUM_HELPERS_RELEASE_URL, MILLENNIUM_HELPERS_RELEASE_SHA_URL
+
+Millennium client update channel (stable|beta|main) is separate — use
+millennium-schedule / millennium-upgrade -Channel.
+"@
+    return
+}
+
+# Resolve script path early for version / standalone detection
 $scriptPath = ""
 if ($MyInvocation.MyCommand -and $MyInvocation.MyCommand.Definition) {
     $scriptPath = $MyInvocation.MyCommand.Definition
 }
 
+if ($Version) {
+    $verCandidates = @()
+    if ($scriptPath) {
+        $sd = Split-Path -Parent -Path $scriptPath
+        $verCandidates += (Join-Path $sd '..\..\VERSION')
+        $verCandidates += (Join-Path $sd 'VERSION')
+    }
+    $verCandidates += (Join-Path $env:USERPROFILE '.millennium-helpers\bin\VERSION')
+    foreach ($vc in $verCandidates) {
+        if (Test-Path -LiteralPath $vc -PathType Leaf) {
+            Write-Host ((Get-Content -LiteralPath $vc -Raw).Trim())
+            return
+        }
+    }
+    Write-Host "unknown"
+    return
+}
+
+if (-not [string]::IsNullOrWhiteSpace($Tag)) {
+    $Track = 'tag'
+}
+if ([string]::IsNullOrWhiteSpace($Track)) {
+    $Track = if ($env:MILLENNIUM_HELPERS_TRACK) { $env:MILLENNIUM_HELPERS_TRACK } else { 'release' }
+}
+$Track = $Track.ToLowerInvariant()
+
+# If running standalone/piped (e.g. via Invoke-Expression), download archive and re-exec
 $isStandalone = $true
 if ($scriptPath -and (Test-Path -Path $scriptPath -PathType Leaf)) {
     $scriptDir = Split-Path -Parent -Path $scriptPath
-    # Check if we are running in the repo or near scripts
     $testCommon = Join-Path -Path $scriptDir -ChildPath "common.ps1"
     if (!(Test-Path -Path $testCommon)) {
-        # Check if we are in the root of the repo
         $testCommon = Join-Path -Path $scriptDir -ChildPath "scripts\windows\common.ps1"
     }
     if (Test-Path -Path $testCommon) {
@@ -27,61 +76,88 @@ if ($scriptPath -and (Test-Path -Path $scriptPath -PathType Leaf)) {
 }
 
 if ($isStandalone) {
-    Write-Host "Running in standalone/piped mode. Downloading latest Windows release..."
+    Write-Host "Running in standalone/piped mode. Downloading helpers (track=$Track)..."
     $tempDir = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "millennium-helpers-temp"
     Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue | Out-Null
     New-Item -Path $tempDir -ItemType Directory -Force | Out-Null
 
-    $zipPath = Join-Path -Path $tempDir -ChildPath "millennium-helpers-windows.zip"
-    $url = if ($env:MILLENNIUM_HELPERS_RELEASE_URL) {
-        $env:MILLENNIUM_HELPERS_RELEASE_URL
+    $repo = if ($env:HELPERS_GITHUB_REPO) { $env:HELPERS_GITHUB_REPO } else { 'bolens/millenium-helpers' }
+    $needsSha = $true
+    $isSource = $false
+    if ($env:MILLENNIUM_HELPERS_RELEASE_URL) {
+        $url = $env:MILLENNIUM_HELPERS_RELEASE_URL
+        $shaUrl = if ($env:MILLENNIUM_HELPERS_RELEASE_SHA_URL) { $env:MILLENNIUM_HELPERS_RELEASE_SHA_URL } else { "$url.sha256" }
     } else {
-        "https://github.com/bolens/millenium-helpers/releases/latest/download/millennium-helpers-windows.zip"
-    }
-    $shaUrl = if ($env:MILLENNIUM_HELPERS_RELEASE_SHA_URL) {
-        $env:MILLENNIUM_HELPERS_RELEASE_SHA_URL
-    } else {
-        "$url.sha256"
+        switch ($Track) {
+            'main' {
+                $url = "https://github.com/$repo/archive/refs/heads/main.zip"
+                $shaUrl = ''
+                $needsSha = $false
+                $isSource = $true
+            }
+            'tag' {
+                if ([string]::IsNullOrWhiteSpace($Tag) -and $env:MILLENNIUM_HELPERS_TAG) { $Tag = $env:MILLENNIUM_HELPERS_TAG }
+                if ([string]::IsNullOrWhiteSpace($Tag)) { throw "Tag is required for -Track tag" }
+                $norm = if ($Tag.StartsWith('v')) { $Tag } else { "v$Tag" }
+                $url = "https://github.com/$repo/releases/download/$norm/millennium-helpers-windows.zip"
+                $shaUrl = "$url.sha256"
+            }
+            default {
+                $url = "https://github.com/$repo/releases/latest/download/millennium-helpers-windows.zip"
+                $shaUrl = "$url.sha256"
+            }
+        }
     }
 
+    $zipPath = Join-Path -Path $tempDir -ChildPath "millennium-helpers-download.zip"
     Invoke-WebRequest -Uri $url -OutFile $zipPath -UseBasicParsing
 
-    $shaPath = Join-Path -Path $tempDir -ChildPath "millennium-helpers-windows.zip.sha256"
-    try {
-        Invoke-WebRequest -Uri $shaUrl -OutFile $shaPath -UseBasicParsing
-    } catch {
-        throw "Failed to download the SHA256 checksum sidecar (url=$shaUrl): $_"
+    if ($needsSha) {
+        $shaPath = Join-Path -Path $tempDir -ChildPath "millennium-helpers-download.zip.sha256"
+        try {
+            Invoke-WebRequest -Uri $shaUrl -OutFile $shaPath -UseBasicParsing
+        } catch {
+            throw "Failed to download the SHA256 checksum sidecar (url=$shaUrl): $_"
+        }
+        if (!(Test-Path -Path $shaPath -PathType Leaf)) {
+            throw "SHA256 checksum sidecar was not downloaded (url=$shaUrl)"
+        }
+        $expectedSha = ((Get-Content -Path $shaPath -Raw).Trim() -split '\s+')[0]
+        if ([string]::IsNullOrWhiteSpace($expectedSha) -or $expectedSha -notmatch '^[0-9a-fA-F]{64}$') {
+            throw "Checksum sidecar did not contain a valid SHA256 hash (url=$shaUrl)"
+        }
+        $actualSha = (Get-FileHash -Path $zipPath -Algorithm SHA256).Hash
+        if ($actualSha.ToLowerInvariant() -ne $expectedSha.ToLowerInvariant()) {
+            throw "SHA256 mismatch for downloaded release archive. Expected=$expectedSha Actual=$actualSha"
+        }
+        Write-Host "SHA256 checksum verified."
+    } else {
+        Write-Host "Tip-of-main archive: skipping release SHA256 sidecar."
     }
-    if (!(Test-Path -Path $shaPath -PathType Leaf)) {
-        throw "SHA256 checksum sidecar was not downloaded (url=$shaUrl)"
-    }
-    $expectedSha = ((Get-Content -Path $shaPath -Raw).Trim() -split '\s+')[0]
-    if ([string]::IsNullOrWhiteSpace($expectedSha) -or $expectedSha -notmatch '^[0-9a-fA-F]{64}$') {
-        throw "Checksum sidecar did not contain a valid SHA256 hash (url=$shaUrl)"
-    }
-    $actualSha = (Get-FileHash -Path $zipPath -Algorithm SHA256).Hash
-    if ($actualSha.ToLowerInvariant() -ne $expectedSha.ToLowerInvariant()) {
-        throw "SHA256 mismatch for downloaded release archive. Expected=$expectedSha Actual=$actualSha"
-    }
-    Write-Host "SHA256 checksum verified."
 
     Expand-Archive -Path $zipPath -DestinationPath $tempDir -Force
 
     $extractedScript = Join-Path -Path $tempDir -ChildPath "scripts\windows\install.ps1"
     if (!(Test-Path -Path $extractedScript -PathType Leaf)) {
-        # Older source-archive layout used a single top-level folder.
         $extractedFolder = Get-ChildItem -Path $tempDir -Directory | Select-Object -First 1
         if ($extractedFolder) {
             $extractedScript = Join-Path -Path $extractedFolder.FullName -ChildPath "scripts\windows\install.ps1"
         }
     }
     if (!(Test-Path -Path $extractedScript -PathType Leaf)) {
-        throw "Release archive is missing scripts\windows\install.ps1 (url=$url)"
+        throw "Archive is missing scripts\windows\install.ps1 (url=$url)"
     }
+
+    $env:MILLENNIUM_HELPERS_TRACK = $Track
+    if ($Tag) { $env:MILLENNIUM_HELPERS_TAG = $Tag }
+    $env:MILLENNIUM_HELPERS_SOURCE_URL = $url
 
     $params = @{}
     if ($PSBoundParameters.ContainsKey("Uninstall")) { $params["Uninstall"] = $Uninstall }
     if ($PSBoundParameters.ContainsKey("Force")) { $params["Force"] = $Force }
+    if ($PSBoundParameters.ContainsKey("DryRun")) { $params["DryRun"] = $DryRun }
+    if ($Track) { $params["Track"] = $Track }
+    if ($Tag) { $params["Tag"] = $Tag }
 
     & $extractedScript @params
 
@@ -198,6 +274,16 @@ if ($Uninstall) {
 
 Log-Info "Starting installation of Millennium Helpers..."
 
+if ($DryRun) {
+    Log-Warn "DRY RUN: no files will be written"
+    Log-Info "Would install to $binDir (track=$Track$(if ($Tag) { ", tag=$Tag" } else { '' }))"
+    return
+}
+
+if ((Test-Path -Path $binDir) -and -not $Force -and (Test-Path (Join-Path $binDir 'millennium.ps1'))) {
+    Log-Warn "Existing installation found at $binDir. Re-run with -Force to overwrite."
+}
+
 # Determine source directory
 $scriptDir = Split-Path -Parent -Path $MyInvocation.MyCommand.Definition
 $srcDir = $scriptDir
@@ -255,6 +341,46 @@ if (!(Test-Path -Path $versionSrc)) {
 if (Test-Path -Path $versionSrc) {
     Copy-Item -Path $versionSrc -Destination (Join-Path -Path $binDir -ChildPath "VERSION") -Force
     Log-Info "Installed: VERSION"
+}
+
+# Write install-meta.json for track-aware doctor/updates
+$trackLib = Join-Path -Path $srcDir -ChildPath 'lib\InstallTrack.ps1'
+if (Test-Path -LiteralPath $trackLib) {
+    . $trackLib
+    $metaTrack = $Track
+    $metaRef = 'latest'
+    $metaVer = ''
+    $verInstalled = Join-Path -Path $binDir -ChildPath 'VERSION'
+    if (Test-Path -LiteralPath $verInstalled) {
+        $metaVer = (Get-Content -LiteralPath $verInstalled -Raw).Trim()
+    }
+    $sourceUrl = if ($env:MILLENNIUM_HELPERS_SOURCE_URL) { $env:MILLENNIUM_HELPERS_SOURCE_URL } else { '' }
+    $repoRoot = Join-Path -Path $srcDir -ChildPath '..\..'
+    if ($metaTrack -eq 'release' -and -not $sourceUrl -and (Test-Path (Join-Path $repoRoot '.git'))) {
+        $metaTrack = 'checkout'
+    }
+    switch ($metaTrack) {
+        'tag' {
+            $t = if ($Tag) { $Tag } elseif ($env:MILLENNIUM_HELPERS_TAG) { $env:MILLENNIUM_HELPERS_TAG } else { $metaVer }
+            $metaRef = if ($t -and $t.StartsWith('v')) { $t } elseif ($t) { "v$t" } else { 'latest' }
+        }
+        'main' {
+            $sha = Get-HelpersMainCommitSha
+            $metaRef = if ($sha) { $sha } else { 'main' }
+        }
+        'checkout' {
+            try {
+                $metaRef = (git -C $repoRoot rev-parse --short HEAD 2>$null)
+                if (-not $metaRef) { $metaRef = 'checkout' }
+            } catch { $metaRef = 'checkout' }
+        }
+        default {
+            $metaTrack = 'release'
+            $metaRef = if ($metaVer) { "v$metaVer" } else { 'latest' }
+        }
+    }
+    Write-HelpersInstallMeta -InstallRoot $installDir -Track $metaTrack -Ref $metaRef -Version $metaVer -SourceUrl $sourceUrl
+    Log-Info "Installed: install-meta.json (track=$metaTrack)"
 }
 
 # Also install the Python MCP server next to the PowerShell wrapper

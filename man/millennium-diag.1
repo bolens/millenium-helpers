@@ -9,10 +9,22 @@ Runs a read-only diagnostics report by default. Can also show logs, upload a
 redacted report, or run doctor mode to auto-repair common problems.
 After the default report, prints suggested next commands when issues are found.
 .PP
-Detects how helpers were installed (\fBpacman\fR, \fBmanual\fR, or \fBmixed\fR).
-Packaged installs are compared to the latest GitHub release tag (not
-\fBmain\fR tip). Manual installs sync from the release tarball. Doctor removes
-unmanaged leftovers that block pacman upgrades before suggesting
+Detects how helpers were installed (\fBpacman\fR, \fBscoop\fR, \fBwinget\fR,
+\fBmanual\fR, or \fBmixed\fR) and the helpers install
+.B track
+(\fBrelease\fR, \fBmain\fR, \fBtag\fR, or \fBcheckout\fR) from
+.IR install-meta.json
+(legacy installs are auto-migrated on first touch).
+.PP
+Update checks are track-aware: release packages compare to
+.BR releases/latest ;
+tip-of-main packages (\fB\-git\fR / helpers track
+.BR main )
+are not compared to release tags; pinned
+.B tag
+installs stay on that tag (doctor may note a newer release but does not jump).
+Manual installs sync from the archive for the recorded track.
+Doctor removes unmanaged leftovers that block pacman upgrades before suggesting
 .B makepkg \-si
 or
 .BR pacman \-Syu .
@@ -24,8 +36,13 @@ Print the diagnostics report (default).
 .B doctor
 Detect and repair partial or broken installations.
 Clears unmanaged/obsolete files first, then repairs hooks, permissions,
-completions, and (for manual installs) helper scripts from the latest release
-tarball. Pacman-owned files are never overwritten; use package upgrade instead.
+completions, and (for manual installs) helper scripts for the
+.B current helpers track
+(not necessarily latest release). Pacman-owned files are never overwritten;
+use package upgrade instead.
+With
+.B \-\-force
+, re-syncs the same pin/track.
 With
 .B \-\-yes
 and a local packaging checkout, doctor can run
@@ -49,7 +66,11 @@ Emit the diagnostics report as structured JSON, including
 .BR install_method ,
 .BR mixed_install_ok ,
 .BR helpers_checkout ,
+.BR helpers_track ,
+.BR helpers_ref ,
 .BR latest_release_tag ,
+.BR update_channel
+(Millennium client channel),
 and
 .BR unmanaged_files_ok .
 .TP

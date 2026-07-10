@@ -51,10 +51,10 @@ $ millennium diag
 
 - **Cross-platform** — Feature parity between Linux/Unix (Bash) and Windows (PowerShell)
 - **Unified dispatcher** — `millennium <command>` alongside individual binaries
-- **Guided install** — Interactive wizard for channel, background updates, and optional GitHub PAT
+- **Guided install** — Interactive wizard for Millennium **client** channel, background updates, and optional GitHub PAT (helpers **track** is set separately with `--track` / `-Track`)
 - **Scheduled updates** — `systemd` user timer (Linux) or Task Scheduler (Windows)
 - **Secure elevation** — `/etc/sudoers.d/` drop-in (Linux) or UAC / `RunAs` (Windows)
-- **Stable & beta channels** — Switch release tracks without reinstalling helpers
+- **Stable, beta & main client channels** — Switch Millennium client update channel without reinstalling helpers
 - **Repair & doctor** — Ownership fixes, cache purge, hook repair, self-update
 - **MCP server** — Expose the suite as tools for AI assistants ([guide](docs/mcp.md))
 
@@ -67,6 +67,8 @@ $ millennium diag
 | Method | Command |
 | --- | --- |
 | **curl (recommended)** | `curl -fsSL https://raw.githubusercontent.com/bolens/millenium-helpers/main/install.sh \| bash -s -- install` |
+| curl (tip of `main`) | `curl -fsSL …/install.sh \| bash -s -- install --track main` |
+| curl (pinned tag) | `curl -fsSL …/install.sh \| bash -s -- install --tag v2.5.0` |
 | Clone | `git clone … && sudo ./install.sh` |
 | Nix (release) | `nix profile install github:bolens/millenium-helpers` / `nix run github:bolens/millenium-helpers` |
 | Nix (tip of flake / git) | `nix profile install github:bolens/millenium-helpers#millennium-helpers-git` |
@@ -79,10 +81,14 @@ $ millennium diag
 
 **Prerequisites:** `curl`, `tar`, `awk`, `sha256sum`, `unzip`, `sudo`/`visudo`, and `systemd` or `cron` for scheduling.
 
-**Clone install** launches an interactive configuration wizard (channel, background updates, optional GitHub PAT). Non-interactive:
+**Clone install** launches an interactive configuration wizard (Millennium **client** channel, background updates, optional GitHub PAT). Helpers install **track** (`release` / `main` / `tag`) is separate — set with `--track` / `--tag` on the installer. Non-interactive:
 
 ```bash
 sudo ./install.sh install
+# Tip-of-main helpers:
+sudo ./install.sh install --track main
+# Pin helpers to a release tag:
+sudo ./install.sh install --tag v2.5.0
 ```
 
 **Nix profile install** (release tarball by default; tip-of-flake with `#millennium-helpers-git`):
@@ -109,7 +115,7 @@ Uninstall with `brew uninstall millennium-helpers` (see [Manual Uninstall](docs/
 **Daily auto-updater** — run as your normal user (no `sudo`):
 
 ```bash
-millennium-schedule enable [stable|beta]
+millennium-schedule enable [stable|beta|main]
 ```
 
 **Arch packaging** — PKGBUILD recipes in [`packaging/millennium-helpers/`](packaging/millennium-helpers/) (versioned release tarball) and [`packaging/millennium-helpers-git/`](packaging/millennium-helpers-git/) (tip of `main`). Both install to `/usr/bin/`, completions, and sudoers for `%wheel`.
@@ -121,10 +127,12 @@ millennium-schedule enable [stable|beta]
 | Method | Command |
 | --- | --- |
 | **irm (recommended)** | `irm https://raw.githubusercontent.com/bolens/millenium-helpers/main/scripts/windows/install.ps1 \| iex` |
-| Clone | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\install.ps1` |
+| irm (tip of `main`) | `irm …/install.ps1 \| iex` then re-run with `-Track main`, or download and `.\install.ps1 -Track main` |
 | Scoop (release) | `scoop install https://raw.githubusercontent.com/bolens/millenium-helpers/main/packaging/scoop/millennium-helpers.json` |
 | Scoop (`main` / nightly) | `scoop install https://raw.githubusercontent.com/bolens/millenium-helpers/main/packaging/scoop/millennium-helpers-git.json` |
-| Winget | `winget install bolens.millenniumhelpers` |
+| Winget (release) | `winget install bolens.millenniumhelpers` |
+| Winget (tip of `main`) | `winget install --manifest packaging/winget-git/` (local manifests; community package `bolens.millenniumhelpers.git`) |
+| Clone | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\install.ps1` |
 
 <details>
 <summary>Prerequisites & details</summary>
@@ -141,10 +149,11 @@ The installer:
 2. Generates `.cmd` wrappers (`millennium-diag`, `millennium-upgrade`, …)
 3. Adds the bin directory to your user `PATH`
 
-Then configure scheduling and channels:
+Then configure scheduling and the Millennium **client** channel (separate from helpers `-Track`):
 
 ```powershell
 millennium-schedule setup
+# or: millennium-schedule config set update_channel main
 ```
 
 Uninstall:
@@ -153,13 +162,14 @@ Uninstall:
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\install.ps1 -Uninstall
 ```
 
-**Winget:** end users install with `winget install bolens.millenniumhelpers` (community package). To try the manifests from this repo **before** they are in the winget community repository — for example while polishing a PR — clone the repo and run:
+**Winget:** end users install with `winget install bolens.millenniumhelpers` (community package). Tip-of-main manifests live in [`packaging/winget-git/`](packaging/winget-git/) (`bolens.millenniumhelpers.git`, rolling `0.0.0-git`). Uninstall the release package before installing the git package (same as Scoop). To try manifests from this repo before they are in the community repository:
 
 ```powershell
 winget install --manifest packaging/winget/
+winget install --manifest packaging/winget-git/
 ```
 
-That path only loads the YAML in `packaging/winget/`; it is not the normal install command.
+Those `--manifest` paths only load the YAML in-repo; they are not the normal community install commands.
 
 </details>
 
@@ -235,7 +245,7 @@ Created by `millennium-schedule setup`:
 
 | Key | Type | Description |
 | --- | --- | --- |
-| `update_channel` | string | `stable` or `beta` |
+| `update_channel` | string | Millennium **client** channel: `stable`, `beta`, or `main` (separate from helpers install track) |
 | `github_token` | string | Optional PAT (same role as `GITHUB_TOKEN`) |
 | `backup_limit` | number | Max upgrade backups to keep |
 | `backup_max_age_days` | number | Optional max age (days) for backups |

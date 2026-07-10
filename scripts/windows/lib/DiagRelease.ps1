@@ -52,41 +52,66 @@ function Get-ReleaseZipExtract {
     New-Item -ItemType Directory -Force -Path $workdir | Out-Null
     $script:DiagReleaseWorkdir = $workdir
 
-    $tag     = if ($script:LatestReleaseTag) { $script:LatestReleaseTag } else { 'latest' }
-    $baseUrl = "https://github.com/bolens/millenium-helpers/releases/download/$tag"
-    $zipPath = Join-Path -Path $workdir -ChildPath 'millennium-helpers-windows.zip'
-    $shaPath = Join-Path -Path $workdir -ChildPath 'millennium-helpers-windows.zip.sha256'
+    $track = if ($script:HelpersTrack) { $script:HelpersTrack } else { 'release' }
+    $zipPath = Join-Path -Path $workdir -ChildPath 'helpers-download.zip'
+    $shaPath = Join-Path -Path $workdir -ChildPath 'helpers-download.zip.sha256'
     $extractDir = Join-Path -Path $workdir -ChildPath 'extract'
+    $url = ''
+    $needsSha = $true
+
+    switch ($track) {
+        'main' {
+            $url = 'https://github.com/bolens/millenium-helpers/archive/refs/heads/main.zip'
+            $needsSha = $false
+        }
+        'tag' {
+            $tag = if ($script:HelpersTrackRef) { $script:HelpersTrackRef } else { $script:LatestReleaseTag }
+            if (-not $tag) { Invoke-DiagReleaseCleanup; return $false }
+            $url = "https://github.com/bolens/millenium-helpers/releases/download/$tag/millennium-helpers-windows.zip"
+        }
+        default {
+            $tag = if ($script:LatestReleaseTag) { $script:LatestReleaseTag } else { '' }
+            if (-not $tag) { Get-LatestReleaseTag; $tag = $script:LatestReleaseTag }
+            if (-not $tag) { Invoke-DiagReleaseCleanup; return $false }
+            $url = "https://github.com/bolens/millenium-helpers/releases/download/$tag/millennium-helpers-windows.zip"
+        }
+    }
 
     try {
-        Invoke-WebRequest -Uri "$baseUrl/millennium-helpers-windows.zip" `
-            -OutFile $zipPath -UseBasicParsing -ErrorAction Stop
+        Invoke-WebRequest -Uri $url -OutFile $zipPath -UseBasicParsing -ErrorAction Stop
     } catch {
         Invoke-DiagReleaseCleanup
         return $false
     }
 
-    # Optional SHA256 verification
-    try {
-        Invoke-WebRequest -Uri "$baseUrl/millennium-helpers-windows.zip.sha256" `
-            -OutFile $shaPath -UseBasicParsing -ErrorAction Stop
-        if (Test-Path -Path $shaPath) {
-            $expectedSha = ((Get-Content -Path $shaPath -Raw).Trim() -split '\s+')[0]
-            if ($expectedSha -match '^[0-9a-fA-F]{64}$') {
-                $actualSha = (Get-FileHash -Path $zipPath -Algorithm SHA256).Hash
-                if ($actualSha.ToLowerInvariant() -ne $expectedSha.ToLowerInvariant()) {
-                    Invoke-DiagReleaseCleanup
-                    return $false
+    if ($needsSha) {
+        try {
+            Invoke-WebRequest -Uri "$url.sha256" -OutFile $shaPath -UseBasicParsing -ErrorAction Stop
+            if (Test-Path -Path $shaPath) {
+                $expectedSha = ((Get-Content -Path $shaPath -Raw).Trim() -split '\s+')[0]
+                if ($expectedSha -match '^[0-9a-fA-F]{64}$') {
+                    $actualSha = (Get-FileHash -Path $zipPath -Algorithm SHA256).Hash
+                    if ($actualSha.ToLowerInvariant() -ne $expectedSha.ToLowerInvariant()) {
+                        Invoke-DiagReleaseCleanup
+                        return $false
+                    }
                 }
             }
+        } catch {
+            # SHA sidecar unavailable; continue without verification
         }
-    } catch {
-        # SHA sidecar unavailable; continue without verification
     }
 
     try {
         New-Item -ItemType Directory -Force -Path $extractDir | Out-Null
         Expand-Archive -Path $zipPath -DestinationPath $extractDir -Force -ErrorAction Stop
+        if ($track -eq 'main') {
+            $nested = Get-ChildItem -Path $extractDir -Directory | Select-Object -First 1
+            if ($nested -and (Test-Path (Join-Path $nested.FullName 'scripts\windows'))) {
+                $script:DiagReleaseExtract = $nested.FullName
+                return $true
+            }
+        }
         $script:DiagReleaseExtract = $extractDir
         return $true
     } catch {

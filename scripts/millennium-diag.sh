@@ -438,6 +438,8 @@ if [[ "$OUTPUT_JSON" == "true" ]]; then
   "mixed_install_ok": ${MIXED_INSTALL_OK},
   "install_method": "${INSTALL_METHOD:-unknown}",
   "helpers_checkout": "${HELPERS_CHECKOUT:-}",
+  "helpers_track": "${HELPERS_TRACK:-}",
+  "helpers_ref": "${HELPERS_TRACK_REF:-}",
   "latest_release_tag": "${LATEST_RELEASE_TAG:-}",
   "update_channel": "${UPDATE_CHANNEL}"
 }

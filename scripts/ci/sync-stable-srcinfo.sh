@@ -78,7 +78,15 @@ write_via_makepkg() {
     return 1
   fi
   command -v makepkg >/dev/null 2>&1 || return 1
-  (cd "$PKG_DIR" && makepkg --printsrcinfo > .SRCINFO)
+  # Write to a temp file first so a failed makepkg never truncates .SRCINFO.
+  # PKGBUILD may reference install=… / source files that must exist beside it.
+  local tmp
+  tmp="$(mktemp "${PKG_DIR}/.SRCINFO.tmp.XXXXXX")"
+  if ! (cd "$PKG_DIR" && makepkg --printsrcinfo >"$(basename "$tmp")"); then
+    rm -f "$tmp"
+    return 1
+  fi
+  mv -f "$tmp" "$SRCINFO"
 }
 
 write_via_patch() {

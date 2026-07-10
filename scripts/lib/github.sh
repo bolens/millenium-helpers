@@ -121,6 +121,19 @@ try:
                 if r.get('prerelease') and 'beta' in r.get('tag_name', ''):
                     print(r['tag_name'])
                     break
+    elif expr == 'main_tag':
+        # Newest prerelease that is not the beta line; else any newest prerelease.
+        if isinstance(data, list):
+            for r in data:
+                tag = r.get('tag_name', '')
+                if r.get('prerelease') and 'beta' not in tag.lower():
+                    print(tag)
+                    break
+            else:
+                for r in data:
+                    if r.get('prerelease'):
+                        print(r.get('tag_name', ''))
+                        break
 except Exception:
     pass
 " "$json" "$expr" 2>/dev/null || true
@@ -168,5 +181,25 @@ fetch_github_latest_beta_tag() {
     printf '%s' "$body" | jq -r '.[] | select(.prerelease == true and (.tag_name | contains("beta"))) | .tag_name' 2>/dev/null | head -n 1 || true
   else
     _github_parse_json "$body" "beta_tag"
+  fi
+}
+
+# Tip-of-development client channel: newest non-beta prerelease, else any prerelease.
+fetch_github_latest_main_tag() {
+  local owner="$1"
+  local repo="$2"
+  local body
+  if ! body=$(_github_api_get "https://api.github.com/repos/${owner}/${repo}/releases"); then
+    return 0
+  fi
+  if command -v jq &>/dev/null; then
+    local tag=""
+    tag=$(printf '%s' "$body" | jq -r '.[] | select(.prerelease == true and ((.tag_name | ascii_downcase | contains("beta")) | not)) | .tag_name' 2>/dev/null | head -n 1 || true)
+    if [[ -z "$tag" || "$tag" == "null" ]]; then
+      tag=$(printf '%s' "$body" | jq -r '.[] | select(.prerelease == true) | .tag_name' 2>/dev/null | head -n 1 || true)
+    fi
+    printf '%s' "$tag"
+  else
+    _github_parse_json "$body" "main_tag"
   fi
 }

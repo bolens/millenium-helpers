@@ -45,8 +45,11 @@ function Test-HelperScriptsUpToDate {
 
     switch ($script:InstallMethod) {
         { $_ -in @('scoop', 'winget') } {
-            # Package manager: compare installed version to latest release
             try { $installedVer = Get-HelpersVersion } catch { $installedVer = 'unknown' }
+            if ($script:IsScoopGit -or $script:IsWingetGit -or $script:HelpersTrack -eq 'main') {
+                # Tip-of-main packages are not compared to release tags.
+                return
+            }
             if ($script:LatestReleaseVersion -and $installedVer -and $installedVer -ne 'unknown') {
                 if ($installedVer -ne $script:LatestReleaseVersion) {
                     $script:ScriptsUpToDate = $false
@@ -65,10 +68,13 @@ function Test-HelperScriptsUpToDate {
         }
     }
 
-    # Manual install: compare key scripts via SHA256 against single release zip
+    if ($script:HelpersTrack -eq 'checkout') {
+        return
+    }
+
+    # Manual install: compare key scripts via SHA256 against track archive
     if (-not $env:USERPROFILE) { return }
     if (!(Get-ReleaseZipExtract)) {
-        # Can't download or verify; assume up to date to avoid false positives
         return
     }
 

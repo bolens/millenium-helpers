@@ -87,6 +87,7 @@ Details (what each file gets, hash timing, tip-of-main exclusions):
 | `Formula/millennium-helpers.rb` | release asset URL (sha256 later via packaging PR) |
 | `packaging/scoop/millennium-helpers.json` | `version` + Windows zip URL |
 | `packaging/winget/*.yaml` | `PackageVersion` + installer URL / `ReleaseDate` |
+| `packaging/winget-git/*.yaml` | Tip-of-main only (`0.0.0-git`); **not** bumped with `VERSION` |
 | `packaging/millennium-helpers/{PKGBUILD,.SRCINFO}` | `pkgver` + expanded source URL |
 | `nix/release-info.nix` | `version` (srcHash later via packaging PR) |
 

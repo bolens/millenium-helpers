@@ -111,6 +111,8 @@ assert_success "$rc" "millennium-diag.sh --json exits 0"
 assert_valid_json "$out" "millennium-diag.sh --json produces valid JSON"
 assert_contains "$out" '"steam_running"' "millennium-diag.sh --json includes a steam_running key"
 assert_contains "$out" '"update_channel"' "millennium-diag.sh --json includes an update_channel key"
+assert_contains "$out" '"helpers_track"' "millennium-diag.sh --json includes a helpers_track key"
+assert_contains "$out" '"helpers_ref"' "millennium-diag.sh --json includes a helpers_ref key"
 assert_contains "$out" '"binaries_ok"' "millennium-diag.sh --json includes a binaries_ok key"
 
 # --json output must contain ONLY the JSON object on stdout (report noise is

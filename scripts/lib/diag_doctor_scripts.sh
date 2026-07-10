@@ -92,6 +92,35 @@ if [[ "$SCRIPTS_UP_TO_DATE" == false ]]; then
           echo -e "${YELLOW}Warning: could not stage ${remote_rel}; skipping.${NC}"
         fi
       done
+
+      # Refresh install-meta for the same helpers track (do not jump pins).
+      if [[ "$DRY_RUN" != "true" ]] && declare -F write_helpers_install_meta >/dev/null 2>&1; then
+        local meta_track="${HELPERS_TRACK:-release}"
+        local meta_ref="${HELPERS_TRACK_REF:-}"
+        local meta_ver=""
+        local meta_url=""
+        case "$meta_track" in
+          tag)
+            meta_ver="${meta_ref#v}"
+            meta_url="https://github.com/bolens/millenium-helpers/releases/download/${meta_ref}/millennium-helpers-linux.tar.gz"
+            ;;
+          main)
+            meta_ref="${meta_ref:-main}"
+            meta_url="https://github.com/bolens/millenium-helpers/archive/refs/heads/main.tar.gz"
+            ;;
+          *)
+            meta_ref="${LATEST_RELEASE_TAG:-${meta_ref:-latest}}"
+            meta_ver="${LATEST_RELEASE_VERSION:-${meta_ref#v}}"
+            if [[ -n "${LATEST_RELEASE_TAG:-}" ]]; then
+              meta_url="https://github.com/bolens/millenium-helpers/releases/download/${LATEST_RELEASE_TAG}/millennium-helpers-linux.tar.gz"
+            fi
+            ;;
+        esac
+        if [[ -f "${helper_lib_dir}/VERSION" ]]; then
+          meta_ver="$(tr -d '[:space:]' < "${helper_lib_dir}/VERSION" || true)"
+        fi
+        write_helpers_install_meta "$helper_lib_dir" "$meta_track" "$meta_ref" "$meta_ver" "$meta_url" "" || true
+      fi
     fi
     echo -e "${GREEN}Helper scripts successfully updated!${NC}"
   fi

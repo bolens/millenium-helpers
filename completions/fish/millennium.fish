@@ -20,9 +20,10 @@ complete -c millennium -f -n '__fish_seen_subcommand_from diag' -s q -l quiet -d
 complete -c millennium -f -n '__fish_seen_subcommand_from diag' -s h -l help -d 'Show help'
 
 # upgrade
-complete -c millennium -f -n '__fish_seen_subcommand_from upgrade' -s c -l channel -d 'Update channel' -a 'stable beta'
+complete -c millennium -f -n '__fish_seen_subcommand_from upgrade' -s c -l channel -d 'Update channel' -a 'stable beta main'
 complete -c millennium -f -n '__fish_seen_subcommand_from upgrade' -l stable -d 'Alias for --channel stable'
 complete -c millennium -f -n '__fish_seen_subcommand_from upgrade' -l beta -d 'Alias for --channel beta'
+complete -c millennium -f -n '__fish_seen_subcommand_from upgrade' -l main -d 'Alias for --channel main'
 complete -c millennium -f -n '__fish_seen_subcommand_from upgrade' -s r -l rollback -d 'Roll back to a previous backup'
 complete -c millennium -f -n '__fish_seen_subcommand_from upgrade' -s f -l force -d 'Force reinstall'
 complete -c millennium -f -n '__fish_seen_subcommand_from upgrade' -s y -l yes -d 'Skip Steam close confirmation'
@@ -31,6 +32,7 @@ complete -c millennium -f -n '__fish_seen_subcommand_from upgrade' -s q -l quiet
 
 # schedule
 complete -c millennium -f -n '__fish_seen_subcommand_from schedule' -a 'enable disable status setup config' -d 'Schedule command'
+complete -c millennium -f -n '__fish_seen_subcommand_from schedule; and __fish_seen_subcommand_from enable' -a 'stable beta main' -d 'Client update channel'
 complete -c millennium -f -n '__fish_seen_subcommand_from schedule' -s c -l cron -d 'Force use of crontab instead of systemd'
 complete -c millennium -f -n '__fish_seen_subcommand_from schedule' -s d -l dry-run -d 'Simulation mode'
 complete -c millennium -f -n '__fish_seen_subcommand_from schedule' -s q -l quiet -d 'Suppress informational output'

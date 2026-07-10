@@ -367,7 +367,7 @@ jobs:
               (`packaging/millennium-helpers`), and Nix `nix/release-info.nix` to the trimmed
               release assets (`millennium-helpers-linux.tar.gz` / `millennium-helpers-windows.zip`)
             - Hashes come from the draft release assets built by this workflow
-            - Arch `-git`, Scoop `-git`, and Nix `#millennium-helpers-git` stay tip-of-main / flake source
+            - Arch `-git`, Scoop `-git`, Winget `bolens.millenniumhelpers.git`, and Nix `#millennium-helpers-git` stay tip-of-main / flake source
               and are not bumped here
 
             ## Automation
