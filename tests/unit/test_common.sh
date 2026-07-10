@@ -4,6 +4,7 @@ set -uo pipefail
 
 TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${TEST_DIR}/../.." && pwd)"
+EXPECTED_VERSION="$(tr -d '[:space:]' < "${REPO_ROOT}/VERSION")"
 
 # shellcheck source=../lib/assertions.sh
 source "${TEST_DIR}/../lib/assertions.sh"
@@ -634,10 +635,10 @@ unmock_cmd "dscl"
 # --- get_helpers_version / print_helpers_version ---
 
 ver=$(get_helpers_version)
-assert_equals "2.2.0" "$ver" "get_helpers_version reads the repo VERSION file"
+assert_equals "$EXPECTED_VERSION" "$ver" "get_helpers_version reads the repo VERSION file"
 
 out=$(print_helpers_version)
-assert_contains "$out" "2.2.0" "print_helpers_version includes the version number"
+assert_contains "$out" "$EXPECTED_VERSION" "print_helpers_version includes the version number"
 assert_contains "$out" "$(basename "$0")" "print_helpers_version includes the invoking script name"
 
 # Isolated VERSION file: copy version.sh into a temp tree with its own VERSION

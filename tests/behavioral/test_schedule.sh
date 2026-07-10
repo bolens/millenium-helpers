@@ -4,6 +4,7 @@ set -uo pipefail
 
 TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${TEST_DIR}/../.." && pwd)"
+EXPECTED_VERSION="$(tr -d '[:space:]' < "${REPO_ROOT}/VERSION")"
 
 # shellcheck source=../lib/assertions.sh
 source "${TEST_DIR}/../lib/assertions.sh"
@@ -52,7 +53,7 @@ assert_contains "$out" "config" "millennium-schedule --help documents the config
 out=$(run_schedule --version 2>&1)
 rc=$?
 assert_success "$rc" "millennium-schedule --version exits 0"
-assert_contains "$out" "2.2.0" "millennium-schedule --version prints VERSION file value"
+assert_contains "$out" "$EXPECTED_VERSION" "millennium-schedule --version prints VERSION file value"
 
 out=$(run_schedule 2>&1)
 rc=$?

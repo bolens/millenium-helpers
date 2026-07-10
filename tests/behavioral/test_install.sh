@@ -4,6 +4,7 @@ set -uo pipefail
 
 TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${TEST_DIR}/../.." && pwd)"
+EXPECTED_VERSION="$(tr -d '[:space:]' < "${REPO_ROOT}/VERSION")"
 
 # shellcheck source=../lib/assertions.sh
 source "${TEST_DIR}/../lib/assertions.sh"
@@ -38,7 +39,7 @@ assert_contains "$out" "uninstall" "install.sh --help documents the uninstall co
 out=$(bash "$INSTALL_SH" --version 2>&1)
 rc=$?
 assert_success "$rc" "install.sh --version exits 0"
-assert_contains "$out" "2.2.0" "install.sh --version prints VERSION file value"
+assert_contains "$out" "$EXPECTED_VERSION" "install.sh --version prints VERSION file value"
 
 # --- Man pages ship with the repo ---
 

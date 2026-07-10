@@ -1,9 +1,9 @@
 {
-    "version": "2.2.0",
+    "version": "2.2.1",
     "description": "Cross-platform utility scripts and Model Context Protocol (MCP) server for managing, upgrading, diagnosing, and controlling Millennium.",
     "homepage": "https://github.com/bolens/millenium-helpers",
     "license": "MIT",
-    "url": "https://github.com/bolens/millenium-helpers/releases/download/v2.2.0/millennium-helpers-windows.zip",
+    "url": "https://github.com/bolens/millenium-helpers/releases/download/v2.2.1/millennium-helpers-windows.zip",
     "hash": "2d22dfbac721728231633260b5958ad1c40e30ade3bae6f35298d258ded453fb",
     "bin": [
         [

@@ -64,7 +64,7 @@ Describe "Theme CLI Manager" {
                 if ($Path -like "*config.json*") {
                     return '{"themes":{"activeTheme":"CoolTheme"}}'
                 }
-                if ($Path -like "*VERSION*") { return "2.2.0" }
+                if ($Path -like "*VERSION*") { return "2.2.1" }
                 return "{}"
             }
         }
