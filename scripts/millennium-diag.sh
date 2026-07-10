@@ -641,17 +641,28 @@ check_shell_completions() {
   fi
   echo -e "\nShell Autocompletions Status:"
 
-  # Define paths and their corresponding remote repository locations
-  declare -A COMPLETION_FILES=(
-    ["/usr/share/bash-completion/completions/millennium-helpers"]="completions/bash/millennium-helpers"
-    ["/usr/share/zsh/site-functions/_millennium-helpers"]="completions/zsh/_millennium-helpers"
-    ["/usr/share/fish/vendor_completions.d/millennium-repair.fish"]="completions/fish/millennium-repair.fish"
-    ["/usr/share/fish/vendor_completions.d/millennium-upgrade.fish"]="completions/fish/millennium-upgrade.fish"
-    ["/usr/share/fish/vendor_completions.d/millennium-schedule.fish"]="completions/fish/millennium-schedule.fish"
-    ["/usr/share/fish/vendor_completions.d/millennium-purge.fish"]="completions/fish/millennium-purge.fish"
-    ["/usr/share/fish/vendor_completions.d/millennium-diag.fish"]="completions/fish/millennium-diag.fish"
-    ["/usr/share/fish/vendor_completions.d/millennium-theme.fish"]="completions/fish/millennium-theme.fish"
-    ["/usr/share/fish/vendor_completions.d/millennium-mcp.fish"]="completions/fish/millennium-mcp.fish"
+  # Define paths and their corresponding remote repository locations using parallel arrays for Bash 3.2 compatibility
+  local completion_paths=(
+    "/usr/share/bash-completion/completions/millennium-helpers"
+    "/usr/share/zsh/site-functions/_millennium-helpers"
+    "/usr/share/fish/vendor_completions.d/millennium-repair.fish"
+    "/usr/share/fish/vendor_completions.d/millennium-upgrade.fish"
+    "/usr/share/fish/vendor_completions.d/millennium-schedule.fish"
+    "/usr/share/fish/vendor_completions.d/millennium-purge.fish"
+    "/usr/share/fish/vendor_completions.d/millennium-diag.fish"
+    "/usr/share/fish/vendor_completions.d/millennium-theme.fish"
+    "/usr/share/fish/vendor_completions.d/millennium-mcp.fish"
+  )
+  local completion_repos=(
+    "completions/bash/millennium-helpers"
+    "completions/zsh/_millennium-helpers"
+    "completions/fish/millennium-repair.fish"
+    "completions/fish/millennium-upgrade.fish"
+    "completions/fish/millennium-schedule.fish"
+    "completions/fish/millennium-purge.fish"
+    "completions/fish/millennium-diag.fish"
+    "completions/fish/millennium-theme.fish"
+    "completions/fish/millennium-mcp.fish"
   )
 
   local nu_dest=""
@@ -664,7 +675,8 @@ check_shell_completions() {
   if [[ -z "$nu_dest" ]]; then
     nu_dest="/usr/share/nushell/completions/millennium-helpers.nu"
   fi
-  COMPLETION_FILES["$nu_dest"]="completions/nushell/millennium-helpers.nu"
+  completion_paths+=("$nu_dest")
+  completion_repos+=("completions/nushell/millennium-helpers.nu")
 
   declare -a COMPLETION_SYMLINKS=(
     "/usr/share/bash-completion/completions/millennium-repair:millennium-helpers"
@@ -687,8 +699,9 @@ check_shell_completions() {
   missing_completions=()
   out_of_date_completions=()
 
-  for local_path in "${!COMPLETION_FILES[@]}"; do
-    local remote_rel="${COMPLETION_FILES[$local_path]}"
+  for i in "${!completion_paths[@]}"; do
+    local local_path="${completion_paths[$i]}"
+    local remote_rel="${completion_repos[$i]}"
     local local_dir
     local_dir=$(dirname "$local_path")
     [[ -d "$local_dir" ]] || continue
