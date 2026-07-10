@@ -335,20 +335,64 @@ else
   export TEST_SUITE_RUN=true
 fi
 
-# Interactive decline via a PTY when script(1) is available
-if command -v script >/dev/null 2>&1; then
+# Interactive decline via a PTY (python3 pty works on Linux and macOS;
+# BSD script(1) on macOS lacks GNU -c and is not portable).
+if command -v python3 >/dev/null 2>&1; then
   unset TEST_SUITE_RUN
   confirm_out=$(
-    printf 'n\n' | script -q -c "bash -c '
-      export MOCK_BIN=\"${MOCK_BIN}\"
-      export PATH=\"${MOCK_BIN}:\$PATH\"
-      source \"${REPO_ROOT}/scripts/common.sh\"
-      confirm_close_steam closetest false
-      echo CONFIRM_RC=\$?
-    '" /dev/null 2>&1
+    MOCK_BIN="$MOCK_BIN" REPO_ROOT="$REPO_ROOT" python3 - <<'PY'
+import os, pty, select, sys
+
+env = os.environ.copy()
+env["PATH"] = env["MOCK_BIN"] + os.pathsep + env.get("PATH", "")
+env.pop("TEST_SUITE_RUN", None)
+
+script = r"""
+source "$REPO_ROOT/scripts/common.sh"
+confirm_close_steam closetest false
+echo CONFIRM_RC=$?
+"""
+
+pid, fd = pty.fork()
+if pid == 0:
+    os.execvpe("bash", ["bash", "-c", script], env)
+
+output = b""
+# Answer the [y/N] prompt with "n"
+answered = False
+try:
+    while True:
+        ready, _, _ = select.select([fd], [], [], 2.0)
+        if not ready:
+            if not answered:
+                os.write(fd, b"n\n")
+                answered = True
+                continue
+            break
+        try:
+            chunk = os.read(fd, 1024)
+        except OSError:
+            break
+        if not chunk:
+            break
+        output += chunk
+        if (not answered) and b"[y/N]" in output:
+            os.write(fd, b"n\n")
+            answered = True
+finally:
+    try:
+        os.close(fd)
+    except OSError:
+        pass
+    try:
+        os.waitpid(pid, 0)
+    except ChildProcessError:
+        pass
+
+sys.stdout.buffer.write(output)
+PY
   ) || true
   export TEST_SUITE_RUN=true
-  # script(1) may wrap lines with CR; normalize before asserting.
   confirm_flat=$(printf '%s' "$confirm_out" | tr -d '\r')
   assert_contains "$confirm_flat" "CONFIRM_RC=1" "confirm_close_steam declines when user answers n on a TTY"
   assert_contains "$confirm_flat" "Aborted" "confirm_close_steam decline message mentions Aborted"
