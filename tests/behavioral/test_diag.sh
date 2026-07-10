@@ -15,6 +15,15 @@ TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${TEST_DIR}/../.." && pwd)"
 DIAG_SH="${REPO_ROOT}/scripts/millennium-diag.sh"
 
+run_with_timeout() {
+  if command -v timeout &>/dev/null; then
+    timeout "$@"
+  else
+    shift
+    "$@"
+  fi
+}
+
 # shellcheck source=../lib/assertions.sh
 source "${TEST_DIR}/../lib/assertions.sh"
 # shellcheck source=../lib/mocks.sh
@@ -100,14 +109,14 @@ first_char="${out:0:1}"
 assert_equals "{" "$first_char" "millennium-diag.sh --json emits pure JSON on stdout with no leading report text"
 
 # --- doctor --dry-run does not error out and clearly marks itself as a dry run ---
-out=$(timeout 20 bash "$DIAG_SH" doctor --dry-run 2>&1)
+out=$(run_with_timeout 20 bash "$DIAG_SH" doctor --dry-run 2>&1)
 rc=$?
 assert_success "$rc" "millennium-diag.sh doctor --dry-run completes without error"
 assert_contains "$out" "DRY RUN MODE" "millennium-diag.sh doctor --dry-run announces dry-run mode"
 assert_contains "$out" "Doctor" "millennium-diag.sh doctor --dry-run runs the doctor routine"
 
 # -f/--fix is an alias for doctor
-out=$(timeout 20 bash "$DIAG_SH" -f --dry-run 2>&1)
+out=$(run_with_timeout 20 bash "$DIAG_SH" -f --dry-run 2>&1)
 rc=$?
 assert_success "$rc" "millennium-diag.sh -f --dry-run (doctor alias) completes without error"
 assert_contains "$out" "Doctor" "millennium-diag.sh -f --dry-run runs the doctor routine via its -f alias"
