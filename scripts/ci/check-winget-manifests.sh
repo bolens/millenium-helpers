@@ -31,6 +31,15 @@ import yaml
 expected_version, version_path, installer_path, locale_path = sys.argv[1:5]
 errors: list[str] = []
 
+EXPECTED_ALIASES = {
+    "millennium-diag",
+    "millennium-purge",
+    "millennium-repair",
+    "millennium-schedule",
+    "millennium-theme",
+    "millennium-upgrade",
+}
+
 
 def load(path: str) -> dict:
     with open(path, encoding="utf-8") as fh:
@@ -67,6 +76,56 @@ if installer.get("ManifestType") != "installer":
 if locale.get("ManifestType") != "defaultLocale":
     errors.append(f"{locale_path}: ManifestType must be 'defaultLocale'")
 
+if installer.get("InstallerType") != "zip":
+    errors.append(f"{installer_path}: InstallerType must be 'zip' (multi-command portable)")
+if installer.get("NestedInstallerType") != "portable":
+    errors.append(f"{installer_path}: NestedInstallerType must be 'portable'")
+
+nested = installer.get("NestedInstallerFiles")
+if not isinstance(nested, list) or not nested:
+    errors.append(f"{installer_path}: NestedInstallerFiles must be a non-empty list")
+else:
+    aliases: set[str] = set()
+    for item in nested:
+        if not isinstance(item, dict):
+            errors.append(f"{installer_path}: NestedInstallerFiles entries must be mappings")
+            continue
+        rel = str(item.get("RelativeFilePath", "")).replace("/", "\\")
+        alias = str(item.get("PortableCommandAlias", ""))
+        if not rel:
+            errors.append(f"{installer_path}: NestedInstallerFiles entry missing RelativeFilePath")
+            continue
+        if not alias:
+            errors.append(f"{installer_path}: NestedInstallerFiles entry missing PortableCommandAlias")
+            continue
+        aliases.add(alias)
+        # Strip GitHub archive root (millenium-helpers-<ref>\...) to verify repo path.
+        parts = Path(rel.replace("\\", "/")).parts
+        if len(parts) < 2 or not parts[0].startswith("millenium-helpers-"):
+            errors.append(
+                f"{installer_path}: RelativeFilePath '{rel}' must start with "
+                "millenium-helpers-<ref>\\"
+            )
+            continue
+        repo_rel = Path(*parts[1:])
+        if not repo_rel.exists():
+            errors.append(
+                f"{installer_path}: NestedInstallerFiles[{alias}] path "
+                f"'{repo_rel}' not found in repo"
+            )
+        expected_suffix = Path("scripts") / "windows" / f"{alias}.ps1"
+        if repo_rel != expected_suffix:
+            errors.append(
+                f"{installer_path}: NestedInstallerFiles[{alias}] should point at "
+                f"{expected_suffix.as_posix()} (got {repo_rel.as_posix()})"
+            )
+    missing = EXPECTED_ALIASES - aliases
+    extra = aliases - EXPECTED_ALIASES
+    if missing:
+        errors.append(f"{installer_path}: missing PortableCommandAlias entries: {sorted(missing)}")
+    if extra:
+        errors.append(f"{installer_path}: unexpected PortableCommandAlias entries: {sorted(extra)}")
+
 installers = installer.get("Installers")
 if not isinstance(installers, list) or not installers:
     errors.append(f"{installer_path}: Installers must be a non-empty list")
@@ -81,22 +140,6 @@ else:
         sha = f"{entry['InstallerSha256']:064x}"
     if not re.fullmatch(r"[0-9a-fA-F]{64}", sha):
         errors.append(f"{installer_path}: InstallerSha256 must be 64 hex characters (got {sha!r})")
-    commands = entry.get("Commands")
-    if not isinstance(commands, list) or not commands:
-        errors.append(f"{installer_path}: Commands must be a non-empty list")
-    aliases = entry.get("PortableCommandAliases")
-    if not isinstance(aliases, dict) or not aliases:
-        errors.append(
-            f"{installer_path}: PortableCommandAliases must be a non-empty mapping"
-        )
-    else:
-        for cmd, script in aliases.items():
-            script_path = Path(str(script))
-            if not script_path.exists():
-                errors.append(
-                    f"{installer_path}: PortableCommandAliases[{cmd}] "
-                    f"path '{script}' not found in repo"
-                )
 
 for field in ("PackageName", "Publisher", "License", "ShortDescription"):
     if not locale.get(field):
