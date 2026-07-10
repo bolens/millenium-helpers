@@ -19,6 +19,21 @@ Describe "Upgrade Script" {
         . (Join-Path -Path $winScriptDir -ChildPath "common.ps1")
     }
 
+    Context "Help and Version" {
+        It "Prints usage with -Help" {
+            $upgradeScript = Join-Path -Path $winScriptDir -ChildPath "millennium-upgrade.ps1"
+            $out = (& $upgradeScript -Help *>&1) | Out-String
+            $out | Should -BeLike "*Usage:*"
+            $out | Should -BeLike "*-Channel*"
+        }
+
+        It "Prints version with -Version" {
+            $upgradeScript = Join-Path -Path $winScriptDir -ChildPath "millennium-upgrade.ps1"
+            $out = (& $upgradeScript -Version *>&1) | Out-String
+            $out | Should -BeLike "*millennium-upgrade*"
+        }
+    }
+
     Context "Upgrade Validation" {
         It "Validates channels successfully" {
             $upgradeScript = Join-Path -Path $winScriptDir -ChildPath "millennium-upgrade.ps1"

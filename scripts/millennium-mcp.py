@@ -9,6 +9,7 @@ import subprocess
 import shutil
 import os
 import argparse
+from typing import TypedDict
 
 # Hard upper bound on how long any single underlying millennium-* command is
 # allowed to run. The server processes one JSON-RPC request at a time on a
@@ -29,6 +30,24 @@ LONG_TIMEOUT_SECONDS = 600
 VALID_THEME_ACTIONS = {"list", "install", "remove", "update"}
 VALID_SCHEDULE_ACTIONS = {"enable", "disable", "status"}
 VALID_CHANNELS = {"stable", "beta"}
+
+class DiagArgs(TypedDict, total=False):
+    doctor: bool
+
+class ThemeArgs(TypedDict, total=False):
+    action: str
+    theme: str
+    all: bool
+
+class UpgradeArgs(TypedDict, total=False):
+    channel: str
+    force: bool
+    rollback: str
+
+class ScheduleArgs(TypedDict, total=False):
+    action: str
+    channel: str
+    cron: bool
 
 # Logs go to stderr so they don't corrupt the JSON-RPC stdin/stdout transport
 def log(msg):
@@ -161,7 +180,10 @@ def run_cmd(args, run_as_root=False, timeout=DEFAULT_TIMEOUT_SECONDS):
     executable = find_executable(args[0])
     if not executable:
         return {"isError": True, "content": [{"type": "text", "text": f"Error: Command '{args[0]}' not found on system."}]}
-    
+
+    test_suite = bool(os.environ.get("TEST_SUITE_RUN"))
+    mock_bin = os.environ.get("MOCK_BIN", "")
+
     if IS_WINDOWS and executable.endswith(".ps1"):
         cmd_args = [
             "powershell.exe",
@@ -169,7 +191,7 @@ def run_cmd(args, run_as_root=False, timeout=DEFAULT_TIMEOUT_SECONDS):
             "-ExecutionPolicy", "Bypass",
             "-File", executable
         ] + args[1:]
-        
+
         if run_as_root:
             if shutil.which("sudo.exe"):
                 cmd_args = ["sudo.exe"] + cmd_args
@@ -185,16 +207,52 @@ def run_cmd(args, run_as_root=False, timeout=DEFAULT_TIMEOUT_SECONDS):
         cmd_args = [executable] + args[1:]
         if run_as_root:
             cmd_args = ["sudo", "-n"] + cmd_args
-        
+
+    # Always log the production command line (tests assert against this).
+    # Under the test suite, never exec system-installed helpers: find_executable
+    # prefers /usr/bin over $PATH mocks, and sudo -n strips TEST_SUITE_RUN /
+    # MOCK_BIN, so a real millennium-repair/upgrade would close and relaunch
+    # the developer's Steam client.
     try:
         log(f"Executing: {' '.join(cmd_args)}")
+
+        if test_suite:
+            mock_path = os.path.join(mock_bin, args[0]) if mock_bin else ""
+            if mock_path and os.path.isfile(mock_path) and os.access(mock_path, os.X_OK):
+                res = subprocess.run(
+                    [mock_path] + args[1:],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    timeout=timeout,
+                )
+                combined_output = ""
+                if res.stdout:
+                    combined_output += res.stdout
+                if res.stderr:
+                    combined_output += f"\n{res.stderr}"
+                return {
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": combined_output.strip() or f"Command finished with exit code {res.returncode}",
+                        }
+                    ],
+                    "isError": res.returncode != 0,
+                }
+            log("[TEST] Skipping host execution to protect Steam/system state")
+            return {
+                "content": [{"type": "text", "text": "[TEST] Skipped host execution"}],
+                "isError": False,
+            }
+
         res = subprocess.run(cmd_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=timeout)
         combined_output = ""
         if res.stdout:
             combined_output += res.stdout
         if res.stderr:
             combined_output += f"\n{res.stderr}"
-            
+
         return {
             "content": [
                 {
@@ -216,7 +274,7 @@ def run_cmd(args, run_as_root=False, timeout=DEFAULT_TIMEOUT_SECONDS):
             "isError": True
         }
 
-def handle_tool_call(tool_name, arguments):
+def handle_tool_call(tool_name: str, arguments: DiagArgs | ThemeArgs | UpgradeArgs | ScheduleArgs | dict) -> dict:
     if tool_name == "millennium_diag":
         doctor = arguments.get("doctor", False)
         args = ["millennium-diag"]
@@ -295,13 +353,33 @@ def handle_tool_call(tool_name, arguments):
         return run_cmd(["millennium-repair"], run_as_root=True, timeout=LONG_TIMEOUT_SECONDS)
         
     elif tool_name == "millennium_purge":
-        return run_cmd(["millennium-purge"], run_as_root=True, timeout=LONG_TIMEOUT_SECONDS)
+        yes_flag = "-Yes" if IS_WINDOWS else "--yes"
+        return run_cmd(["millennium-purge", yes_flag], run_as_root=True, timeout=LONG_TIMEOUT_SECONDS)
         
     else:
         return {
             "content": [{"type": "text", "text": f"Unknown tool: {tool_name}"}],
             "isError": True
         }
+
+
+def get_helpers_version():
+    candidates = []
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    candidates.append(os.path.join(script_dir, "..", "VERSION"))
+    candidates.append(os.path.join(script_dir, "VERSION"))
+    candidates.append("/usr/local/lib/millennium-helpers/VERSION")
+    candidates.append("/usr/lib/millennium-helpers/VERSION")
+    for path in candidates:
+        if os.path.isfile(path):
+            try:
+                with open(path, encoding="utf-8") as f:
+                    ver = f.read().strip()
+                if ver:
+                    return ver
+            except OSError:
+                pass
+    return "unknown"
 
 def register_mcp():
     home = os.path.expanduser("~")
@@ -313,10 +391,12 @@ def register_mcp():
         claude_path = os.path.join(home, ".config", "Claude", "claude_desktop_config.json")
         
     windsurf_path = os.path.join(home, ".codeium", "windsurf", "mcp_config.json")
+    cursor_path = os.path.join(home, ".cursor", "mcp.json")
 
     configs = [
         ("Claude Desktop", claude_path, "mcpServers"),
-        ("Windsurf", windsurf_path, "mcpServers")
+        ("Windsurf", windsurf_path, "mcpServers"),
+        ("Cursor", cursor_path, "mcpServers"),
     ]
 
     # The server name and command
@@ -363,7 +443,7 @@ def register_mcp():
             print(f"  Error: failed to write config to {path}: {e}")
 
     if not registered_any:
-        print("No active config directories found (Claude Desktop or Windsurf).")
+        print("No active config directories found (Claude Desktop, Windsurf, or Cursor).")
         print("Please configure manually as described in the README.")
         sys.exit(1)
     else:
@@ -372,8 +452,13 @@ def register_mcp():
 
 def main():
     parser = argparse.ArgumentParser(description="Model Context Protocol (MCP) server for Millennium Helpers.")
-    parser.add_argument("--register", "-r", action="store_true", help="Register the MCP server with Claude Desktop and Windsurf.")
+    parser.add_argument("--register", "-r", action="store_true", help="Register the MCP server with Claude Desktop, Windsurf, and Cursor.")
+    parser.add_argument("-V", "--version", action="store_true", help="Show version information.")
     args = parser.parse_args()
+
+    if args.version:
+        print(f"millennium-mcp {get_helpers_version()}")
+        return
 
     if args.register:
         register_mcp()
@@ -400,7 +485,7 @@ def main():
                         },
                         "serverInfo": {
                             "name": "millennium-helpers-mcp",
-                            "version": "1.0.0"
+                            "version": get_helpers_version()
                         }
                     }
                 }

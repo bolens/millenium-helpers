@@ -10,21 +10,112 @@ on:
         description: 'Tag name for the release (e.g., v1.2.3)'
         required: true
         default: 'v-draft'
+      skip_ci_gate:
+        description: 'Skip waiting for Test Suite on this commit'
+        type: boolean
+        required: false
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
+  gate:
+    name: Wait for Test Suite
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && inputs.skip_ci_gate != true)
+    steps:
+      - name: Ensure Test Suite passed for this commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          SHA="${{ github.sha }}"
+          echo "Waiting for workflow test-suite.yml to succeed on $SHA ..."
+
+          for attempt in $(seq 1 60); do
+            mapfile -t runs < <(
+              gh run list \
+                --repo "${{ github.repository }}" \
+                --workflow test-suite.yml \
+                --commit "$SHA" \
+                --limit 5 \
+                --json databaseId,status,conclusion,event \
+                --jq '.[] | select(.status=="completed") | [.databaseId,.conclusion,.event] | @tsv'
+            )
+
+            if (( ${#runs[@]} > 0 )); then
+              for line in "${runs[@]}"; do
+                id="$(echo "$line" | cut -f1)"
+                conclusion="$(echo "$line" | cut -f2)"
+                event="$(echo "$line" | cut -f3)"
+                echo "Found completed run $id (event=$event conclusion=$conclusion)"
+                if [[ "$conclusion" == "success" ]]; then
+                  echo "Test Suite passed."
+                  exit 0
+                fi
+              done
+              echo "::error::Test Suite completed but did not succeed for $SHA"
+              exit 1
+            fi
+
+            in_progress="$(
+              gh run list \
+                --repo "${{ github.repository }}" \
+                --workflow test-suite.yml \
+                --commit "$SHA" \
+                --limit 5 \
+                --json status \
+                --jq '[.[] | select(.status=="in_progress" or .status=="queued" or .status=="pending" or .status=="waiting")] | length'
+            )"
+            if [[ "$in_progress" -gt 0 ]]; then
+              echo "Attempt $attempt/60: Test Suite still running..."
+            else
+              echo "Attempt $attempt/60: no Test Suite run found yet for $SHA..."
+            fi
+            sleep 30
+          done
+
+          echo "::error::Timed out waiting for Test Suite on $SHA"
+          exit 1
+
   build-release:
     name: Build & Package Release Assets
+    needs: [gate]
+    # Run even when gate is skipped (workflow_dispatch + skip_ci_gate)
+    if: always() && (needs.gate.result == 'success' || needs.gate.result == 'skipped')
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      tag: ${{ steps.meta.outputs.tag }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v7
 
+      - name: Resolve tag and version
+        id: meta
+        run: |
+          set -euo pipefail
+          TAG="${{ github.event.inputs.tag_name || github.ref_name }}"
+          VERSION="${TAG#v}"
+          FILE_VERSION="$(tr -d '[:space:]' < VERSION)"
+          if [[ "$TAG" != v-draft && "$VERSION" != "$FILE_VERSION" ]]; then
+            echo "::error::Tag version '$VERSION' does not match VERSION file '$FILE_VERSION'"
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Resolved tag=$TAG version=$VERSION"
+
       - name: Create Linux/macOS Release Tarball
         run: |
-          # Package all source files needed for Unix systems
           tar -czf millennium-helpers.tar.gz \
             --exclude='.git*' \
             --exclude='.github*' \
@@ -34,7 +125,6 @@ jobs:
 
       - name: Create Windows Release Zip
         run: |
-          # Package scripts and install files for Windows systems
           zip -r millennium-helpers.zip \
             scripts/windows/ \
             completions/ \
@@ -46,38 +136,67 @@ jobs:
       - name: Calculate Checksums
         id: checksums
         run: |
+          set -euo pipefail
+
+          [[ -s millennium-helpers.tar.gz ]] || {
+            echo "::error::Linux/macOS tarball is missing or empty"
+            exit 1
+          }
+          [[ -s millennium-helpers.zip ]] || {
+            echo "::error::Windows zip is missing or empty"
+            exit 1
+          }
+
           LINUX_SHA=$(sha256sum millennium-helpers.tar.gz | cut -d' ' -f1)
           WINDOWS_SHA=$(sha256sum millennium-helpers.zip | cut -d' ' -f1)
-          
-          echo "LINUX_SHA=$LINUX_SHA" >> $GITHUB_ENV
-          echo "WINDOWS_SHA=$WINDOWS_SHA" >> $GITHUB_ENV
-          
-          # Write checksum files for upload
+
+          for label_sha in "linux:${LINUX_SHA}" "windows:${WINDOWS_SHA}"; do
+            label="${label_sha%%:*}"
+            sha="${label_sha#*:}"
+            if [[ ! "$sha" =~ ^[0-9a-f]{64}$ ]]; then
+              echo "::error::Invalid ${label} SHA256 (expected 64 lowercase hex): ${sha}"
+              exit 1
+            fi
+            if [[ "$sha" =~ ^0{64}$ ]]; then
+              echo "::error::Refusing placeholder all-zero ${label} SHA256"
+              exit 1
+            fi
+          done
+
+          echo "LINUX_SHA=$LINUX_SHA" >> "$GITHUB_ENV"
+          echo "WINDOWS_SHA=$WINDOWS_SHA" >> "$GITHUB_ENV"
+          echo "linux_sha=$LINUX_SHA" >> "$GITHUB_OUTPUT"
+          echo "windows_sha=$WINDOWS_SHA" >> "$GITHUB_OUTPUT"
+
           echo "$LINUX_SHA  millennium-helpers.tar.gz" > millennium-helpers.tar.gz.sha256
           echo "$WINDOWS_SHA  millennium-helpers.zip" > millennium-helpers.zip.sha256
+
+          # Round-trip verify the sidecar checksum files match the archives.
+          sha256sum -c millennium-helpers.tar.gz.sha256
+          sha256sum -c millennium-helpers.zip.sha256
 
       - name: Create GitHub Release Draft
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
+          tag_name: ${{ steps.meta.outputs.tag }}
           draft: true
           generate_release_notes: true
           body: |
             ## Release Verification & Checksums
-            
+
             Integrity hashes for official package manager formulas and manual verification:
-            
+
             | Asset | SHA256 Checksum |
             | :--- | :--- |
             | `millennium-helpers.tar.gz` (Linux/macOS) | `${{ env.LINUX_SHA }}` |
             | `millennium-helpers.zip` (Windows) | `${{ env.WINDOWS_SHA }}` |
-            
+
             ### Package Verification
             To verify the integrity of the downloaded assets, run:
             ```bash
             # On Linux/macOS
             sha256sum -c millennium-helpers.tar.gz.sha256
-            
+
             # On Windows (PowerShell)
             Get-FileHash -Path .\millennium-helpers.zip -Algorithm SHA256
             ```
@@ -86,3 +205,97 @@ jobs:
             millennium-helpers.zip
             millennium-helpers.tar.gz.sha256
             millennium-helpers.zip.sha256
+
+  update-packaging:
+    name: Open packaging update PR
+    needs: [build-release]
+    if: needs.build-release.result == 'success' && needs.build-release.outputs.tag != 'v-draft'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
+
+      - name: Fetch source archives and compute hashes
+        id: hashes
+        env:
+          VERSION: ${{ needs.build-release.outputs.version }}
+        run: |
+          set -euo pipefail
+          TGZ_URL="https://github.com/${{ github.repository }}/archive/refs/tags/v${VERSION}.tar.gz"
+          ZIP_URL="https://github.com/${{ github.repository }}/archive/refs/tags/v${VERSION}.zip"
+
+          curl -fsSL -o /tmp/src.tar.gz "$TGZ_URL"
+          curl -fsSL -o /tmp/src.zip "$ZIP_URL"
+
+          [[ -s /tmp/src.tar.gz ]] || {
+            echo "::error::Downloaded source tarball is empty: $TGZ_URL"
+            exit 1
+          }
+          [[ -s /tmp/src.zip ]] || {
+            echo "::error::Downloaded source zip is empty: $ZIP_URL"
+            exit 1
+          }
+
+          LINUX_SHA="$(sha256sum /tmp/src.tar.gz | cut -d' ' -f1)"
+          WINDOWS_SHA="$(sha256sum /tmp/src.zip | cut -d' ' -f1)"
+
+          for label_sha in "linux:${LINUX_SHA}" "windows:${WINDOWS_SHA}"; do
+            label="${label_sha%%:*}"
+            sha="${label_sha#*:}"
+            if [[ ! "$sha" =~ ^[0-9a-f]{64}$ ]]; then
+              echo "::error::Invalid ${label} source SHA256: ${sha}"
+              exit 1
+            fi
+            if [[ "$sha" =~ ^0{64}$ ]]; then
+              echo "::error::Refusing placeholder all-zero ${label} source SHA256"
+              exit 1
+            fi
+          done
+
+          echo "linux_sha=$LINUX_SHA" >> "$GITHUB_OUTPUT"
+          echo "windows_sha=$WINDOWS_SHA" >> "$GITHUB_OUTPUT"
+          echo "Source tarball SHA256=$LINUX_SHA"
+          echo "Source zip SHA256=$WINDOWS_SHA"
+
+      - name: Update packaging manifests
+        run: |
+          bash scripts/ci/update-packaging-versions.sh \
+            "${{ needs.build-release.outputs.version }}" \
+            "${{ steps.hashes.outputs.linux_sha }}" \
+            "${{ steps.hashes.outputs.windows_sha }}"
+
+      - name: Verify version sync
+        run: |
+          pip install pyyaml
+          bash scripts/ci/check-version-sync.sh
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          # Prefer PACKAGING_PAT so the opened PR triggers CI (GITHUB_TOKEN PRs do not).
+          token: ${{ secrets.PACKAGING_PAT != '' && secrets.PACKAGING_PAT || secrets.GITHUB_TOKEN }}
+          commit-message: "chore(packaging): bump to v${{ needs.build-release.outputs.version }}"
+          branch: "chore/packaging-v${{ needs.build-release.outputs.version }}"
+          delete-branch: true
+          title: "chore(packaging): bump to v${{ needs.build-release.outputs.version }}"
+          body: |
+            ## Summary
+            Automated packaging bump for release **v${{ needs.build-release.outputs.version }}**.
+
+            - Updates `VERSION`, Homebrew Formula URL/SHA256, Scoop URL/hash, and Winget PackageVersion/InstallerUrl/InstallerSha256
+            - Source archive hashes are computed from the GitHub tag archives
+
+            ## Test plan
+            - [ ] Confirm version-sync CI passes
+            - [ ] Confirm Homebrew audit / Scoop / Winget manifest jobs pass
+            - [ ] Publish the draft GitHub release when ready
+
+            > If CI did not start automatically, close/reopen this PR or push an empty commit (PRs opened with `GITHUB_TOKEN` do not trigger workflows unless `PACKAGING_PAT` is configured).

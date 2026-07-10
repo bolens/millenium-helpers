@@ -18,6 +18,21 @@ Describe "Repair Script" {
         . (Join-Path -Path $winScriptDir -ChildPath "common.ps1")
     }
 
+    Context "Help and Version" {
+        It "Prints usage with -Help" {
+            $repairScript = Join-Path -Path $winScriptDir -ChildPath "millennium-repair.ps1"
+            $out = (& $repairScript -Help *>&1) | Out-String
+            $out | Should -BeLike "*Usage:*"
+            $out | Should -BeLike "*-DryRun*"
+        }
+
+        It "Prints version with -Version" {
+            $repairScript = Join-Path -Path $winScriptDir -ChildPath "millennium-repair.ps1"
+            $out = (& $repairScript -Version *>&1) | Out-String
+            $out | Should -BeLike "*millennium-repair*"
+        }
+    }
+
     Context "Force Repair Execution" {
         BeforeAll {
             Mock Get-ItemProperty { return [pscustomobject]@{ SteamPath = "C:\MockedSteam" } }

@@ -70,6 +70,7 @@ Options:
   -i, --install      Perform installation
   -u, --uninstall    Perform uninstallation
   -p, --purge        During uninstall, also purge all Millennium client files/hooks
+  -V, --version      Show version information
   -h, --help         Show this help message
 EOF
 }
@@ -128,6 +129,10 @@ while [[ $# -gt 0 ]]; do
     -d|--dry-run)
       DRY_RUN=true
       shift
+      ;;
+    -V|--version)
+      print_helpers_version
+      exit 0
       ;;
     -h|--help)
       show_help
@@ -290,12 +295,103 @@ install_completions() {
   done
 }
 
+install_man_pages() {
+  local man_src="${SCRIPT_DIR}/man"
+  if [[ ! -d "$man_src" ]]; then
+    return 0
+  fi
+
+  local man_dir="/usr/local/share/man/man1"
+  if [[ "$(uname)" == "Darwin" ]]; then
+    local brew_prefix="/opt/homebrew"
+    if command -v brew &>/dev/null; then
+      brew_prefix="$(brew --prefix)"
+    fi
+    man_dir="${brew_prefix}/share/man/man1"
+  elif [[ -d "/usr/share/man/man1" && ! -d "/usr/local/share/man/man1" ]]; then
+    # Prefer distro man path when /usr/local/share/man is unused
+    man_dir="/usr/share/man/man1"
+  fi
+
+  echo -e "${BLUE}Installing man pages...${NC}"
+  printf "Installing man pages to %s... " "$man_dir"
+  if execute mkdir -p "$man_dir"; then
+    local ok=true
+    local page
+    for page in "${man_src}"/*.1; do
+      [[ -f "$page" ]] || continue
+      local base
+      base="$(basename "$page")"
+      if ! execute cp -f "$page" "${man_dir}/${base}" || \
+         ! execute chmod 644 "${man_dir}/${base}" || \
+         ! change_owner "${man_dir}/${base}"; then
+        ok=false
+      fi
+    done
+    if [[ "$ok" == "true" ]]; then
+      echo -e "${GREEN}OK${NC}"
+    else
+      echo -e "${RED}FAIL${NC}"
+      echo -e "${YELLOW}Warning: Failed to install one or more man pages to ${man_dir}.${NC}" >&2
+    fi
+  else
+    echo -e "${RED}FAIL${NC}"
+    echo -e "${YELLOW}Warning: Could not create man page directory ${man_dir}.${NC}" >&2
+  fi
+}
+
+uninstall_man_pages() {
+  local man_dirs=("/usr/local/share/man/man1" "/usr/share/man/man1")
+  if [[ "$(uname)" == "Darwin" ]]; then
+    local brew_prefix="/opt/homebrew"
+    if command -v brew &>/dev/null; then
+      brew_prefix="$(brew --prefix)"
+    fi
+    man_dirs=("${brew_prefix}/share/man/man1")
+  fi
+
+  local pages=(
+    millennium-upgrade.1
+    millennium-repair.1
+    millennium-diag.1
+    millennium-schedule.1
+    millennium-purge.1
+    millennium-theme.1
+    millennium-mcp.1
+  )
+
+  echo -e "${BLUE}Uninstalling man pages...${NC}"
+  for man_dir in "${man_dirs[@]}"; do
+    [[ -d "$man_dir" || "$DRY_RUN" == "true" ]] || continue
+    printf "Removing man pages from %s... " "$man_dir"
+    local ok=true
+    local page
+    for page in "${pages[@]}"; do
+      execute rm -f "${man_dir}/${page}" || ok=false
+    done
+    if [[ "$ok" == "true" ]]; then
+      echo -e "${GREEN}OK${NC}"
+    else
+      echo -e "${RED}FAIL${NC}"
+    fi
+  done
+}
+
 run_wizard() {
   local user_name="${SUDO_USER:-$(id -un)}"
-  if [[ "$user_name" != "root" ]]; then
-    local dry_flag=""
-    [[ "${DRY_RUN}" == "true" ]] && dry_flag="-d"
+  local dry_flag=""
+  [[ "${DRY_RUN}" == "true" ]] && dry_flag="-d"
+
+  # Normal installs skip the wizard when the effective user is root (no real
+  # desktop user to configure). Tests and FORCE_WIZARD=true still run it.
+  if [[ "$user_name" == "root" && "${FORCE_WIZARD:-}" != "true" ]]; then
+    return 0
+  fi
+
+  if [[ "$user_name" != "root" && "$(id -u)" -eq 0 ]]; then
     runuser -l "$user_name" -c "FORCE_WIZARD=true bash ${SCRIPT_DIR}/scripts/millennium-schedule.sh setup ${dry_flag}"
+  else
+    FORCE_WIZARD=true bash "${SCRIPT_DIR}/scripts/millennium-schedule.sh" setup ${dry_flag}
   fi
 }
 
@@ -344,11 +440,13 @@ install_scripts() {
   if execute mkdir -p "${lib_dir}/lib" && \
      execute cp -f "${SCRIPT_DIR}/scripts/common.sh" "${lib_dir}/common.sh" && \
      execute cp -f "${SCRIPT_DIR}/scripts/lib/"*.sh "${lib_dir}/lib/" && \
+     execute cp -f "${SCRIPT_DIR}/VERSION" "${lib_dir}/VERSION" && \
      change_owner -R "$lib_dir" && \
      execute chmod 755 "$lib_dir" && \
      execute chmod 755 "${lib_dir}/lib" && \
      execute chmod 644 "${lib_dir}/common.sh" && \
-     execute chmod 644 "${lib_dir}/lib/"*.sh; then
+     execute chmod 644 "${lib_dir}/lib/"*.sh && \
+     execute chmod 644 "${lib_dir}/VERSION"; then
     echo -e "${GREEN}OK${NC}"
   else
     echo -e "${RED}FAIL${NC}"
@@ -358,6 +456,7 @@ install_scripts() {
   fi
 
   install_completions
+  install_man_pages
 
   # Configure passwordless sudoers rules in /etc/sudoers.d/millennium-helpers
   if [[ "$(uname)" != "Darwin" ]]; then
@@ -598,7 +697,8 @@ uninstall_scripts() {
       echo -e "${YELLOW}Invoking Millennium purge script...${NC}"
       local dry_flag=""
       [[ "$DRY_RUN" == "true" ]] && dry_flag="--dry-run"
-      execute "$purge_script" $dry_flag
+      # Already confirmed interactively (or via --purge); skip purge's own prompt.
+      execute "$purge_script" --yes $dry_flag
     fi
   fi
 
@@ -645,6 +745,7 @@ uninstall_scripts() {
   fi
 
   uninstall_completions
+  uninstall_man_pages
   removed_any=true
 
   # Clean up systemd user timers/services for the invoking user

@@ -17,12 +17,29 @@ trap teardown_mock_bin EXIT
 
 echo -e "${YELLOW}=== Behavioral tests: millennium-repair.sh ===${NC}"
 
+# --- Help ---
+
+out=$(bash "$REPAIR_SH" --help 2>&1)
+rc=$?
+assert_success "$rc" "millennium-repair --help exits 0"
+assert_contains "$out" "Usage:" "millennium-repair --help prints usage"
+assert_contains "$out" "--skip-theme" "millennium-repair --help documents --skip-theme"
+
+# --- Version ---
+
+out=$(bash "$REPAIR_SH" --version 2>&1)
+rc=$?
+assert_success "$rc" "millennium-repair --version exits 0"
+assert_contains "$out" "millennium-repair" "millennium-repair --version prints command name"
+assert_contains "$out" "2.2.0" "millennium-repair --version prints VERSION file value"
+
 # --- Unknown option ---
 
 out=$(bash "$REPAIR_SH" --bogus 2>&1)
 rc=$?
 assert_failure "$rc" "millennium-repair exits non-zero on an unknown option"
 assert_contains "$out" "Unknown option" "millennium-repair reports the unrecognized option"
+assert_contains "$out" "Usage:" "millennium-repair unknown option prints usage"
 
 # --- Common test fixture: fake home with a native Steam dir ---
 
@@ -124,7 +141,16 @@ rc=$?
 assert_success "$rc" "millennium-repair --dry-run exits 0 when Steam is (mock) running"
 assert_contains "$out" "Would capture Steam's environment and close it" "millennium-repair --dry-run announces it would capture/close Steam instead of doing so"
 assert_file_not_exists "$relaunch_state_dir" "millennium-repair --dry-run does not create the relaunch state directory"
-assert_file_not_exists "${MOCK_BIN}/runuser.calls" "millennium-repair --dry-run does not invoke runuser to close Steam"
+# As root, repair may call runuser only to resolve the target user's XDG dirs.
+# Closing Steam must still be skipped under --dry-run.
+if [[ -f "${MOCK_BIN}/runuser.calls" ]]; then
+  runuser_calls=$(cat "${MOCK_BIN}/runuser.calls")
+  assert_not_contains "$runuser_calls" "osascript" "millennium-repair --dry-run does not invoke runuser to quit Steam (osascript)"
+  assert_not_contains "$runuser_calls" "flatpak" "millennium-repair --dry-run does not invoke runuser to stop Flatpak Steam"
+  assert_contains "$runuser_calls" "XDG_" "millennium-repair --dry-run runuser calls (if any) are XDG lookups only"
+else
+  assert_file_not_exists "${MOCK_BIN}/runuser.calls" "millennium-repair --dry-run does not invoke runuser to close Steam"
+fi
 
 rm -f "${MOCK_BIN}/runuser.calls"
 mock_cmd "pgrep" 'exit 1'  # restore: Steam not running, for any tests that might run after this one

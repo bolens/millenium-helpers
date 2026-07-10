@@ -20,14 +20,43 @@ else
 fi
 
 DRY_RUN=false
+ASSUME_YES=false
+
+show_help() {
+  cat << EOF
+Usage: $(basename "$0") [OPTIONS]
+
+De-register and purge Millennium client hooks and files from Steam.
+
+Options:
+  -d, --dry-run  Simulate operations without modifying files
+  -y, --yes      Skip the interactive confirmation prompt
+  -V, --version  Show version information
+  -h, --help     Show this help message
+EOF
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -d|--dry-run)
       DRY_RUN=true
       shift
       ;;
+    -y|--yes)
+      ASSUME_YES=true
+      shift
+      ;;
+    -V|--version)
+      print_helpers_version
+      exit 0
+      ;;
+    -h|--help)
+      show_help
+      exit 0
+      ;;
     *)
       echo "Unknown option: $1" >&2
+      show_help
       exit 1
       ;;
   esac
@@ -57,6 +86,19 @@ fi
 
 if [[ "$DRY_RUN" == "true" ]]; then
   echo -e "${YELLOW}=== DRY RUN MODE: No changes will be made ===${NC}"
+elif [[ "$ASSUME_YES" != "true" ]]; then
+  if [[ -t 0 ]]; then
+    echo -e "${YELLOW}This will permanently remove Millennium hooks, binaries, and related Steam files.${NC}"
+    read -rp "Are you sure you want to continue? [y/N]: " resp
+    if [[ ! "$resp" =~ ^[Yy]$ ]]; then
+      echo "Purge cancelled."
+      exit 0
+    fi
+  else
+    echo -e "${RED}Error: Refusing to purge without confirmation in a non-interactive session.${NC}" >&2
+    echo -e "Re-run with ${YELLOW}--yes${NC} (or ${YELLOW}-y${NC}) to confirm, or use ${YELLOW}--dry-run${NC} to simulate." >&2
+    exit 1
+  fi
 fi
 
 echo -e "${BLUE}Purging Millennium hooks and files...${NC}"

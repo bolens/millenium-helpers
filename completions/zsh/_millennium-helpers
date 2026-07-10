@@ -7,49 +7,63 @@ _millennium_helpers() {
   case "$service" in
     millennium-repair)
       _arguments \
+        {-s,--skip-theme}'[Skip theme refresh during repair]' \
         {-d,--dry-run}'[Simulation mode]' \
+        {-V,--version}'[Show version information]' \
         {-h,--help}'[Show help message]'
       ;;
     millennium-upgrade)
       _arguments \
-        '--channel[Update channel (stable or beta)]' \
+        {-c,--channel}'[Update channel (stable or beta)]:(stable beta)' \
         '--stable[Alias for --channel stable]' \
         '--beta[Alias for --channel beta]' \
-        '--rollback[Rollback to a specific version or list backups]' \
+        {-r,--rollback}'[Rollback to a specific version or list backups]' \
+        '--file[Install from a local archive]:archive:_files' \
         {-f,--force}'[Force reinstall]' \
         {-d,--dry-run}'[Simulation mode]' \
+        {-V,--version}'[Show version information]' \
         {-h,--help}'[Show help message]'
       ;;
     millennium-schedule)
       _arguments \
-        '1:subcommand:(enable disable status)' \
-        '2:channel:(stable beta)' \
+        '1:subcommand:(enable disable status setup config)' \
+        '2:arg:(stable beta get set list)' \
+        {-d,--dry-run}'[Simulation mode]' \
+        {-V,--version}'[Show version information]' \
         {-h,--help}'[Show help message]'
       ;;
     millennium-purge)
       _arguments \
         {-d,--dry-run}'[Simulation mode]' \
+        {-y,--yes}'[Skip confirmation prompt]' \
+        {-V,--version}'[Show version information]' \
         {-h,--help}'[Show help message]'
       ;;
     millennium-diag)
       _arguments \
-        '1:subcommand:(doctor --fix)' \
+        '1:subcommand:(doctor logs --fix)' \
         '--force[Force all doctor repairs even if system is healthy]' \
         '--json[Output diagnostics report in structured JSON format]' \
+        {-l,--follow}'[Follow real-time log output]' \
+        {-s,--share}'[Upload diagnostic report to a pastebin]' \
         {-d,--dry-run}'[Simulation mode]' \
+        {-V,--version}'[Show version information]' \
         {-h,--help}'[Show help message]'
       ;;
     millennium-theme)
       _arguments \
         '1:subcommand:(list install remove update)' \
         '2:theme:_files' \
-        '--all[Update all themes]' \
+        {-a,--all}'[Update all themes]' \
         '--json[Output list command results in structured JSON format]' \
         {-d,--dry-run}'[Simulation mode]' \
+        {-V,--version}'[Show version information]' \
         {-h,--help}'[Show help message]'
       ;;
     millennium-mcp)
       _arguments \
+        {-r,--register}'[Register MCP server with Claude Desktop and Windsurf]' \
+        {-V,--version}'[Show version information]' \
         {-h,--help}'[Show help message]'
       ;;
   esac

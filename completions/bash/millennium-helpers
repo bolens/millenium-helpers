@@ -3,7 +3,7 @@
 _millennium_repair_comp() {
   COMPREPLY=()
   local cur="${COMP_WORDS[COMP_CWORD]}"
-  local opts="-d --dry-run -h --help"
+  local opts="-s --skip-theme -d --dry-run -V --version -h --help"
   COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
   return 0
 }
@@ -12,7 +12,7 @@ complete -F _millennium_repair_comp millennium-repair
 _millennium_upgrade_comp() {
   COMPREPLY=()
   local cur="${COMP_WORDS[COMP_CWORD]}"
-  local opts="--channel --stable --beta --rollback -f --force -d --dry-run -h --help"
+  local opts="-c --channel --stable --beta -r --rollback --file -f --force -d --dry-run -V --version -h --help"
   COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
   return 0
 }
@@ -22,20 +22,24 @@ _millennium_schedule_comp() {
   COMPREPLY=()
   local cur="${COMP_WORDS[COMP_CWORD]}"
   local prev="${COMP_WORDS[COMP_CWORD-1]}"
-  local subcmds="enable disable status"
+  local subcmds="enable disable status setup config"
   
   case "${prev}" in
     enable)
       COMPREPLY=( $(compgen -W "stable beta" -- "${cur}") )
       return 0
       ;;
-    disable|status)
+    config)
+      COMPREPLY=( $(compgen -W "get set list" -- "${cur}") )
+      return 0
+      ;;
+    disable|status|setup)
       COMPREPLY=()
       return 0
       ;;
   esac
   
-  COMPREPLY=( $(compgen -W "${subcmds} -h --help" -- "${cur}") )
+  COMPREPLY=( $(compgen -W "${subcmds} -d --dry-run -V --version -h --help" -- "${cur}") )
   return 0
 }
 complete -F _millennium_schedule_comp millennium-schedule
@@ -43,7 +47,7 @@ complete -F _millennium_schedule_comp millennium-schedule
 _millennium_purge_comp() {
   COMPREPLY=()
   local cur="${COMP_WORDS[COMP_CWORD]}"
-  local opts="-d --dry-run -h --help"
+  local opts="-d --dry-run -y --yes -V --version -h --help"
   COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
   return 0
 }
@@ -52,7 +56,7 @@ complete -F _millennium_purge_comp millennium-purge
 _millennium_diag_comp() {
   COMPREPLY=()
   local cur="${COMP_WORDS[COMP_CWORD]}"
-  local opts="doctor --fix --force --json -d --dry-run -h --help"
+  local opts="doctor logs --fix --force --json -l --follow -s --share -d --dry-run -V --version -h --help"
   COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
   return 0
 }
@@ -66,16 +70,20 @@ _millennium_theme_comp() {
   
   case "${prev}" in
     update)
-      COMPREPLY=( $(compgen -W "--all" -- "${cur}") )
+      COMPREPLY=( $(compgen -W "--all -a" -- "${cur}") )
       return 0
       ;;
-    list|install|remove)
+    list)
+      COMPREPLY=( $(compgen -W "--json -d --dry-run -h --help" -- "${cur}") )
+      return 0
+      ;;
+    install|remove)
       COMPREPLY=()
       return 0
       ;;
   esac
   
-  COMPREPLY=( $(compgen -W "${subcmds} -d --dry-run -h --help" -- "${cur}") )
+  COMPREPLY=( $(compgen -W "${subcmds} --json -d --dry-run -V --version -h --help" -- "${cur}") )
   return 0
 }
 complete -F _millennium_theme_comp millennium-theme
@@ -83,9 +91,8 @@ complete -F _millennium_theme_comp millennium-theme
 _millennium_mcp_comp() {
   COMPREPLY=()
   local cur="${COMP_WORDS[COMP_CWORD]}"
-  local opts="-h --help"
+  local opts="-r --register -V --version -h --help"
   COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
   return 0
 }
 complete -F _millennium_mcp_comp millennium-mcp
-

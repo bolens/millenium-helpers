@@ -72,6 +72,13 @@ stdenv.mkDerivation rec {
     mkdir -p $out/share/nushell/completions
     install -m644 completions/nushell/millennium-helpers.nu $out/share/nushell/completions/millennium-helpers.nu
 
+    # Install man pages
+    mkdir -p $out/share/man/man1
+    install -m644 man/*.1 $out/share/man/man1/
+
+    # Install VERSION for --version lookups
+    install -m644 VERSION $out/lib/millennium-helpers/VERSION
+
     # Install license
     mkdir -p $out/share/licenses/millennium-helpers
     install -m644 LICENSE $out/share/licenses/millennium-helpers/LICENSE

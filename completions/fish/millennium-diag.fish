@@ -1,6 +1,11 @@
+VERSION_PLACEHOLDER
 complete -c millennium-diag -f -a 'doctor' -d 'Run doctor to automatically repair issues'
+complete -c millennium-diag -f -a 'logs' -d 'Display recent Millennium and Steam WebHelper logs'
 complete -c millennium-diag -f -a '--fix' -d 'Run doctor to automatically repair issues'
 complete -c millennium-diag -s d -l dry-run -d 'Simulation mode'
 complete -c millennium-diag -l force -d 'Force all doctor repairs even if system is healthy'
 complete -c millennium-diag -l json -d 'Output diagnostics report in structured JSON format'
+complete -c millennium-diag -s l -l follow -d 'Follow real-time log output'
+complete -c millennium-diag -s s -l share -d 'Upload diagnostic report to a pastebin'
 complete -c millennium-diag -s h -l help -d 'Show help message'
+complete -c millennium-diag -s V -l version -d 'Show version information'

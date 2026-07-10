@@ -32,6 +32,7 @@ Commands:
 Options:
   --json                Output list command results in structured JSON format
   -d, --dry-run         Perform a dry-run (simulates operations without modifying files)
+  -V, --version         Show version information
   -h, --help            Show this help message
 EOF
 }
@@ -62,6 +63,10 @@ while [[ $# -gt 0 ]]; do
     -d|--dry-run)
       DRY_RUN=true
       shift
+      ;;
+    -V|--version)
+      print_helpers_version
+      exit 0
       ;;
     -h|--help)
       show_help

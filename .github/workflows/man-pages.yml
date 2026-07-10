@@ -1,0 +1,42 @@
+name: "CI: Man Page Coverage"
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'man/**'
+      - 'scripts/millennium-*.sh'
+      - 'scripts/millennium-mcp.py'
+      - 'scripts/ci/check-man-pages.sh'
+      - '.github/workflows/man-pages.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'man/**'
+      - 'scripts/millennium-*.sh'
+      - 'scripts/millennium-mcp.py'
+      - 'scripts/ci/check-man-pages.sh'
+      - '.github/workflows/man-pages.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  man-pages:
+    name: Man page coverage & lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install mandoc
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq mandoc
+
+      - name: Check man pages
+        run: bash scripts/ci/check-man-pages.sh

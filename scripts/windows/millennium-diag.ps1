@@ -4,7 +4,11 @@ param(
     [switch]$Force = $false,
     [switch]$Json = $false,
     [switch]$DryRun = $false,
-    [switch]$Share = $false
+    [switch]$Share = $false,
+    [Alias("h")]
+    [switch]$Help = $false,
+    [Alias("V")]
+    [switch]$Version = $false
 )
 set-strictmode -version Latest
 
@@ -16,6 +20,29 @@ if (Test-Path -Path $CommonPs1) {
 } else {
     Write-Error "Shared helper library not found at $CommonPs1"
     exit 1
+}
+
+if ($Help -or $Command -eq "help" -or $Command -eq "--help" -or $Command -eq "-h") {
+    Write-Output @"
+Usage: millennium-diag [COMMAND] [OPTIONS]
+
+Commands:
+  (None)        Run read-only diagnostics report (default)
+  doctor        Detect and automatically repair partial or broken installations
+
+Options:
+  -Force        Force all doctor repairs even if system is healthy
+  -Json         Output diagnostics report in structured JSON format
+  -DryRun       Simulate doctor repairs without modifying anything
+  -Share        Upload diagnostic report to a pastebin and return a short link
+  -Version, -V  Show version information
+  -Help, -h     Show this help message
+"@
+    exit 0
+}
+if ($Version -or $Command -eq "version" -or $Command -eq "--version" -or $Command -eq "-V") {
+    Write-HelpersVersion -Name "millennium-diag"
+    exit 0
 }
 
 if ($Share) {

@@ -29,6 +29,21 @@ fi
 
 SKIP_THEME=false
 DRY_RUN=false
+
+show_help() {
+  cat << EOF
+Usage: $(basename "$0") [OPTIONS]
+
+Fix Millennium settings panel, ownership, and Steam theme hooks. Close Steam first.
+
+Options:
+  -s, --skip-theme  Skip theme refresh during repair
+  -d, --dry-run     Simulate operations without modifying files
+  -V, --version     Show version information
+  -h, --help        Show this help message
+EOF
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -s|--skip-theme)
@@ -39,8 +54,17 @@ while [[ $# -gt 0 ]]; do
       DRY_RUN=true
       shift
       ;;
+    -V|--version)
+      print_helpers_version
+      exit 0
+      ;;
+    -h|--help)
+      show_help
+      exit 0
+      ;;
     *)
       echo "Unknown option: $1" >&2
+      show_help
       exit 1
       ;;
   esac

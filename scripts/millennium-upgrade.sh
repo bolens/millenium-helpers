@@ -34,6 +34,25 @@ ROLLBACK=false
 ROLLBACK_TARGET=""
 LOCAL_FILE=""
 
+show_help() {
+  cat << EOF
+Usage: $(basename "$0") [OPTIONS]
+
+Install official Millennium (stable or beta) releases over system files.
+
+Options:
+  -c, --channel CHANNEL  Update channel: stable or beta (default: ${CONFIG_UPDATE_CHANNEL:-stable})
+  --stable               Alias for --channel stable
+  --beta                 Alias for --channel beta
+  -r, --rollback [ID]    Roll back to a previous backup (or pass "list" to list backups)
+  --file PATH            Install from a local archive instead of downloading
+  -f, --force            Force reinstall even if already up to date
+  -d, --dry-run          Simulate operations without modifying files
+  -V, --version          Show version information
+  -h, --help             Show this help message
+EOF
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -f|--force)
@@ -84,8 +103,17 @@ while [[ $# -gt 0 ]]; do
       fi
       shift
       ;;
+    -V|--version)
+      print_helpers_version
+      exit 0
+      ;;
+    -h|--help)
+      show_help
+      exit 0
+      ;;
     *)
       echo "Unknown option: $1" >&2
+      show_help
       exit 1
       ;;
   esac

@@ -1,7 +1,10 @@
+VERSION_PLACEHOLDER
 complete -c millennium-theme -f -a 'list' -d 'List installed themes'
-complete -c millennium-theme -f -a 'install' -d 'Install a theme from GitHub (owner/repo)'
-complete -c millennium-theme -f -a 'update' -d 'Update an installed theme'
+complete -c millennium-theme -f -a 'install' -d 'Install a theme from GitHub'
 complete -c millennium-theme -f -a 'remove' -d 'Remove an installed theme'
+complete -c millennium-theme -f -a 'update' -d 'Update an installed theme'
+complete -c millennium-theme -f -n '__fish_seen_subcommand_from update' -s a -l all -d 'Update all themes'
+complete -c millennium-theme -l json -d 'Output list results as JSON'
 complete -c millennium-theme -s d -l dry-run -d 'Simulation mode'
-complete -c millennium-theme -l json -d 'Output list command results in structured JSON format'
 complete -c millennium-theme -s h -l help -d 'Show help message'
+complete -c millennium-theme -s V -l version -d 'Show version information'

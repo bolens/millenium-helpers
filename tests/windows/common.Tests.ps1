@@ -22,6 +22,40 @@ Describe "Common Helpers" {
             $path = Resolve-SteamPath
             $path | Should -Be "C:\MockedSteamPath"
         }
+
+        It "Does not print DEBUG noise by default" {
+            $out = Resolve-SteamPath *>&1 | Out-String
+            $out | Should -Not -BeLike "*DEBUG:*"
+        }
+
+        It "Get-HelpersVersion reads the repo VERSION file" {
+            $ver = Get-HelpersVersion
+            $ver | Should -Be "2.2.0"
+        }
+
+        It "Write-HelpersVersion prints command name and version" {
+            $out = Write-HelpersVersion -Name "millennium-test"
+            $out | Should -Be "millennium-test 2.2.0"
+        }
+
+        It "Write-DebugMsg stays quiet unless MILLENNIUM_DEBUG is set" {
+            $prev = $env:MILLENNIUM_DEBUG
+            try {
+                Remove-Item Env:MILLENNIUM_DEBUG -ErrorAction SilentlyContinue
+                $quiet = Write-DebugMsg "should-not-appear" *>&1 | Out-String
+                $quiet | Should -Not -BeLike "*DEBUG:*"
+
+                $env:MILLENNIUM_DEBUG = "1"
+                $noisy = Write-DebugMsg "should-appear" *>&1 | Out-String
+                $noisy | Should -BeLike "*DEBUG: should-appear*"
+            } finally {
+                if ($null -eq $prev) {
+                    Remove-Item Env:MILLENNIUM_DEBUG -ErrorAction SilentlyContinue
+                } else {
+                    $env:MILLENNIUM_DEBUG = $prev
+                }
+            }
+        }
     }
 
     Context "Steam Path Resolution - Fallback" {

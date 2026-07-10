@@ -2,7 +2,11 @@
 param(
     [string]$Command = $null,
     [string]$Channel = "stable",
-    [switch]$DryRun = $false
+    [switch]$DryRun = $false,
+    [Alias("h")]
+    [switch]$Help = $false,
+    [Alias("V")]
+    [switch]$Version = $false
 )
 set-strictmode -version Latest
 
@@ -55,9 +59,19 @@ Commands:
 
 Options:
   -d, --dry-run         Perform dry-run without changing Task Scheduler or writing files
+  -V, --version         Show version information
   -h, --help            Show this help message
 "@
     Write-Output $helpText
+}
+
+if ($Help -or $Command -eq "help" -or $Command -eq "--help" -or $Command -eq "-h") {
+    Show-Help
+    exit 0
+}
+if ($Version -or $Command -eq "version" -or $Command -eq "--version" -or $Command -eq "-V") {
+    Write-HelpersVersion -Name "millennium-schedule"
+    exit 0
 }
 
 function Enable-Task {

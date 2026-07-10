@@ -28,6 +28,11 @@ else
   exit 1
 fi
 
+if [[ -f "${_COMMON_LIB_DIR}/version.sh" ]]; then
+  # shellcheck source=lib/version.sh
+  source "${_COMMON_LIB_DIR}/version.sh"
+fi
+
 if [[ -f "${_COMMON_LIB_DIR}/github.sh" ]]; then
   # shellcheck source=lib/github.sh
   source "${_COMMON_LIB_DIR}/github.sh"

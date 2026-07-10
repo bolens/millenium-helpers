@@ -68,10 +68,15 @@ _run_steam_cmd() {
     env_prefix="env ${env_vars[*]} "
   fi
 
-  if [[ -n "${MOCK_BIN:-}" && -f "${MOCK_BIN}/runuser" ]]; then
-    runuser "$target_user" -c "${env_prefix}${cmd}"
-  elif [[ -n "${TEST_SUITE_RUN:-}" ]]; then
-    echo "[TEST] Bypassing command execution to protect host: ${env_prefix}${cmd}"
+  # TEST_SUITE_RUN must win even when a runuser mock exists: unit tests
+  # sometimes delete MOCK_BIN/runuser mid-suite, and the previous ordering
+  # could fall through to a real steam launch on the developer machine.
+  if [[ -n "${TEST_SUITE_RUN:-}" ]]; then
+    if [[ -n "${MOCK_BIN:-}" && -f "${MOCK_BIN}/runuser" ]]; then
+      runuser "$target_user" -c "${env_prefix}${cmd}"
+    else
+      echo "[TEST] Bypassing command execution to protect host: ${env_prefix}${cmd}"
+    fi
     return 0
   elif [[ "$(id -u)" -eq 0 || -n "${MOCK_BIN:-}" ]]; then
     runuser "$target_user" -c "${env_prefix}${cmd}"
@@ -97,7 +102,9 @@ relaunch_steam() {
   source "$state_file"
 
   if [[ "$(uname)" == "Darwin" ]]; then
-    if [[ "$(id -un)" == "$target_user" ]]; then
+    if [[ -n "${TEST_SUITE_RUN:-}" ]]; then
+      echo "[TEST] Bypassing macOS Steam relaunch to protect host"
+    elif [[ "$(id -un)" == "$target_user" ]]; then
       open -a Steam >/dev/null 2>&1 &
     else
       runuser -l "$target_user" -c "open -a Steam >/dev/null 2>&1 &"
@@ -180,9 +187,10 @@ capture_steam_env() {
   chmod 600 "$tmp_file"
   
   if [[ -n "$steam_pid" ]]; then
+    local proc_dir="${MOCK_PROC:-/proc}"
     local steam_env
-    steam_env=$(tr '\0' '\n' < "/proc/${steam_pid}/environ" 2>/dev/null || true)
-    
+    steam_env=$(tr '\0' '\n' < "${proc_dir}/${steam_pid}/environ" 2>/dev/null || true)
+
     local val
     for var in DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS WAYLAND_DISPLAY XDG_RUNTIME_DIR XDG_SESSION_TYPE XDG_CURRENT_DESKTOP; do
       val=$(echo "$steam_env" | grep "^${var}=" | cut -d= -f2- | head -n 1 || true)
@@ -190,7 +198,7 @@ capture_steam_env() {
         echo "export ${var}='${val}'" >> "$tmp_file"
       fi
     done
-    
+
     local steam_args=""
     local first=true
     local arg
@@ -202,8 +210,8 @@ capture_steam_env() {
       local escaped_arg
       escaped_arg=$(printf '%q' "$arg")
       steam_args+="${escaped_arg} "
-    done < "/proc/${steam_pid}/cmdline" 2>/dev/null || true
-    
+    done < "${proc_dir}/${steam_pid}/cmdline" 2>/dev/null || true
+
     echo "export STEAM_ARGS=\"${steam_args}\"" >> "$tmp_file"
     echo "export WAS_FLATPAK='${was_flatpak}'" >> "$tmp_file"
   else
@@ -220,20 +228,25 @@ close_steam_gracefully() {
   local target_user="$1"
   local user_home
   user_home="$(get_user_home "$target_user")"
-  
+
   if [[ "$(uname)" == "Darwin" ]]; then
+    if [[ -n "${TEST_SUITE_RUN:-}" ]]; then
+      echo "[TEST] Bypassing macOS Steam quit to protect host"
+      echo "Steam closed successfully."
+      return 0
+    fi
     if [[ "$(id -un)" == "$target_user" ]]; then
       osascript -e 'quit app "Steam"' || true
     else
       runuser -l "$target_user" -c "osascript -e 'quit app \"Steam\"'" || true
     fi
-    
+
     local timeout=30
     while pgrep -ix Steam >/dev/null && [[ $timeout -gt 0 ]]; do
       sleep 1
       ((timeout--))
     done
-    
+
     if pgrep -ix Steam >/dev/null; then
       echo "Steam did not close gracefully. Force killing..." >&2
       killall -9 Steam 2>/dev/null || true

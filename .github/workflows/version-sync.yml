@@ -1,0 +1,47 @@
+name: "CI: Packaging Version Sync"
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'VERSION'
+      - 'Formula/**'
+      - 'packaging/scoop/**'
+      - 'packaging/winget/**'
+      - 'scripts/ci/check-version-sync.sh'
+      - '.github/workflows/version-sync.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'VERSION'
+      - 'Formula/**'
+      - 'packaging/scoop/**'
+      - 'packaging/winget/**'
+      - 'scripts/ci/check-version-sync.sh'
+      - '.github/workflows/version-sync.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  version-sync:
+    name: VERSION matches packaging manifests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pip install pyyaml
+
+      - name: Check version sync
+        run: bash scripts/ci/check-version-sync.sh

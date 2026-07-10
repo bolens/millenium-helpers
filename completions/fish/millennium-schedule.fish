@@ -1,5 +1,11 @@
+VERSION_PLACEHOLDER
 complete -c millennium-schedule -f -a 'enable' -d 'Enable daily auto-updater'
 complete -c millennium-schedule -f -a 'disable' -d 'Disable daily auto-updater'
 complete -c millennium-schedule -f -a 'status' -d 'Check scheduler status'
+complete -c millennium-schedule -f -a 'setup' -d 'Run the interactive configuration wizard'
+complete -c millennium-schedule -f -a 'config' -d 'Manage Millennium Helper configuration options'
 complete -c millennium-schedule -f -n '__fish_seen_subcommand_from enable' -a 'stable beta' -d 'Select update channel'
+complete -c millennium-schedule -f -n '__fish_seen_subcommand_from config' -a 'get set list' -d 'Config action'
+complete -c millennium-schedule -s d -l dry-run -d 'Simulation mode'
 complete -c millennium-schedule -s h -l help -d 'Show help message'
+complete -c millennium-schedule -s V -l version -d 'Show version information'

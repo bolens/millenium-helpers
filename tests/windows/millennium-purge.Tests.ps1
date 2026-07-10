@@ -10,6 +10,39 @@ Describe "Purge Script" {
         . (Join-Path -Path $winScriptDir -ChildPath "common.ps1")
     }
 
+    Context "Help and Version" {
+        It "Prints usage with -Help" {
+            $purgeScript = Join-Path -Path $winScriptDir -ChildPath "millennium-purge.ps1"
+            $out = (& $purgeScript -Help *>&1) | Out-String
+            $out | Should -BeLike "*Usage:*"
+            $out | Should -BeLike "*-Yes*"
+        }
+
+        It "Prints version with -Version" {
+            $purgeScript = Join-Path -Path $winScriptDir -ChildPath "millennium-purge.ps1"
+            $out = (& $purgeScript -Version *>&1) | Out-String
+            $out | Should -BeLike "*millennium-purge*"
+            $out | Should -Match "\d+\.\d+\.\d+|unknown"
+        }
+    }
+
+    Context "Confirmation" {
+        BeforeAll {
+            Mock Get-ItemProperty { return [pscustomobject]@{ SteamPath = "C:\MockedSteam" } }
+            Mock Test-Path { return $true }
+            Mock Get-Process { return $null }
+            Mock Test-Admin { return $true }
+        }
+
+        It "Accepts -Yes with -DryRun to skip confirmation" {
+            $purgeScript = Join-Path -Path $winScriptDir -ChildPath "millennium-purge.ps1"
+            $out = (& $purgeScript -DryRun -Yes *>&1) | Out-String
+            $out | Should -BeLike "*Initiating Millennium Purge*"
+            $out | Should -BeLike "*completed successfully*"
+            $out | Should -Not -BeLike "*Are you sure*"
+        }
+    }
+
     Context "Purge Execution" {
         BeforeAll {
             Mock Get-ItemProperty { return [pscustomobject]@{ SteamPath = "C:\MockedSteam" } }

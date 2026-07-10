@@ -1,0 +1,52 @@
+.TH MILLENNIUM\-UPGRADE 1 "July 2026" "millennium-helpers" "User Commands"
+.SH NAME
+millennium-upgrade \- install or roll back Millennium Steam client releases
+.SH SYNOPSIS
+.B millennium-upgrade
+[\fIOPTIONS\fR]
+.SH DESCRIPTION
+Downloads, checksum-validates, and installs official Millennium releases
+(stable or beta) over system files. Supports force reinstall and rollback
+from local backups.
+.SH OPTIONS
+.TP
+.BR \-c ", " \-\-channel " " \fICHANNEL\fR
+Update channel: \fBstable\fR or \fBbeta\fR.
+.TP
+.B \-\-stable
+Alias for
+.BR \-\-channel " stable" .
+.TP
+.B \-\-beta
+Alias for
+.BR \-\-channel " beta" .
+.TP
+.BR \-r ", " \-\-rollback " [" \fIID\fR "]"
+Roll back to a previous backup, or pass
+.B list
+to list backups.
+.TP
+.BR \-\-file " " \fIPATH\fR
+Install from a local archive instead of downloading.
+.TP
+.BR \-f ", " \-\-force
+Force reinstall even if already up to date.
+.TP
+.BR \-d ", " \-\-dry\-run
+Simulate operations without modifying files.
+.TP
+.BR \-V ", " \-\-version
+Show version information.
+.TP
+.BR \-h ", " \-\-help
+Show help message.
+.SH NOTES
+On Linux (non-macOS), a real upgrade typically requires root
+.RB ( sudo ).
+Close Steam first; the script will attempt a graceful close if Steam is running
+and no game is active.
+.SH SEE ALSO
+.BR millennium-repair (1),
+.BR millennium-diag (1),
+.BR millennium-schedule (1),
+.BR millennium-purge (1)

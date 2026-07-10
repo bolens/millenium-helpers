@@ -94,11 +94,16 @@ If you installed via the standard installer script:
               /usr/share/fish/vendor_completions.d/millennium-schedule.fish \
               /usr/share/fish/vendor_completions.d/millennium-purge.fish \
               /usr/share/fish/vendor_completions.d/millennium-diag.fish \
-              /usr/share/fish/vendor_completions.d/millennium-theme.fish
+              /usr/share/fish/vendor_completions.d/millennium-theme.fish \
+              /usr/share/fish/vendor_completions.d/millennium-mcp.fish
    
    # Nushell completions
    sudo rm -f /usr/share/nushell/completions/millennium-helpers.nu \
               /usr/local/share/nushell/completions/millennium-helpers.nu
+
+   # Man pages
+   sudo rm -f /usr/local/share/man/man1/millennium-*.1 \
+              /usr/share/man/man1/millennium-*.1
    ```
 
 5. **Remove configuration files**:

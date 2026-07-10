@@ -1,0 +1,29 @@
+.TH MILLENNIUM\-PURGE 1 "July 2026" "millennium-helpers" "User Commands"
+.SH NAME
+millennium-purge \- remove Millennium hooks and client files from Steam
+.SH SYNOPSIS
+.B millennium-purge
+[\fIOPTIONS\fR]
+.SH DESCRIPTION
+De-registers Millennium bootstrap hooks from local Steam installs and removes
+Millennium system files. This is destructive.
+.SH OPTIONS
+.TP
+.BR \-d ", " \-\-dry\-run
+Simulate operations without modifying files.
+.TP
+.BR \-y ", " \-\-yes
+Skip the interactive confirmation prompt (required for non-interactive use).
+.TP
+.BR \-V ", " \-\-version
+Show version information.
+.TP
+.BR \-h ", " \-\-help
+Show help message.
+.SH NOTES
+Requires root on Linux for system-wide removal. Without
+.B \-\-yes ,
+an interactive confirmation is required; non-TTY sessions refuse to proceed.
+.SH SEE ALSO
+.BR millennium-upgrade (1),
+.BR millennium-diag (1)

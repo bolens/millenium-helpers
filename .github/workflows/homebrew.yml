@@ -3,8 +3,23 @@ name: "CI: Homebrew Formula Validation"
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'Formula/**'
+      - 'VERSION'
+      - '.github/workflows/homebrew.yml'
   pull_request:
     branches: [ main ]
+    paths:
+      - 'Formula/**'
+      - 'VERSION'
+      - '.github/workflows/homebrew.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   homebrew:

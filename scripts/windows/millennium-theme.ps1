@@ -4,7 +4,11 @@ param(
     [string]$Theme = $null,
     [switch]$All = $false,
     [switch]$Json = $false,
-    [switch]$DryRun = $false
+    [switch]$DryRun = $false,
+    [Alias("h")]
+    [switch]$Help = $false,
+    [Alias("V")]
+    [switch]$Version = $false
 )
 set-strictmode -version Latest
 
@@ -16,6 +20,33 @@ if (Test-Path -Path $CommonPs1) {
 } else {
     Write-Error "Shared helper library not found at $CommonPs1"
     exit 1
+}
+
+function Show-Help {
+    Write-Output @"
+Usage: millennium-theme COMMAND [ARGUMENTS] [OPTIONS]
+
+Commands:
+  list                  List all installed Millennium themes
+  install [owner/repo]  Install a theme from a GitHub repository
+  update [theme-name]   Update an installed theme to its latest commit
+  remove [theme-name]   Uninstall/remove an installed theme
+
+Options:
+  --json                Output list command results in structured JSON format
+  -d, --dry-run         Perform a dry-run (simulates operations without modifying files)
+  -V, --version         Show version information
+  -h, --help            Show this help message
+"@
+}
+
+if ($Help -or $Command -eq "help" -or $Command -eq "--help" -or $Command -eq "-h") {
+    Show-Help
+    exit 0
+}
+if ($Version -or $Command -eq "version" -or $Command -eq "--version" -or $Command -eq "-V") {
+    Write-HelpersVersion -Name "millennium-theme"
+    exit 0
 }
 
 # Resolve command positional parameters
@@ -386,5 +417,5 @@ if ($Command -eq "update") {
     exit 0
 }
 
-show_help
+Show-Help
 exit 1

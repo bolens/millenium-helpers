@@ -159,6 +159,16 @@ foreach ($script in $scriptsToCopy) {
     Log-Info "Installed: $script"
 }
 
+# Install VERSION file next to scripts for -Version lookups
+$versionSrc = Join-Path -Path $srcDir -ChildPath "..\..\VERSION"
+if (!(Test-Path -Path $versionSrc)) {
+    $versionSrc = Join-Path -Path $srcDir -ChildPath "VERSION"
+}
+if (Test-Path -Path $versionSrc) {
+    Copy-Item -Path $versionSrc -Destination (Join-Path -Path $binDir -ChildPath "VERSION") -Force
+    Log-Info "Installed: VERSION"
+}
+
 # Generate CMD wrappers
 $wrappers = @(
     "millennium-diag",
