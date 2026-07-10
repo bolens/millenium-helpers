@@ -4,6 +4,7 @@ set -uo pipefail
 
 TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${TEST_DIR}/../.." && pwd)"
+EXPECTED_VERSION="$(tr -d '[:space:]' < "${REPO_ROOT}/VERSION")"
 
 # shellcheck source=../lib/assertions.sh
 source "${TEST_DIR}/../lib/assertions.sh"
@@ -49,7 +50,7 @@ assert_contains "$out" "--yes" "millennium-theme --help documents the --yes opti
 out=$(run_theme --version 2>&1)
 rc=$?
 assert_success "$rc" "millennium-theme --version exits 0"
-assert_contains "$out" "2.2.0" "millennium-theme --version prints VERSION file value"
+assert_contains "$out" "$EXPECTED_VERSION" "millennium-theme --version prints VERSION file value"
 
 # --- No command given ---
 

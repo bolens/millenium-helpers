@@ -13,6 +13,7 @@ set -uo pipefail
 
 TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${TEST_DIR}/../.." && pwd)"
+EXPECTED_VERSION="$(tr -d '[:space:]' < "${REPO_ROOT}/VERSION")"
 DIAG_SH="${REPO_ROOT}/scripts/millennium-diag.sh"
 
 run_with_timeout() {
@@ -53,7 +54,7 @@ out=$(bash "$DIAG_SH" --version 2>&1)
 rc=$?
 assert_success "$rc" "millennium-diag.sh --version exits 0"
 assert_contains "$out" "millennium-diag" "millennium-diag.sh --version prints command name"
-assert_contains "$out" "2.2.0" "millennium-diag.sh --version prints VERSION file value"
+assert_contains "$out" "$EXPECTED_VERSION" "millennium-diag.sh --version prints VERSION file value"
 
 # --- Unknown option ---
 out=$(bash "$DIAG_SH" --bogus 2>&1)

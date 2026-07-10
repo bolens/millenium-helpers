@@ -29,13 +29,15 @@ Describe "Common Helpers" {
         }
 
         It "Get-HelpersVersion reads the repo VERSION file" {
+            $expected = (Get-Content -Path (Join-Path $PSScriptRoot "..\..\VERSION") -Raw).Trim()
             $ver = Get-HelpersVersion
-            $ver | Should -Be "2.2.0"
+            $ver | Should -Be $expected
         }
 
         It "Write-HelpersVersion prints command name and version" {
+            $expected = (Get-Content -Path (Join-Path $PSScriptRoot "..\..\VERSION") -Raw).Trim()
             $out = Write-HelpersVersion -Name "millennium-test"
-            $out | Should -Be "millennium-test 2.2.0"
+            $out | Should -Be "millennium-test $expected"
         }
 
         It "Write-DebugMsg stays quiet unless MILLENNIUM_DEBUG is set" {
