@@ -277,7 +277,7 @@ else
 fi
 
 # Re-link bootstrap hooks for all Steam users (same as pacman post_install)
-if [[ "$(uname)" != "Darwin" ]]; then
+if [[ "$(uname)" != "Darwin" ]] && command -v getent &>/dev/null; then
   getent passwd | while IFS=: read -r _ _ uid _ _ home _; do
     [[ "$uid" -ge 1000 ]] || continue
     
