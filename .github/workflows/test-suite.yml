@@ -1,4 +1,4 @@
-name: "CI: Test Suite"
+name: "CI: Cross-Platform Test Suite"
 
 on:
   push:

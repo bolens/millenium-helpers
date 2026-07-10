@@ -1,4 +1,4 @@
-name: "CI: Homebrew Validation"
+name: "CI: Homebrew Formula Validation"
 
 on:
   push:

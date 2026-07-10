@@ -1,4 +1,4 @@
-name: "CD: Release Automation"
+name: "CD: Deployment & Release Automation"
 
 on:
   push:
