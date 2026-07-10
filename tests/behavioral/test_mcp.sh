@@ -92,6 +92,12 @@ resp=$(run_mcp '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"
 assert_contains "$resp" '"isError": true' "millennium_theme rejects an action outside its declared enum"
 assert_contains "$resp" "invalid action" "millennium_theme's rejection message explains the invalid action"
 
+# --- tools/call: millennium_theme with an invalid theme is rejected ---
+
+resp=$(run_mcp '{"jsonrpc":"2.0","id":61,"method":"tools/call","params":{"name":"millennium_theme","arguments":{"action":"install","theme":"../../bad-path"}}}')
+assert_contains "$resp" '"isError": true' "millennium_theme rejects a theme containing path traversal"
+assert_contains "$resp" "invalid characters" "millennium_theme's rejection message explains the theme has invalid characters"
+
 # --- tools/call: millennium_schedule refuses internal-only subcommands ---
 # millennium-schedule.sh accepts internal "pre-update"/"post-update"
 # subcommands (used by the systemd/cron hooks) that close/relaunch Steam

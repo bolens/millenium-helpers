@@ -231,6 +231,13 @@ def handle_tool_call(tool_name, arguments):
         theme = arguments.get("theme")
         all_themes = arguments.get("all", False)
 
+        if theme:
+            if ".." in theme:
+                return {"isError": True, "content": [{"type": "text", "text": "Error: theme name/URL contains invalid characters."}]}
+            import re
+            if not re.match(r"^[a-zA-Z0-9_\-\./:]+$", theme):
+                return {"isError": True, "content": [{"type": "text", "text": "Error: theme name/URL contains invalid characters."}]}
+
         if action not in VALID_THEME_ACTIONS:
             return {"isError": True, "content": [{"type": "text", "text": f"Error: invalid action '{action}'. Must be one of: {', '.join(sorted(VALID_THEME_ACTIONS))}."}]}
 
