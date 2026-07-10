@@ -32,6 +32,9 @@ Install from a local archive instead of downloading.
 .BR \-f ", " \-\-force
 Force reinstall even if already up to date.
 .TP
+.BR \-y ", " \-\-yes
+Skip confirmation when closing Steam.
+.TP
 .BR \-d ", " \-\-dry\-run
 Simulate operations without modifying files.
 .TP
@@ -40,13 +43,30 @@ Show version information.
 .TP
 .BR \-h ", " \-\-help
 Show help message.
+.SH EXAMPLES
+.TP
+Install/update stable:
+.B sudo millennium-upgrade
+.TP
+Force reinstall on beta:
+.B sudo millennium-upgrade \-\-channel beta \-\-force \-\-yes
+.TP
+List backups then roll back:
+.B sudo millennium-upgrade \-\-rollback list
 .SH NOTES
 On Linux (non-macOS), a real upgrade typically requires root
 .RB ( sudo ).
-Close Steam first; the script will attempt a graceful close if Steam is running
-and no game is active.
+Close Steam first; the script prompts before a graceful close if Steam is
+running and no game is active (use
+.B \-\-yes
+to skip).
+If GitHub API calls fail with 401/403, set a PAT via
+.B millennium-schedule setup
+or
+.B millennium-schedule config set github_token .
 .SH SEE ALSO
 .BR millennium-repair (1),
 .BR millennium-diag (1),
 .BR millennium-schedule (1),
-.BR millennium-purge (1)
+.BR millennium-purge (1),
+.BR millennium (1)

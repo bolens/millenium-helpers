@@ -33,6 +33,7 @@ Options:
   --force       Force all doctor repairs even if system is healthy
   --json        Output diagnostics report in structured JSON format
   -l, --follow  Follow (tail -f) real-time log output
+  -y, --yes     Skip confirmation when doctor closes Steam
   -d, --dry-run Perform a dry-run (simulates doctor repairs without modifying anything)
   -s, --share   Upload diagnostic report to a pastebin and return a short link
   -V, --version Show version information
@@ -43,6 +44,7 @@ EOF
 ORIGINAL_ARGS=("$@")
 COMMAND=""
 DRY_RUN=false
+ASSUME_YES=false
 FOLLOW_LOGS=false
 FORCE_REPAIR=false
 OUTPUT_JSON=false
@@ -68,6 +70,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     -l|--follow)
       FOLLOW_LOGS=true
+      shift
+      ;;
+    -y|--yes)
+      ASSUME_YES=true
       shift
       ;;
     -d|--dry-run)
@@ -339,7 +345,6 @@ else
 fi
 
 # --- Execute Diagnostics Report ---
-# --- Execute Diagnostics Report ---
 run_diagnostics
 
 if [[ "$OUTPUT_JSON" == "true" ]]; then
@@ -363,6 +368,11 @@ if [[ "$OUTPUT_JSON" == "true" ]]; then
 }
 EOF
   exit 0
+fi
+
+# Actionable next steps for the default (read-only) report
+if [[ "$COMMAND" != "doctor" ]]; then
+  print_diag_next_steps
 fi
 
 # --- Doctor / Auto-Repair Execution ---
@@ -400,7 +410,7 @@ if [[ "$COMMAND" == "doctor" ]]; then
 
     if [[ "$DRY_RUN" == "false" ]]; then
       capture_steam_env "$RUNNING_USER"
-      close_steam_gracefully "$RUNNING_USER"
+      confirm_close_steam "$RUNNING_USER" "${ASSUME_YES:-false}" || exit 1
     else
       echo -e "${YELLOW}[DRY RUN] Would capture Steam's environment and close it to apply repairs.${NC}"
     fi
@@ -497,16 +507,16 @@ if [[ "$COMMAND" == "doctor" ]]; then
     if [[ "$SYSTEMD_BOOTED" == "true" ]]; then
       echo -e "\n${YELLOW}[DOCTOR] Refreshing daily systemd user timer...${NC}"
       if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" ]]; then
-        execute runuser -l "$RUNNING_USER" -c "${sched_path} enable $UPDATE_CHANNEL"
+        execute runuser -l "$RUNNING_USER" -c "${sched_path} enable $UPDATE_CHANNEL" || true
       else
-        execute "${sched_path}" enable "$UPDATE_CHANNEL"
+        execute "${sched_path}" enable "$UPDATE_CHANNEL" || true
       fi
     else
       echo -e "\n${YELLOW}[DOCTOR] Refreshing daily cron update job...${NC}"
       if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" ]]; then
-        execute runuser -l "$RUNNING_USER" -c "${sched_path} enable $UPDATE_CHANNEL --cron"
+        execute runuser -l "$RUNNING_USER" -c "${sched_path} enable $UPDATE_CHANNEL --cron" || true
       else
-        execute "${sched_path}" enable "$UPDATE_CHANNEL" --cron
+        execute "${sched_path}" enable "$UPDATE_CHANNEL" --cron || true
       fi
     fi
   else
@@ -601,7 +611,8 @@ if [[ "$COMMAND" == "doctor" ]]; then
   if [[ "$DRY_RUN" == "true" ]]; then
     echo -e "\n${GREEN}Doctor dry-run simulation finished successfully!${NC}"
   else
-    echo -e "\n${GREEN}Doctor repairs applied successfully! Re-run diagnostics to verify.${NC}"
+    echo -e "\n${GREEN}Doctor repairs applied successfully.${NC}"
+    echo -e "Channel: ${UPDATE_CHANNEL}. Re-run ${YELLOW}millennium-diag${NC} to verify, or ${YELLOW}millennium-diag doctor${NC} again if issues remain."
   fi
 
   if [[ "$relaunch_steam_after_doctor" == "true" ]]; then
@@ -611,6 +622,7 @@ if [[ "$COMMAND" == "doctor" ]]; then
       execute relaunch_steam "$RUNNING_USER"
     else
       relaunch_steam "$RUNNING_USER"
+      echo -e "${GREEN}Steam relaunched.${NC}"
     fi
   fi
 fi

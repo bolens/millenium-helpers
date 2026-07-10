@@ -55,6 +55,7 @@ SCRIPTS=(
   "scripts/millennium-diag.sh:millennium-diag"
   "scripts/millennium-theme.sh:millennium-theme"
   "scripts/millennium-mcp.py:millennium-mcp"
+  "scripts/millennium.sh:millennium"
 )
 
 show_help() {
@@ -352,6 +353,7 @@ uninstall_man_pages() {
   fi
 
   local pages=(
+    millennium.1
     millennium-upgrade.1
     millennium-repair.1
     millennium-diag.1
@@ -589,11 +591,22 @@ EOF
     echo -e "${GREEN}Dry run completed successfully!${NC}"
   else
     echo -e "${GREEN}Installation completed successfully!${NC}"
-    echo -e "\nYou can now run the scripts directly from your terminal:"
+    echo -e "\n${BLUE}Getting started:${NC}"
+    echo -e "  1. Check health:     ${GREEN}millennium-diag${NC}"
+    echo -e "  2. Install/update:   ${GREEN}millennium-upgrade${NC}   (if Millennium is missing)"
+    echo -e "  3. Review scheduler: ${GREEN}millennium-schedule status${NC}"
+    echo -e "  Tip: manage skins with ${GREEN}millennium-theme list${NC}"
+    if [[ -d "${user_home}/.var/app/com.valvesoftware.Steam" ]] || command -v flatpak &>/dev/null; then
+      if flatpak info com.valvesoftware.Steam &>/dev/null 2>&1 || [[ -d "${user_home}/.var/app/com.valvesoftware.Steam" ]]; then
+        echo -e "  Steam Deck / Flatpak: see docs/steam_deck.md"
+      fi
+    fi
+    echo -e "\nInstalled commands:"
     for item in "${SCRIPTS[@]}"; do
       local dest="${item#*:}"
       echo -e "  - ${dest}"
     done
+    echo -e "  - millennium   (dispatcher: millennium diag|upgrade|...)"
   fi
 }
 

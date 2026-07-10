@@ -41,6 +41,7 @@ assert_success "$rc" "millennium-diag.sh --help exits 0"
 assert_contains "$out" "Usage:" "millennium-diag.sh --help prints usage"
 assert_contains "$out" "doctor" "millennium-diag.sh --help documents the doctor command"
 assert_contains "$out" "--json" "millennium-diag.sh --help documents the --json option"
+assert_contains "$out" "--yes" "millennium-diag.sh --help documents the --yes option"
 
 out=$(bash "$DIAG_SH" -h 2>&1)
 rc=$?
@@ -217,12 +218,14 @@ out=$(DIAG_TEST_OBSOLETE_LIST="${obs_file1},${obs_file2}" DIAG_TEST_BYPASS_CHECK
 assert_contains "$out" "rm -f ${obs_file1}" "millennium-diag.sh doctor --dry-run plans to remove first obsolete file"
 assert_contains "$out" "rm -f ${obs_file2}" "millennium-diag.sh doctor --dry-run plans to remove second obsolete file"
 
-# 3. Cleanup live doctor
-out=$(DIAG_TEST_OBSOLETE_LIST="${obs_file1},${obs_file2}" DIAG_TEST_BYPASS_CHECKS=true DRY_RUN=false bash "$DIAG_SH" doctor 2>&1)
+# 3. Cleanup live doctor (stub schedule so a failed enable cannot abort later repairs)
+mock_cmd "millennium-schedule" "exit 0"
+out=$(DIAG_TEST_OBSOLETE_LIST="${obs_file1},${obs_file2}" DIAG_TEST_BYPASS_CHECKS=true bash "$DIAG_SH" doctor 2>&1)
 assert_contains "$out" "Removing deprecated file: ${obs_file1}" "millennium-diag.sh doctor reports removing first obsolete file"
 assert_contains "$out" "Removing deprecated file: ${obs_file2}" "millennium-diag.sh doctor reports removing second obsolete file"
 assert_file_not_exists "$obs_file1" "First obsolete file was actually deleted"
 assert_file_not_exists "$obs_file2" "Second obsolete file was actually deleted"
+rm -f "${MOCK_BIN}/millennium-schedule"
 
 # Empty obsolete list must not trip bash 3.2 unbound-array under set -u.
 out=$(DIAG_TEST_OBSOLETE_LIST="" DIAG_TEST_BYPASS_CHECKS=true bash "$DIAG_SH" --json 2>&1)
@@ -231,5 +234,26 @@ assert_success "$rc" "millennium-diag.sh --json with empty obsolete list exits 0
 assert_contains "$out" '"clean_of_obsolete": true' "millennium-diag.sh --json with empty obsolete list reports clean"
 
 rm -rf "${TEST_OBS_DIR}"
+
+# --- Default report next-steps footer (not JSON, not doctor) ---
+out=$(DIAG_TEST_BYPASS_CHECKS=true DIAG_TEST_OBSOLETE_LIST="" bash "$DIAG_SH" 2>&1)
+rc=$?
+assert_success "$rc" "millennium-diag.sh default report exits 0 with bypassed checks"
+assert_contains "$out" "No issues detected" "millennium-diag.sh default report prints healthy next-steps footer"
+assert_contains "$out" "millennium-schedule status" "millennium-diag.sh healthy footer mentions schedule status"
+
+# Force an obsolete-file issue so the footer suggests doctor
+TEST_OBS_DIR2=$(mktemp -d)
+obs_only="${TEST_OBS_DIR2}/millennium-upgrade-stable"
+touch "$obs_only"
+out=$(DIAG_TEST_BYPASS_CHECKS=true DIAG_TEST_OBSOLETE_LIST="$obs_only" bash "$DIAG_SH" 2>&1)
+assert_contains "$out" "issue(s) detected" "millennium-diag.sh default report counts issues in next-steps footer"
+assert_contains "$out" "millennium-diag doctor" "millennium-diag.sh next-steps footer suggests doctor"
+rm -rf "${TEST_OBS_DIR2}"
+
+# JSON mode must not print the human next-steps footer
+out=$(DIAG_TEST_BYPASS_CHECKS=true DIAG_TEST_OBSOLETE_LIST="" bash "$DIAG_SH" --json 2>&1)
+assert_not_contains "$out" "issue(s) detected" "millennium-diag.sh --json does not print next-steps footer"
+assert_not_contains "$out" "No issues detected. Your Millennium installation looks healthy" "millennium-diag.sh --json does not print healthy prose footer"
 
 print_summary

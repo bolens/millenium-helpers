@@ -15,7 +15,7 @@ fail() {
 [[ -d scripts ]] || fail "scripts/ directory is missing"
 
 missing=0
-# Bash commands: scripts/millennium-*.sh → man/millennium-*.1
+# Bash commands: scripts/millennium.sh and scripts/millennium-*.sh → matching man/*.1
 while IFS= read -r -d '' script; do
   base="$(basename "$script" .sh)"
   page="man/${base}.1"
@@ -26,7 +26,12 @@ while IFS= read -r -d '' script; do
   else
     echo "OK  $script → $page"
   fi
-done < <(find scripts -maxdepth 1 -type f -name 'millennium-*.sh' -print0 | sort -z)
+done < <(
+  {
+    find scripts -maxdepth 1 -type f -name 'millennium.sh' -print0
+    find scripts -maxdepth 1 -type f -name 'millennium-*.sh' -print0
+  } | sort -z
+)
 
 # MCP is a Python entrypoint with its own man page
 if [[ -f scripts/millennium-mcp.py ]]; then

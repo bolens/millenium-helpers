@@ -65,6 +65,8 @@ assert_valid_json "$resp" "tools/list response is valid JSON"
 for tool in millennium_diag millennium_theme millennium_upgrade millennium_schedule millennium_repair millennium_purge; do
   assert_contains "$resp" "\"${tool}\"" "tools/list includes the ${tool} tool"
 done
+assert_contains "$resp" '"confirm"' "tools/list millennium_purge schema includes confirm"
+assert_contains "$resp" '"dry_run"' "tools/list millennium_purge schema includes dry_run"
 
 # --- unknown method ---
 
@@ -131,11 +133,18 @@ assert_contains "$log" "millennium-upgrade --channel stable --rollback list" "mi
 resp=$(run_mcp '{"jsonrpc":"2.0","id":82,"method":"tools/call","params":{"name":"millennium_upgrade","arguments":{"channel":"stable","rollback":"../invalid"}}}')
 assert_contains "$resp" '"isError": true' "millennium_upgrade with invalid rollback pattern returns error"
 
-# --- tools/call: millennium_purge confirms non-interactively ---
+# --- tools/call: millennium_purge requires confirm ---
 
-log=$(run_mcp_stderr '{"jsonrpc":"2.0","id":83,"method":"tools/call","params":{"name":"millennium_purge","arguments":{}}}')
-assert_contains "$log" "millennium-purge --yes" "millennium_purge invokes millennium-purge --yes"
+resp=$(run_mcp '{"jsonrpc":"2.0","id":83,"method":"tools/call","params":{"name":"millennium_purge","arguments":{}}}')
+assert_contains "$resp" '"isError": true' "millennium_purge without confirm returns error"
+assert_contains "$resp" "confirm=true" "millennium_purge without confirm explains confirm=true is required"
+
+log=$(run_mcp_stderr '{"jsonrpc":"2.0","id":83,"method":"tools/call","params":{"name":"millennium_purge","arguments":{"confirm":true}}}')
+assert_contains "$log" "millennium-purge --yes" "millennium_purge with confirm=true invokes millennium-purge --yes"
 assert_contains "$log" "sudo -n" "millennium_purge escalates via sudo -n"
+
+log=$(run_mcp_stderr '{"jsonrpc":"2.0","id":87,"method":"tools/call","params":{"name":"millennium_purge","arguments":{"confirm":false,"dry_run":true}}}')
+assert_contains "$log" "millennium-purge --dry-run" "millennium_purge with dry_run=true invokes --dry-run"
 
 # --- tools/call under TEST_SUITE_RUN must not exec system helpers ---
 # find_executable prefers /usr/bin; without this guard, sudo -n would run the
@@ -143,7 +152,7 @@ assert_contains "$log" "sudo -n" "millennium_purge escalates via sudo -n"
 for tool_case in \
   'millennium_repair|millennium-repair|{"jsonrpc":"2.0","id":84,"method":"tools/call","params":{"name":"millennium_repair","arguments":{}}}' \
   'millennium_upgrade|millennium-upgrade|{"jsonrpc":"2.0","id":85,"method":"tools/call","params":{"name":"millennium_upgrade","arguments":{"channel":"stable"}}}' \
-  'millennium_purge|millennium-purge|{"jsonrpc":"2.0","id":86,"method":"tools/call","params":{"name":"millennium_purge","arguments":{}}}'; do
+  'millennium_purge|millennium-purge|{"jsonrpc":"2.0","id":86,"method":"tools/call","params":{"name":"millennium_purge","arguments":{"confirm":true}}}'; do
   IFS='|' read -r tool_name bin_name request <<< "$tool_case"
   rm -f "${MOCK_BIN}/${bin_name}"
   log=$(run_mcp_stderr "$request")
@@ -223,6 +232,8 @@ assert_success "$rc" "millennium-mcp --register exits 0 when config directories 
 assert_contains "$out" "Registering" "millennium-mcp --register output contains registration message"
 assert_contains "$out" "Successfully registered in Claude Desktop" "millennium-mcp --register output confirms Claude Desktop registration"
 assert_contains "$out" "Successfully registered in Cursor" "millennium-mcp --register output confirms Cursor registration"
+assert_contains "$out" "Manual config snippet" "millennium-mcp --register prints a manual config snippet"
+assert_contains "$out" '"mcpServers"' "millennium-mcp --register snippet includes mcpServers"
 
 # Verify config contents
 assert_file_exists "${FAKE_HOME_MCP}/.config/Claude/claude_desktop_config.json" "claude_desktop_config.json exists"

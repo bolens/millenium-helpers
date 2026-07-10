@@ -30,6 +30,7 @@ done
 CHANNEL="${CONFIG_UPDATE_CHANNEL:-stable}"
 FORCE=false
 DRY_RUN=false
+ASSUME_YES=false
 ROLLBACK=false
 ROLLBACK_TARGET=""
 LOCAL_FILE=""
@@ -47,6 +48,7 @@ Options:
   -r, --rollback [ID]    Roll back to a previous backup (or pass "list" to list backups)
   --file PATH            Install from a local archive instead of downloading
   -f, --force            Force reinstall even if already up to date
+  -y, --yes              Skip confirmation when closing Steam
   -d, --dry-run          Simulate operations without modifying files
   -V, --version          Show version information
   -h, --help             Show this help message
@@ -57,6 +59,10 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     -f|--force)
       FORCE=true
+      shift
+      ;;
+    -y|--yes)
+      ASSUME_YES=true
       shift
       ;;
     -d|--dry-run)
@@ -149,12 +155,11 @@ if pgrep -x steam >/dev/null 2>&1; then
     exit 1
   fi
 
-  echo "Steam is currently running. Closing Steam gracefully to apply update..."
+  echo "Steam is currently running and must be closed to apply the update."
 
   if [[ "$DRY_RUN" == "false" ]]; then
-    # Capture env and command line arguments
     capture_steam_env "$RUNNING_USER"
-    close_steam_gracefully "$RUNNING_USER"
+    confirm_close_steam "$RUNNING_USER" "${ASSUME_YES:-false}" || exit 1
   else
     echo -e "${YELLOW}[DRY RUN] Would capture Steam's environment and close it to apply the update.${NC}"
   fi
@@ -201,6 +206,8 @@ else
 
   if [[ -z "$TAG" || "$TAG" == "null" ]]; then
     echo "Error: Could not retrieve the latest ${CHANNEL} version tag from GitHub." >&2
+    echo "If you are rate-limited, set a PAT: millennium-schedule setup" >&2
+    echo "  or: millennium-schedule config set github_token <token>" >&2
     exit 1
   fi
 
@@ -338,17 +345,19 @@ fi
 if [[ "$DRY_RUN" == "true" ]]; then
   echo -e "${GREEN}Dry run completed successfully!${NC}"
 else
+  echo -e "${GREEN}Done.${NC} Installed Millennium v${VER} (${CHANNEL} channel)."
+  if [[ "$RELAUNCH_STEAM" == "true" ]]; then
+    echo "Steam will be relaunched."
+  fi
+  send_notification "Millennium Updated" "Successfully updated to Millennium v${VER} (${CHANNEL})."
   if [[ "$CHANNEL" == "stable" ]]; then
-    echo "Installed Millennium v${VER} stable."
-    send_notification "Millennium Updated" "Successfully updated to Millennium v${VER} (stable)."
     echo "Note: Settings may still fail on Steam public beta until Millennium issue #790 is fixed."
   else
-    echo "Installed Millennium v${VER}."
-    send_notification "Millennium Updated" "Successfully updated to Millennium v${VER} (beta)."
     echo "Start Steam with: ~/.local/bin/steam"
   fi
 fi
 
 if [[ "$RELAUNCH_STEAM" == "true" && "$DRY_RUN" == "false" ]]; then
   relaunch_steam "$RUNNING_USER"
+  echo -e "${GREEN}Steam relaunched.${NC}"
 fi

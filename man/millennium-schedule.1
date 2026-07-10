@@ -16,10 +16,10 @@ Enable the daily updater (defaults to stable, or config channel).
 Disable the scheduled updater.
 .TP
 .B status
-Show scheduler status.
+Show scheduler status. When disabled, prints the enable command.
 .TP
 .B setup
-Run the interactive configuration wizard.
+Run the interactive configuration wizard (channel, scheduler, GitHub PAT).
 .TP
 .BR config " " \fIget\fR|\fIset\fR|\fIlist\fR " ..."
 Manage helper configuration keys
@@ -37,6 +37,16 @@ Show version information.
 .TP
 .BR \-h ", " \-\-help
 Show help message.
+.SH EXAMPLES
+.TP
+Enable daily stable updates:
+.B millennium-schedule enable stable
+.TP
+Check whether the timer is active:
+.B millennium-schedule status
+.TP
+Tune backup retention:
+.B millennium-schedule config set backup_limit 5
 .SH FILES
 .TP
 .I ~/.config/millennium-helpers/config.json
@@ -46,4 +56,5 @@ Linux/macOS user configuration.
 Windows user configuration.
 .SH SEE ALSO
 .BR millennium-upgrade (1),
-.BR millennium-diag (1)
+.BR millennium-diag (1),
+.BR millennium (1)

@@ -30,6 +30,7 @@ rc=$?
 assert_success "$rc" "millennium-upgrade.sh --help exits 0"
 assert_contains "$out" "Usage:" "millennium-upgrade.sh --help prints usage"
 assert_contains "$out" "--channel" "millennium-upgrade.sh --help documents --channel"
+assert_contains "$out" "--yes" "millennium-upgrade.sh --help documents --yes"
 
 # --- Version ---
 out=$(bash "${REPO_ROOT}/scripts/millennium-upgrade.sh" --version 2>&1)

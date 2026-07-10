@@ -30,12 +30,13 @@ A cross-platform set of utility scripts for managing, repairing, upgrading, roll
 ## Features
 
 - **Cross-Platform Support**: Feature-parity between Linux/Unix (Bash shell scripts) and Windows (PowerShell scripts).
-- **Automated Installation & Setup**: Installs the helper tools system-wide and configures autocompletions.
+- **Unified Dispatcher**: Optional `millennium <command>` entrypoint (e.g. `millennium diag`) alongside the individual binaries.
+- **Automated Installation & Setup**: Installs the helper tools system-wide and configures autocompletions, with a short getting-started guide after install.
 - **Daily Automated Update Scheduler**: Configures a user-level `systemd` timer (Linux) or **Windows Task Scheduler** task (Windows) to run updates daily in the background.
-- **Secure by Design**: Utilizes `/etc/sudoers.d/` drop-in configuration (Linux) or Windows UAC elevation safeguards (`sudo` / `Start-Process RunAs`) to execute updates securely.
+- **Secure by Design**: Utilizes `/etc/sudoers.d/` drop-in configuration (Linux) or Windows UAC elevation safeguards (`sudo` / `Start-Process RunAs`) to execute updates securely. GitHub PATs are entered hidden; Steam close and theme remove confirm interactively.
 - **Support for Multiple Release Channels**: Easily switch between `stable` and `beta` updates.
 - **Repair Utility**: Ownership correction, cache purging, and theme refreshing from repository metadata.
-- **Diagnostic Tool**: Thorough health checks, version verification, self-repair mechanisms, and update status analysis.
+- **Diagnostic Tool**: Thorough health checks, actionable next-step suggestions, self-repair (`doctor`), and update status analysis.
 
 ---
 

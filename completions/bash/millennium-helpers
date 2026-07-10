@@ -1,9 +1,46 @@
 # Bash completions for Millennium helper scripts
 
+_millennium_skins_dir() {
+  local home="${HOME:-}"
+  for d in \
+    "${home}/.local/share/Steam/steamui/skins" \
+    "${home}/.steam/steam/steamui/skins" \
+    "${home}/.steam/root/steamui/skins" \
+    "${home}/.var/app/com.valvesoftware.Steam/.local/share/Steam/steamui/skins" \
+    "${home}/Library/Application Support/Steam/steamui/skins"; do
+    if [[ -d "$d" ]]; then
+      echo "$d"
+      return 0
+    fi
+  done
+  return 1
+}
+
+_millennium_theme_names() {
+  local skins
+  skins="$(_millennium_skins_dir)" || return 0
+  local d
+  for d in "$skins"/*; do
+    [[ -d "$d" ]] || continue
+    basename "$d"
+  done
+}
+
+_millennium_backup_ids() {
+  local lib_dir="/usr/lib"
+  local d
+  for d in "${lib_dir}"/millennium.bak_*; do
+    [[ -d "$d" ]] || continue
+    basename "$d"
+  done
+  [[ -d "${lib_dir}/millennium.bak" ]] && echo "millennium.bak"
+  echo "list"
+}
+
 _millennium_repair_comp() {
   COMPREPLY=()
   local cur="${COMP_WORDS[COMP_CWORD]}"
-  local opts="-s --skip-theme -d --dry-run -V --version -h --help"
+  local opts="-s --skip-theme -y --yes -d --dry-run -V --version -h --help"
   COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
   return 0
 }
@@ -12,7 +49,24 @@ complete -F _millennium_repair_comp millennium-repair
 _millennium_upgrade_comp() {
   COMPREPLY=()
   local cur="${COMP_WORDS[COMP_CWORD]}"
-  local opts="-c --channel --stable --beta -r --rollback --file -f --force -d --dry-run -V --version -h --help"
+  local prev="${COMP_WORDS[COMP_CWORD-1]}"
+  local opts="-c --channel --stable --beta -r --rollback --file -f --force -y --yes -d --dry-run -V --version -h --help"
+
+  case "${prev}" in
+    -c|--channel)
+      COMPREPLY=( $(compgen -W "stable beta" -- "${cur}") )
+      return 0
+      ;;
+    -r|--rollback)
+      COMPREPLY=( $(compgen -W "$(_millennium_backup_ids)" -- "${cur}") )
+      return 0
+      ;;
+    --file)
+      COMPREPLY=( $(compgen -f -- "${cur}") )
+      return 0
+      ;;
+  esac
+
   COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
   return 0
 }
@@ -56,7 +110,7 @@ complete -F _millennium_purge_comp millennium-purge
 _millennium_diag_comp() {
   COMPREPLY=()
   local cur="${COMP_WORDS[COMP_CWORD]}"
-  local opts="doctor logs --fix --force --json -l --follow -s --share -d --dry-run -V --version -h --help"
+  local opts="doctor logs --fix --force --json -l --follow -y --yes -s --share -d --dry-run -V --version -h --help"
   COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
   return 0
 }
@@ -70,20 +124,24 @@ _millennium_theme_comp() {
   
   case "${prev}" in
     update)
-      COMPREPLY=( $(compgen -W "--all -a" -- "${cur}") )
+      COMPREPLY=( $(compgen -W "--all -a $(_millennium_theme_names)" -- "${cur}") )
       return 0
       ;;
     list)
       COMPREPLY=( $(compgen -W "--json -d --dry-run -h --help" -- "${cur}") )
       return 0
       ;;
-    install|remove)
+    remove)
+      COMPREPLY=( $(compgen -W "$(_millennium_theme_names)" -- "${cur}") )
+      return 0
+      ;;
+    install)
       COMPREPLY=()
       return 0
       ;;
   esac
   
-  COMPREPLY=( $(compgen -W "${subcmds} --json -d --dry-run -V --version -h --help" -- "${cur}") )
+  COMPREPLY=( $(compgen -W "${subcmds} --json -y --yes -d --dry-run -V --version -h --help" -- "${cur}") )
   return 0
 }
 complete -F _millennium_theme_comp millennium-theme
@@ -96,3 +154,23 @@ _millennium_mcp_comp() {
   return 0
 }
 complete -F _millennium_mcp_comp millennium-mcp
+
+_millennium_dispatcher_comp() {
+  COMPREPLY=()
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+  if [[ ${COMP_CWORD} -eq 1 ]]; then
+    COMPREPLY=( $(compgen -W "diag upgrade schedule theme repair purge mcp help" -- "${cur}") )
+    return 0
+  fi
+  local sub="${COMP_WORDS[1]}"
+  case "$sub" in
+    diag) _millennium_diag_comp ;;
+    upgrade) _millennium_upgrade_comp ;;
+    schedule) _millennium_schedule_comp ;;
+    theme) _millennium_theme_comp ;;
+    repair) _millennium_repair_comp ;;
+    purge) _millennium_purge_comp ;;
+    mcp) _millennium_mcp_comp ;;
+  esac
+}
+complete -F _millennium_dispatcher_comp millennium

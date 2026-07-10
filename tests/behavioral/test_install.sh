@@ -42,7 +42,7 @@ assert_contains "$out" "2.2.0" "install.sh --version prints VERSION file value"
 
 # --- Man pages ship with the repo ---
 
-for page in millennium-upgrade millennium-repair millennium-diag millennium-schedule \
+for page in millennium millennium-upgrade millennium-repair millennium-diag millennium-schedule \
             millennium-purge millennium-theme millennium-mcp; do
   assert_file_exists "${REPO_ROOT}/man/${page}.1" "man page exists for ${page}"
   man_body=$(cat "${REPO_ROOT}/man/${page}.1")
@@ -50,6 +50,8 @@ for page in millennium-upgrade millennium-repair millennium-diag millennium-sche
   assert_contains "$man_body" ".SH NAME" "man/${page}.1 has a NAME section"
   assert_contains "$man_body" ".SH SYNOPSIS" "man/${page}.1 has a SYNOPSIS section"
 done
+assert_contains "$(cat "${REPO_ROOT}/man/millennium-diag.1")" ".SH EXAMPLES" "man/millennium-diag.1 has an EXAMPLES section"
+assert_contains "$(cat "${REPO_ROOT}/man/millennium-theme.1")" "SteamClientHomebrew" "man/millennium-theme.1 example mentions a real theme repo"
 
 # --- Unknown option handling ---
 
@@ -66,8 +68,9 @@ assert_success "$rc" "install.sh install --dry-run exits 0 without root"
 assert_contains "$out" "DRY RUN MODE" "install.sh install --dry-run announces dry-run mode"
 assert_contains "$out" "millennium-repair" "install.sh install --dry-run lists millennium-repair as a managed script"
 assert_contains "$out" "millennium-mcp" "install.sh install --dry-run lists millennium-mcp as a managed script"
+assert_contains "$out" "millennium" "install.sh install --dry-run lists the millennium dispatcher"
 assert_contains "$out" "Installing man pages" "install.sh install --dry-run installs man pages"
-assert_contains "$out" "millennium-diag.1" "install.sh install --dry-run copies a man page file"
+assert_contains "$out" "millennium.1" "install.sh install --dry-run copies the dispatcher man page"
 assert_not_contains "$out" "Traceback" "install.sh install --dry-run has no Python trailing tracebacks"
 
 if [[ -f /usr/local/bin/millennium-repair ]]; then
@@ -128,8 +131,9 @@ assert_contains "$out" "Automated timer:" "install.sh wizard shows automated tim
 assert_contains "$out" "true" "install.sh wizard captures true scheduler choice"
 assert_contains "$out" "Would write config" "install.sh wizard announces it would write config"
 assert_contains "$out" "update_channel: beta" "install.sh wizard output contains correct channel"
-assert_contains "$out" "github_token: test_pat_token" "install.sh wizard output contains correct token"
+assert_contains "$out" "github_token: [set]" "install.sh wizard dry-run redacts the GitHub token"
 assert_contains "$out" "Configuring background update scheduler" "install.sh wizard triggers schedule enablement"
+assert_contains "$out" "backup_limit" "install.sh wizard tip mentions backup_limit"
 
 # --- Interactive Sudoers Validation Recovery ---
 

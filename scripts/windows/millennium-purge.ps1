@@ -40,6 +40,10 @@ if ($Version) {
     exit 0
 }
 
+if ($Yes) {
+    $global:AssumeYes = $true
+}
+
 if ($DryRun) {
     $global:DryRun = $true
 }
@@ -86,7 +90,9 @@ if ((Test-Path -Path $scheduleScript) -and (Test-Admin)) {
 $steamRunning = $null -ne (Get-Process -Name "steam" -ErrorAction SilentlyContinue)
 if ($steamRunning) {
     Capture-SteamEnv
-    Close-SteamGracefully
+    if (-not (Confirm-CloseSteam)) {
+        exit 1
+    }
 }
 
 # 3. Remove Millennium binaries and hook DLLs

@@ -24,6 +24,7 @@ rc=$?
 assert_success "$rc" "millennium-repair --help exits 0"
 assert_contains "$out" "Usage:" "millennium-repair --help prints usage"
 assert_contains "$out" "--skip-theme" "millennium-repair --help documents --skip-theme"
+assert_contains "$out" "--yes" "millennium-repair --help documents --yes"
 
 # --- Version ---
 

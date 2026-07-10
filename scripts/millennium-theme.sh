@@ -32,14 +32,21 @@ Commands:
 Options:
   --json                Output list command results in structured JSON format
   -d, --dry-run         Perform a dry-run (simulates operations without modifying files)
+  -y, --yes             Skip confirmation when removing a theme
   -V, --version         Show version information
   -h, --help            Show this help message
+
+Examples:
+  millennium-theme install SteamClientHomebrew/millennium-steam-skin
+  millennium-theme update --all
+  millennium-theme remove millennium-steam-skin
 EOF
 }
 
 COMMAND=""
 ARG=""
 DRY_RUN=false
+ASSUME_YES=false
 OUTPUT_JSON=false
 
 while [[ $# -gt 0 ]]; do
@@ -58,6 +65,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --json)
       OUTPUT_JSON=true
+      shift
+      ;;
+    -y|--yes)
+      ASSUME_YES=true
       shift
       ;;
     -d|--dry-run)
@@ -303,6 +314,7 @@ except Exception:
       echo "[]"
     else
       echo "No themes skins directory found at ${SKINS_DIR}."
+      echo "Install one with: millennium-theme install SteamClientHomebrew/millennium-steam-skin"
     fi
     exit 0
   fi
@@ -379,6 +391,7 @@ except Exception:
     echo "]"
   elif [[ "$found" == "false" ]]; then
     echo "No themes installed."
+    echo "Install one with: millennium-theme install SteamClientHomebrew/millennium-steam-skin"
   fi
   exit 0
 fi
@@ -400,7 +413,8 @@ if [[ "$COMMAND" == "install" ]]; then
   COMMIT=$(fetch_github_commit "$owner" "$repo")
 
   if [[ -z "$COMMIT" ]]; then
-    echo -e "${RED}Error: Could not retrieve latest commit info for ${owner}/${repo}. Check repository name or internet connection.${NC}" >&2
+    echo -e "${RED}Error: Could not retrieve latest commit info for ${owner}/${repo}. Check repository name, network, or GitHub rate limits.${NC}" >&2
+    echo -e "Tip: set a PAT via ${YELLOW}millennium-schedule setup${NC} or ${YELLOW}millennium-schedule config set github_token <token>${NC}." >&2
     exit 1
   fi
 
@@ -459,6 +473,55 @@ if [[ "$COMMAND" == "remove" ]]; then
     echo -e "${RED}Error: Theme '${ARG}' is not installed.${NC}" >&2
     exit 1
   fi
+
+  # Warn if removing the active theme
+  active_theme="Steam"
+  steam_path=""
+  for cand in \
+    "${USER_HOME}/.local/share/Steam" \
+    "${USER_HOME}/.steam/steam" \
+    "${USER_HOME}/.steam/root" \
+    "${USER_HOME}/.var/app/com.valvesoftware.Steam/.local/share/Steam"; do
+    if [[ -d "$cand" ]]; then
+      steam_path="$cand"
+      break
+    fi
+  done
+  if [[ -n "$steam_path" ]]; then
+    for cand in \
+      "${USER_HOME}/.config/millennium/config.json" \
+      "${steam_path}/millennium/config.json" \
+      "${steam_path}/ext/config.json"; do
+      if [[ -f "$cand" ]]; then
+        active_theme=$(python3 -c "
+import json
+try:
+    with open('$cand') as f:
+        data = json.load(f)
+        print(data.get('themes', {}).get('activeTheme', 'Steam'))
+except Exception:
+    print('Steam')
+" 2>/dev/null || echo "Steam")
+        break
+      fi
+    done
+  fi
+
+  if [[ "$ARG" == "$active_theme" ]]; then
+    echo -e "${YELLOW}Warning: '${ARG}' is currently the active Millennium theme.${NC}"
+  fi
+
+  if [[ "$ASSUME_YES" != "true" && -t 0 && -z "${TEST_SUITE_RUN:-}" ]]; then
+    printf "Remove theme '%s'? [y/N]: " "$ARG" >&2
+    read -r reply || true
+    case "$reply" in
+      [Yy]|[Yy][Ee][Ss]) ;;
+      *)
+        echo "Aborted."
+        exit 0
+        ;;
+    esac
+  fi
   
   echo "Removing theme '${ARG}'..."
   execute rm -rf "$target_dir"
@@ -486,6 +549,7 @@ if [[ "$COMMAND" == "update" ]]; then
     
     if [[ "$found_any" == "false" ]]; then
       echo "No themes installed."
+      echo "Install one with: millennium-theme install SteamClientHomebrew/millennium-steam-skin"
     fi
   else
     update_single_theme "$ARG"

@@ -5,6 +5,8 @@ param(
     [switch]$All = $false,
     [switch]$Json = $false,
     [switch]$DryRun = $false,
+    [Alias("y")]
+    [switch]$Yes = $false,
     [Alias("h")]
     [switch]$Help = $false,
     [Alias("V")]
@@ -35,8 +37,12 @@ Commands:
 Options:
   --json                Output list command results in structured JSON format
   -d, --dry-run         Perform a dry-run (simulates operations without modifying files)
+  -y, --yes             Skip confirmation when removing a theme
   -V, --version         Show version information
   -h, --help            Show this help message
+
+Examples:
+  millennium-theme install SteamClientHomebrew/millennium-steam-skin
 "@
 }
 
@@ -47,6 +53,10 @@ if ($Help -or $Command -eq "help" -or $Command -eq "--help" -or $Command -eq "-h
 if ($Version -or $Command -eq "version" -or $Command -eq "--version" -or $Command -eq "-V") {
     Write-HelpersVersion -Name "millennium-theme"
     exit 0
+}
+
+if ($Yes) {
+    $global:AssumeYes = $true
 }
 
 # Resolve command positional parameters
@@ -115,6 +125,25 @@ function Get-ThemeMetadata {
     return $null
 }
 
+function Get-ActiveThemeName {
+    $candidates = @(
+        (Join-Path -Path $env:APPDATA -ChildPath "millennium\config.json"),
+        (Join-Path -Path $env:LOCALAPPDATA -ChildPath "millennium\config.json"),
+        (Join-Path -Path $SteamPath -ChildPath "millennium\config.json"),
+        (Join-Path -Path $SteamPath -ChildPath "ext\config.json")
+    )
+    foreach ($cand in $candidates) {
+        if (!(Test-Path -Path $cand -PathType Leaf)) { continue }
+        try {
+            $data = Get-Content -Path $cand -Raw | ConvertFrom-Json
+            if ($data -and $data.themes -and $data.themes.activeTheme) {
+                return [string]$data.themes.activeTheme
+            }
+        } catch {}
+    }
+    return "Steam"
+}
+
 # --- Command Handler ---
 
 if ($Command -eq "list") {
@@ -123,6 +152,7 @@ if ($Command -eq "list") {
             Write-Output "[]"
         } else {
             Log-Info "No themes directory found. Install a theme first."
+            Write-Host "Install one with: millennium-theme install SteamClientHomebrew/millennium-steam-skin"
         }
         exit 0
     }
@@ -152,14 +182,24 @@ if ($Command -eq "list") {
     }
 
     if ($Json) {
-        $list | ConvertTo-Json
+        if ($list.Count -eq 0) {
+            Write-Output "[]"
+        } else {
+            $list | ConvertTo-Json
+        }
     } else {
         Write-Host "=== Installed Millennium Themes ==="
-        foreach ($item in $list) {
-            if ($item.type -eq "github") {
-                Write-Host "  - $($item.name) [GitHub: $($item.owner)/$($item.repo) @ $($item.commit.Substring(0,7))]"
-            } else {
-                Write-Host "  - $($item.name) [Local Theme (untracked)]"
+        if ($list.Count -eq 0) {
+            Write-Host "  (none)"
+            Write-Host "Install one with: millennium-theme install SteamClientHomebrew/millennium-steam-skin"
+        } else {
+            foreach ($item in $list) {
+                if ($item.type -eq "github") {
+                    $short = if ($item.commit -and $item.commit.Length -ge 7) { $item.commit.Substring(0,7) } else { $item.commit }
+                    Write-Host "  - $($item.name) [GitHub: $($item.owner)/$($item.repo) @ $short]"
+                } else {
+                    Write-Host "  - $($item.name) [Local Theme (untracked)]"
+                }
             }
         }
     }
@@ -291,6 +331,27 @@ if ($Command -eq "remove") {
         exit 1
     }
 
+    $activeTheme = Get-ActiveThemeName
+    if ($Theme -eq $activeTheme) {
+        Log-Warn "Warning: '$Theme' is currently the active Millennium theme."
+    }
+
+    $assumeYes = $Yes -or $global:AssumeYes -or $env:TEST_SUITE_RUN -or $env:PSTESTS
+    $interactive = $false
+    try {
+        $interactive = [Environment]::UserInteractive -and -not [Console]::IsInputRedirected
+    } catch {
+        $interactive = $false
+    }
+
+    if (-not $assumeYes -and $interactive) {
+        $reply = Read-Host "Remove theme '$Theme'? [y/N]"
+        if ($reply -notmatch '^[Yy]([Ee][Ss])?$') {
+            Log-Info "Aborted."
+            exit 0
+        }
+    }
+
     Log-Info "Removing theme '$Theme'..."
     Execute-Cmd -ScriptBlock {
         Remove-Item -Path $targetDir -Recurse -Force
@@ -319,6 +380,7 @@ if ($Command -eq "update") {
 
     if ($themesToUpdate.Count -eq 0) {
         Log-Info "No installed themes detected for update."
+        Write-Host "Install one with: millennium-theme install SteamClientHomebrew/millennium-steam-skin"
         exit 0
     }
 

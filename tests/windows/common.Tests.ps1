@@ -196,4 +196,57 @@ Describe "Common Helpers" {
             $script:startedGracefulArgs | Should -Be "-shutdown"
         }
     }
+
+    Context "Confirm-CloseSteam" {
+        BeforeAll {
+            $script:closeCalled = $false
+            Mock Get-ItemProperty { return [pscustomobject]@{ SteamPath = "C:\MockedSteam" } }
+            Mock Test-Path { return $true }
+            . (Join-Path -Path $winScriptDir -ChildPath "common.ps1")
+            Mock Close-SteamGracefully { $script:closeCalled = $true }
+        }
+
+        It "Returns true immediately when Steam is not running" {
+            Mock Get-Process { return $null }
+            $script:closeCalled = $false
+            $result = Confirm-CloseSteam
+            $result | Should -Be $true
+            $script:closeCalled | Should -Be $false
+        }
+
+        It "Auto-confirms and closes when -Yes is passed" {
+            Mock Get-Process {
+                if ($Name -eq "steam") {
+                    return [pscustomobject]@{ Id = 1234; Name = "steam" }
+                }
+                return $null
+            }
+            $script:closeCalled = $false
+            $prev = $env:PSTESTS
+            Remove-Item Env:PSTESTS -ErrorAction SilentlyContinue
+            $global:AssumeYes = $false
+            try {
+                $result = Confirm-CloseSteam -Yes
+                $result | Should -Be $true
+                $script:closeCalled | Should -Be $true
+            } finally {
+                if ($null -ne $prev) { $env:PSTESTS = $prev }
+            }
+        }
+
+        It "Auto-confirms under PSTESTS without prompting" {
+            Mock Get-Process {
+                if ($Name -eq "steam") {
+                    return [pscustomobject]@{ Id = 1234; Name = "steam" }
+                }
+                return $null
+            }
+            $script:closeCalled = $false
+            $env:PSTESTS = "true"
+            $global:AssumeYes = $false
+            $result = Confirm-CloseSteam
+            $result | Should -Be $true
+            $script:closeCalled | Should -Be $true
+        }
+    }
 }

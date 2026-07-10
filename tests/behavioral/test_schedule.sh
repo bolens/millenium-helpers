@@ -106,6 +106,7 @@ out=$(run_schedule status 2>&1)
 rc=$?
 assert_success "$rc" "millennium-schedule status exits 0 when nothing is configured"
 assert_contains "$out" "not installed/configured" "millennium-schedule status reports the timer as unconfigured"
+assert_contains "$out" "millennium-schedule enable" "millennium-schedule status when disabled prints the enable command"
 
 # --- pre-update: Steam not running ---
 
@@ -221,6 +222,9 @@ out=$(echo -e "\n\n\n" | FORCE_WIZARD=true bash "$SCHEDULE_SH" setup --dry-run 2
 assert_contains "$out" "default: 2 (Beta)" "setup wizard default channel is Beta when beta is configured"
 assert_contains "$out" "background update timer? [y/N]" "setup wizard default scheduler is n (y/N) when config exists but not enabled"
 assert_contains "$out" "Enter GitHub PAT (leave empty to keep existing token)" "setup wizard prompts to keep existing token"
+assert_contains "$out" "github_token: [set]" "setup wizard dry-run redacts an existing GitHub token"
+assert_contains "$out" "backup_limit" "setup wizard tip mentions backup_limit"
+assert_contains "$out" "backup_max_age_days" "setup wizard tip mentions backup_max_age_days"
 
 # Run setup wizard in live mode to write config using defaults
 echo -e "\n\n\n" | FORCE_WIZARD=true bash "$SCHEDULE_SH" setup >/dev/null 2>&1

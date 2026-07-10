@@ -26,12 +26,30 @@ Describe "Theme CLI Manager" {
             $out | Should -BeLike "*Usage:*"
             $out | Should -BeLike "*list*"
             $out | Should -BeLike "*install*"
+            $out | Should -BeLike "*SteamClientHomebrew/millennium-steam-skin*"
+            $out | Should -BeLike "*-Yes*"
         }
 
         It "Prints version with -Version" {
             $themeScript = Join-Path -Path $winScriptDir -ChildPath "millennium-theme.ps1"
             $out = (& $themeScript -Version *>&1) | Out-String
             $out | Should -BeLike "*millennium-theme*"
+        }
+    }
+
+    Context "Empty list UX" {
+        BeforeAll {
+            Mock Get-ItemProperty { return [pscustomobject]@{ SteamPath = "C:\MockedSteam" } }
+            Mock Test-Path {
+                if ($Path -like "*skins*") { return $false }
+                return $true
+            }
+        }
+
+        It "Suggests an install example when no themes directory exists" {
+            $themeScript = Join-Path -Path $winScriptDir -ChildPath "millennium-theme.ps1"
+            $out = (& $themeScript list *>&1) | Out-String
+            $out | Should -BeLike "*millennium-theme install*"
         }
     }
 

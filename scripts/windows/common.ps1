@@ -21,6 +21,7 @@ if ($env:NO_COLOR) {
 }
 
 $global:DryRun = $false
+$global:AssumeYes = $false
 
 function Write-DebugMsg {
     param([string]$Msg)
@@ -281,6 +282,44 @@ function Relaunch-Steam {
     }
 }
 
+# Confirm before closing Steam when stdin is interactive.
+# Non-interactive sessions, -Yes / $global:AssumeYes, scheduled jobs, and test suite skip the prompt.
+# Returns $true on success, $false if the user declines.
+function Confirm-CloseSteam {
+    param(
+        [switch]$Yes
+    )
+
+    $steamProc = Get-Process -Name "steam" -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($null -eq $steamProc) {
+        return $true
+    }
+
+    $assumeYes = $false
+    if ($Yes) { $assumeYes = $true }
+    if ($global:AssumeYes) { $assumeYes = $true }
+    if ($env:TEST_SUITE_RUN -or $env:PSTESTS) { $assumeYes = $true }
+
+    $interactive = $false
+    try {
+        $interactive = [Environment]::UserInteractive -and -not [Console]::IsInputRedirected
+    } catch {
+        $interactive = $false
+    }
+
+    if (-not $assumeYes -and $interactive) {
+        Write-Host "${YELLOW}Steam is running and must be closed to continue.${NC}"
+        $reply = Read-Host "Close Steam now? [y/N]"
+        if ($reply -notmatch '^[Yy]([Ee][Ss])?$') {
+            Log-Error "Aborted: Steam must be closed to continue. Re-run with -Yes to skip this prompt."
+            return $false
+        }
+    }
+
+    Close-SteamGracefully
+    return $true
+}
+
 function Close-SteamGracefully {
     $steamProc = Get-Process -Name "steam" -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($null -eq $steamProc) {
@@ -326,7 +365,7 @@ function Download-File {
     Write-Host -NoNewline "$Msg... "
 
     $headers = @{}
-    if ($GithubToken -and ($Url -like "*github.com*")) {
+    if ($GithubToken -and ($Url -like "*github.com*" -or $Url -like "*githubusercontent.com*")) {
         $headers["Authorization"] = "token $GithubToken"
     }
 
@@ -337,16 +376,20 @@ function Download-File {
             New-Item -ItemType Directory -Force -Path $parent | Out-Null
         }
 
-        # Run web request
+        Write-Progress -Activity $Msg -Status "Downloading..." -PercentComplete 0
+
         if ($headers.Count -gt 0) {
             Invoke-WebRequest -Uri $Url -OutFile $Dest -Headers $headers -UseBasicParsing -ErrorAction Stop
         } else {
             Invoke-WebRequest -Uri $Url -OutFile $Dest -UseBasicParsing -ErrorAction Stop
         }
-        
+
+        Write-Progress -Activity $Msg -Status "Complete" -PercentComplete 100
+        Write-Progress -Activity $Msg -Completed
         Write-Host -ForegroundColor Green "OK"
         return $true
     } catch {
+        Write-Progress -Activity $Msg -Completed -ErrorAction SilentlyContinue
         Write-Host -ForegroundColor Red "FAIL"
         Log-Error $_.Exception.Message
         return $false

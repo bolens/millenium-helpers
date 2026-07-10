@@ -43,6 +43,8 @@ assert_contains "$out" "list" "millennium-theme --help documents the list comman
 assert_contains "$out" "install" "millennium-theme --help documents the install command"
 assert_contains "$out" "update" "millennium-theme --help documents the update command"
 assert_contains "$out" "remove" "millennium-theme --help documents the remove command"
+assert_contains "$out" "SteamClientHomebrew/millennium-steam-skin" "millennium-theme --help includes an example install repo"
+assert_contains "$out" "--yes" "millennium-theme --help documents the --yes option"
 
 out=$(run_theme --version 2>&1)
 rc=$?
@@ -62,6 +64,7 @@ out=$(run_theme list 2>&1)
 rc=$?
 assert_success "$rc" "millennium-theme list exits 0 on an empty skins directory"
 assert_contains "$out" "No themes installed" "millennium-theme list reports no themes when skins dir is empty"
+assert_contains "$out" "millennium-theme install" "millennium-theme list empty state suggests an install example"
 
 out=$(run_theme list --json 2>&1)
 assert_valid_json "$out" "millennium-theme list --json produces valid JSON"
@@ -157,6 +160,13 @@ rc=$?
 assert_success "$rc" "millennium-theme remove --dry-run exits 0 for an existing theme"
 assert_contains "$out" "DRY RUN" "millennium-theme remove --dry-run announces dry-run mode"
 assert_file_exists "${FAKE_HOME}/.local/share/Steam/steamui/skins/GithubTheme" "millennium-theme remove --dry-run does not actually delete the theme directory"
+
+# --- remove: --yes skips confirmation ---
+out=$(run_theme remove "GithubTheme" --yes --dry-run 2>&1)
+rc=$?
+assert_success "$rc" "millennium-theme remove --yes --dry-run exits 0"
+assert_not_contains "$out" "Remove theme" "millennium-theme remove --yes does not prompt for confirmation"
+assert_contains "$out" "DRY RUN" "millennium-theme remove --yes --dry-run still announces dry-run"
 
 # --- remove: path traversal in the theme name is rejected ---
 

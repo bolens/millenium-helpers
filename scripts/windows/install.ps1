@@ -144,6 +144,7 @@ if (!(Test-Path -Path $binDir)) {
 # Copy scripts
 $scriptsToCopy = @(
     "common.ps1",
+    "millennium.ps1",
     "millennium-diag.ps1",
     "millennium-purge.ps1",
     "millennium-repair.ps1",
@@ -171,6 +172,7 @@ if (Test-Path -Path $versionSrc) {
 
 # Generate CMD wrappers
 $wrappers = @(
+    "millennium",
     "millennium-diag",
     "millennium-purge",
     "millennium-repair",
@@ -225,4 +227,11 @@ if ($isInteractive -and !$Uninstall -and $env:PSTESTS -ne "true") {
     & (Join-Path -Path $binDir -ChildPath "millennium-schedule.ps1") setup
 }
 
-Log-Info "You can now run commands like: ${cyan}millennium-diag${reset} or ${cyan}millennium-upgrade${reset} from any terminal."
+Write-Host ""
+Write-Host "${cyan}Getting started:${reset}"
+Write-Host "  1. Check health:     ${green}millennium-diag${reset}"
+Write-Host "  2. Install/update:   ${green}millennium-upgrade${reset}   (if Millennium is missing)"
+Write-Host "  3. Review scheduler: ${green}millennium-schedule status${reset}"
+Write-Host "  Tip: manage skins with ${green}millennium-theme list${reset}"
+Write-Host ""
+Write-Host "You can also use the dispatcher: ${cyan}millennium diag|upgrade|schedule|theme|...${reset}"

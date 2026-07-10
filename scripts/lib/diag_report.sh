@@ -5,17 +5,34 @@
 # Status flags below are read by millennium-diag.sh (JSON output / doctor).
 # shellcheck disable=SC2034
 
+_diag_use_unicode() {
+  # Explicit opt-out only. Default to unicode glyphs for normal terminals;
+  # set NO_UNICODE=1 for ASCII OK/WARN/FAIL markers.
+  [[ -z "${NO_UNICODE:-}" ]]
+}
+
 print_diag_item() {
   local status="$1"
   local label="$2"
   local value="$3"
-  
-  if [[ "$status" == "ok" ]]; then
-    printf "  [${GREEN}✔${NC}] %-45s : %b\n" "$label" "$value"
-  elif [[ "$status" == "warn" ]]; then
-    printf "  [${YELLOW}!${NC}] %-45s : %b\n" "$label" "$value"
+  local ok_g warn_g err_g
+
+  if _diag_use_unicode; then
+    ok_g="✔"
+    warn_g="!"
+    err_g="✘"
   else
-    printf "  [${RED}✘${NC}] %-45s : %b\n" "$label" "$value"
+    ok_g="OK"
+    warn_g="WARN"
+    err_g="FAIL"
+  fi
+
+  if [[ "$status" == "ok" ]]; then
+    printf "  [${GREEN}%s${NC}] %-45s : %b\n" "$ok_g" "$label" "$value"
+  elif [[ "$status" == "warn" ]]; then
+    printf "  [${YELLOW}%s${NC}] %-45s : %b\n" "$warn_g" "$label" "$value"
+  else
+    printf "  [${RED}%s${NC}] %-45s : %b\n" "$err_g" "$label" "$value"
   fi
 }
 
@@ -521,6 +538,41 @@ check_obsolete_files() {
   else
     print_diag_item "ok" "Legacy Wrapper Files" "None detected (Clean)"
   fi
+}
+
+print_diag_next_steps() {
+  # Skip when JSON mode or doctor already running (caller decides).
+  local issues=0
+  local suggestions=()
+
+  [[ "${BINARIES_OK:-true}" == "true" ]] || { ((issues++)) || true; suggestions+=("sudo millennium-upgrade --force   # repair/reinstall Millennium binaries"); }
+  [[ "${HOOKS_OK:-true}" == "true" ]] || { ((issues++)) || true; suggestions+=("sudo millennium-repair           # restore bootstrap hooks"); }
+  [[ "${FLATPAK_OK:-true}" == "true" ]] || { ((issues++)) || true; suggestions+=("flatpak override --user --filesystem=/usr/lib/millennium com.valvesoftware.Steam"); }
+  [[ "${PERMISSIONS_OK:-true}" == "true" && "${SKINS_DIR_OK:-true}" == "true" ]] || { ((issues++)) || true; suggestions+=("sudo millennium-repair           # fix ownership / skins directory"); }
+  [[ "${SUDOERS_OK:-true}" == "true" ]] || { ((issues++)) || true; suggestions+=("sudo ./install.sh install        # restore passwordless sudoers drop-in"); }
+  [[ "${TIMER_ACTIVE:-true}" == "true" ]] || { ((issues++)) || true; suggestions+=("millennium-schedule enable       # enable daily auto-updates"); }
+  [[ "${LINGER_OK:-true}" == "true" ]] || { ((issues++)) || true; suggestions+=("sudo loginctl enable-linger ${RUNNING_USER:-$USER}  # keep user timers after logout"); }
+  [[ "${SCRIPTS_UP_TO_DATE:-true}" == "true" ]] || { ((issues++)) || true; suggestions+=("sudo millennium-diag doctor      # update helper scripts"); }
+  [[ "${COMPLETIONS_OK:-true}" == "true" ]] || { ((issues++)) || true; suggestions+=("sudo millennium-diag doctor      # restore shell completions"); }
+  [[ "${CLEAN_OF_OBSOLETE:-true}" == "true" ]] || { ((issues++)) || true; suggestions+=("sudo millennium-diag doctor      # remove legacy wrapper files"); }
+
+  echo ""
+  if [[ "$issues" -eq 0 ]]; then
+    echo -e "${GREEN}No issues detected. Your Millennium installation looks healthy.${NC}"
+    echo -e "Tip: run ${YELLOW}millennium-schedule status${NC} to review auto-updates, or ${YELLOW}millennium-theme list${NC} for skins."
+    return 0
+  fi
+
+  echo -e "${YELLOW}${issues} issue(s) detected.${NC} Suggested next steps:"
+  local s
+  # Deduplicate while preserving order
+  local seen="|"
+  for s in "${suggestions[@]}"; do
+    [[ "$seen" == *"|${s}|"* ]] && continue
+    seen+="${s}|"
+    echo -e "  • ${s}"
+  done
+  echo -e "\nOr run ${GREEN}sudo millennium-diag doctor${NC} to attempt automatic repairs."
 }
 
 run_diagnostics() {

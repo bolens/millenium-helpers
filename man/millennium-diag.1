@@ -7,6 +7,7 @@ millennium-diag \- diagnose Millennium and Steam helper health
 .SH DESCRIPTION
 Runs a read-only diagnostics report by default. Can also show logs, upload a
 redacted report, or run doctor mode to auto-repair common problems.
+After the default report, prints suggested next commands when issues are found.
 .SH COMMANDS
 .TP
 .B (none)
@@ -34,6 +35,9 @@ Emit the diagnostics report as structured JSON.
 Follow (tail \-f) real-time log output with
 .BR logs .
 .TP
+.BR \-y ", " \-\-yes
+Skip confirmation when doctor closes Steam.
+.TP
 .BR \-d ", " \-\-dry\-run
 Simulate doctor repairs without modifying anything.
 .TP
@@ -45,7 +49,22 @@ Show version information.
 .TP
 .BR \-h ", " \-\-help
 Show help message.
+.SH EXAMPLES
+.TP
+Check health and follow suggested repairs:
+.B millennium-diag
+.TP
+Auto-repair (may close Steam):
+.B sudo millennium-diag doctor \-\-yes
+.TP
+Follow Steam WebHelper logs:
+.B millennium-diag logs \-\-follow
+.TP
+Steam Deck / Flatpak hooks:
+After doctor reports Flatpak filesystem issues, run
+.B flatpak override \-\-user \-\-filesystem=/usr/lib/millennium com.valvesoftware.Steam
 .SH SEE ALSO
 .BR millennium-repair (1),
 .BR millennium-upgrade (1),
-.BR millennium-schedule (1)
+.BR millennium-schedule (1),
+.BR millennium (1)
