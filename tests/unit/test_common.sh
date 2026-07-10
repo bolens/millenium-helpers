@@ -140,6 +140,9 @@ tag=$(fetch_github_latest_beta_tag "SteamClientHomebrew" "Millennium")
 assert_equals "v3.3.0-beta.2" "$tag" "fetch_github_latest_beta_tag (jq path) parses beta tag"
 rm -f "${MOCK_BIN}/jq" "${MOCK_BIN}/curl"
 
+# Mock uname to return Linux during Steam tests to test Linux code paths portably
+mock_cmd "uname" 'echo "Linux"'
+
 # --- is_game_running() ---
 
 # In the test environment there is no Steam game process, so this must be false.
@@ -278,6 +281,7 @@ notify_calls=$(cat "${MOCK_BIN}/notify.calls" 2>/dev/null || true)
 assert_contains "$notify_calls" "Millennium Updated" "send_notification passes the title through to notify-send"
 assert_contains "$notify_calls" "All good" "send_notification passes the message through to notify-send"
 rm -f "${MOCK_BIN}/notify.calls" "${MOCK_BIN}/notify-send" "${MOCK_BIN}/runuser"
+unmock_cmd "uname"
 
 # --- load_user_config() ---
 

@@ -96,7 +96,7 @@ download_file() {
   
   if [[ ! -t 1 ]]; then
     printf "%s... " "$msg"
-    if curl -fsSL --retry 3 --retry-delay 2 "${headers[@]}" "$url" -o "$dest" >"$tmp_log" 2>&1; then
+    if curl -fsSL --retry 3 --retry-delay 2 ${headers[@]+"${headers[@]}"} "$url" -o "$dest" >"$tmp_log" 2>&1; then
       echo -e "${GREEN}OK${NC}"
       rm -f "$tmp_log"
       return 0
@@ -108,7 +108,7 @@ download_file() {
     fi
   fi
 
-  curl -fsSL --retry 3 --retry-delay 2 "${headers[@]}" "$url" -o "$dest" >"$tmp_log" 2>&1 &
+  curl -fsSL --retry 3 --retry-delay 2 ${headers[@]+"${headers[@]}"} "$url" -o "$dest" >"$tmp_log" 2>&1 &
   local pid=$!
   local spinner="/-\|"
   local i=0
