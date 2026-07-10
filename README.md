@@ -143,6 +143,16 @@ millennium-diag
 millennium-diag
 ```
 
+### Share Diagnostic Report Online
+Upload a sanitized, privacy-safe diagnostic report to a pastebin (`paste.rs`) and return a short link (automatically redacts system user names, user profiles, and active GitHub tokens):
+```bash
+# Linux & macOS
+millennium-diag --share
+
+# Windows
+millennium-diag -Share
+```
+
 ### Run Doctor (Auto-Repair & Self-Update)
 Scan your setup for any broken hooks, missing directories, stopped timers, or out-of-date helper scripts, and automatically repair/self-update them:
 ```bash
@@ -262,7 +272,7 @@ Manages daily update timers and triggers (`systemd` user timers on Linux, **Wind
 De-registers Millennium from all local Steam users and completely purges its files and directories from the system.
 
 ### 6. [scripts/millennium-diag.sh](scripts/millennium-diag.sh) / `millennium-diag.ps1`
-Runs a comprehensive system health check (reports running status of Steam, the installed version of Millennium, configurations, and permissions).
+Runs a comprehensive system health check (reports running status of Steam, the installed version of Millennium, configurations, and permissions) with auto-fix (doctor) and secure pastebin log sharing options.
 
 ### 7. [scripts/millennium-theme.sh](scripts/millennium-theme.sh) / `millennium-theme.ps1`
 A skin/theme manager CLI. Allows listing themes, installing skin repositories from GitHub, checking for updates, and removing skin directories.
