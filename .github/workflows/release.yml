@@ -11,7 +11,7 @@ on:
         required: true
         default: 'v-draft'
       skip_ci_gate:
-        description: 'Skip waiting for Test Suite on this commit'
+        description: 'Skip waiting for required CI (test-suite/shellcheck/completions). Only for v-draft / emergency dispatch — never for real releases.'
         type: boolean
         required: false
         default: false
@@ -26,64 +26,104 @@ permissions:
 
 jobs:
   gate:
-    name: Wait for Test Suite
+    name: Wait for required CI
     runs-on: ubuntu-latest
     if: >-
       github.event_name == 'push' ||
       (github.event_name == 'workflow_dispatch' && inputs.skip_ci_gate != true)
     steps:
-      - name: Ensure Test Suite passed for this commit
+      - name: Ensure required workflows passed for this commit
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           SHA="${{ github.sha }}"
-          echo "Waiting for workflow test-suite.yml to succeed on $SHA ..."
+          # These workflows declare tags: [v*] so tag pushes always schedule them.
+          REQUIRED_WORKFLOWS=(
+            test-suite.yml
+            shellcheck.yml
+            completions.yml
+          )
+
+          echo "Waiting for required CI on $SHA:"
+          printf '  - %s\n' "${REQUIRED_WORKFLOWS[@]}"
+
+          declare -A passed=()
+          # Fail fast only when nothing is queued/running for any pending workflow.
+          fail_fast_after=10
 
           for attempt in $(seq 1 60); do
-            mapfile -t runs < <(
-              gh run list \
-                --repo "${{ github.repository }}" \
-                --workflow test-suite.yml \
-                --commit "$SHA" \
-                --limit 5 \
-                --json databaseId,status,conclusion,event \
-                --jq '.[] | select(.status=="completed") | [.databaseId,.conclusion,.event] | @tsv'
-            )
+            all_done=true
+            any_activity=false
+            missing=()
 
-            if (( ${#runs[@]} > 0 )); then
-              for line in "${runs[@]}"; do
-                id="$(echo "$line" | cut -f1)"
-                conclusion="$(echo "$line" | cut -f2)"
-                event="$(echo "$line" | cut -f3)"
-                echo "Found completed run $id (event=$event conclusion=$conclusion)"
-                if [[ "$conclusion" == "success" ]]; then
-                  echo "Test Suite passed."
-                  exit 0
+            for wf in "${REQUIRED_WORKFLOWS[@]}"; do
+              [[ -n "${passed[$wf]:-}" ]] && continue
+              all_done=false
+
+              mapfile -t runs < <(
+                gh run list \
+                  --repo "${{ github.repository }}" \
+                  --workflow "$wf" \
+                  --commit "$SHA" \
+                  --limit 5 \
+                  --json databaseId,status,conclusion,event \
+                  --jq '.[] | select(.status=="completed") | [.databaseId,.conclusion,.event] | @tsv'
+              )
+
+              if (( ${#runs[@]} > 0 )); then
+                wf_ok=false
+                for line in "${runs[@]}"; do
+                  id="$(echo "$line" | cut -f1)"
+                  conclusion="$(echo "$line" | cut -f2)"
+                  event="$(echo "$line" | cut -f3)"
+                  echo "[$wf] completed run $id (event=$event conclusion=$conclusion)"
+                  if [[ "$conclusion" == "success" ]]; then
+                    wf_ok=true
+                  fi
+                done
+                if [[ "$wf_ok" == "true" ]]; then
+                  echo "[$wf] passed."
+                  passed[$wf]=1
+                  continue
                 fi
-              done
-              echo "::error::Test Suite completed but did not succeed for $SHA"
+                echo "::error::$wf completed but did not succeed for $SHA"
+                exit 1
+              fi
+
+              in_progress="$(
+                gh run list \
+                  --repo "${{ github.repository }}" \
+                  --workflow "$wf" \
+                  --commit "$SHA" \
+                  --limit 5 \
+                  --json status \
+                  --jq '[.[] | select(.status=="in_progress" or .status=="queued" or .status=="pending" or .status=="waiting")] | length'
+              )"
+              if [[ "$in_progress" -gt 0 ]]; then
+                any_activity=true
+                echo "Attempt $attempt/60: $wf still running..."
+              else
+                missing+=("$wf")
+                echo "Attempt $attempt/60: no $wf run found yet for $SHA..."
+              fi
+            done
+
+            if [[ "$all_done" == "true" ]]; then
+              echo "All required CI workflows passed."
+              exit 0
+            fi
+
+            if (( attempt >= fail_fast_after )) && [[ "$any_activity" == "false" ]] && (( ${#missing[@]} > 0 )); then
+              echo "::error::No runs scheduled for: ${missing[*]} (SHA $SHA) after ${fail_fast_after} polls."
+              echo "Tag pushes must trigger these workflows (tags: [v*]). Check on.push.tags and path filters."
               exit 1
             fi
 
-            in_progress="$(
-              gh run list \
-                --repo "${{ github.repository }}" \
-                --workflow test-suite.yml \
-                --commit "$SHA" \
-                --limit 5 \
-                --json status \
-                --jq '[.[] | select(.status=="in_progress" or .status=="queued" or .status=="pending" or .status=="waiting")] | length'
-            )"
-            if [[ "$in_progress" -gt 0 ]]; then
-              echo "Attempt $attempt/60: Test Suite still running..."
-            else
-              echo "Attempt $attempt/60: no Test Suite run found yet for $SHA..."
-            fi
             sleep 30
           done
 
-          echo "::error::Timed out waiting for Test Suite on $SHA"
+          echo "::error::Timed out waiting for required CI on $SHA"
           exit 1
 
   build-release:

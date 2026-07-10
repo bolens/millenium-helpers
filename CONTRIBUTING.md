@@ -119,7 +119,7 @@ make test-all-distros  # local + Debian/Ubuntu/Fedora via Docker (requires Docke
 
 Tagging `vX.Y.Z` runs the release workflow:
 
-1. Wait for the Test Suite on that commit
+1. Wait for **Test Suite + ShellCheck + Completions** on that commit
 2. Draft a GitHub release with platform-trimmed assets (`millennium-helpers-linux.tar.gz`, `millennium-helpers-windows.zip`) plus checksum sidecars
 3. Open a packaging PR that points Formula / Scoop / Winget at those release assets and fills SHA256s from the draft upload
 4. **If packaging CI passes:** squash-merge the PR and publish the draft release automatically

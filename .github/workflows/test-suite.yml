@@ -9,6 +9,7 @@ on:
     paths:
       - 'scripts/**'
       - 'tests/**'
+      - 'completions/**'
       - 'install.sh'
       - 'VERSION'
       - '.github/workflows/test-suite.yml'
@@ -17,6 +18,7 @@ on:
     paths:
       - 'scripts/**'
       - 'tests/**'
+      - 'completions/**'
       - 'install.sh'
       - 'VERSION'
       - '.github/workflows/test-suite.yml'

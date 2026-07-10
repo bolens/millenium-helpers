@@ -3,6 +3,9 @@ name: "CI: Shell Completions Validation"
 on:
   push:
     branches: [ main ]
+    # Tag pushes always run (GitHub skips path filters for tags) so the
+    # release workflow gate can wait on completions CI for the tag SHA.
+    tags: [ 'v*' ]
     paths:
       - 'completions/**'
       - 'tests/unit/test_completions.sh'

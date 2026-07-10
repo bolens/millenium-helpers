@@ -100,8 +100,16 @@ assert_contains "$windows_zip_block" "scripts/millennium-mcp.py" "Windows releas
 assert_contains "$windows_zip_block" "completions/powershell/" "Windows release zip includes PowerShell completions"
 assert_contains "$windows_zip_block" "millennium-helpers-windows.zip" "release.yml builds trimmed Windows zip"
 
-# Scoop CI staging must mirror the same MCP payload
+# Release CD gate must wait on ShellCheck + completions, not only the test suite
+release_gate=$(awk '/name: Wait for required CI/,/build-release:/' "${REPO_ROOT}/.github/workflows/release.yml")
+assert_contains "$release_gate" "test-suite.yml" "release gate waits on test-suite.yml"
+assert_contains "$release_gate" "shellcheck.yml" "release gate waits on shellcheck.yml"
+assert_contains "$release_gate" "completions.yml" "release gate waits on completions.yml"
+
+# Scoop CI staging must mirror the same MCP + PowerShell completions payload
 scoop_ci=$(cat "${REPO_ROOT}/.github/workflows/package-install-windows.yml")
 assert_contains "$scoop_ci" "millennium-mcp.py" "Scoop CI stages millennium-mcp.py beside scripts/windows"
+assert_contains "$scoop_ci" "completions\\powershell" "Scoop CI stages PowerShell completions in the trimmed zip"
+assert_not_contains "$scoop_ci" "- 'README.md'" "Scoop CI path filters do not trigger on README-only docs edits"
 
 print_summary

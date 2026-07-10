@@ -11,7 +11,10 @@ For packaging/automation background, see [CONTRIBUTING.md](../CONTRIBUTING.md#ve
 - [ ] Working tree is clean except for intentional release changes
 - [ ] On `main`, up to date with `origin/main`
 - [ ] You know the target version (semver; bump minor for features, patch for fixes)
-- [ ] `PACKAGING_PAT` is configured in repo secrets (required for auto packaging PR + publish)
+- [ ] `PACKAGING_PAT` is configured in repo secrets (required for auto packaging PR + publish).
+  Verify (repo admin): Settings → Secrets and variables → Actions → `PACKAGING_PAT` exists.
+  Optional smoke: `gh workflow run "CD: Deployment & Release Automation" -f tag_name=v-draft -f skip_ci_gate=true`
+  and confirm the packaging job does not fail with a missing-secret error (cancel after that check if desired).
 - [ ] Dev tools installed per [CONTRIBUTING.md § Development requirements](../CONTRIBUTING.md#development-requirements)
   (`make setup`, plus **`pwsh`** for Windows tests; **Docker** if you will run `make test-all-distros`)
 
@@ -99,22 +102,36 @@ git push origin main
 Before tagging, confirm the push to `main` is green (or understand any expected failures).
 
 ```bash
-gh run list --branch main --limit 20
+SHA="$(git rev-parse HEAD)"
+gh run list --commit "$SHA" --limit 30
+
+# Required for the release CD gate (must be success on this SHA before/when tagging):
+for wf in test-suite.yml shellcheck.yml completions.yml; do
+  echo "=== $wf ==="
+  gh run list --commit "$SHA" --workflow "$wf" --limit 3
+done
+
+# Strongly recommended before tagging:
+for wf in homebrew.yml version-sync.yml package-manifests.yml powershell-lint.yml; do
+  echo "=== $wf ==="
+  gh run list --commit "$SHA" --workflow "$wf" --limit 3
+done
+
 # Investigate failures:
-gh run view <run-id> --log-failed
+# gh run view <run-id> --log-failed
 ```
 
 Critical workflows for a release commit:
 
-- **CI: Shell Script Linting** (ShellCheck) — must pass
-- **CI: Cross-Platform Test Suite** — must pass (release gate waits on this for the tag SHA)
-- **CI: Shell Completions Validation**
+- **CI: Shell Script Linting** (ShellCheck) — must pass (**CD gate**)
+- **CI: Cross-Platform Test Suite** — must pass (**CD gate**)
+- **CI: Shell Completions Validation** — must pass (**CD gate**)
 - **CI: Packaging Version Sync**
 - **CI: Homebrew Formula Validation**
 - **CI: PowerShell Script Analysis**
 - **CI: Package Manifests Validation** / Windows package install / PKGBUILD / Nix / man pages as applicable
 
-Do **not** tag while ShellCheck or the Test Suite is red.
+Do **not** tag while ShellCheck, the Test Suite, or Completions CI is red.
 
 ---
 
@@ -127,7 +144,7 @@ git push origin "vX.Y.Z"
 
 This starts **CD: Deployment & Release Automation**, which:
 
-1. Waits for Test Suite success on that commit SHA
+1. Waits for **Test Suite + ShellCheck + Completions** success on that commit SHA
 2. Builds trimmed Linux/Windows assets + checksums
 3. Creates a **draft** GitHub release
 4. Opens a packaging PR with real SHA256s
@@ -182,7 +199,12 @@ make lint
 make test
 
 git add -A && git commit -m "release: vX.Y.Z …" && git push origin main
-gh run list --branch main --limit 15   # wait for green
+SHA="$(git rev-parse HEAD)"
+gh run list --commit "$SHA" --limit 30
+for wf in test-suite.yml shellcheck.yml completions.yml; do
+  gh run list --commit "$SHA" --workflow "$wf" --limit 3
+done
+# wait until those three are success, then:
 
 git tag -a vX.Y.Z -m vX.Y.Z && git push origin vX.Y.Z
 gh run list --workflow release.yml --limit 3

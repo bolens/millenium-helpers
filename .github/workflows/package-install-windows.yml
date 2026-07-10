@@ -6,18 +6,18 @@ on:
     paths:
       - 'packaging/scoop/**'
       - 'scripts/windows/**'
+      - 'scripts/millennium-mcp.py'
+      - 'completions/powershell/**'
       - 'VERSION'
-      - 'LICENSE'
-      - 'README.md'
       - '.github/workflows/package-install-windows.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'packaging/scoop/**'
       - 'scripts/windows/**'
+      - 'scripts/millennium-mcp.py'
+      - 'completions/powershell/**'
       - 'VERSION'
-      - 'LICENSE'
-      - 'README.md'
       - '.github/workflows/package-install-windows.yml'
 
 concurrency:
@@ -50,10 +50,12 @@ jobs:
           $zipPath = Join-Path $env:TEMP "millennium-helpers-windows.zip"
           Remove-Item -Recurse -Force $stage, $zipPath -ErrorAction SilentlyContinue
           New-Item -ItemType Directory -Path (Join-Path $stage "scripts") | Out-Null
+          New-Item -ItemType Directory -Path (Join-Path $stage "completions") | Out-Null
 
-          # Match release.yml Windows payload layout (includes shared MCP Python server).
+          # Match release.yml Windows payload layout (MCP + PowerShell completions).
           Copy-Item -Recurse scripts\windows (Join-Path $stage "scripts\windows")
           Copy-Item scripts\millennium-mcp.py (Join-Path $stage "scripts\millennium-mcp.py")
+          Copy-Item -Recurse completions\powershell (Join-Path $stage "completions\powershell")
           Copy-Item VERSION, LICENSE, README.md $stage\
 
           Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zipPath -Force
