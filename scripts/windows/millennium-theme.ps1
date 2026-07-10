@@ -103,7 +103,7 @@ if (-not $Command) {
     exit 1
 }
 if ($knownCommands -notcontains $Command) {
-    Write-Error "Unknown command: $Command"
+    Log-Error "Unknown command: $Command"
     $suggestion = Get-ClosestToken -InputToken $Command -Candidates $knownCommands
     if ($suggestion) {
         Write-Host "Did you mean '$suggestion'?"

@@ -513,7 +513,7 @@ switch ($Command) {
     }
     Default {
         if ($Command) {
-            Write-Error "Unknown command: $Command"
+            Log-Error "Unknown command: $Command"
             $suggestion = Get-ClosestToken -InputToken $Command -Candidates @("enable", "disable", "status", "setup", "config")
             if ($suggestion) {
                 Write-Host "Did you mean '$suggestion'?"
