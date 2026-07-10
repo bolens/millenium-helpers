@@ -5,12 +5,12 @@
 PackageIdentifier: bolens.millenniumhelpers
 PackageVersion: 2.2.0
 MinimumOSVersion: 10.0.0.0
-ReleaseDate: 2026-07-09
+ReleaseDate: 2026-07-10
 Installers:
 - Architecture: neutral
   InstallerType: zip
-  InstallerUrl: https://github.com/bolens/millenium-helpers/archive/refs/heads/main.zip
-  InstallerSha256: "0000000000000000000000000000000000000000000000000000000000000000" # Dummy value to be populated by publisher
+  InstallerUrl: https://github.com/bolens/millenium-helpers/archive/refs/tags/v2.2.0.zip
+  InstallerSha256: "FF884DA71CE676EB2F2ED2C985A2FB5946F69D6F38F7930EDCB8EB6A32390535"
   UpgradeBehavior: uninstallPrevious
 ManifestType: installer
 ManifestVersion: 1.5.0
