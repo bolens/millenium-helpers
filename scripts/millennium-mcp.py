@@ -499,6 +499,8 @@ def register_mcp():
         sys.exit(1)
     else:
         print("\nRegistration check completed successfully.")
+        print("Restart Cursor / Claude Desktop / Windsurf so the MCP server appears.")
+        print("See docs/mcp.md for tool details and troubleshooting.")
         sys.exit(0)
 
 def main():

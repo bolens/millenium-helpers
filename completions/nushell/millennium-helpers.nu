@@ -5,6 +5,7 @@ export extern "millennium-repair" [
   --skip-theme(-s) # Skip theme refresh during repair
   --yes(-y)      # Skip confirmation when closing Steam
   --dry-run(-d)  # Simulation mode
+  --quiet(-q)    # Suppress informational output
   --version(-V)  # Show version information
   --help(-h)     # Show help message
 ]
@@ -19,6 +20,7 @@ export extern "millennium-upgrade" [
   --force(-f)    # Force reinstall
   --yes(-y)      # Skip confirmation when closing Steam
   --dry-run(-d)  # Simulation mode
+  --quiet(-q)    # Suppress informational output
   --version(-V)  # Show version information
   --help(-h)     # Show help message
 ]
@@ -28,6 +30,7 @@ export extern "millennium-schedule" [
   action?: string@"_millennium_schedule_actions" # Scheduler action
   channel?: string@"_millennium_schedule_channels" # Update channel or config action
   --dry-run(-d)  # Simulation mode
+  --quiet(-q)    # Suppress informational output
   --version(-V)  # Show version information
   --help(-h)     # Show help message
 ]
@@ -43,6 +46,7 @@ def _millennium_schedule_channels [] {
 # Purge Millennium files and restore original Steam client
 export extern "millennium-purge" [
   --dry-run(-d)  # Simulation mode
+  --quiet(-q)    # Suppress informational output
   --yes(-y)      # Skip confirmation prompt
   --version(-V)  # Show version information
   --help(-h)     # Show help message
@@ -57,6 +61,7 @@ export extern "millennium-diag" [
   --yes(-y)      # Skip confirmation when doctor closes Steam
   --share(-s)    # Upload diagnostic report to a pastebin
   --dry-run(-d)  # Simulation mode
+  --quiet(-q)    # Suppress informational output
   --version(-V)  # Show version information
   --help(-h)     # Show help message
 ]
@@ -73,6 +78,7 @@ export extern "millennium-theme" [
   --json # Output list command results as structured JSON
   --yes(-y) # Skip confirmation when removing a theme
   --dry-run(-d)  # Simulation mode
+  --quiet(-q)    # Suppress informational output
   --version(-V)  # Show version information
   --help(-h)     # Show help message
 ]
@@ -96,5 +102,5 @@ export extern "millennium" [
 ]
 
 def _millennium_dispatcher_commands [] {
-  [ "diag", "upgrade", "schedule", "theme", "repair", "purge", "mcp", "help" ]
+  [ "diag", "doctor", "upgrade", "schedule", "theme", "repair", "purge", "mcp", "help" ]
 }

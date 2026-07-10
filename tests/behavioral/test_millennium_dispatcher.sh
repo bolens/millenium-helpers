@@ -22,6 +22,7 @@ rc=$?
 assert_success "$rc" "millennium help exits 0"
 assert_contains "$out" "Usage:" "millennium help prints usage"
 assert_contains "$out" "diag" "millennium help documents diag"
+assert_contains "$out" "doctor" "millennium help documents doctor alias"
 assert_contains "$out" "upgrade" "millennium help documents upgrade"
 assert_contains "$out" "schedule" "millennium help documents schedule"
 
@@ -39,8 +40,21 @@ rc=$?
 assert_failure "$rc" "millennium unknown command exits non-zero"
 assert_contains "$out" "Unknown command" "millennium unknown command explains itself"
 
-# Dispatch to sibling scripts in the same checkout directory
+out=$(bash "$DISPATCHER" upgrad 2>&1)
+rc=$?
+assert_failure "$rc" "millennium typo command exits non-zero"
+assert_contains "$out" "Did you mean 'upgrade'" "millennium typo suggests closest command"
+
+# doctor alias → millennium-diag doctor
 mock_cmd "millennium-diag" 'echo "diag-ok $*"; exit 0'
+out=$(PATH="${MOCK_BIN}:$PATH" bash "$DISPATCHER" doctor --dry-run 2>&1)
+rc=$?
+assert_success "$rc" "millennium doctor dispatches successfully"
+assert_contains "$out" "diag-ok" "millennium doctor invokes millennium-diag"
+assert_contains "$out" "doctor" "millennium doctor forwards doctor subcommand"
+assert_contains "$out" "--dry-run" "millennium doctor forwards extra args"
+
+# Dispatch to sibling scripts in the same checkout directory
 # Prefer PATH mock over sibling .sh when both exist — dispatcher uses command -v first.
 # Point PATH mock and also verify args are forwarded.
 out=$(PATH="${MOCK_BIN}:$PATH" bash "$DISPATCHER" diag --json 2>&1)

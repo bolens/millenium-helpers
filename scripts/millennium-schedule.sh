@@ -99,7 +99,7 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     -q|--quiet)
-      QUIET=true
+      export QUIET=true
       export MILLENNIUM_QUIET=1
       shift
       ;;
@@ -112,7 +112,21 @@ while [[ $# -gt 0 ]]; do
       exit 0
       ;;
     *)
-      echo -e "${RED}Unknown option: $1${NC}" >&2
+      if [[ "$1" != -* ]]; then
+        if [[ -n "$COMMAND" ]]; then
+          # Positional after a subcommand is usually a channel (stable|beta).
+          echo -e "${RED}Unknown channel: $1${NC}" >&2
+          echo "Valid channels: stable, beta" >&2
+        else
+          echo -e "${RED}Unknown command: $1${NC}" >&2
+          suggestion="$(suggest_closest "$1" enable disable status setup config pre-update post-update || true)"
+          if [[ -n "$suggestion" ]]; then
+            echo "Did you mean '${suggestion}'?" >&2
+          fi
+        fi
+      else
+        echo -e "${RED}Unknown option: $1${NC}" >&2
+      fi
       echo "Try '$(basename "$0") --help' for usage." >&2
       exit 1
       ;;
@@ -204,7 +218,7 @@ EOF
       echo -e "${GREEN}Millennium auto-update LaunchAgent (${channel}) has been enabled!${NC}"
       echo -e "It will run daily at 2:00 AM."
     fi
-    echo -e "\nYou can check the status with: millennium-schedule status"
+    echo -e "\nYou can check the status with: millennium schedule status"
     return 0
   fi
 
@@ -267,7 +281,7 @@ EOF
   echo -e "To allow user timers to run in the background even when you are logged out, enable user lingering:"
   echo -e "  loginctl enable-linger ${RUNNING_USER}"
 
-  echo -e "\nYou can check the status of the timer with: millennium-schedule status"
+  echo -e "\nYou can check the status of the timer with: millennium schedule status"
 }
 
 disable_timer() {

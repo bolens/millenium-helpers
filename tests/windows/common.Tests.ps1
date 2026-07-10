@@ -56,6 +56,36 @@ Describe "Common Helpers" {
                 }
             }
         }
+
+        It "Log-Info respects MILLENNIUM_QUIET" {
+            $prev = $env:MILLENNIUM_QUIET
+            try {
+                $env:MILLENNIUM_QUIET = "1"
+                $out = Log-Info "hidden-info" *>&1 | Out-String
+                $out | Should -Not -BeLike "*hidden-info*"
+            } finally {
+                if ($null -eq $prev) {
+                    Remove-Item Env:MILLENNIUM_QUIET -ErrorAction SilentlyContinue
+                } else {
+                    $env:MILLENNIUM_QUIET = $prev
+                }
+            }
+        }
+
+        It "Write-UpgradeFailureTips mentions rollback and diag" {
+            $out = Write-UpgradeFailureTips -Detail "download failed" *>&1 | Out-String
+            $out | Should -BeLike "*Upgrade failed*"
+            $out | Should -BeLike "*rollback*"
+            $out | Should -BeLike "*millennium diag*"
+        }
+
+        It "Apply-GnuStyleArgs maps --json and --yes" {
+            $flags = @{ Json = $false; Yes = $false; DryRun = $false }
+            $rest = Apply-GnuStyleArgs -InputArgs @("--json", "list", "--yes") -Target $flags
+            $flags.Json | Should -Be $true
+            $flags.Yes | Should -Be $true
+            $rest | Should -Contain "list"
+        }
     }
 
     Context "Steam Path Resolution - Fallback" {
@@ -247,6 +277,24 @@ Describe "Common Helpers" {
             $result = Confirm-CloseSteam
             $result | Should -Be $true
             $script:closeCalled | Should -Be $true
+        }
+    }
+
+    Context "Get-ClosestToken" {
+        BeforeAll {
+            . (Join-Path -Path $winScriptDir -ChildPath "common.ps1")
+        }
+
+        It "Maps lst to list via subsequence" {
+            Get-ClosestToken -InputToken "lst" -Candidates @("list", "install", "update", "remove") | Should -Be "list"
+        }
+
+        It "Maps stauts to status" {
+            Get-ClosestToken -InputToken "stauts" -Candidates @("enable", "disable", "status", "setup") | Should -Be "status"
+        }
+
+        It "Returns null for unrelated input" {
+            Get-ClosestToken -InputToken "zzzz" -Candidates @("list", "install") | Should -Be $null
         }
     }
 }

@@ -45,7 +45,7 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     -q|--quiet)
-      QUIET=true
+      export QUIET=true
       export MILLENNIUM_QUIET=1
       shift
       ;;
@@ -82,12 +82,37 @@ RUNNING_USER="${SUDO_USER:-$(id -un)}"
 if pgrep -x steam >/dev/null 2>&1; then
   if is_game_running; then
     echo -e "${RED}Error: A Steam game is currently running. Purging cannot proceed while a game is active.${NC}" >&2
+    print_game_running_tip "purge Millennium"
     exit 1
   fi
 
-  echo "Steam is currently running. Closing Steam gracefully to apply purge..."
+  echo "Steam is currently running and must be closed to apply the purge."
   if [[ "$DRY_RUN" == "false" ]]; then
-    close_steam_gracefully "$RUNNING_USER"
+    confirm_close_steam "$RUNNING_USER" "${ASSUME_YES:-false}" || exit 1
+  else
+    echo -e "${YELLOW}[DRY RUN] Would confirm and close Steam before purging.${NC}"
+  fi
+fi
+
+# Disable auto-update scheduler so it cannot reinstall after purge.
+# Prefer PATH, then a sibling wrapper, then the .sh source (dev checkout).
+# sched_bin may be "bash /path/to/….sh" — intentional word-split via SC2086.
+sched_bin="$(command -v millennium-schedule 2>/dev/null || true)"
+if [[ -z "$sched_bin" ]]; then
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  if [[ -x "${script_dir}/millennium-schedule" ]]; then
+    sched_bin="${script_dir}/millennium-schedule"
+  elif [[ -f "${script_dir}/millennium-schedule.sh" ]]; then
+    sched_bin="bash ${script_dir}/millennium-schedule.sh"
+  fi
+fi
+if [[ -n "$sched_bin" ]]; then
+  echo -e "${BLUE}Disabling Millennium auto-update scheduler (if configured)...${NC}"
+  if [[ "$DRY_RUN" == "true" ]]; then
+    echo -e "${YELLOW}[DRY RUN] Would run: millennium schedule disable${NC}"
+  else
+    # shellcheck disable=SC2086  # see sched_bin note above
+    $sched_bin disable >/dev/null 2>&1 || true
   fi
 fi
 
@@ -182,4 +207,6 @@ if [[ "$DRY_RUN" == "true" ]]; then
   echo -e "${GREEN}Dry run completed successfully!${NC}"
 else
   echo -e "${GREEN}Millennium has been successfully purged from Steam!${NC}"
+  echo -e "Tip: remove helper tools with ${YELLOW}sudo ./install.sh uninstall${NC} if you no longer need them."
+  echo -e "     Scheduler tip: ${YELLOW}millennium schedule status${NC} should now report disabled."
 fi

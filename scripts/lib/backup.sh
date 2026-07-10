@@ -191,6 +191,9 @@ perform_rollback() {
       [[ "$label" == "millennium.bak" ]] && label="Legacy Backup (millennium.bak)"
       echo "  - ${label}"
     done
+    echo ""
+    echo -e "Apply one with: ${YELLOW}millennium upgrade --rollback <id>${NC}"
+    echo -e "  (Windows: ${YELLOW}millennium upgrade -Rollback <id>${NC})"
     exit 0
   else
     local found=""

@@ -31,12 +31,39 @@ Describe "Schedule CLI Manager" {
             $out | Should -BeLike "*Usage:*"
             $out | Should -BeLike "*enable*"
             $out | Should -BeLike "*setup*"
+            $out | Should -BeLike "*-DryRun*"
+            $out | Should -BeLike "*GNU-style*"
         }
 
         It "Prints version with -Version" {
             $scheduleScript = Join-Path -Path $winScriptDir -ChildPath "millennium-schedule.ps1"
             $out = (& $scheduleScript -Version *>&1) | Out-String
             $out | Should -BeLike "*millennium-schedule*"
+        }
+
+        It "Suggests closest command on typo" {
+            $scheduleScript = Join-Path -Path $winScriptDir -ChildPath "millennium-schedule.ps1"
+            $out = (& $scheduleScript stauts *>&1) | Out-String
+            $out | Should -BeLike "*Unknown command*"
+            $out | Should -BeLike "*Did you mean*status*"
+        }
+    }
+
+    Context "status when registered" {
+        It "Prints scheduler summary with disable CTA" {
+            Mock Get-ScheduledTask {
+                return [pscustomobject]@{
+                    TaskName = "MillenniumUpdate"
+                    TaskPath = "\"
+                    State = "Ready"
+                    Actions = @([pscustomobject]@{ Execute = "powershell.exe"; Arguments = "-File upgrade.ps1 -Channel beta" })
+                }
+            }
+            $scheduleScript = Join-Path -Path $winScriptDir -ChildPath "millennium-schedule.ps1"
+            $out = (& $scheduleScript status *>&1) | Out-String
+            $out | Should -BeLike "*Scheduler summary*"
+            $out | Should -BeLike "*millennium schedule disable*"
+            $out | Should -BeLike "*Channel*"
         }
     }
 
@@ -84,7 +111,7 @@ Describe "Schedule CLI Manager" {
             $scheduleScript = Join-Path -Path $winScriptDir -ChildPath "millennium-schedule.ps1"
             $out = (& $scheduleScript status *>&1) | Out-String
             $out | Should -BeLike "*Scheduler disabled*"
-            $out | Should -BeLike "*millennium-schedule enable*"
+            $out | Should -BeLike "*millennium schedule enable*"
         }
     }
 }

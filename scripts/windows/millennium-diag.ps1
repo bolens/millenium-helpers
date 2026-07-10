@@ -9,6 +9,8 @@ param(
     [switch]$Follow = $false,
     [Alias("y")]
     [switch]$Yes = $false,
+    [Alias("q")]
+    [switch]$Quiet = $false,
     [Alias("h")]
     [switch]$Help = $false,
     [Alias("V")]
@@ -42,6 +44,7 @@ Options:
   -Share        Upload diagnostic report to a pastebin and return a short link
   -Follow, -l   Follow (tail -f) real-time log output
   -Yes, -y      Skip confirmation when doctor closes Steam
+  -Quiet, -q    Suppress informational output
   -Version, -V  Show version information
   -Help, -h     Show this help message
 "@
@@ -54,6 +57,11 @@ if ($Version -or $Command -eq "version" -or $Command -eq "--version" -or $Comman
 
 if ($Yes) {
     $global:AssumeYes = $true
+}
+
+if ($Quiet) {
+    $global:Quiet = $true
+    $env:MILLENNIUM_QUIET = "1"
 }
 
 if ($Share) {
@@ -110,10 +118,20 @@ if ($Share) {
             Write-Host -ForegroundColor Blue $response.Trim()
         } else {
             Write-Error "Error: Failed to upload diagnostic report to paste.rs. (Invalid response: $response)"
+            # Keep a local copy so the user can paste offline; reportOutput is only in memory here.
+            $tmp = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ("millennium-diag-" + [guid]::NewGuid().ToString("n") + ".txt")
+            Set-Content -Path $tmp -Value $reportOutput -Encoding UTF8
+            Write-Host "Local sanitized report kept at: $tmp"
+            Write-Host "Tip: retry later, or paste the file contents into an offline pastebin."
             exit 1
         }
     } catch {
         Write-Error "Error: Failed to upload diagnostic report to paste.rs. ($($_.Exception.Message))"
+        # Same fallback as invalid-response path above.
+        $tmp = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ("millennium-diag-" + [guid]::NewGuid().ToString("n") + ".txt")
+        Set-Content -Path $tmp -Value $reportOutput -Encoding UTF8
+        Write-Host "Local sanitized report kept at: $tmp"
+        Write-Host "Tip: retry later, or paste the file contents into an offline pastebin."
         exit 1
     }
     exit 0
@@ -481,6 +499,7 @@ if ($Command -eq "doctor") {
     if ($SteamRunning -and (-not $BinariesOk)) {
         if (Is-GameRunning) {
             Log-Error "Error: A Steam game is currently running. Doctor repairs cannot proceed while a game is active."
+            Write-Host "Close the running game, then re-run. Use -Yes to skip the Steam close prompt."
             exit 1
         }
 

@@ -72,7 +72,7 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     -q|--quiet)
-      QUIET=true
+      export QUIET=true
       export MILLENNIUM_QUIET=1
       shift
       ;;
@@ -160,6 +160,7 @@ RELAUNCH_STEAM=false
 if pgrep -x steam >/dev/null 2>&1; then
   if is_game_running; then
     echo "Error: A Steam game is currently running. Upgrade cannot proceed while a game is active." >&2
+    print_game_running_tip "upgrade"
     exit 1
   fi
 
@@ -214,7 +215,7 @@ else
 
   if [[ -z "$TAG" || "$TAG" == "null" ]]; then
     echo "Error: Could not retrieve the latest ${CHANNEL} version tag from GitHub." >&2
-    echo "If you are rate-limited, set a PAT: millennium-schedule setup" >&2
+    echo "If you are rate-limited, set a PAT: millennium schedule setup" >&2
     echo "  or: millennium-schedule config set github_token <token>" >&2
     exit 1
   fi

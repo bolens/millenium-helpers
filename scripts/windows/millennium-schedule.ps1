@@ -512,7 +512,16 @@ switch ($Command) {
         Manage-Config $cfgArgs
     }
     Default {
-        Show-Help
+        if ($Command) {
+            Write-Error "Unknown command: $Command"
+            $suggestion = Get-ClosestToken -InputToken $Command -Candidates @("enable", "disable", "status", "setup", "config")
+            if ($suggestion) {
+                Write-Host "Did you mean '$suggestion'?"
+            }
+            Write-Host "Try 'millennium-schedule -Help' for usage."
+        } else {
+            Show-Help
+        }
         exit 1
     }
 }

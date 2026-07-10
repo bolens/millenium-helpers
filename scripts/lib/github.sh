@@ -22,7 +22,7 @@ _github_explain_http_error() {
   case "$http_code" in
     401)
       echo "GitHub API returned HTTP 401 (unauthorized). Your token may be invalid or expired." >&2
-      echo "Tip: set a PAT via 'millennium-schedule setup' or 'millennium-schedule config set github_token <token>'." >&2
+      echo "Tip: set a PAT via 'millennium schedule setup' or 'millennium schedule config set github_token <token>'." >&2
       ;;
     403)
       if [[ "$rate_remaining" == "0" ]]; then
@@ -33,7 +33,7 @@ _github_explain_http_error() {
       else
         echo "GitHub API returned HTTP 403 (forbidden / rate-limited)." >&2
       fi
-      echo "Tip: set a PAT via 'millennium-schedule setup' or 'millennium-schedule config set github_token <token>'." >&2
+      echo "Tip: set a PAT via 'millennium schedule setup' or 'millennium schedule config set github_token <token>'." >&2
       ;;
     404)
       echo "GitHub API returned HTTP 404 (not found). Check the repository name or release tag." >&2

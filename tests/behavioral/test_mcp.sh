@@ -234,6 +234,7 @@ assert_contains "$out" "Successfully registered in Claude Desktop" "millennium-m
 assert_contains "$out" "Successfully registered in Cursor" "millennium-mcp --register output confirms Cursor registration"
 assert_contains "$out" "Manual config snippet" "millennium-mcp --register prints a manual config snippet"
 assert_contains "$out" '"mcpServers"' "millennium-mcp --register snippet includes mcpServers"
+assert_contains "$out" "Restart" "millennium-mcp --register tips restarting AI clients"
 
 # Verify config contents
 assert_file_exists "${FAKE_HOME_MCP}/.config/Claude/claude_desktop_config.json" "claude_desktop_config.json exists"

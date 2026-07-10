@@ -7,5 +7,6 @@ complete -c millennium-schedule -f -a 'config' -d 'Manage Millennium Helper conf
 complete -c millennium-schedule -f -n '__fish_seen_subcommand_from enable' -a 'stable beta' -d 'Select update channel'
 complete -c millennium-schedule -f -n '__fish_seen_subcommand_from config' -a 'get set list' -d 'Config action'
 complete -c millennium-schedule -s d -l dry-run -d 'Simulation mode'
+complete -c millennium-schedule -s q -l quiet -d 'Suppress informational output'
 complete -c millennium-schedule -s h -l help -d 'Show help message'
 complete -c millennium-schedule -s V -l version -d 'Show version information'

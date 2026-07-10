@@ -40,7 +40,8 @@ out=$(bash "$REPAIR_SH" --bogus 2>&1)
 rc=$?
 assert_failure "$rc" "millennium-repair exits non-zero on an unknown option"
 assert_contains "$out" "Unknown option" "millennium-repair reports the unrecognized option"
-assert_contains "$out" "Usage:" "millennium-repair unknown option prints usage"
+assert_contains "$out" "Try '" "millennium-repair unknown option points at --help"
+assert_not_contains "$out" "Fix Millennium settings panel" "millennium-repair unknown option does not dump full help"
 
 # --- Common test fixture: fake home with a native Steam dir ---
 

@@ -417,7 +417,7 @@ next_out=$(
   print_diag_next_steps 2>&1
 )
 assert_contains "$next_out" "No issues detected" "print_diag_next_steps reports healthy when all flags are ok"
-assert_contains "$next_out" "millennium-schedule status" "print_diag_next_steps healthy tip mentions schedule status"
+assert_contains "$next_out" "millennium schedule status" "print_diag_next_steps healthy tip mentions schedule status"
 
 next_out=$(
   BINARIES_OK=false HOOKS_OK=false FLATPAK_OK=true PERMISSIONS_OK=true SKINS_DIR_OK=true \
@@ -426,15 +426,47 @@ next_out=$(
   print_diag_next_steps 2>&1
 )
 assert_contains "$next_out" "issue(s) detected" "print_diag_next_steps reports issue count when flags fail"
-assert_contains "$next_out" "millennium-diag doctor" "print_diag_next_steps suggests doctor"
-assert_contains "$next_out" "millennium-upgrade" "print_diag_next_steps suggests upgrade for bad binaries"
-assert_contains "$next_out" "millennium-schedule enable" "print_diag_next_steps suggests enabling the scheduler"
+assert_contains "$next_out" "millennium doctor" "print_diag_next_steps suggests doctor"
+assert_contains "$next_out" "millennium upgrade" "print_diag_next_steps suggests upgrade for bad binaries"
+assert_contains "$next_out" "millennium schedule enable" "print_diag_next_steps suggests enabling the scheduler"
+
+# --- print_upgrade_failure_tips() ---
+fail_tips=$(print_upgrade_failure_tips 42 2>&1)
+assert_contains "$fail_tips" "Upgrade failed" "print_upgrade_failure_tips mentions failure"
+assert_contains "$fail_tips" "exit code: 42" "print_upgrade_failure_tips includes exit code"
+assert_contains "$fail_tips" "millennium upgrade --rollback list" "print_upgrade_failure_tips suggests rollback list"
+assert_contains "$fail_tips" "millennium diag" "print_upgrade_failure_tips suggests diag"
+assert_contains "$fail_tips" "--yes" "print_upgrade_failure_tips mentions --yes"
+
+# --- quiet mode (log_info) ---
+QUIET=true
+quiet_out=$(log_info "should-be-silent" 2>&1)
+assert_equals "" "$quiet_out" "log_info is silent when QUIET=true"
+QUIET=false
+MILLENNIUM_QUIET=1
+quiet_out=$(log_info "should-be-silent-env" 2>&1)
+assert_equals "" "$quiet_out" "log_info is silent when MILLENNIUM_QUIET is set"
+unset MILLENNIUM_QUIET
+warn_out=$(log_warn "still-warns" 2>&1)
+assert_contains "$warn_out" "still-warns" "log_warn still prints under quiet-capable logging"
+err_out=$(log_error "still-errors" 2>&1)
+assert_contains "$err_out" "still-errors" "log_error still prints under quiet-capable logging"
+
+# --- suggest_closest() ---
+assert_equals "list" "$(suggest_closest lst list install update remove)" "suggest_closest maps lst to list"
+assert_equals "status" "$(suggest_closest stauts enable disable status setup)" "suggest_closest maps stauts to status"
+assert_equals "" "$(suggest_closest zzzz list install || true)" "suggest_closest returns empty for unrelated input"
+
+# --- print_game_running_tip() ---
+game_tip=$(print_game_running_tip "upgrade" 2>&1)
+assert_contains "$game_tip" "Close the running game" "print_game_running_tip tells user to close the game"
+assert_contains "$game_tip" "--yes" "print_game_running_tip mentions --yes"
 
 # --- _github_explain_http_error() ---
 
 err_out=$(_github_explain_http_error "401" 2>&1)
 assert_contains "$err_out" "401" "_github_explain_http_error mentions HTTP 401"
-assert_contains "$err_out" "millennium-schedule setup" "_github_explain_http_error 401 tip points at schedule setup"
+assert_contains "$err_out" "millennium schedule setup" "_github_explain_http_error 401 tip points at schedule setup"
 
 err_hdr=$(mktemp 2>/dev/null || mktemp -t mh-hdr.XXXXXX)
 printf 'x-ratelimit-remaining: 0\nx-ratelimit-reset: 9999999999\n' > "$err_hdr"

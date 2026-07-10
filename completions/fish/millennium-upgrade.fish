@@ -1,6 +1,7 @@
 complete -c millennium-upgrade -s f -l force -d 'Force reinstall'
 complete -c millennium-upgrade -s y -l yes -d 'Skip confirmation when closing Steam'
 complete -c millennium-upgrade -s d -l dry-run -d 'Simulation mode'
+complete -c millennium-upgrade -s q -l quiet -d 'Suppress informational output'
 complete -c millennium-upgrade -s h -l help -d 'Show help message'
 complete -c millennium-upgrade -s c -l channel -r -f -a 'stable beta' -d 'Update channel (stable/beta)'
 complete -c millennium-upgrade -l stable -d 'Use stable channel'

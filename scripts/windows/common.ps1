@@ -488,6 +488,59 @@ function Write-UpgradeFailureTips {
     Write-Host "  • Re-run with -Yes if Steam close confirmation blocked the update"
 }
 
+# Suggest the closest known token for typos.
+# Scoring (higher wins): 4 = prefix/extension, 3 = substring, else shared leading
+# chars; subsequence matches (e.g. lst→list) score 3 minus length gap (floor 2).
+# Returns $null unless bestScore >= 2 (avoids weak one-char coincidences).
+function Get-ClosestToken {
+    param(
+        [string]$InputToken,
+        [string[]]$Candidates
+    )
+    if ([string]::IsNullOrEmpty($InputToken)) { return $null }
+    $best = $null
+    $bestScore = 0
+    foreach ($c in $Candidates) {
+        $score = 0
+        if ($c -eq $InputToken) { return $c }
+        if ($c.StartsWith($InputToken) -or $InputToken.StartsWith($c)) {
+            $score = 4
+        } elseif ($c.Contains($InputToken) -or $InputToken.Contains($c)) {
+            $score = 3
+        } else {
+            # Count identical leading characters (e.g. "upg" vs "upgrade" → 3).
+            $i = 0
+            while ($i -lt $c.Length -and $i -lt $InputToken.Length -and $c[$i] -eq $InputToken[$i]) {
+                $i++
+            }
+            $score = $i
+            # Subsequence: every input char appears in order in candidate (skip gaps).
+            # Require Length -ge 2 so a lone letter does not match every command.
+            if ($InputToken.Length -ge 2) {
+                $ni = 0
+                $hi = 0
+                while ($ni -lt $InputToken.Length -and $hi -lt $c.Length) {
+                    if ($InputToken[$ni] -eq $c[$hi]) { $ni++ }
+                    $hi++
+                }
+                if ($ni -eq $InputToken.Length) {
+                    # Prefer closer lengths: "lst"/"list" beats "lst"/"listall".
+                    $lenDiff = [Math]::Abs($c.Length - $InputToken.Length)
+                    $subScore = 3 - $lenDiff
+                    if ($subScore -lt 2) { $subScore = 2 }
+                    if ($subScore -gt $score) { $score = $subScore }
+                }
+            }
+        }
+        if ($score -gt $bestScore) {
+            $bestScore = $score
+            $best = $c
+        }
+    }
+    if ($bestScore -ge 2) { return $best }
+    return $null
+}
+
 function Resolve-HelperPath {
     param([string]$Name)
     # Check scripts directory relative to common.ps1

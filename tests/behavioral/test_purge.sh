@@ -39,7 +39,8 @@ out=$(bash "$PURGE_SH" --bogus 2>&1)
 rc=$?
 assert_failure "$rc" "millennium-purge exits non-zero on an unknown option"
 assert_contains "$out" "Unknown option" "millennium-purge reports the unrecognized option"
-assert_contains "$out" "Usage:" "millennium-purge unknown option prints usage"
+assert_contains "$out" "Try '" "millennium-purge unknown option points at --help"
+assert_not_contains "$out" "De-register and purge Millennium" "millennium-purge unknown option does not dump full help"
 
 # --- Dry-run: no Steam running, no installed hooks ---
 
@@ -102,6 +103,7 @@ out=$(bash "$PURGE_SH" --dry-run 2>&1)
 rc=$?
 assert_success "$rc" "millennium-purge --dry-run handles a running Steam process without crashing"
 assert_contains "$out" "Steam is currently running" "millennium-purge --dry-run detects the running Steam process"
+assert_contains "$out" "Would confirm and close Steam" "millennium-purge --dry-run plans Steam close confirmation"
 
 # --- Non-interactive purge without --yes must refuse ---
 # Dry-run skips confirmation; a live non-TTY run without --yes must exit 1.
@@ -136,6 +138,7 @@ assert_success "$rc" "millennium-purge --yes completes without interactive confi
 assert_contains "$out" "Purging Millennium hooks" "millennium-purge --yes proceeds with purge"
 assert_not_contains "$out" "Are you sure" "millennium-purge --yes does not prompt for confirmation"
 assert_contains "$out" "successfully purged" "millennium-purge --yes reports success"
+assert_contains "$out" "millennium schedule status" "millennium-purge --yes tips scheduler status after purge"
 rm -f "${MOCK_BIN}/id" "${MOCK_BIN}/rm"
 
 print_summary

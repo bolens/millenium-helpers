@@ -8,5 +8,6 @@ complete -c millennium-diag -l json -d 'Output diagnostics report in structured 
 complete -c millennium-diag -s l -l follow -d 'Follow real-time log output'
 complete -c millennium-diag -s y -l yes -d 'Skip confirmation when doctor closes Steam'
 complete -c millennium-diag -s s -l share -d 'Upload diagnostic report to a pastebin'
+complete -c millennium-diag -s q -l quiet -d 'Suppress informational output'
 complete -c millennium-diag -s h -l help -d 'Show help message'
 complete -c millennium-diag -s V -l version -d 'Show version information'

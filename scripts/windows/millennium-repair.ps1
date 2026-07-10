@@ -3,6 +3,8 @@ param(
     [switch]$DryRun = $false,
     [Alias("y")]
     [switch]$Yes = $false,
+    [Alias("q")]
+    [switch]$Quiet = $false,
     [Alias("h")]
     [switch]$Help = $false,
     [Alias("V")]
@@ -12,13 +14,14 @@ set-strictmode -version Latest
 
 if ($Help) {
     Write-Host @"
-Usage: millennium-repair.ps1 [-DryRun] [-Yes] [-Version] [-Help]
+Usage: millennium-repair.ps1 [-DryRun] [-Yes] [-Quiet] [-Version] [-Help]
 
 Force reinstall and repair the Millennium client on Windows.
 
 Options:
   -DryRun      Simulate operations without modifying files
   -Yes, -y     Skip confirmation when closing Steam
+  -Quiet, -q   Suppress informational output
   -Version, -V Show version information
   -Help, -h    Show this help message
 "@
@@ -42,6 +45,11 @@ if ($Version) {
 
 if ($Yes) {
     $global:AssumeYes = $true
+}
+
+if ($Quiet) {
+    $global:Quiet = $true
+    $env:MILLENNIUM_QUIET = "1"
 }
 
 if ($DryRun) {

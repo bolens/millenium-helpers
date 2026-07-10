@@ -58,13 +58,20 @@ rc=$?
 assert_failure "$rc" "millennium-theme with no command exits non-zero"
 assert_contains "$out" "Usage:" "millennium-theme with no command prints usage"
 
+# --- Unknown command typo suggestion ---
+out=$(run_theme lst 2>&1)
+rc=$?
+assert_failure "$rc" "millennium-theme unknown command exits non-zero"
+assert_contains "$out" "Unknown command" "millennium-theme reports unknown command for typos"
+assert_contains "$out" "Did you mean 'list'" "millennium-theme suggests list for lst typo"
+
 # --- list: empty skins directory ---
 
 out=$(run_theme list 2>&1)
 rc=$?
 assert_success "$rc" "millennium-theme list exits 0 on an empty skins directory"
 assert_contains "$out" "No themes installed" "millennium-theme list reports no themes when skins dir is empty"
-assert_contains "$out" "millennium-theme install" "millennium-theme list empty state suggests an install example"
+assert_contains "$out" "millennium theme install" "millennium-theme list empty state suggests an install example"
 
 out=$(run_theme list --json 2>&1)
 assert_valid_json "$out" "millennium-theme list --json produces valid JSON"

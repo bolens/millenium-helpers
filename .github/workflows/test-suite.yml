@@ -148,6 +148,7 @@ jobs:
       matrix:
         suite:
           - tests/windows/common.Tests.ps1
+          - tests/windows/millennium.Tests.ps1
           - tests/windows/millennium-diag.Tests.ps1
           - tests/windows/millennium-upgrade.Tests.ps1
           - tests/windows/millennium-theme.Tests.ps1
