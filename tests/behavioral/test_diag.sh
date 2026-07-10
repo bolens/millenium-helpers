@@ -313,8 +313,8 @@ assert_contains "$out" "Install method" "millennium-diag.sh doctor reports insta
 out=$(DIAG_TEST_INSTALL_METHOD=mixed DIAG_TEST_BYPASS_CHECKS=true DIAG_TEST_OBSOLETE_LIST="" bash "$DIAG_SH" doctor --dry-run 2>&1)
 assert_contains "$out" "Mixed pacman and manual" "millennium-diag.sh doctor warns about mixed installs"
 
-# Checkout makepkg hint for packaged upgrades
-out=$(DIAG_TEST_PACMAN_PACKAGED=true DIAG_TEST_INSTALL_METHOD=pacman DIAG_TEST_CHECKOUT=/home/panda/dev/millenium-helpers DIAG_TEST_BYPASS_CHECKS=true DIAG_TEST_OBSOLETE_LIST="" bash "$DIAG_SH" doctor --force --dry-run 2>&1)
+# Checkout makepkg hint for packaged upgrades (requires a real packaging/ dir)
+out=$(DIAG_TEST_PACMAN_PACKAGED=true DIAG_TEST_INSTALL_METHOD=pacman DIAG_TEST_CHECKOUT="$REPO_ROOT" DIAG_TEST_BYPASS_CHECKS=true DIAG_TEST_OBSOLETE_LIST="" bash "$DIAG_SH" doctor --force --dry-run 2>&1)
 assert_contains "$out" "makepkg -si" "millennium-diag.sh doctor suggests makepkg -si from checkout"
 
 # Release-extract staging for manual doctor (no network): mock extract tree
