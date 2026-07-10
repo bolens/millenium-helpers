@@ -6,7 +6,11 @@
 #   scripts/ci/bump-version.sh X.Y.Z
 #   make bump-version VERSION=X.Y.Z
 #
-# Does not edit CHANGELOG.md (update that manually before committing).
+# Updates: VERSION, pyproject.toml, Formula URL, Scoop version/URL, Winget
+# PackageVersion/InstallerUrl/ReleaseDate, versioned Arch PKGBUILD + .SRCINFO,
+# nix/release-info.nix version. Does not edit CHANGELOG.md.
+#
+# See CONTRIBUTING.md § Versioning and docs/release_runbook.md.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

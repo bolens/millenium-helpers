@@ -115,18 +115,65 @@ make test-all-distros  # local + Debian/Ubuntu/Fedora via Docker (requires Docke
 
 ## Versioning
 
-`VERSION` at the repo root is the helpers package version (aligned with Scoop, Winget, Homebrew, Arch, and Nix). Bump it when cutting a release; installers copy it next to the shared libraries so `--version` / `-Version` work after install. Prefer git tags `vX.Y.Z` for releases.
+`VERSION` at the repo root is the helpers package version (aligned with Scoop, Winget,
+Homebrew, versioned Arch, Nix release package, and `pyproject.toml`). Installers copy it
+next to the shared libraries so `--version` / `-Version` work after install. Prefer git
+tags `vX.Y.Z` that match `VERSION`.
 
-**Pre-tag bump (preferred):**
+Tip-of-main packages (`packaging/millennium-helpers-git`, Scoop `millennium-helpers-git`,
+Nix `#millennium-helpers-git`) are **not** tied to `VERSION`; they track git HEAD.
+
+### Make targets
+
+| Target | Script | Purpose |
+| --- | --- | --- |
+| `make bump-version VERSION=X.Y.Z` | `scripts/ci/bump-version.sh` | Pre-tag bump: write `VERSION` + packaging **versions/URLs**; **keep existing hashes**; regenerate stable Arch `.SRCINFO`; run `check-version` |
+| `make check-version` | `scripts/ci/check-version-sync.sh` | Assert packaging version strings + release-asset URL shape match `VERSION` (also runs inside `make lint`) |
+| `make sync-stable-srcinfo` | `scripts/ci/sync-stable-srcinfo.sh` | Regenerate `packaging/millennium-helpers/.SRCINFO` from `PKGBUILD` (`--check` fails if stale) |
+| `make sync-pkgver` | `scripts/ci/update-pkgbuild-pkgver.sh` | Refresh Arch `-git` `pkgver` + `.SRCINFO` from git HEAD |
+
+Post-tag (release CD only): `scripts/ci/update-packaging-versions.sh <ver> <linux_sha> <windows_sha>`
+fills real SHA256s / SRI hashes for Formula, Scoop, Winget, versioned Arch, and Nix.
+
+### Pre-tag bump (preferred)
 
 ```bash
-make bump-version VERSION=X.Y.Z   # VERSION + packaging URLs/versions; keeps hashes
-# edit CHANGELOG.md, then commit
+make bump-version VERSION=X.Y.Z
+# edit CHANGELOG.md under ## [X.Y.Z] - YYYY-MM-DD  (manual)
+make check-version   # already run by bump-version; safe to re-run
 ```
 
-Do not hand-edit `packaging/millennium-helpers/.SRCINFO` — use `make bump-version` or `make sync-stable-srcinfo`.
+`bump-version` updates:
 
-**Cutting a release:** follow [docs/release_runbook.md](docs/release_runbook.md) end-to-end (local `make lint` / `make test` / `make test-windows`, version bump, CI green, then tag). Do not tag until ShellCheck and the test suite pass locally and on `main`.
+- `VERSION`, `pyproject.toml`
+- Formula / Scoop / Winget release URLs + version fields (`ReleaseDate` on Winget installer)
+- `packaging/millennium-helpers/PKGBUILD` (`pkgver`, `pkgrel=1`) and `.SRCINFO`
+- `nix/release-info.nix` **version only** (`srcHash` unchanged until assets exist)
+
+It does **not** edit `CHANGELOG.md`. Do **not** hand-edit `.SRCINFO` — use `bump-version` or
+`make sync-stable-srcinfo`.
+
+Before the tag exists, Nix/Arch CI may **skip** building the release tarball package (asset
+404); that is expected. Tip-of-main / `-git` builds still run.
+
+### What `check-version` validates
+
+- `pyproject.toml` `version`
+- Scoop release manifest `version` + Windows zip URL shape
+- Winget `PackageVersion` on all three manifests + installer URL shape
+- Homebrew Formula version (from URL or explicit `version`) + Linux tarball URL shape
+- Versioned Arch `PKGBUILD` `pkgver` + Linux tarball URL shape
+- Versioned Arch `.SRCINFO` in sync with `PKGBUILD` (via `sync-stable-srcinfo --check`)
+- `nix/release-info.nix` `version`
+
+Placeholder / previous-release checksums are allowed; version strings and URL **shape** must
+match. Tip-of-main / `-git` packages are excluded.
+
+### Cutting a release
+
+Follow [docs/release_runbook.md](docs/release_runbook.md) end-to-end (local `make lint` /
+`make test` / `make test-windows`, `make bump-version`, CI green, then tag). Do not tag until
+ShellCheck and the test suite pass locally and on `main`.
 
 Tagging `vX.Y.Z` runs the release workflow:
 
@@ -142,9 +189,12 @@ Repo secret `PACKAGING_PAT` is **required** for the automatic path: a classic PA
 
 Local checks:
 ```bash
-make check-version   # VERSION ↔ Scoop / Winget / Homebrew / Arch / Nix / pyproject
-make check-man       # every command has a man page
-make check-winget    # Winget manifest structure (docs-only; no winget validate)
+make check-version         # VERSION ↔ packaging (see Versioning above)
+make bump-version VERSION=X.Y.Z   # pre-tag bump (then edit CHANGELOG)
+make sync-stable-srcinfo   # regenerate versioned Arch .SRCINFO only
+make sync-pkgver           # refresh Arch -git pkgver from HEAD
+make check-man             # every command has a man page
+make check-winget          # Winget manifest structure (docs-only; no winget validate)
 ```
 
 Optional local hooks (see `.pre-commit-config.yaml`):
@@ -179,7 +229,10 @@ When `sync-pkgver` updates `packaging/millennium-helpers-git/PKGBUILD` / `.SRCIN
 - Scoop `millennium-helpers-git` is a nightly tip-of-`main` install (GitHub archive); it is outside the versioned release bump.
 - Nix `packages.millennium-helpers` uses the Linux release tarball (`nix/release-info.nix`); `packages.millennium-helpers-git` builds from the flake source (commit in the version string). Default package is the release build.
 - Winget manifests track the Windows zip URL/hash for documentation only. WinGet portable nested files allow `.exe` only, so these PowerShell scripts cannot pass `winget validate` as a multi-command portable package.
-- `scripts/ci/update-packaging-versions.sh` updates Formula / Scoop release / Winget / versioned Arch / Nix release-info from a release tag + asset hashes.
+- `scripts/ci/bump-version.sh` — pre-tag version/URL bump (keeps hashes); prefer `make bump-version VERSION=X.Y.Z`.
+- `scripts/ci/check-version-sync.sh` — packaging ↔ `VERSION` gate; prefer `make check-version` (also part of `make lint`).
+- `scripts/ci/sync-stable-srcinfo.sh` — regenerate or `--check` versioned Arch `.SRCINFO`; prefer `make sync-stable-srcinfo`.
+- `scripts/ci/update-packaging-versions.sh` — post-tag: Formula / Scoop release / Winget / versioned Arch / Nix release-info from a release tag + asset hashes (release CD).
 - Versioned Arch (`packaging/millennium-helpers`) is bumped with Formula / Scoop / Winget on release (Linux tarball URL + sha256). Arch `-git` stays tip-of-main and is outside that bump.
 - Man-page CI (`scripts/ci/check-man-pages.sh`) fails on mandoc `ERROR`/`FATAL` only; `WARNING`/`STYLE` are printed as notes.
 

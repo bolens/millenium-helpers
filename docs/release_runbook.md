@@ -47,33 +47,37 @@ make test-all-distros
 Extra packaging gates (also covered by some CI workflows):
 
 ```bash
-make check-version    # VERSION ↔ Scoop / Winget / Homebrew / versioned Arch URLs
-make check-man        # every command has a man page
-make check-winget     # Winget manifest structure
+make check-version         # VERSION ↔ Scoop / Winget / Homebrew / Arch / Nix / pyproject / .SRCINFO
+make check-man             # every command has a man page
+make check-winget          # Winget manifest structure
 make check-completions
 ```
 
-If Arch packaging files changed (or after any commit if you do not use pre-commit):
+Arch packaging helpers (also run via pre-commit when relevant):
 
 ```bash
-make sync-pkgver
+make sync-pkgver           # tip-of-main -git pkgver from HEAD
+make sync-stable-srcinfo   # versioned package .SRCINFO from PKGBUILD
 ```
 
-With `pre-commit install` + `pre-commit install --hook-type pre-push`, `pkgver` syncs on every commit and `make lint` runs on every push (see CONTRIBUTING.md).
+With `pre-commit install` + `pre-commit install --hook-type pre-push`, `-git` `pkgver` and
+stable `.SRCINFO` sync on commit when needed, and `make lint` (includes `check-version`) runs
+on every push (see [CONTRIBUTING.md § Versioning](../CONTRIBUTING.md#versioning)).
 
 ---
 
 ## 2. Version bump
 
-Prefer the automated pre-tag bump (updates VERSION, pyproject, Formula/Scoop/Winget URLs,
-versioned Arch PKGBUILD + `.SRCINFO`, and Nix `release-info.nix` version; **keeps existing
-hashes** until release CD fills them):
+Use the automated pre-tag bump — do **not** hand-edit packaging version fields or `.SRCINFO`.
 
 ```bash
 make bump-version VERSION=X.Y.Z
 # then edit CHANGELOG.md under ## [X.Y.Z] - YYYY-MM-DD
 make check-version
 ```
+
+Details (what each file gets, hash timing, tip-of-main exclusions):
+[CONTRIBUTING.md § Versioning](../CONTRIBUTING.md#versioning).
 
 | File | What changes |
 | --- | --- |
@@ -86,12 +90,9 @@ make check-version
 | `packaging/millennium-helpers/{PKGBUILD,.SRCINFO}` | `pkgver` + expanded source URL |
 | `nix/release-info.nix` | `version` (srcHash later via packaging PR) |
 
-Do **not** hand-edit `.SRCINFO` — `bump-version` / `make sync-stable-srcinfo` regenerates it.
-Nix/Arch CI skips fetching the release tarball until the GitHub asset exists (expected before tag).
-
-```bash
-make check-version
-```
+Hashes stay on the previous release until the tag’s packaging PR runs
+`update-packaging-versions.sh`. Nix/Arch CI may notice “Release asset not published yet” and
+skip the release-tarball build until after the tag — that is expected.
 
 ---
 
@@ -205,7 +206,9 @@ make check-all
 make test-windows
 # make test-all-distros   # optional cross-distro Docker
 
-# … make bump-version VERSION=X.Y.Z ; edit CHANGELOG …
+# Pre-tag packaging bump (see CONTRIBUTING.md#versioning):
+make bump-version VERSION=X.Y.Z
+# edit CHANGELOG.md under ## [X.Y.Z] - YYYY-MM-DD
 
 make check-version
 make lint

@@ -6,6 +6,10 @@
 # Usage:
 #   scripts/ci/sync-stable-srcinfo.sh           # write .SRCINFO
 #   scripts/ci/sync-stable-srcinfo.sh --check   # exit 1 if stale (no writes)
+#   make sync-stable-srcinfo
+#
+# Prefer make bump-version for full pre-tag bumps (calls this automatically).
+# See CONTRIBUTING.md § Versioning.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

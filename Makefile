@@ -57,14 +57,17 @@ check-completions:
 	bash tests/unit/test_completions.sh
 
 # Refresh packaging/millennium-helpers-git pkgver + .SRCINFO from git HEAD (no build/install).
+# See CONTRIBUTING.md § Versioning.
 sync-pkgver:
 	bash scripts/ci/update-pkgbuild-pkgver.sh
 
 # Regenerate packaging/millennium-helpers/.SRCINFO from PKGBUILD.
+# See CONTRIBUTING.md § Versioning.
 sync-stable-srcinfo:
 	bash scripts/ci/sync-stable-srcinfo.sh
 
 # Pre-tag bump: VERSION + packaging URLs/versions (keeps hashes). Usage: make bump-version VERSION=X.Y.Z
+# See CONTRIBUTING.md § Versioning and docs/release_runbook.md.
 bump-version:
 	@test -n "$(VERSION)" || (echo "usage: make bump-version VERSION=X.Y.Z" >&2; exit 2)
 	bash scripts/ci/bump-version.sh "$(VERSION)"

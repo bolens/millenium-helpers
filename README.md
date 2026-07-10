@@ -272,13 +272,15 @@ Manual pages ship with the helpers (`man millennium-diag`, `man millennium-upgra
 
 ## Development
 
-Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) (including **[development requirements](CONTRIBUTING.md#development-requirements)** for `pwsh`, Docker, ShellCheck, etc.). Releases: [docs/release_runbook.md](docs/release_runbook.md).
+Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) (including **[development requirements](CONTRIBUTING.md#development-requirements)** and **[versioning](CONTRIBUTING.md#versioning)** for `pwsh`, Docker, ShellCheck, `make bump-version` / `make check-version`, etc.). Releases: [docs/release_runbook.md](docs/release_runbook.md).
 
 ```bash
 make setup         # install shellcheck + ruff
-make check-all     # lint + full Bash test suite
+make check-all     # lint + full Bash test suite (lint includes check-version)
 make test-windows  # Pester (requires PowerShell 7+ / pwsh)
-# make test-all-distros  # optional; requires Docker
+# make bump-version VERSION=X.Y.Z   # pre-tag packaging version bump
+# make check-version               # VERSION ↔ packaging manifests
+# make test-all-distros            # optional; requires Docker
 ```
 
 Helpers report version via `--version` / `-V` (from the repo `VERSION` file). A Dev Container (includes `pwsh` + Docker-in-Docker) and a Nix `devShell` (lint tools only) are available for a reproducible environment.

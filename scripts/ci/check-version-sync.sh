@@ -1,8 +1,15 @@
 #!/usr/bin/env bash
-# Verify VERSION matches packaging manifests (Scoop release, Winget, Homebrew, versioned Arch).
-# Placeholder checksums (all zeros / "skip") are allowed; version strings must match.
-# packaging/millennium-helpers-git and packaging/scoop/millennium-helpers-git.json track tip-of-main
-# and are not checked here. nix packages.millennium-helpers-git builds from the flake source similarly.
+# Verify VERSION matches packaging manifests (Scoop release, Winget, Homebrew,
+# versioned Arch PKGBUILD + .SRCINFO, Nix release-info, pyproject.toml).
+# Placeholder checksums (all zeros / "skip" / previous release) are allowed;
+# version strings and release-asset URL shape must match.
+#
+# packaging/millennium-helpers-git and packaging/scoop/millennium-helpers-git.json
+# track tip-of-main and are not checked here. nix packages.millennium-helpers-git
+# builds from the flake source similarly.
+#
+# Usage: make check-version   # or: bash scripts/ci/check-version-sync.sh
+# See CONTRIBUTING.md § Versioning.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
