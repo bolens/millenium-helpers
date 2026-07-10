@@ -5,7 +5,7 @@
 relaunch_state_file() {
   local target_user="$1"
   local target_home
-  target_home="$(getent passwd "$target_user" | cut -d: -f6)"
+  target_home="$(get_user_home "$target_user")"
   if [[ -z "$target_home" ]]; then
     echo ""
     return 1

@@ -559,7 +559,7 @@ run_setup_wizard() {
   else
     local user_name="${SUDO_USER:-$(id -un)}"
     local user_home
-    user_home="$(getent passwd "$user_name" | cut -d: -f6 || echo "")"
+    user_home="$(get_user_home "$user_name")"
     [[ -z "$user_home" ]] && user_home="$HOME"
     local user_config_dir="${XDG_CONFIG_HOME:-$user_home/.config}/millennium-helpers"
     if [[ -f "${user_config_dir}/config.json" ]]; then
@@ -607,7 +607,7 @@ run_setup_wizard() {
   # Write configuration to the user's config directory
   local user_name="${SUDO_USER:-$(id -un)}"
   local user_home
-  user_home="$(getent passwd "$user_name" | cut -d: -f6 || echo "")"
+  user_home="$(get_user_home "$user_name")"
   if [[ -z "$user_home" ]]; then
     user_home="$HOME"
   fi
@@ -656,7 +656,7 @@ manage_config() {
 
   local user_name="${SUDO_USER:-$(id -un)}"
   local user_home
-  user_home="$(getent passwd "$user_name" | cut -d: -f6 || echo "")"
+  user_home="$(get_user_home "$user_name")"
   if [[ -z "$user_home" ]]; then
     user_home="$HOME"
   fi

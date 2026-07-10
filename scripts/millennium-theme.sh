@@ -255,7 +255,7 @@ if [[ "$COMMAND" == "list" ]]; then
     
     # Active theme detection
     user_name="${SUDO_USER:-$(id -un)}"
-    user_home="$(getent passwd "$user_name" | cut -d: -f6 || echo "")"
+    user_home="$(get_user_home "$user_name")"
     if [[ -z "$user_home" ]]; then
       user_home="$HOME"
     fi
