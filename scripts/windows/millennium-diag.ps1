@@ -3,7 +3,8 @@ param(
     [string]$Command = $null,
     [switch]$Force = $false,
     [switch]$Json = $false,
-    [switch]$DryRun = $false
+    [switch]$DryRun = $false,
+    [switch]$Share = $false
 )
 set-strictmode -version Latest
 
@@ -15,6 +16,68 @@ if (Test-Path -Path $CommonPs1) {
 } else {
     Write-Error "Shared helper library not found at $CommonPs1"
     exit 1
+}
+
+if ($Share) {
+    Write-Host "Generating and uploading diagnostic report..."
+    
+    # Run the diagnostics command itself (without the -Share switch) to capture the output
+    $cleanArgs = @()
+    if ($Json) { $cleanArgs += "-Json" }
+    if ($DryRun) { $cleanArgs += "-DryRun" }
+    if ($Force) { $cleanArgs += "-Force" }
+    if ($Command) { $cleanArgs += $Command }
+    
+    $reportOutput = & $PSCommandPath @cleanArgs 2>&1 | Out-String
+    
+    # Redact user directory and user name
+    $userName = $env:USERNAME
+    $userProfile = $env:USERPROFILE
+    
+    if ($userProfile) {
+        $escapedProfile = [regex]::Escape($userProfile)
+        $reportOutput = $reportOutput -replace $escapedProfile, "~"
+    }
+    if ($userName) {
+        $reportOutput = $reportOutput -replace $userName, "user"
+    }
+    
+    # Redact GitHub tokens and PATs
+    $reportOutput = $reportOutput -replace "ghp_[A-Za-z0-9_]+", "[REDACTED]"
+    $reportOutput = $reportOutput -replace "github_pat_[A-Za-z0-9_]+", "[REDACTED]"
+    
+    # Retrieve configuration token from config.json if present
+    $configDir = Join-Path -Path $env:LOCALAPPDATA -ChildPath "millennium-helpers"
+    $configFile = Join-Path -Path $configDir -ChildPath "config.json"
+    if (Test-Path -Path $configFile) {
+        try {
+            $configObj = Get-Content -Path $configFile -Raw | ConvertFrom-Json
+            if ($configObj -and $configObj.github_token -and $configObj.github_token.Length -ge 4) {
+                $reportOutput = $reportOutput -replace [regex]::Escape($configObj.github_token), "[REDACTED]"
+            }
+        } catch {}
+    }
+    
+    if ($env:GITHUB_TOKEN -and $env:GITHUB_TOKEN.Length -ge 4) {
+        $reportOutput = $reportOutput -replace [regex]::Escape($env:GITHUB_TOKEN), "[REDACTED]"
+    }
+    
+    # Upload to paste.rs
+    try {
+        $response = Invoke-RestMethod -Uri "https://paste.rs" -Method Post -Body $reportOutput -ContentType "text/plain; charset=utf-8"
+        if ($response -and $response -like "*http*") {
+            Write-Host -ForegroundColor Green "Diagnostic report successfully shared!"
+            Write-Host -NoNewline "URL: "
+            Write-Host -ForegroundColor Blue $response.Trim()
+        } else {
+            Write-Error "Error: Failed to upload diagnostic report to paste.rs. (Invalid response: $response)"
+            exit 1
+        }
+    } catch {
+        Write-Error "Error: Failed to upload diagnostic report to paste.rs. ($($_.Exception.Message))"
+        exit 1
+    }
+    exit 0
 }
 
 # Support command alias doctor
