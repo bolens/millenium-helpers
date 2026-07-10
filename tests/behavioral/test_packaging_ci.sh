@@ -75,7 +75,8 @@ assert_contains "$scoop" "releases/download/v3.4.5/millennium-helpers-windows.zi
 assert_contains "$scoop" "millennium-helpers-windows.zip.sha256" "Scoop autoupdate hash uses .sha256 sidecar"
 
 winget=$(cat "$WORK/packaging/winget/bolens.millenniumhelpers.installer.yaml")
-assert_contains "$winget" "InstallerSha256: \"${WINDOWS_SHA^^}\"" "Winget InstallerSha256 is quoted uppercase"
+WINDOWS_SHA_UC="$(printf '%s' "$WINDOWS_SHA" | tr '[:lower:]' '[:upper:]')"
+assert_contains "$winget" "InstallerSha256: \"${WINDOWS_SHA_UC}\"" "Winget InstallerSha256 is quoted uppercase"
 assert_contains "$winget" "releases/download/v3.4.5/millennium-helpers-windows.zip" "Winget InstallerUrl points at trimmed Windows release asset"
 assert_contains "$winget" "PackageVersion: 3.4.5" "Winget installer PackageVersion updated"
 assert_contains "$winget" "InstallerType: zip" "Winget installer uses zip (no portable .ps1 claims)"
