@@ -1,0 +1,26 @@
+pkgbase = millennium-helpers
+	pkgdesc = Cross-platform utility scripts and Model Context Protocol (MCP) server for managing, upgrading, diagnosing, and controlling Millennium on Linux and Windows
+	pkgver = 2.5.0
+	pkgrel = 1
+	url = https://github.com/bolens/millenium-helpers
+	install = millennium-helpers.install
+	arch = any
+	license = MIT
+	depends = bash
+	depends = curl
+	depends = unzip
+	depends = python
+	depends = sudo
+	optdepends = jq: enhanced JSON parsing for updates
+	optdepends = systemd: daily update timer scheduler
+	optdepends = libnotify: desktop notifications for background update status
+	optdepends = flatpak: compatibility with Flatpak Steam
+	optdepends = cronie: alternative daily update timer scheduler via cron (fallback)
+	conflicts = millennium-helpers-git
+	backup = etc/sudoers.d/millennium-helpers
+	source = https://github.com/bolens/millenium-helpers/releases/download/v2.4.0/millennium-helpers-linux.tar.gz
+	source = millennium-helpers.sudoers
+	sha256sums = ff0321cf4032fb4b54682183a12686cbf8147a66be2e35109e14365515f9e2e3
+	sha256sums = d2a3e23decbd8d3e8ec59919f3bc244be21b9a1f6fa5e70ddd039243b7a87c9d
+
+pkgname = millennium-helpers

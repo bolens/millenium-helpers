@@ -8,6 +8,8 @@ on:
       - 'Formula/**'
       - 'packaging/scoop/**'
       - 'packaging/winget/**'
+      - 'packaging/millennium-helpers/**'
+      - 'nix/release-info.nix'
       - 'scripts/ci/check-version-sync.sh'
       - '.github/workflows/version-sync.yml'
   pull_request:
@@ -17,6 +19,8 @@ on:
       - 'Formula/**'
       - 'packaging/scoop/**'
       - 'packaging/winget/**'
+      - 'packaging/millennium-helpers/**'
+      - 'nix/release-info.nix'
       - 'scripts/ci/check-version-sync.sh'
       - '.github/workflows/version-sync.yml'
 

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-07-10
+
+### Added
+- Versioned Arch package (`packaging/millennium-helpers`) built from the Linux release tarball; release CD bumps pkgver + sha256 alongside Formula/Scoop/Winget/Nix
+- Scoop `millennium-helpers-git` nightly manifest (tip of `main` via GitHub archive)
+- Nix flake packages: `millennium-helpers` (release tarball) and `millennium-helpers-git` (flake source / latest commit)
+
+### Changed
+- Arch `-git` recipe moved to `packaging/millennium-helpers-git/` (AUR-ready layout)
+
+### Fixed
+- `millennium-schedule setup` under sudo verifies passwordless rules for the real user (`sudo -U`), matching doctor
+
 ## [2.4.0] - 2026-07-10
 
 ### Added

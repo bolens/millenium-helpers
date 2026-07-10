@@ -68,9 +68,11 @@ $ millennium diag
 | --- | --- |
 | **curl (recommended)** | `curl -fsSL https://raw.githubusercontent.com/bolens/millenium-helpers/main/install.sh \| bash -s -- install` |
 | Clone | `git clone … && sudo ./install.sh` |
-| Nix | `nix run github:bolens/millenium-helpers -- --help` |
+| Nix (release) | `nix profile install github:bolens/millenium-helpers` / `nix run github:bolens/millenium-helpers` |
+| Nix (tip of flake / git) | `nix profile install github:bolens/millenium-helpers#millennium-helpers-git` |
 | Homebrew | `brew tap bolens/millenium-helpers https://github.com/bolens/millenium-helpers && brew install millennium-helpers` |
-| Arch (local PKGBUILD) | `make sync-pkgver && cd packaging && makepkg -si` |
+| Arch (versioned PKGBUILD) | `cd packaging/millennium-helpers && makepkg -si` |
+| Arch (`-git` from checkout) | `make sync-pkgver && cd packaging/millennium-helpers-git && makepkg -si` |
 
 <details>
 <summary>Prerequisites & details</summary>
@@ -83,10 +85,12 @@ $ millennium diag
 sudo ./install.sh install
 ```
 
-**Nix profile install:**
+**Nix profile install** (release tarball by default; tip-of-flake with `#millennium-helpers-git`):
 
 ```bash
 nix profile install github:bolens/millenium-helpers
+nix profile install github:bolens/millenium-helpers#millennium-helpers-git
+# Or pin a tag: nix profile install github:bolens/millenium-helpers/v2.4.0
 ```
 
 **Homebrew** (formula at `Formula/millennium-helpers.rb`; hashes filled after a release tag):
@@ -108,7 +112,7 @@ Uninstall with `brew uninstall millennium-helpers` (see [Manual Uninstall](docs/
 millennium-schedule enable [stable|beta]
 ```
 
-**Arch packaging** — PKGBUILD recipes in [`packaging/`](packaging/) (`millennium-helpers-git` installs to `/usr/bin/`, completions, and sudoers for `%wheel`).
+**Arch packaging** — PKGBUILD recipes in [`packaging/millennium-helpers/`](packaging/millennium-helpers/) (versioned release tarball) and [`packaging/millennium-helpers-git/`](packaging/millennium-helpers-git/) (tip of `main`). Both install to `/usr/bin/`, completions, and sudoers for `%wheel`.
 
 </details>
 
@@ -118,7 +122,8 @@ millennium-schedule enable [stable|beta]
 | --- | --- |
 | **irm (recommended)** | `irm https://raw.githubusercontent.com/bolens/millenium-helpers/main/scripts/windows/install.ps1 \| iex` |
 | Clone | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\install.ps1` |
-| Scoop | `scoop install https://raw.githubusercontent.com/bolens/millenium-helpers/main/packaging/scoop/millennium-helpers.json` |
+| Scoop (release) | `scoop install https://raw.githubusercontent.com/bolens/millenium-helpers/main/packaging/scoop/millennium-helpers.json` |
+| Scoop (`main` / nightly) | `scoop install https://raw.githubusercontent.com/bolens/millenium-helpers/main/packaging/scoop/millennium-helpers-git.json` |
 | Winget | `winget install bolens.millenniumhelpers` |
 
 <details>

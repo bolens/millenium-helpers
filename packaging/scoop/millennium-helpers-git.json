@@ -1,10 +1,15 @@
 {
-    "version": "2.5.0",
-    "description": "Cross-platform utility scripts and Model Context Protocol (MCP) server for managing, upgrading, diagnosing, and controlling Millennium.",
+    "version": "nightly",
+    "description": "Cross-platform utility scripts and MCP server for Millennium (development build from main).",
     "homepage": "https://github.com/bolens/millenium-helpers",
     "license": "MIT",
-    "url": "https://github.com/bolens/millenium-helpers/releases/download/v2.5.0/millennium-helpers-windows.zip",
-    "hash": "5ef768616b1ac29a9fb66972dd71c4a02010b6e862ea4b8e718660f9b2156f5f",
+    "notes": [
+        "Installs tip-of-main from GitHub (not a release tag).",
+        "Uninstall the release package first if present: scoop uninstall millennium-helpers",
+        "To refresh on scoop update: scoop config update_nightly true"
+    ],
+    "url": "https://github.com/bolens/millenium-helpers/archive/refs/heads/main.zip",
+    "extract_dir": "millenium-helpers-main",
     "bin": [
         [
             "scripts\\windows\\millennium.ps1",
@@ -77,11 +82,5 @@
         "    Set-Content -Path $p -Value $filtered -Encoding UTF8",
         "  }",
         "}"
-    ],
-    "autoupdate": {
-        "url": "https://github.com/bolens/millenium-helpers/releases/download/v$version/millennium-helpers-windows.zip",
-        "hash": {
-            "url": "https://github.com/bolens/millenium-helpers/releases/download/v$version/millennium-helpers-windows.zip.sha256"
-        }
-    }
+    ]
 }

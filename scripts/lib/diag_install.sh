@@ -77,9 +77,12 @@ find_helpers_checkout() {
 
   local dir
   for dir in "${candidates[@]}"; do
-    [[ -n "$dir" && -d "${dir}/packaging" && -f "${dir}/packaging/PKGBUILD" ]] || continue
-    HELPERS_CHECKOUT="$dir"
-    return 0
+    [[ -n "$dir" ]] || continue
+    if [[ -f "${dir}/packaging/millennium-helpers-git/PKGBUILD" ]] \
+      || [[ -f "${dir}/packaging/millennium-helpers/PKGBUILD" ]]; then
+      HELPERS_CHECKOUT="$dir"
+      return 0
+    fi
   done
   return 1
 }

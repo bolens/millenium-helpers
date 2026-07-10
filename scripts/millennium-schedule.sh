@@ -288,13 +288,16 @@ EOF
     echo -e "It will run daily with a randomized delay of up to 1 hour."
   fi
 
-  # Verify if passwordless sudo is active
-  if ! sudo -n -l 2>/dev/null | grep -qE "NOPASSWD.*(millennium-upgrade|ALL)"; then
+  # Verify passwordless sudo for the real user (not root when invoked via sudo)
+  local sudo_list_cmd=(sudo -n -l)
+  if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" ]]; then
+    sudo_list_cmd=(sudo -U "$RUNNING_USER" -n -l)
+  fi
+  if ! "${sudo_list_cmd[@]}" 2>/dev/null | grep -qE "NOPASSWD.*(millennium-upgrade|ALL)"; then
     echo -e "\n${YELLOW}Warning: Passwordless sudo for the updater script could not be verified.${NC}"
     echo -e "Make sure you have run the installer first: sudo ./install.sh"
     echo -e "This configuration is required for the background timer to run successfully."
   else
-    # Print sudo check info
     echo -e "\n${GREEN}Sudo Passwordless Configuration:${NC}"
     echo -e "The installer has automatically configured the required passwordless sudo rule at:"
     echo -e "  /etc/sudoers.d/millennium-helpers"

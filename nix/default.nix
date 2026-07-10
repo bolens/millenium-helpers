@@ -6,13 +6,15 @@
 , unzip
 , python3
 , git
+, src
+, version
+, pname ? "millennium-helpers"
+  # Release tarball is flat (multiple top-level dirs). Git/cleanSource is a directory.
+, unpackFlat ? false
 }:
 
-stdenv.mkDerivation rec {
-  pname = "millennium-helpers";
-  version = lib.removeSuffix "\n" (builtins.readFile ../VERSION);
-
-  src = ../.;
+stdenv.mkDerivation ({
+  inherit pname version src;
 
   nativeBuildInputs = [ makeWrapper ];
 
@@ -23,7 +25,7 @@ stdenv.mkDerivation rec {
   postPatch = ''
     for f in scripts/millennium-*.sh; do
       substituteInPlace "$f" \
-        --replace '/usr/lib/millennium-helpers/common.sh' "$out/lib/millennium-helpers/common.sh"
+        --replace-fail '/usr/lib/millennium-helpers/common.sh' "$out/lib/millennium-helpers/common.sh"
     done
   '';
 
@@ -81,8 +83,8 @@ stdenv.mkDerivation rec {
     install -m644 VERSION $out/lib/millennium-helpers/VERSION
 
     # Install license
-    mkdir -p $out/share/licenses/millennium-helpers
-    install -m644 LICENSE $out/share/licenses/millennium-helpers/LICENSE
+    mkdir -p $out/share/licenses/${pname}
+    install -m644 LICENSE $out/share/licenses/${pname}/LICENSE
 
     runHook postInstall
   '';
@@ -92,5 +94,16 @@ stdenv.mkDerivation rec {
     homepage = "https://github.com/bolens/millenium-helpers";
     license = licenses.mit;
     platforms = platforms.linux;
+    mainProgram = "millennium";
   };
-}
+} // lib.optionalAttrs unpackFlat {
+  # Release asset has scripts/, completions/, man/, … at the archive root.
+  unpackPhase = ''
+    runHook preUnpack
+    mkdir -p source
+    tar -xzf "$src" -C source
+    export sourceRoot=source
+    chmod -R u+w -- "$sourceRoot"
+    runHook postUnpack
+  '';
+})

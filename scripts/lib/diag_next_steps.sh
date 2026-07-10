@@ -1,8 +1,10 @@
 # shellcheck shell=bash
 # Actionable next-step hints for diagnostics and doctor
 print_package_upgrade_hint() {
-  if [[ -n "${HELPERS_CHECKOUT:-}" && -d "${HELPERS_CHECKOUT}/packaging" ]]; then
-    echo -e "  ${YELLOW}cd ${HELPERS_CHECKOUT}/packaging && makepkg -si${NC}"
+  if [[ -n "${HELPERS_CHECKOUT:-}" && -d "${HELPERS_CHECKOUT}/packaging/millennium-helpers-git" ]]; then
+    echo -e "  ${YELLOW}cd ${HELPERS_CHECKOUT}/packaging/millennium-helpers-git && makepkg -si${NC}"
+  elif [[ -n "${HELPERS_CHECKOUT:-}" && -d "${HELPERS_CHECKOUT}/packaging/millennium-helpers" ]]; then
+    echo -e "  ${YELLOW}cd ${HELPERS_CHECKOUT}/packaging/millennium-helpers && makepkg -si${NC}"
   fi
   echo -e "  ${YELLOW}sudo pacman -Syu millennium-helpers-git${NC}"
 }
@@ -23,7 +25,7 @@ print_diag_next_steps() {
     ((issues++)) || true
     suggestions+=("Resolve mixed pacman/manual helper installs before upgrading")
     if [[ -n "${HELPERS_CHECKOUT:-}" ]]; then
-      suggestions+=("cd ${HELPERS_CHECKOUT}/packaging && makepkg -si  # rebuild from checkout")
+      suggestions+=("cd ${HELPERS_CHECKOUT}/packaging/millennium-helpers-git && makepkg -si  # rebuild from checkout")
     fi
     suggestions+=("sudo pacman -Syu millennium-helpers-git  # upgrade packaged helpers")
   }
@@ -37,7 +39,7 @@ print_diag_next_steps() {
     ((issues++)) || true
     if [[ "${INSTALL_METHOD:-}" == "pacman" ]] || helpers_are_pacman_packaged 2>/dev/null; then
       if [[ -n "${HELPERS_CHECKOUT:-}" ]]; then
-        suggestions+=("cd ${HELPERS_CHECKOUT}/packaging && makepkg -si  # rebuild from checkout")
+        suggestions+=("cd ${HELPERS_CHECKOUT}/packaging/millennium-helpers-git && makepkg -si  # rebuild from checkout")
       fi
       suggestions+=("sudo pacman -Syu millennium-helpers-git  # upgrade packaged helpers")
     else

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Sync packaging/PKGBUILD pkgver and .SRCINFO from the current git HEAD.
+# Sync packaging/millennium-helpers-git PKGBUILD pkgver and .SRCINFO from HEAD.
 # Does not build or install — use this instead of makepkg -si just to bump pkgver.
 #
 # Usage:
@@ -11,11 +11,15 @@
 # Pre-commit runs this against HEAD *before* the new commit, so the committed
 # pkgver matches the parent. `pkgver()` in the PKGBUILD still recalculates at
 # makepkg time from the checkout tip.
+#
+# The versioned package (packaging/millennium-helpers/) is updated by release CD
+# via update-packaging-versions.sh — not by this script.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-PKGBUILD="${ROOT}/packaging/PKGBUILD"
-SRCINFO="${ROOT}/packaging/.SRCINFO"
+PKG_DIR="${ROOT}/packaging/millennium-helpers-git"
+PKGBUILD="${PKG_DIR}/PKGBUILD"
+SRCINFO="${PKG_DIR}/.SRCINFO"
 
 cd "$ROOT"
 
@@ -29,14 +33,14 @@ fi
   exit 1
 }
 
-# Same formula as packaging/PKGBUILD pkgver()
+# Same formula as packaging/millennium-helpers-git/PKGBUILD pkgver()
 newver="$(printf 'r%s.g%s' "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)")"
 oldver="$(grep -E '^pkgver=' "$PKGBUILD" | head -1 | cut -d= -f2-)"
 
 if [[ "$CHECK_ONLY" == true ]]; then
   if [[ "$oldver" != "$newver" ]]; then
-    echo "error: packaging/PKGBUILD pkgver is stale ($oldver ≠ $newver)" >&2
-    echo "Run: make sync-pkgver && git add packaging/PKGBUILD packaging/.SRCINFO" >&2
+    echo "error: packaging/millennium-helpers-git/PKGBUILD pkgver is stale ($oldver ≠ $newver)" >&2
+    echo "Run: make sync-pkgver && git add packaging/millennium-helpers-git/PKGBUILD packaging/millennium-helpers-git/.SRCINFO" >&2
     exit 1
   fi
   echo "pkgver OK ($newver)"
@@ -61,13 +65,13 @@ fi
 if command -v makepkg >/dev/null 2>&1 && [[ "$(id -u)" -ne 0 ]]; then
   before_srcinfo=""
   [[ -f "$SRCINFO" ]] && before_srcinfo="$(cat "$SRCINFO")"
-  (cd "${ROOT}/packaging" && makepkg --printsrcinfo > .SRCINFO)
+  (cd "$PKG_DIR" && makepkg --printsrcinfo > .SRCINFO)
   after_srcinfo="$(cat "$SRCINFO")"
   if [[ "$before_srcinfo" != "$after_srcinfo" ]]; then
-    echo "Regenerated packaging/.SRCINFO via makepkg --printsrcinfo"
+    echo "Regenerated packaging/millennium-helpers-git/.SRCINFO via makepkg --printsrcinfo"
     changed=true
   else
-    echo "packaging/.SRCINFO already up to date"
+    echo "packaging/millennium-helpers-git/.SRCINFO already up to date"
   fi
 elif [[ -f "$SRCINFO" ]]; then
   before_srcinfo="$(cat "$SRCINFO")"
@@ -77,16 +81,16 @@ elif [[ -f "$SRCINFO" ]]; then
     "$SRCINFO"
   after_srcinfo="$(cat "$SRCINFO")"
   if [[ "$before_srcinfo" != "$after_srcinfo" ]]; then
-    echo "Patched packaging/.SRCINFO pkgver=${newver} pkgrel=1"
+    echo "Patched packaging/millennium-helpers-git/.SRCINFO pkgver=${newver} pkgrel=1"
     changed=true
   fi
 else
-  echo "error: packaging/.SRCINFO missing and makepkg unavailable/unusable" >&2
+  echo "error: packaging/millennium-helpers-git/.SRCINFO missing and makepkg unavailable/unusable" >&2
   exit 1
 fi
 
 # Under pre-commit: fail so the commit aborts and the user re-stages the updates.
 if [[ "$changed" == true && -n "${PRE_COMMIT:-}" ]]; then
-  echo "pkgver files updated — re-stage packaging/PKGBUILD packaging/.SRCINFO and retry the commit." >&2
+  echo "pkgver files updated — re-stage packaging/millennium-helpers-git/PKGBUILD packaging/millennium-helpers-git/.SRCINFO and retry the commit." >&2
   exit 1
 fi

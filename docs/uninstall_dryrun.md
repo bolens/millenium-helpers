@@ -125,9 +125,11 @@ If you installed via the standard installer script:
 
 ### 2. Linux (Arch Linux AUR Install)
 
-If you installed via `millennium-helpers-git` from the AUR, all file locations (binaries in `/usr/bin/`, completions, systemd units, and sudoers rules) are fully tracked by `pacman`. Simply run:
+If you installed via `millennium-helpers` or `millennium-helpers-git` from the AUR (or a local PKGBUILD), all file locations (binaries in `/usr/bin/`, completions, systemd units, and sudoers rules) are fully tracked by `pacman`. Simply run:
 
 ```bash
+sudo pacman -R millennium-helpers
+# or, if you installed the VCS package:
 sudo pacman -R millennium-helpers-git
 ```
 
@@ -148,6 +150,8 @@ If you installed the helpers via `nix profile install github:bolens/millenium-he
 1. **Remove from Nix profile**:
    ```bash
    nix profile remove github:bolens/millenium-helpers
+   # or, if you installed the tip-of-flake package:
+   nix profile remove github:bolens/millenium-helpers#millennium-helpers-git
    ```
    *(Or query `nix profile list` and remove by package number, e.g., `nix profile remove 2`)*
 
@@ -247,6 +251,8 @@ If you installed the helpers via Scoop, uninstallation is mostly automated:
 1. **Uninstall package**:
    ```powershell
    scoop uninstall millennium-helpers
+   # or, if you installed the tip-of-main package:
+   scoop uninstall millennium-helpers-git
    ```
    This runs `pre_uninstall` hooks that remove PowerShell completion profile
    lines and the `MillenniumUpdate` scheduled task (if present).

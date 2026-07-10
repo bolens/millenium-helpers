@@ -9,13 +9,13 @@ if [[ "$SCRIPTS_UP_TO_DATE" == false ]]; then
     echo -e "Upgrade the package instead:"
     print_package_upgrade_hint
 
-    if [[ -n "${HELPERS_CHECKOUT:-}" && -d "${HELPERS_CHECKOUT}/packaging" ]]; then
+    if [[ -n "${HELPERS_CHECKOUT:-}" && -d "${HELPERS_CHECKOUT}/packaging/millennium-helpers-git" ]]; then
       if [[ "${ASSUME_YES:-false}" == "true" && "$DRY_RUN" == "false" ]]; then
-        echo -e "Running makepkg -si from ${HELPERS_CHECKOUT}/packaging ..."
+        echo -e "Running makepkg -si from ${HELPERS_CHECKOUT}/packaging/millennium-helpers-git ..."
         if [[ "$(id -u)" -eq 0 ]]; then
-          execute runuser -u "${RUNNING_USER}" -- bash -lc "cd '${HELPERS_CHECKOUT}/packaging' && makepkg -si --noconfirm"
+          execute runuser -u "${RUNNING_USER}" -- bash -lc "cd '${HELPERS_CHECKOUT}/packaging/millennium-helpers-git' && makepkg -si --noconfirm"
         else
-          execute bash -lc "cd '${HELPERS_CHECKOUT}/packaging' && makepkg -si --noconfirm"
+          execute bash -lc "cd '${HELPERS_CHECKOUT}/packaging/millennium-helpers-git' && makepkg -si --noconfirm"
         fi
       else
         echo -e "Tip: re-run with ${YELLOW}--yes${NC} to run makepkg -si automatically from the checkout."

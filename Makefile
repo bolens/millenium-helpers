@@ -56,7 +56,7 @@ check-winget:
 check-completions:
 	bash tests/unit/test_completions.sh
 
-# Refresh packaging/PKGBUILD pkgver + .SRCINFO from git HEAD (no build/install).
+# Refresh packaging/millennium-helpers-git pkgver + .SRCINFO from git HEAD (no build/install).
 sync-pkgver:
 	bash scripts/ci/update-pkgbuild-pkgver.sh
 

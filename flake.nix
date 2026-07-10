@@ -10,9 +10,43 @@
     utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs { inherit system; };
+        releaseInfo = import ./nix/release-info.nix;
+
+        millennium-helpers = pkgs.callPackage ./nix/default.nix {
+          version = releaseInfo.version;
+          # Raw tarball hash (SRI of the .tar.gz bytes) — matches release CD hex→SRI.
+          src = pkgs.fetchurl {
+            url = "https://github.com/bolens/millenium-helpers/releases/download/v${releaseInfo.version}/millennium-helpers-linux.tar.gz";
+            hash = releaseInfo.srcHash;
+          };
+          unpackFlat = true;
+        };
+
+        millennium-helpers-git = pkgs.callPackage ./nix/default.nix {
+          pname = "millennium-helpers-git";
+          version =
+            if self ? shortRev then "unstable-${self.shortRev}"
+            else if self ? dirtyShortRev then "unstable-${self.dirtyShortRev}"
+            else "unstable-dirty";
+          src = pkgs.lib.cleanSource ./.;
+        };
       in
       {
-        packages.default = pkgs.callPackage ./nix/default.nix { };
+        packages = {
+          inherit millennium-helpers millennium-helpers-git;
+          default = millennium-helpers;
+        };
+
+        apps = {
+          default = {
+            type = "app";
+            program = "${millennium-helpers}/bin/millennium";
+          };
+          millennium-helpers-git = {
+            type = "app";
+            program = "${millennium-helpers-git}/bin/millennium";
+          };
+        };
 
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Verify VERSION matches packaging manifests (Scoop, Winget, Homebrew).
+# Verify VERSION matches packaging manifests (Scoop release, Winget, Homebrew, versioned Arch).
 # Placeholder checksums (all zeros / "skip") are allowed; version strings must match.
+# packaging/millennium-helpers-git and packaging/scoop/millennium-helpers-git.json track tip-of-main
+# and are not checked here. nix packages.millennium-helpers-git builds from the flake source similarly.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -68,7 +70,31 @@ print('')
 [[ "$FORMULA_VERSION" == "$VERSION" ]] || fail "Homebrew Formula version '$FORMULA_VERSION' != VERSION '$VERSION'"
 echo "Homebrew Formula version OK ($FORMULA_VERSION)"
 
-# --- Release asset URL shape (Homebrew + Scoop) ---
+# --- Versioned Arch PKGBUILD ---
+AUR_PKGBUILD="packaging/millennium-helpers/PKGBUILD"
+[[ -f "$AUR_PKGBUILD" ]] || fail "missing $AUR_PKGBUILD"
+AUR_PKGVER="$(grep -E '^pkgver=' "$AUR_PKGBUILD" | head -1 | cut -d= -f2-)"
+[[ "$AUR_PKGVER" == "$VERSION" ]] || fail "Arch PKGBUILD pkgver '$AUR_PKGVER' != VERSION '$VERSION'"
+# URL may embed ${pkgver} / $pkgver or a literal vX.Y.Z — both are valid.
+# shellcheck disable=SC2016 # intentional literal ${pkgver}/$pkgver in the PKGBUILD pattern
+if ! grep -qE 'releases/download/v(\$\{pkgver\}|\$pkgver|'"${VERSION}"')/millennium-helpers-linux\.tar\.gz' "$AUR_PKGBUILD"; then
+  fail "Arch PKGBUILD missing trimmed Linux release asset URL for v${VERSION}"
+fi
+echo "Arch packaging/millennium-helpers pkgver OK ($AUR_PKGVER)"
+
+# --- Nix release-info ---
+NIX_RELEASE="nix/release-info.nix"
+[[ -f "$NIX_RELEASE" ]] || fail "missing $NIX_RELEASE"
+NIX_VERSION="$(python3 -c "
+import re, sys
+text = open(sys.argv[1], encoding='utf-8').read()
+m = re.search(r'version\s*=\s*\"([^\"]+)\"', text)
+print(m.group(1) if m else '')
+" "$NIX_RELEASE")"
+[[ "$NIX_VERSION" == "$VERSION" ]] || fail "nix/release-info.nix version '$NIX_VERSION' != VERSION '$VERSION'"
+echo "Nix release-info.nix version OK ($NIX_VERSION)"
+
+# --- Release asset URL shape (Homebrew + Scoop + Arch) ---
 python3 - "$VERSION" <<'PY' || fail "packaging release-asset URL checks failed"
 import json
 import re
@@ -94,6 +120,13 @@ for required in ("millennium", "millennium-mcp", "millennium-diag"):
 installer = Path("packaging/winget/bolens.millenniumhelpers.installer.yaml").read_text(encoding="utf-8")
 if f"releases/download/v{version}/millennium-helpers-windows.zip" not in installer:
     errors.append("Winget InstallerUrl must use trimmed Windows release asset")
+
+pkgbuild = Path("packaging/millennium-helpers/PKGBUILD").read_text(encoding="utf-8")
+if not re.search(
+    rf"releases/download/v(\$\{{pkgver\}}|\$pkgver|{re.escape(version)})/millennium-helpers-linux\.tar\.gz",
+    pkgbuild,
+):
+    errors.append("Arch PKGBUILD URL must use trimmed Linux release asset")
 
 if errors:
     for err in errors:

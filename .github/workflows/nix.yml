@@ -6,6 +6,7 @@ on:
     paths:
       - '**.nix'
       - 'flake.lock'
+      - 'nix/**'
       - 'VERSION'
       - 'scripts/millennium*.sh'
       - 'scripts/millennium-mcp.py'
@@ -19,6 +20,7 @@ on:
     paths:
       - '**.nix'
       - 'flake.lock'
+      - 'nix/**'
       - 'VERSION'
       - 'scripts/millennium*.sh'
       - 'scripts/millennium-mcp.py'
@@ -48,5 +50,9 @@ jobs:
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build Flake
-        run: nix build --experimental-features "nix-command flakes" --no-link
+      - name: Build Flake (release + git packages)
+        run: |
+          set -euo pipefail
+          nix build --experimental-features "nix-command flakes" --no-link .#millennium-helpers
+          nix build --experimental-features "nix-command flakes" --no-link .#millennium-helpers-git
+          nix build --experimental-features "nix-command flakes" --no-link

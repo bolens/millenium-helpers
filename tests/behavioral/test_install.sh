@@ -384,14 +384,22 @@ assert_contains "$formula" 'ln_sf "_millennium-helpers", zsh_completion/"_#{cmd}
 assert_contains "$formula" 'share/"nushell/completions"' "Formula installs nushell completions"
 assert_contains "$formula" 'assert_path_exists bash_completion/"millennium"' "Formula test checks millennium bash completion"
 
-pkgbuild=$(cat "${REPO_ROOT}/packaging/PKGBUILD")
+pkgbuild=$(cat "${REPO_ROOT}/packaging/millennium-helpers-git/PKGBUILD")
 assert_contains "$pkgbuild" "/usr/local/bin/millennium " "PKGBUILD prepare mentions bare millennium binary"
 assert_contains "$pkgbuild" "millennium.fish" "PKGBUILD prepare mentions millennium.fish"
+stable_pkgbuild=$(cat "${REPO_ROOT}/packaging/millennium-helpers/PKGBUILD")
+assert_contains "$stable_pkgbuild" "millennium-helpers-linux.tar.gz" "versioned PKGBUILD uses Linux release tarball"
+assert_contains "$stable_pkgbuild" "conflicts=(" "versioned PKGBUILD declares conflicts"
 
 scoop=$(cat "${REPO_ROOT}/packaging/scoop/millennium-helpers.json")
 assert_contains "$scoop" "post_install" "Scoop manifest registers post_install hooks"
 assert_contains "$scoop" "pre_uninstall" "Scoop manifest registers pre_uninstall hooks"
 assert_contains "$scoop" "millennium-helpers.ps1" "Scoop post_install wires PowerShell completions"
 assert_contains "$scoop" "MillenniumUpdate" "Scoop pre_uninstall removes MillenniumUpdate task"
+scoop_git=$(cat "${REPO_ROOT}/packaging/scoop/millennium-helpers-git.json")
+assert_contains "$scoop_git" '"version": "nightly"' "Scoop git manifest uses nightly version"
+assert_contains "$scoop_git" "archive/refs/heads/main.zip" "Scoop git manifest uses main branch archive"
+assert_contains "$scoop_git" "millenium-helpers-main" "Scoop git manifest sets extract_dir for GitHub archive"
+assert_contains "$scoop_git" "post_install" "Scoop git manifest registers post_install hooks"
 
 print_summary

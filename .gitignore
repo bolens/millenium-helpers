@@ -33,8 +33,14 @@ Thumbs.db
 # Local pre-commit cache (only if PRE_COMMIT_HOME is pointed here)
 .pre-commit-home/
 
-# Arch build/packaging artifacts
+# Arch build/packaging artifacts (per-package dirs)
 /packaging/*.pkg.tar.*
 /packaging/pkg/
 /packaging/src/
-/packaging/millennium-helpers/
+/packaging/millennium-helpers/pkg/
+/packaging/millennium-helpers/src/
+/packaging/millennium-helpers/*.pkg.tar.*
+/packaging/millennium-helpers-git/pkg/
+/packaging/millennium-helpers-git/src/
+/packaging/millennium-helpers-git/*.pkg.tar.*
+/packaging/millennium-helpers-git/millennium-helpers/

@@ -21,6 +21,8 @@
           - any-glob-to-any-file:
               - "packaging/scoop/**"
               - "packaging/winget/**"
+              - "packaging/millennium-helpers/**"
+              - "packaging/millennium-helpers-git/**"
       - head-branch:
           - "^chore/packaging-"
 
@@ -31,16 +33,16 @@
 "area: archlinux":
   - changed-files:
       - any-glob-to-any-file:
-          - "packaging/PKGBUILD"
-          - "packaging/.SRCINFO"
-          - "packaging/*.install"
-          - "packaging/*.sudoers"
+          - "packaging/millennium-helpers/**"
+          - "packaging/millennium-helpers-git/**"
+          - "scripts/ci/update-pkgbuild-pkgver.sh"
 
 "area: nix":
   - changed-files:
       - any-glob-to-any-file:
           - "flake.nix"
           - "flake.lock"
+          - "nix/**"
           - "default.nix"
 
 "area: mcp":

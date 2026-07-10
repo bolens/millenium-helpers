@@ -37,7 +37,11 @@ function Find-HelpersCheckout {
     foreach ($candidate in $candidates) {
         if (!$candidate) { continue }
         # Packaging checkout marker (Linux-style)
-        if (Test-Path -Path (Join-Path -Path $candidate -ChildPath 'packaging\PKGBUILD')) {
+        if (Test-Path -Path (Join-Path -Path $candidate -ChildPath 'packaging\millennium-helpers-git\PKGBUILD')) {
+            $script:HelpersCheckout = $candidate
+            return
+        }
+        if (Test-Path -Path (Join-Path -Path $candidate -ChildPath 'packaging\millennium-helpers\PKGBUILD')) {
             $script:HelpersCheckout = $candidate
             return
         }

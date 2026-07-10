@@ -56,10 +56,13 @@ jobs:
 
       - name: Validate Scoop JSON
         run: |
-          jq . packaging/scoop/millennium-helpers.json >/dev/null
-          echo "Scoop JSON is valid!"
+          set -euo pipefail
+          for f in packaging/scoop/*.json; do
+            jq . "$f" >/dev/null
+            echo "Scoop JSON OK: $f"
+          done
 
-      - name: Assert Scoop points at trimmed Windows release asset
+      - name: Assert Scoop release package points at trimmed Windows release asset
         run: |
           set -euo pipefail
           url="$(jq -r .url packaging/scoop/millennium-helpers.json)"
@@ -79,6 +82,33 @@ jobs:
             }
           done
           echo "Scoop release-asset URL and bins look good."
+
+      - name: Assert Scoop git package tracks main archive
+        run: |
+          set -euo pipefail
+          manifest=packaging/scoop/millennium-helpers-git.json
+          version="$(jq -r .version "$manifest")"
+          [[ "$version" == "nightly" ]] || {
+            echo "::error::Scoop git package version must be 'nightly', got: $version"
+            exit 1
+          }
+          url="$(jq -r .url "$manifest")"
+          [[ "$url" == *"archive/refs/heads/main.zip" ]] || {
+            echo "::error::Scoop git url must be the main branch archive, got: $url"
+            exit 1
+          }
+          extract_dir="$(jq -r .extract_dir "$manifest")"
+          [[ "$extract_dir" == "millenium-helpers-main" ]] || {
+            echo "::error::Scoop git extract_dir must be millenium-helpers-main, got: $extract_dir"
+            exit 1
+          }
+          for bin in millennium millennium-mcp millennium-diag; do
+            jq -e --arg b "$bin" '.bin | flatten | index($b)' "$manifest" >/dev/null || {
+              echo "::error::Scoop git bin list missing '$bin'"
+              exit 1
+            }
+          done
+          echo "Scoop git/main archive manifest looks good."
 
       - name: Set up Python
         if: needs.changes.outputs.winget == 'true'

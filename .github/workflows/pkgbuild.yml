@@ -4,10 +4,8 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'packaging/PKGBUILD'
-      - 'packaging/.SRCINFO'
-      - 'packaging/*.install'
-      - 'packaging/*.sudoers'
+      - 'packaging/millennium-helpers/**'
+      - 'packaging/millennium-helpers-git/**'
       - 'scripts/ci/update-pkgbuild-pkgver.sh'
       - 'VERSION'
       - 'scripts/millennium*.sh'
@@ -20,10 +18,8 @@ on:
   pull_request:
     branches: [ main ]
     paths:
-      - 'packaging/PKGBUILD'
-      - 'packaging/.SRCINFO'
-      - 'packaging/*.install'
-      - 'packaging/*.sudoers'
+      - 'packaging/millennium-helpers/**'
+      - 'packaging/millennium-helpers-git/**'
       - 'scripts/ci/update-pkgbuild-pkgver.sh'
       - 'VERSION'
       - 'scripts/millennium*.sh'
@@ -43,10 +39,16 @@ permissions:
 
 jobs:
   validate:
-    name: Validate AUR packaging
+    name: Validate AUR packaging (${{ matrix.package }})
     runs-on: ubuntu-latest
     container:
       image: archlinux:latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - millennium-helpers
+          - millennium-helpers-git
     steps:
       - name: Install build tooling
         run: |
@@ -57,7 +59,7 @@ jobs:
 
       - name: Lint PKGBUILD with namcap
         run: |
-          cd packaging
+          cd "packaging/${{ matrix.package }}"
           namcap PKGBUILD
 
       # makepkg refuses to run as root, so build as an unprivileged user
@@ -73,12 +75,13 @@ jobs:
 
       - name: Verify .SRCINFO is up to date with PKGBUILD
         run: |
-          su builduser -c 'cd /home/builduser/millenium-helpers/packaging && makepkg --printsrcinfo' > /tmp/generated.SRCINFO
-          if ! diff -u -I '^\s*pkgver =' packaging/.SRCINFO /tmp/generated.SRCINFO; then
-            echo "::error::.SRCINFO is out of date. Run 'makepkg --printsrcinfo > .SRCINFO' in packaging/ and commit the result."
+          PKG_DIR="packaging/${{ matrix.package }}"
+          su builduser -c "cd /home/builduser/millenium-helpers/${PKG_DIR} && makepkg --printsrcinfo" > /tmp/generated.SRCINFO
+          if ! diff -u -I '^\s*pkgver =' "${PKG_DIR}/.SRCINFO" /tmp/generated.SRCINFO; then
+            echo "::error::${PKG_DIR}/.SRCINFO is out of date. Run 'makepkg --printsrcinfo > .SRCINFO' in ${PKG_DIR} and commit the result."
             exit 1
           fi
 
       - name: Test build PKGBUILD
         run: |
-          su builduser -c 'cd /home/builduser/millenium-helpers/packaging && makepkg -s --noconfirm'
+          su builduser -c "cd /home/builduser/millenium-helpers/packaging/${{ matrix.package }} && makepkg -s --noconfirm"

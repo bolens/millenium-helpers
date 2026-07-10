@@ -363,9 +363,12 @@ jobs:
             ## Summary
             Automated packaging bump for release **v${{ needs.build-release.outputs.version }}**.
 
-            - Updates `VERSION`, Homebrew Formula, Scoop, and Winget to the trimmed release assets
-              (`millennium-helpers-linux.tar.gz` / `millennium-helpers-windows.zip`)
+            - Updates `VERSION`, Homebrew Formula, Scoop, Winget, versioned Arch
+              (`packaging/millennium-helpers`), and Nix `nix/release-info.nix` to the trimmed
+              release assets (`millennium-helpers-linux.tar.gz` / `millennium-helpers-windows.zip`)
             - Hashes come from the draft release assets built by this workflow
+            - Arch `-git`, Scoop `-git`, and Nix `#millennium-helpers-git` stay tip-of-main / flake source
+              and are not bumped here
 
             ## Automation
             If packaging CI passes, the release workflow will squash-merge this PR and publish the draft GitHub release.
@@ -375,8 +378,7 @@ jobs:
             - [ ] Confirm version-sync CI passes
             - [ ] Confirm Homebrew audit / Scoop / Winget manifest jobs pass
             - [ ] Confirm Scoop install test passes (trimmed zip layout)
-
-            Note: Arch `PKGBUILD` is the `-git` package and is intentionally outside this versioned bump.
+            - [ ] Confirm PKGBUILD CI passes for versioned + `-git` packages
 
   finalize:
     name: Merge packaging PR & publish release

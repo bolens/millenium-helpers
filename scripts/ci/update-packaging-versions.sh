@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# Update Formula / Scoop / Winget packaging files for a release tag.
+# Update Formula / Scoop / Winget / versioned Arch / Nix packaging for a release tag.
 # Usage: update-packaging-versions.sh <version> <linux_sha256> <windows_sha256> [repo]
 #   version: semver without leading v (e.g. 2.2.0)
 #   linux_sha256: SHA256 of trimmed Linux release asset (millennium-helpers-linux.tar.gz)
 #   windows_sha256: SHA256 of trimmed Windows release asset (millennium-helpers-windows.zip)
 #   repo: optional GitHub owner/name (default: bolens/millenium-helpers)
+#
+# Note: packaging/millennium-helpers-git is tip-of-main and is not updated here.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -153,8 +155,94 @@ for rel in (
     print(f"Updated {path}")
 PY
 
+# --- Versioned Arch PKGBUILD (release tarball; -git is separate) ---
+python3 - "$VERSION" "$LINUX_SHA" <<'PY'
+import os
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+version, linux_sha = sys.argv[1], sys.argv[2].lower()
+pkg_dir = Path("packaging/millennium-helpers")
+pkgbuild = pkg_dir / "PKGBUILD"
+text = pkgbuild.read_text(encoding="utf-8")
+
+text = re.sub(r"(?m)^pkgver=.*$", f"pkgver={version}", text, count=1)
+text = re.sub(r"(?m)^pkgrel=.*$", "pkgrel=1", text, count=1)
+# First sha256sums entry is the Linux release tarball; keep sudoers hash.
+text = re.sub(
+    r"(?m)^(sha256sums=\(')[0-9a-fA-F]{64}(')",
+    rf"\g<1>{linux_sha}\g<2>",
+    text,
+    count=1,
+)
+
+pkgbuild.write_text(text, encoding="utf-8")
+print(f"Updated {pkgbuild}")
+
+srcinfo = pkg_dir / ".SRCINFO"
+try:
+    if os.geteuid() == 0:
+        raise FileNotFoundError("makepkg unavailable as root")
+    generated = subprocess.check_output(
+        ["makepkg", "--printsrcinfo"],
+        cwd=pkg_dir,
+        text=True,
+    )
+    srcinfo.write_text(generated, encoding="utf-8")
+    print(f"Regenerated {srcinfo}")
+except (FileNotFoundError, subprocess.CalledProcessError, OSError) as exc:
+    # Fallback when makepkg is unavailable (e.g. non-Arch runners): patch fields.
+    if not srcinfo.is_file():
+        raise SystemExit(f"error: cannot regenerate {srcinfo}: {exc}") from exc
+    info = srcinfo.read_text(encoding="utf-8")
+    info = re.sub(r"(?m)^(\tpkgver = ).*$", rf"\g<1>{version}", info, count=1)
+    info = re.sub(r"(?m)^(\tpkgrel = ).*$", r"\g<1>1", info, count=1)
+    info = re.sub(
+        r"(?m)^(source = https://github\.com/.+/releases/download/)v[^/]+(/millennium-helpers-linux\.tar\.gz)$",
+        rf"\g<1>v{version}\g<2>",
+        info,
+        count=1,
+    )
+    # First sha256sums line is the tarball.
+    info = re.sub(
+        r"(?m)^(sha256sums = )[0-9a-fA-F]{64}$",
+        rf"\g<1>{linux_sha}",
+        info,
+        count=1,
+    )
+    srcinfo.write_text(info, encoding="utf-8")
+    print(f"Patched {srcinfo} (makepkg unavailable)")
+PY
+
+# --- Nix release-info.nix (SRI hash of Linux release tarball) ---
+python3 - "$VERSION" "$LINUX_SHA" <<'PY'
+import base64
+import binascii
+import re
+import sys
+from pathlib import Path
+
+version, linux_sha = sys.argv[1], sys.argv[2].lower()
+sri = "sha256-" + base64.b64encode(binascii.unhexlify(linux_sha)).decode("ascii")
+path = Path("nix/release-info.nix")
+text = path.read_text(encoding="utf-8")
+text = re.sub(r'(?m)^(\s*version\s*=\s*")[^"]*(";)', rf"\g<1>{version}\g<2>", text, count=1)
+text = re.sub(
+    r'(?m)^(\s*srcHash\s*=\s*")[^"]*(";)',
+    rf"\g<1>{sri}\g<2>",
+    text,
+    count=1,
+)
+path.write_text(text, encoding="utf-8")
+print(f"Updated {path} (version={version}, srcHash={sri})")
+PY
+
 # Verify written manifests contain the expected hashes (catch silent regex misses).
 python3 - "$VERSION" "$LINUX_SHA" "$WINDOWS_SHA" "$ASSET_TGZ" "$ASSET_ZIP" <<'PY'
+import base64
+import binascii
 import json
 import re
 import sys
@@ -198,6 +286,24 @@ if f"releases/download/v{version}/{asset_zip}" not in installer:
     errors.append("Winget InstallerUrl missing expected Windows release asset")
 if f"PackageVersion: {version}" not in installer:
     errors.append("Winget installer PackageVersion mismatch")
+
+pkgbuild = Path("packaging/millennium-helpers/PKGBUILD").read_text(encoding="utf-8")
+if not re.search(rf"(?m)^pkgver={re.escape(version)}$", pkgbuild):
+    errors.append("Arch packaging/millennium-helpers/PKGBUILD pkgver mismatch")
+if not re.search(
+    rf"releases/download/v(\$\{{pkgver\}}|\$pkgver|{re.escape(version)})/{re.escape(asset_tgz)}",
+    pkgbuild,
+):
+    errors.append("Arch PKGBUILD missing expected Linux release asset URL")
+if linux_sha not in pkgbuild:
+    errors.append("Arch PKGBUILD missing expected Linux sha256")
+
+release_info = Path("nix/release-info.nix").read_text(encoding="utf-8")
+if f'version = "{version}"' not in release_info:
+    errors.append("nix/release-info.nix version mismatch")
+sri = "sha256-" + base64.b64encode(binascii.unhexlify(linux_sha)).decode("ascii")
+if f'srcHash = "{sri}"' not in release_info:
+    errors.append("nix/release-info.nix srcHash mismatch")
 
 file_ver = Path("VERSION").read_text(encoding="utf-8").strip()
 if file_ver != version:

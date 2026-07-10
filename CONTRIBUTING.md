@@ -150,7 +150,7 @@ pre-commit install --hook-type pre-push
 
 **pre-push** runs: `make lint`, and `make test-windows` when the push range touches `scripts/windows/`, `tests/windows/`, or `completions/powershell/` (skipped if `pwsh` is missing).
 
-When `sync-pkgver` updates `packaging/PKGBUILD` / `.SRCINFO`, the commit is aborted once so you can re-stage those files and retry (normal pre-commit autofix flow). Committed `pkgver` matches **HEAD at hook time** (the parent of the new commit)—a commit cannot embed its own short SHA. `pkgver()` in the PKGBUILD still recalculates from the tip at `makepkg` time.
+When `sync-pkgver` updates `packaging/millennium-helpers-git/PKGBUILD` / `.SRCINFO`, the commit is aborted once so you can re-stage those files and retry (normal pre-commit autofix flow). Committed `pkgver` matches **HEAD at hook time** (the parent of the new commit)—a commit cannot embed its own short SHA. `pkgver()` in the PKGBUILD still recalculates from the tip at `makepkg` time.
 
 ## Style
 
@@ -159,16 +159,18 @@ When `sync-pkgver` updates `packaging/PKGBUILD` / `.SRCINFO`, the commit is abor
 - Honor `NO_COLOR` (and `FORCE_COLOR` when forcing color).
 - PowerShell: `Set-StrictMode -Version Latest`; gate debug noise behind `MILLENNIUM_DEBUG` or `-Verbose`.
 - Do not commit packaging build artifacts (`packaging/*.pkg.tar.zst`, etc.).
-- Keep Arch `pkgver` / `.SRCINFO` current with `make sync-pkgver` (no full rebuild needed). With `pre-commit install`, this runs automatically on every commit.
+- Keep Arch `-git` `pkgver` / `.SRCINFO` current with `make sync-pkgver` (no full rebuild needed). With `pre-commit install`, this runs automatically on every commit.
 
 ## Packaging notes
 
-- Homebrew / Scoop / Winget consume the **trimmed GitHub Release assets**, not the auto-generated source archives.
+- Homebrew / Scoop (release) / Winget / Nix `millennium-helpers` consume the **trimmed GitHub Release assets**, not the auto-generated source archives.
 - Homebrew Formula version is taken from the `releases/download/vX.Y.Z/…` URL. Do **not** add a redundant `version "X.Y.Z"` line — `brew audit` rejects it. Keep `license "MIT"`.
 - Scoop is the supported multi-command Windows install path (`millennium`, `millennium-mcp`, and the individual commands).
+- Scoop `millennium-helpers-git` is a nightly tip-of-`main` install (GitHub archive); it is outside the versioned release bump.
+- Nix `packages.millennium-helpers` uses the Linux release tarball (`nix/release-info.nix`); `packages.millennium-helpers-git` builds from the flake source (commit in the version string). Default package is the release build.
 - Winget manifests track the Windows zip URL/hash for documentation only. WinGet portable nested files allow `.exe` only, so these PowerShell scripts cannot pass `winget validate` as a multi-command portable package.
-- `scripts/ci/update-packaging-versions.sh` updates Formula / Scoop / Winget from a release tag + asset hashes.
-- Arch `PKGBUILD` is the `-git` package and is intentionally outside the versioned release bump.
+- `scripts/ci/update-packaging-versions.sh` updates Formula / Scoop release / Winget / versioned Arch / Nix release-info from a release tag + asset hashes.
+- Versioned Arch (`packaging/millennium-helpers`) is bumped with Formula / Scoop / Winget on release (Linux tarball URL + sha256). Arch `-git` stays tip-of-main and is outside that bump.
 - Man-page CI (`scripts/ci/check-man-pages.sh`) fails on mandoc `ERROR`/`FATAL` only; `WARNING`/`STYLE` are printed as notes.
 
 ## Pull requests

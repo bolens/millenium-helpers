@@ -1,0 +1,121 @@
+# Maintainer: bolens <https://github.com/bolens>
+pkgname=millennium-helpers
+pkgver=2.5.0
+pkgrel=1
+pkgdesc="Cross-platform utility scripts and Model Context Protocol (MCP) server for managing, upgrading, diagnosing, and controlling Millennium on Linux and Windows"
+arch=('any')
+url="https://github.com/bolens/millenium-helpers"
+license=('MIT')
+depends=('bash' 'curl' 'unzip' 'python' 'sudo')
+optdepends=(
+  'jq: enhanced JSON parsing for updates'
+  'systemd: daily update timer scheduler'
+  'libnotify: desktop notifications for background update status'
+  'flatpak: compatibility with Flatpak Steam'
+  'cronie: alternative daily update timer scheduler via cron (fallback)'
+)
+conflicts=("${pkgname}-git")
+install=millennium-helpers.install
+backup=('etc/sudoers.d/millennium-helpers')
+source=("${url}/releases/download/v${pkgver}/millennium-helpers-linux.tar.gz"
+        "millennium-helpers.sudoers")
+sha256sums=('ff0321cf4032fb4b54682183a12686cbf8147a66be2e35109e14365515f9e2e3'
+            'd2a3e23decbd8d3e8ec59919f3bc244be21b9a1f6fa5e70ddd039243b7a87c9d')
+
+prepare() {
+  # Detect leftover manual installs (install.sh) that would conflict with pacman -U.
+  local conflict=0
+  if [ -f "/usr/local/bin/millennium-repair" ] \
+    || { [ -f "/etc/sudoers.d/millennium-helpers" ] && ! pacman -Qo "/etc/sudoers.d/millennium-helpers" &>/dev/null; }; then
+    conflict=1
+  fi
+  local f
+  for f in \
+    /usr/share/fish/vendor_completions.d/millennium.fish \
+    /usr/share/fish/vendor_completions.d/millennium-*.fish \
+    /usr/share/bash-completion/completions/millennium \
+    /usr/share/bash-completion/completions/millennium-* \
+    /usr/share/zsh/site-functions/_millennium \
+    /usr/share/zsh/site-functions/_millennium-* \
+    /usr/share/nushell/completions/millennium-helpers.nu \
+    /usr/share/man/man1/millennium.1 \
+    /usr/share/man/man1/millennium-*.1
+  do
+    [ -e "$f" ] || continue
+    if ! pacman -Qo "$f" &>/dev/null; then
+      conflict=1
+      break
+    fi
+  done
+
+  if [ "$conflict" -eq 1 ]; then
+    error "A manual installation of millennium-helpers was detected."
+    plain "To avoid file conflicts, please uninstall the manual installation first by running:"
+    plain "  sudo ./install.sh -u  (from the root of the source directory)"
+    plain ""
+    plain "If you no longer have the source directory, you can manually remove the conflicting files:"
+    plain '  sudo rm -f /etc/sudoers.d/millennium-helpers'
+    plain '  sudo rm -f /usr/local/bin/millennium /usr/local/bin/millennium-*'
+    plain '  sudo rm -rf /usr/local/lib/millennium-helpers'
+    plain '  sudo rm -f /usr/share/bash-completion/completions/millennium /usr/share/bash-completion/completions/millennium-*'
+    plain '  sudo rm -f /usr/share/zsh/site-functions/_millennium /usr/share/zsh/site-functions/_millennium-*'
+    plain '  sudo rm -f /usr/share/fish/vendor_completions.d/millennium.fish /usr/share/fish/vendor_completions.d/millennium-*.fish'
+    plain '  sudo rm -f /usr/share/nushell/completions/millennium-helpers.nu'
+    plain '  sudo rm -f /usr/share/man/man1/millennium.1 /usr/share/man/man1/millennium-*.1'
+    plain '  sudo rm -f /usr/local/share/man/man1/millennium.1 /usr/local/share/man/man1/millennium-*.1'
+    exit 1
+  fi
+}
+
+package() {
+  # Install sudoers rule
+  install -Dm440 "${srcdir}/millennium-helpers.sudoers" "${pkgdir}/etc/sudoers.d/millennium-helpers"
+
+  # Release tarball extracts flat into srcdir (same layout as Homebrew Formula)
+  cd "${srcdir}"
+
+  # Install scripts
+  install -d "${pkgdir}/usr/bin"
+  install -m755 scripts/millennium-repair.sh "${pkgdir}/usr/bin/millennium-repair"
+  install -m755 scripts/millennium-upgrade.sh "${pkgdir}/usr/bin/millennium-upgrade"
+  install -m755 scripts/millennium-schedule.sh "${pkgdir}/usr/bin/millennium-schedule"
+  install -m755 scripts/millennium-purge.sh "${pkgdir}/usr/bin/millennium-purge"
+  install -m755 scripts/millennium-diag.sh "${pkgdir}/usr/bin/millennium-diag"
+  install -m755 scripts/millennium-theme.sh "${pkgdir}/usr/bin/millennium-theme"
+  install -m755 scripts/millennium-mcp.py "${pkgdir}/usr/bin/millennium-mcp"
+  install -m755 scripts/millennium.sh "${pkgdir}/usr/bin/millennium"
+
+  # Install shared helper library and its modules
+  install -d "${pkgdir}/usr/lib/millennium-helpers/lib"
+  install -m644 scripts/common.sh "${pkgdir}/usr/lib/millennium-helpers/common.sh"
+  install -m644 scripts/lib/*.sh "${pkgdir}/usr/lib/millennium-helpers/lib/"
+
+  # Install Bash completions
+  install -Dm644 completions/bash/millennium-helpers "${pkgdir}/usr/share/bash-completion/completions/millennium-helpers"
+  for script in millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp millennium; do
+    ln -sf millennium-helpers "${pkgdir}/usr/share/bash-completion/completions/${script}"
+  done
+
+  # Install Zsh completions
+  install -Dm644 completions/zsh/_millennium-helpers "${pkgdir}/usr/share/zsh/site-functions/_millennium-helpers"
+  for script in millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp millennium; do
+    ln -sf _millennium-helpers "${pkgdir}/usr/share/zsh/site-functions/_${script}"
+  done
+
+  # Install Fish completions
+  install -d "${pkgdir}/usr/share/fish/vendor_completions.d"
+  install -m644 completions/fish/*.fish "${pkgdir}/usr/share/fish/vendor_completions.d/"
+
+  # Install Nushell completions
+  install -Dm644 completions/nushell/millennium-helpers.nu "${pkgdir}/usr/share/nushell/completions/millennium-helpers.nu"
+
+  # Install man pages
+  install -d "${pkgdir}/usr/share/man/man1"
+  install -m644 man/*.1 "${pkgdir}/usr/share/man/man1/"
+
+  # Install VERSION for --version lookups
+  install -Dm644 VERSION "${pkgdir}/usr/lib/millennium-helpers/VERSION"
+
+  # Install License
+  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}

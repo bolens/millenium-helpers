@@ -44,11 +44,16 @@ WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 
 # Minimal packaging tree mirroring the paths the updater touches.
-mkdir -p "$WORK/Formula" "$WORK/packaging/scoop" "$WORK/packaging/winget" "$WORK/scripts/ci"
+mkdir -p "$WORK/Formula" "$WORK/packaging/scoop" "$WORK/packaging/winget" \
+  "$WORK/packaging/millennium-helpers" "$WORK/nix" "$WORK/scripts/ci"
 cp "$UPDATE" "$WORK/scripts/ci/"
 cp "${REPO_ROOT}/Formula/millennium-helpers.rb" "$WORK/Formula/"
 cp "${REPO_ROOT}/packaging/scoop/millennium-helpers.json" "$WORK/packaging/scoop/"
 cp "${REPO_ROOT}/packaging/winget/"*.yaml "$WORK/packaging/winget/"
+cp "${REPO_ROOT}/packaging/millennium-helpers/PKGBUILD" "$WORK/packaging/millennium-helpers/"
+cp "${REPO_ROOT}/packaging/millennium-helpers/.SRCINFO" "$WORK/packaging/millennium-helpers/"
+cp "${REPO_ROOT}/packaging/millennium-helpers/millennium-helpers.sudoers" "$WORK/packaging/millennium-helpers/"
+cp "${REPO_ROOT}/nix/release-info.nix" "$WORK/nix/"
 echo "0.0.0" > "$WORK/VERSION"
 
 LINUX_SHA="1111111111111111111111111111111111111111111111111111111111111111"
@@ -82,6 +87,15 @@ assert_contains "$winget" "PackageVersion: 3.4.5" "Winget installer PackageVersi
 assert_contains "$winget" "InstallerType: zip" "Winget installer uses zip (no portable .ps1 claims)"
 assert_not_contains "$winget" "NestedInstallerFiles" "Winget installer has no NestedInstallerFiles"
 assert_not_contains "$winget" "PortableCommandAliases" "Winget installer has no PortableCommandAliases"
+
+aur=$(cat "$WORK/packaging/millennium-helpers/PKGBUILD")
+assert_contains "$aur" "pkgver=3.4.5" "Arch versioned PKGBUILD pkgver updated"
+assert_contains "$aur" "${LINUX_SHA}" "Arch versioned PKGBUILD receives linux sha256"
+aur_srcinfo=$(cat "$WORK/packaging/millennium-helpers/.SRCINFO")
+assert_contains "$aur_srcinfo" "pkgver = 3.4.5" "Arch versioned .SRCINFO pkgver updated"
+nix_info=$(cat "$WORK/nix/release-info.nix")
+assert_contains "$nix_info" 'version = "3.4.5"' "Nix release-info.nix version updated"
+assert_contains "$nix_info" "sha256-" "Nix release-info.nix has SRI srcHash"
 
 # --- check-winget-manifests accepts quoted placeholder on main ---
 
@@ -125,6 +139,8 @@ assert_not_contains "$nix_wf" "- 'LICENSE'" "Nix CI path filters do not trigger 
 
 pkg_wf=$(cat "${REPO_ROOT}/.github/workflows/pkgbuild.yml")
 assert_contains "$pkg_wf" "- 'VERSION'" "PKGBUILD CI path filters include VERSION"
+assert_contains "$pkg_wf" "millennium-helpers-git" "PKGBUILD CI validates -git package"
+assert_contains "$pkg_wf" "packaging/millennium-helpers/**" "PKGBUILD CI path filters include versioned package"
 assert_not_contains "$pkg_wf" "- 'LICENSE'" "PKGBUILD CI path filters do not trigger on LICENSE-only edits"
 
 suite_wf=$(cat "${REPO_ROOT}/.github/workflows/test-suite.yml")

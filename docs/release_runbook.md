@@ -47,7 +47,7 @@ make test-all-distros
 Extra packaging gates (also covered by some CI workflows):
 
 ```bash
-make check-version    # VERSION ↔ Scoop / Winget / Homebrew URLs
+make check-version    # VERSION ↔ Scoop / Winget / Homebrew / versioned Arch URLs
 make check-man        # every command has a man page
 make check-winget     # Winget manifest structure
 make check-completions
@@ -74,6 +74,7 @@ Update all versioned surfaces together:
 | `pyproject.toml` | `version = "X.Y.Z"` |
 | `Formula/millennium-helpers.rb` | `releases/download/vX.Y.Z/...` URL (sha256 updated later by packaging PR) |
 | `packaging/scoop/millennium-helpers.json` | `version` + Windows zip URL |
+| `nix/release-info.nix` | version + SRI hash of Linux release tarball |
 | `packaging/winget/*.yaml` | `PackageVersion` + installer URL / `ReleaseDate` |
 
 Keep existing SHA256s for now if assets are not published yet. `make check-version` only requires version strings and URL shape.
@@ -166,7 +167,7 @@ gh pr list --search "packaging" --state open
 
 - [ ] Draft release is **published** (not still draft)
 - [ ] `gh release view vX.Y.Z` shows both archives and `.sha256` sidecars
-- [ ] `main` Formula / Scoop / Winget hashes match the published assets (`make check-version`)
+- [ ] `main` Formula / Scoop / Winget / versioned Arch hashes match the published assets (`make check-version`)
 - [ ] Spot-check: piped installer dry-run or `brew audit` / Scoop manifest sanity
 
 ---
