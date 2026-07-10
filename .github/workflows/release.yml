@@ -116,22 +116,35 @@ jobs:
 
       - name: Create Linux/macOS Release Tarball
         run: |
+          set -euo pipefail
+          # Explicit Unix payload only — no Windows scripts, CI, packaging, or Nix.
           tar -czf millennium-helpers.tar.gz \
-            --exclude='.git*' \
-            --exclude='.github*' \
-            --exclude='tests*' \
-            --exclude='packaging*' \
-            ./*
+            install.sh \
+            VERSION \
+            LICENSE \
+            README.md \
+            scripts/common.sh \
+            scripts/millennium.sh \
+            scripts/millennium-diag.sh \
+            scripts/millennium-mcp.py \
+            scripts/millennium-purge.sh \
+            scripts/millennium-repair.sh \
+            scripts/millennium-schedule.sh \
+            scripts/millennium-theme.sh \
+            scripts/millennium-upgrade.sh \
+            scripts/lib \
+            completions \
+            man
 
       - name: Create Windows Release Zip
         run: |
+          set -euo pipefail
+          # Windows payload only — install.ps1 resolves VERSION via ..\..\VERSION.
           zip -r millennium-helpers.zip \
             scripts/windows/ \
-            completions/ \
-            install.sh \
-            README.md \
+            VERSION \
             LICENSE \
-            -x "*.git*" "*tests*" "*.github*"
+            README.md
 
       - name: Calculate Checksums
         id: checksums
@@ -184,12 +197,12 @@ jobs:
           body: |
             ## Release Verification & Checksums
 
-            Integrity hashes for official package manager formulas and manual verification:
+            Platform-trimmed archives for manual install (package managers use the GitHub tag source archives):
 
-            | Asset | SHA256 Checksum |
-            | :--- | :--- |
-            | `millennium-helpers.tar.gz` (Linux/macOS) | `${{ env.LINUX_SHA }}` |
-            | `millennium-helpers.zip` (Windows) | `${{ env.WINDOWS_SHA }}` |
+            | Asset | Contents | SHA256 |
+            | :--- | :--- | :--- |
+            | `millennium-helpers.tar.gz` | Linux/macOS scripts, completions, man pages | `${{ env.LINUX_SHA }}` |
+            | `millennium-helpers.zip` | Windows PowerShell scripts | `${{ env.WINDOWS_SHA }}` |
 
             ### Package Verification
             To verify the integrity of the downloaded assets, run:
@@ -352,71 +365,104 @@ jobs:
           set -euo pipefail
           REPO="${{ github.repository }}"
 
-          echo "Packaging PR #${PR}: ${PR_URL}"
-          echo "Waiting for CI checks to appear..."
+          # Only these jobs gate auto-merge. Ignore CodeQL Analyze / labeler / etc.
+          REQUIRED_CHECKS=(
+            "Detect changed packaging paths"
+            "VERSION matches packaging manifests"
+            "Validate Scoop / Winget manifests"
+            "winget validate (Windows)"
+            "Test Scoop Package Install"
+            "homebrew"
+          )
 
-          checks_ready=0
-          for attempt in $(seq 1 36); do
-            count="$(
-              gh pr checks "${PR}" --repo "${REPO}" --json name --jq 'length' 2>/dev/null || echo 0
+          echo "Packaging PR #${PR}: ${PR_URL}"
+          echo "Waiting for packaging CI checks: ${REQUIRED_CHECKS[*]}"
+
+          deadline=$((SECONDS + 2400))
+          while (( SECONDS < deadline )); do
+            checks_json="$(
+              gh pr checks "${PR}" --repo "${REPO}" --json name,state 2>/dev/null || echo '[]'
             )"
-            if [[ "${count}" =~ ^[0-9]+$ && "${count}" -gt 0 ]]; then
-              checks_ready=1
-              echo "Checks detected (attempt ${attempt}/36, count=${count}):"
-              gh pr checks "${PR}" --repo "${REPO}" 2>&1 || true
+
+            pending=0
+            failed=0
+            missing=0
+            status_lines=()
+
+            for name in "${REQUIRED_CHECKS[@]}"; do
+              state="$(
+                printf '%s' "$checks_json" | jq -r --arg n "$name" \
+                  '[.[] | select(.name == $n) | .state] | first // empty'
+              )"
+              if [[ -z "$state" ]]; then
+                missing=1
+                status_lines+=("MISSING  ${name}")
+                continue
+              fi
+              status_lines+=("${state}  ${name}")
+              case "$state" in
+                SUCCESS|NEUTRAL|SKIPPED)
+                  ;;
+                FAILURE|CANCELLED|TIMED_OUT|ACTION_REQUIRED|STARTUP_FAILURE|STALE)
+                  failed=1
+                  ;;
+                *)
+                  # PENDING, QUEUED, IN_PROGRESS, EXPECTED, etc.
+                  pending=1
+                  ;;
+              esac
+            done
+
+            if (( missing == 0 && pending == 0 )); then
+              printf '%s\n' "${status_lines[@]}"
+              if (( failed != 0 )); then
+                {
+                  echo "## Release finalize: packaging CI failed"
+                  echo ""
+                  echo "Automatic merge/publish was skipped. Packaging checks:"
+                  echo ""
+                  echo '```'
+                  printf '%s\n' "${status_lines[@]}"
+                  echo '```'
+                  echo ""
+                  echo "**Manual recovery**"
+                  echo "1. Fix the failing checks on this PR"
+                  echo "2. Squash-merge this PR into \`main\`"
+                  echo "3. Publish the draft GitHub release: \`${TAG}\`"
+                  echo ""
+                  echo "Draft release assets remain available; this PR was left open."
+                } > /tmp/pr-comment.md
+                gh pr comment "${PR}" --repo "${REPO}" --body-file /tmp/pr-comment.md || true
+                echo "::error::Packaging CI failed on PR #${PR}; left draft release ${TAG} for manual publish"
+                exit 1
+              fi
               break
             fi
-            echo "Attempt ${attempt}/36: no checks yet..."
-            sleep 10
+
+            echo "Still waiting (missing=${missing} pending=${pending})..."
+            printf '%s\n' "${status_lines[@]}" || true
+            sleep 30
           done
 
-          if [[ "${checks_ready}" -ne 1 ]]; then
+          if (( SECONDS >= deadline )); then
             gh pr comment "${PR}" --repo "${REPO}" --body "$(cat <<EOF
-          ## Release finalize: no CI checks
+          ## Release finalize: packaging CI timed out
 
-          Timed out waiting for packaging CI to start on this PR.
+          Timed out waiting for required packaging checks on this PR.
 
           **Manual recovery**
-          1. Ensure workflows ran (close/reopen this PR if needed)
-          2. Fix any failures, then squash-merge this PR
+          1. Ensure packaging workflows finished
+          2. Squash-merge this PR into \`main\`
           3. Publish the draft release: \`${TAG}\`
 
           Draft release and this PR were left untouched.
           EOF
           )" || true
-            echo "::error::Timed out waiting for CI checks on PR #${PR}"
+            echo "::error::Timed out waiting for packaging CI on PR #${PR}"
             exit 1
           fi
 
-          echo "Watching packaging CI on PR #${PR}..."
-          set +e
-          gh pr checks "${PR}" --repo "${REPO}" --watch --fail-fast --interval 30
-          checks_rc=$?
-          set -e
-
-          if [[ "${checks_rc}" -ne 0 ]]; then
-            {
-              echo "## Release finalize: packaging CI failed"
-              echo ""
-              echo "Automatic merge/publish was skipped. Current checks:"
-              echo ""
-              echo '```'
-              gh pr checks "${PR}" --repo "${REPO}" 2>&1 || true
-              echo '```'
-              echo ""
-              echo "**Manual recovery**"
-              echo "1. Fix the failing checks on this PR"
-              echo "2. Squash-merge this PR into \`main\`"
-              echo "3. Publish the draft GitHub release: \`${TAG}\`"
-              echo ""
-              echo "Draft release assets remain available; this PR was left open."
-            } > /tmp/pr-comment.md
-            gh pr comment "${PR}" --repo "${REPO}" --body-file /tmp/pr-comment.md || true
-            echo "::error::Packaging CI failed on PR #${PR}; left draft release ${TAG} for manual publish"
-            exit 1
-          fi
-
-          echo "All checks passed. Squash-merging PR #${PR}..."
+          echo "All packaging checks passed. Squash-merging PR #${PR}..."
           gh pr merge "${PR}" --repo "${REPO}" --squash --delete-branch
 
           echo "Publishing draft release ${TAG}..."
