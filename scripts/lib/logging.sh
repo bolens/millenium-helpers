@@ -186,7 +186,9 @@ get_user_home() {
 
 get_file_owner() {
   local file="$1"
-  if [[ "$(uname)" == "Darwin" ]]; then
+  local os
+  os=$(/usr/bin/uname 2>/dev/null || uname)
+  if [[ "$os" == "Darwin" ]]; then
     stat -f '%Su' "$file" 2>/dev/null || echo ""
   else
     stat -c '%U' "$file" 2>/dev/null || echo ""
@@ -195,7 +197,9 @@ get_file_owner() {
 
 get_file_mtime() {
   local file="$1"
-  if [[ "$(uname)" == "Darwin" ]]; then
+  local os
+  os=$(/usr/bin/uname 2>/dev/null || uname)
+  if [[ "$os" == "Darwin" ]]; then
     stat -f '%m' "$file" 2>/dev/null || echo 0
   else
     stat -c '%Y' "$file" 2>/dev/null || echo 0
@@ -204,7 +208,9 @@ get_file_mtime() {
 
 get_file_size() {
   local file="$1"
-  if [[ "$(uname)" == "Darwin" ]]; then
+  local os
+  os=$(/usr/bin/uname 2>/dev/null || uname)
+  if [[ "$os" == "Darwin" ]]; then
     stat -f '%z' "$file" 2>/dev/null || echo 0
   else
     stat -c '%s' "$file" 2>/dev/null || echo 0
@@ -213,7 +219,9 @@ get_file_size() {
 
 get_file_perms() {
   local file="$1"
-  if [[ "$(uname)" == "Darwin" ]]; then
+  local os
+  os=$(/usr/bin/uname 2>/dev/null || uname)
+  if [[ "$os" == "Darwin" ]]; then
     stat -f '%Lp' "$file" 2>/dev/null || echo ""
   else
     stat -c '%a' "$file" 2>/dev/null || echo ""

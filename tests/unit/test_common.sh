@@ -215,7 +215,7 @@ rm -f "${MOCK_BIN}/runuser.calls" "$expected_state_file"
 
 # relaunch_steam must refuse to follow a symlink planted at the state file
 # path (defense against a race that pre-dates directory lockdown).
-ln -sf "/etc/hostname" "$expected_state_file"
+ln -sf "/etc/hosts" "$expected_state_file"
 symlink_out=$(relaunch_steam "$test_relaunch_user" 2>&1)
 assert_equals "" "$symlink_out" "relaunch_steam silently refuses to source a symlinked state file"
 assert_file_exists "$expected_state_file" "relaunch_steam does not delete an untrusted symlinked state file"
