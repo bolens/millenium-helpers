@@ -26,7 +26,7 @@ jobs:
   # supported distros before spending time on the (much slower) behavioral
   # test matrix below.
   syntax-check:
-    name: Syntax check (${{ matrix.distro }})
+    name: Linux (${{ matrix.distro }}) - Syntax Check
     runs-on: ubuntu-latest
     container:
       image: ${{ matrix.image }}
@@ -70,7 +70,7 @@ jobs:
   # as each individual suite finishes rather than after one long sequential
   # run.
   test:
-    name: ${{ matrix.suite }} (${{ matrix.distro }})
+    name: Linux (${{ matrix.distro }}) - ${{ matrix.suite }}
     runs-on: ubuntu-latest
     container:
       image: ${{ matrix.image }}
