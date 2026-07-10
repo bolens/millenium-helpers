@@ -59,20 +59,20 @@ check_bootstrap_hooks() {
   for steam_dir in "${USER_HOME}/.local/share/Steam" "${USER_HOME}/.steam/steam" "${USER_HOME}/.steam/root" "${USER_HOME}/.var/app/com.valvesoftware.Steam/.local/share/Steam" "${USER_HOME}/Library/Application Support/Steam"; do
     [[ -d "$steam_dir" ]] || continue
     found_steam=true
-    
+
     # Determine environment type
     local type_env="Native"
     if [[ "$steam_dir" == *"com.valvesoftware.Steam"* ]]; then
       type_env="Flatpak"
     fi
-    
+
     echo -e "  Steam path [${type_env}]: ${steam_dir}"
-    
+
     for arch in "ubuntu12_32:x86" "ubuntu12_64:hhx64"; do
       local folder="${arch%%:*}"
       local lib_name="${arch#*:}"
       local hook_file="${steam_dir}/${folder}/libXtst.so.6"
-      
+
       if [[ -L "$hook_file" ]]; then
         local target
         target=$(readlink "$hook_file")
@@ -101,14 +101,14 @@ check_bootstrap_hooks() {
       local flatpak_user_override="${USER_HOME}/.local/share/flatpak/overrides/com.valvesoftware.Steam"
       local flatpak_sys_override="/var/lib/flatpak/overrides/com.valvesoftware.Steam"
       local has_override=false
-      
+
       for override_file in "$flatpak_user_override" "$flatpak_sys_override"; do
         if [[ -f "$override_file" ]] && grep -q "/usr/lib/millennium" "$override_file" 2>/dev/null; then
           has_override=true
           break
         fi
       done
-      
+
       if [[ "$has_override" == true ]]; then
         print_diag_item "ok" "    - Flatpak Sandbox Override" "Configured (/usr/lib/millennium is visible inside container)"
       else
@@ -122,4 +122,3 @@ check_bootstrap_hooks() {
     echo -e "  ${RED}No Steam directories detected for the current user.${NC}"
   fi
 }
-

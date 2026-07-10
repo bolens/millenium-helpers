@@ -1,4 +1,27 @@
 repos:
+  # Portable sanity hooks (pre-commit manages its own env on first run)
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: detect-private-key
+        stages: [pre-commit]
+      - id: check-merge-conflict
+        stages: [pre-commit]
+      - id: check-added-large-files
+        args: [--maxkb=500]
+        stages: [pre-commit]
+      - id: check-symlinks
+        stages: [pre-commit]
+      - id: destroyed-symlinks
+        stages: [pre-commit]
+      - id: trailing-whitespace
+        stages: [pre-commit]
+      - id: end-of-file-fixer
+        stages: [pre-commit]
+      - id: mixed-line-ending
+        args: [--fix=lf]
+        stages: [pre-commit]
+
   - repo: local
     hooks:
       - id: shellcheck
@@ -7,19 +30,30 @@ repos:
         language: system
         types: [shell]
         files: '^(install\.sh|scripts/.*\.sh|tests/.*\.sh)$'
+        stages: [pre-commit]
 
       - id: ruff
-        name: ruff
+        name: ruff check
         entry: ruff check
         language: system
         types: [python]
         files: '^scripts/.*\.py$'
+        stages: [pre-commit]
+
+      - id: ruff-format
+        name: ruff format
+        entry: ruff format --check
+        language: system
+        types: [python]
+        files: '^scripts/.*\.py$'
+        stages: [pre-commit]
 
       - id: version-file
         name: VERSION file present
         entry: bash -c 'test -f VERSION && test -s VERSION'
         language: system
         pass_filenames: false
+        stages: [pre-commit]
 
       - id: version-sync
         name: packaging versions match VERSION
@@ -27,6 +61,23 @@ repos:
         language: system
         pass_filenames: false
         files: '^(VERSION|Formula/.*|packaging/scoop/.*|packaging/winget/.*)$'
+        stages: [pre-commit]
+
+      - id: check-winget
+        name: winget manifest structure
+        entry: bash scripts/ci/check-winget-manifests.sh
+        language: system
+        pass_filenames: false
+        files: '^packaging/winget/.*'
+        stages: [pre-commit]
+
+      - id: check-completions
+        name: shell completions validation
+        entry: bash tests/unit/test_completions.sh
+        language: system
+        pass_filenames: false
+        files: '^completions/.*'
+        stages: [pre-commit]
 
       - id: man-pages
         name: man page coverage
@@ -34,10 +85,48 @@ repos:
         language: system
         pass_filenames: false
         files: '^(man/.*|scripts/millennium-.*)$'
+        stages: [pre-commit]
+
+      - id: actionlint
+        name: actionlint
+        entry: bash scripts/ci/run-actionlint.sh
+        language: system
+        pass_filenames: false
+        files: '^\.github/workflows/.*'
+        stages: [pre-commit]
+
+      - id: gitleaks
+        name: gitleaks (staged)
+        entry: bash scripts/ci/run-gitleaks.sh
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
 
       - id: sync-pkgver
         name: sync PKGBUILD pkgver from HEAD
         entry: bash scripts/ci/update-pkgbuild-pkgver.sh
         language: system
         pass_filenames: false
-        files: '^(packaging/PKGBUILD|packaging/\.SRCINFO)$'
+        # Always run: pkgver is derived from git rev-list/HEAD, not only when
+        # packaging files are staged. Writes parent-HEAD pkgver into the commit
+        # (a commit cannot embed its own short SHA). See CONTRIBUTING.md.
+        always_run: true
+        stages: [pre-commit]
+
+      # --- pre-push (install with: pre-commit install --hook-type pre-push) ---
+
+      - id: pre-push-lint
+        name: make lint
+        entry: make lint
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+
+      - id: pre-push-windows
+        name: Windows Pester (if pwsh + windows diffs)
+        entry: bash scripts/ci/pre-push-windows.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]

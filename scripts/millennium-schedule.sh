@@ -192,9 +192,9 @@ enable_timer() {
   if [[ "$(uname)" == "Darwin" ]]; then
     local plist_dir="${USER_HOME}/Library/LaunchAgents"
     local plist_path="${plist_dir}/com.millennium.update.plist"
-    
+
     execute mkdir -p "$plist_dir"
-    
+
     echo -e "${BLUE}Creating launchd plist file...${NC}"
     write_file "$plist_path" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -287,7 +287,7 @@ EOF
     echo -e "${GREEN}Millennium auto-update user timer (${channel}) has been enabled!${NC}"
     echo -e "It will run daily with a randomized delay of up to 1 hour."
   fi
-  
+
   # Verify if passwordless sudo is active
   if ! sudo -n -l 2>/dev/null | grep -qE "NOPASSWD.*(millennium-upgrade|ALL)"; then
     echo -e "\n${YELLOW}Warning: Passwordless sudo for the updater script could not be verified.${NC}"
@@ -299,7 +299,7 @@ EOF
     echo -e "The installer has automatically configured the required passwordless sudo rule at:"
     echo -e "  /etc/sudoers.d/millennium-helpers"
   fi
-  
+
   # Print systemd user lingering tip
   echo -e "\n${GREEN}Systemd User Lingering (Optional):${NC}"
   echo -e "To allow user timers to run in the background even when you are logged out, enable user lingering:"
@@ -325,12 +325,12 @@ disable_timer() {
   fi
 
   echo -e "${BLUE}Disabling and stopping Millennium update user timer and service...${NC}"
-  
+
   if [[ "$DRY_RUN" == "false" ]]; then
     if sysctl_user is-active --quiet "$TIMER_NAME" || sysctl_user is-enabled --quiet "$TIMER_NAME" 2>/dev/null; then
       sysctl_user disable --now "$TIMER_NAME"
     fi
-    
+
     if sysctl_user is-active --quiet "$SERVICE_NAME"; then
       sysctl_user stop "$SERVICE_NAME"
     fi
@@ -476,12 +476,12 @@ pre_update() {
     log_warn "A game is currently running under Steam. Aborting update run."
     exit 75
   fi
-  
+
   if pgrep -x steam >/dev/null; then
     log_info "Steam is running. Closing Steam gracefully to perform upgrades..."
     # Capture env
     capture_steam_env "$RUNNING_USER"
-    
+
     # Close Steam
     close_steam_gracefully "$RUNNING_USER"
     log_info "Steam closed successfully."
@@ -497,20 +497,20 @@ post_update() {
   state_file="$(relaunch_state_file "$RUNNING_USER")"
   local diag_path
   diag_path=$(resolve_helper_path "millennium-diag")
-  
+
   if ! "$diag_path" >/dev/null 2>&1; then
     log_error "Millennium update failed verification checks. Relaunch cancelled."
     rm -f "$state_file"
     exit 1
   fi
-  
+
   log_info "Diagnostics verification passed successfully."
   if _is_safe_relaunch_state_file "$RUNNING_USER" "$state_file"; then
     # Source saved environment variables (sets DISPLAY, WAYLAND_DISPLAY, STEAM_ARGS, WAS_FLATPAK, etc.)
     # shellcheck disable=SC1090
     source "$state_file"
     rm -f "$state_file"
-    
+
     log_info "Relaunching Steam client with arguments: ${STEAM_ARGS:-none} (Flatpak: ${WAS_FLATPAK:-false})..."
     if [[ -n "${TEST_SUITE_RUN:-}" ]]; then
       log_info "[TEST] Bypassing real Steam relaunch in test suite."
@@ -553,9 +553,9 @@ enable_cron() {
 
   local state_dir="${XDG_STATE_HOME:-$USER_HOME/.local/state}/millennium-helpers"
   local cron_cmd="0 2 * * * sleep \$(python3 -c 'import random; print(random.randint(0, 3600))') && mkdir -p ${state_dir} && { ${sched_self} pre-update && /usr/bin/sudo -n ${script_file} --channel ${channel} && ${theme_cmd} update && ${sched_self} post-update; } >> ${state_dir}/updater.log 2>&1"
-  
+
   echo -e "${BLUE}Configuring daily crontab job for user ${RUNNING_USER}...${NC}"
-  
+
   if [[ "$DRY_RUN" == "true" ]]; then
     echo -e "${YELLOW}[DRY RUN] Would append to crontab:${NC}\n  ${cron_cmd}"
   else
@@ -563,7 +563,7 @@ enable_cron() {
     current_cron=$(crontab_for_user -l 2>/dev/null || true)
     local clean_cron
     clean_cron=$(echo "$current_cron" | grep -v "millennium-schedule" || true)
-    
+
     if [[ -n "$clean_cron" ]]; then
       echo -e "${clean_cron}\n${cron_cmd}" | crontab_for_user -
     else
@@ -577,14 +577,14 @@ disable_cron() {
   if ! command -v crontab &>/dev/null; then
     return 0
   fi
-  
+
   echo -e "${BLUE}Removing crontab entry...${NC}"
   if [[ "$DRY_RUN" == "true" ]]; then
     echo -e "${YELLOW}[DRY RUN] Would remove millennium-schedule entries from crontab${NC}"
   else
     local current_cron
     current_cron=$(crontab_for_user -l 2>/dev/null || true)
-    
+
     if echo "$current_cron" | grep -q "millennium-schedule"; then
       local clean_cron
       clean_cron=$(echo "$current_cron" | grep -v "millennium-schedule" || true)
@@ -644,17 +644,17 @@ run_setup_wizard() {
   # 2. Automated Daily Update Scheduler Timer
   local default_sched="y"
   local default_sched_desc="Y/n"
-  
+
   local systemd_enabled=false
   if command -v systemctl &>/dev/null && sysctl_user is-enabled millennium-update.timer &>/dev/null; then
     systemd_enabled=true
   fi
-  
+
   local cron_enabled=false
   if command -v crontab &>/dev/null && crontab_for_user -l 2>/dev/null | grep -q "millennium-schedule"; then
     cron_enabled=true
   fi
-  
+
   if [[ "$systemd_enabled" == "true" || "$cron_enabled" == "true" ]]; then
     default_sched="y"
     default_sched_desc="Y/n"
@@ -721,11 +721,11 @@ run_setup_wizard() {
     user_home="$HOME"
   fi
   local user_config_dir="${XDG_CONFIG_HOME:-$user_home/.config}/millennium-helpers"
-  
+
   if [[ "$DRY_RUN" == "false" ]]; then
     execute mkdir -p "$user_config_dir"
     execute chmod 700 "$user_config_dir"
-    
+
     write_file "${user_config_dir}/config.json" << EOF
 {
   "update_channel": "${channel}",
@@ -889,7 +889,7 @@ else:
 with open(config_file, 'w') as f:
     json.dump(data, f, indent=2)
 " && echo -e "${GREEN}Config option ${key} set to '${val}' successfully.${NC}"
-        
+
         if [[ -f "$config_file" ]]; then
           execute chmod 600 "$config_file"
           if [[ "$(id -u)" -eq 0 && "$user_name" != "root" ]]; then

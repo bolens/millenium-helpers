@@ -139,11 +139,11 @@ resolve_helper_path() {
   local name="$1"
   local found
   found=$(command -v "$name" 2>/dev/null || true)
-  
+
   local script_dir
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
   local local_sh="${script_dir}/${name}.sh"
-  
+
   if [[ -f "$local_sh" ]]; then
     # Prefer local checkout if global command is missing or resolved to a standard system directory
     if [[ -z "$found" || "$found" == "/usr/bin/"* || "$found" == "/usr/local/bin/"* || "$found" == "/bin/"* ]]; then
@@ -163,7 +163,7 @@ download_file() {
   local url="$1"
   local dest="$2"
   local msg="${3:-Downloading}"
-  
+
   if [[ "$DRY_RUN" == "true" ]]; then
     echo -e "${YELLOW}[DRY RUN] Would download:${NC} ${url} -> ${dest}"
     return 0
@@ -176,7 +176,7 @@ download_file() {
 
   local tmp_log
   tmp_log=$(mktemp 2>/dev/null || mktemp -t tmp.XXXXXX)
-  
+
   if [[ ! -t 1 ]] || is_quiet; then
     printf "%s... " "$msg"
     if curl -fsSL --retry 3 --retry-delay 2 ${headers[@]+"${headers[@]}"} "$url" -o "$dest" >"$tmp_log" 2>&1; then
@@ -227,7 +227,7 @@ send_notification() {
   local title="$1"
   local msg="$2"
   local target_user="${3:-${SUDO_USER:-$(id -un)}}"
-  
+
   if [[ "$target_user" != "root" ]] && command -v notify-send &>/dev/null; then
     local state_file
     state_file="$(relaunch_state_file "$target_user")"
@@ -238,13 +238,13 @@ send_notification() {
       wayland_val=$(grep "^export WAYLAND_DISPLAY=" "$state_file" | cut -d\' -f2 || true)
       dbus_val=$(grep "^export DBUS_SESSION_BUS_ADDRESS=" "$state_file" | cut -d\' -f2 || true)
       runtime_val=$(grep "^export XDG_RUNTIME_DIR=" "$state_file" | cut -d\' -f2 || true)
-      
+
       [[ -n "$display_val" ]] && env_prefix+="DISPLAY=${display_val} "
       [[ -n "$wayland_val" ]] && env_prefix+="WAYLAND_DISPLAY=${wayland_val} "
       [[ -n "$dbus_val" ]] && env_prefix+="DBUS_SESSION_BUS_ADDRESS=${dbus_val} "
       [[ -n "$runtime_val" ]] && env_prefix+="XDG_RUNTIME_DIR=${runtime_val} "
     fi
-    
+
     if [[ -z "$env_prefix" ]]; then
       local user_uid
       user_uid=$(id -u "$target_user" 2>/dev/null || true)
@@ -254,7 +254,7 @@ send_notification() {
         env_prefix="DISPLAY=:0 "
       fi
     fi
-    
+
     runuser -l "$target_user" -c "${env_prefix}notify-send '${title}' '${msg}'" &>/dev/null || true
   fi
 }
@@ -382,4 +382,3 @@ portable_realpath_m() {
     echo "${resolved_parent}/${dir_base}"
   fi
 }
-

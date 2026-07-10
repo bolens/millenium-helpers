@@ -8,10 +8,12 @@ pwsh -NoProfile -Command \
   "Install-Module -Name Pester,PSScriptAnalyzer -Force -SkipPublisherCheck -Scope CurrentUser"
 
 if command -v pre-commit >/dev/null 2>&1; then
-  echo "==> Installing pre-commit git hooks..."
+  echo "==> Installing pre-commit git hooks (pre-commit + pre-push)..."
   pre-commit install
+  pre-commit install --hook-type pre-push
 fi
 
 echo "==> Dev container ready."
 echo "    Run 'make check-all' to lint and test."
 echo "    Run 'make test-all-distros' for multi-distro Docker checks (needs DinD)."
+echo "    Git hooks: pre-commit (lint/sync) + pre-push (make lint / Windows Pester)."

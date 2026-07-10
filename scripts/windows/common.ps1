@@ -258,7 +258,7 @@ function Capture-SteamEnv {
     $steamProc = Get-Process -Name "steam" -ErrorAction SilentlyContinue | Select-Object -First 1
     $steamArgs = ""
     $exePath = ""
-    
+
     if ($null -ne $steamProc) {
         try {
             $exePath = $steamProc.Path
@@ -593,12 +593,12 @@ function Resolve-HelperPath {
     if (Test-Path -Path $scriptPath) {
         return $scriptPath
     }
-    
+
     # Try system PATH
     $exe = Get-Command -Name "$Name.ps1" -ErrorAction SilentlyContinue
     if ($exe) {
         return $exe.Source
     }
-    
+
     return $Name
 }

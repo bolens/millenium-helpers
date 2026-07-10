@@ -151,7 +151,7 @@ Describe "Common Helpers" {
         BeforeAll {
             # Use temp directory for relaunch state file
             $env:LOCALAPPDATA = [System.IO.Path]::GetTempPath()
-            
+
             Mock Get-Process {
                 return [pscustomobject]@{ Name = "steam"; Id = 1234; Path = "C:\MockedSteam\steam.exe" }
             }
@@ -159,7 +159,7 @@ Describe "Common Helpers" {
                 return [pscustomobject]@{ CommandLine = '"C:\MockedSteam\steam.exe" -tenfoot -login username' }
             }
             Mock Start-Process { return $true }
-            
+
             . (Join-Path -Path $winScriptDir -ChildPath "common.ps1")
         }
 
@@ -171,7 +171,7 @@ Describe "Common Helpers" {
 
             $stateFile = Get-RelaunchStateFile
             Test-Path -Path $stateFile | Should -Be $true
-            
+
             $state = Get-Content -Path $stateFile -Raw | ConvertFrom-Json
             $state.SteamRunning | Should -Be $true
             $state.Executable | Should -Be "C:\MockedSteam\steam.exe"
@@ -181,14 +181,14 @@ Describe "Common Helpers" {
         It "Relaunches Steam using the saved state" {
             # Restore state file and run relaunch
             $global:DryRun = $false
-            
+
             Mock Start-Process {
                 param($FilePath, $ArgumentList)
                 $script:startedFile = $FilePath
                 $script:startedArgs = $ArgumentList
                 return $true
             }
-            
+
             Relaunch-Steam
             $global:DryRun = $true
 
@@ -218,7 +218,7 @@ Describe "Common Helpers" {
                 $script:startedGracefulArgs = $ArgumentList
                 return $true
             }
-            
+
             . (Join-Path -Path $winScriptDir -ChildPath "common.ps1")
         }
 

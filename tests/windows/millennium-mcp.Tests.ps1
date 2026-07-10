@@ -5,7 +5,7 @@ Describe "MCP Server Helper" {
 
     It "Resolves script paths correctly under both installed flat layout and repository layout" {
         $mcpScript = Join-Path -Path $PSScriptRoot -ChildPath "..\..\scripts\millennium-mcp.py"
-        
+
         # Determine python command
         $pythonCmd = "python3"
         if ($IsWindows) {
@@ -25,10 +25,10 @@ Describe "MCP Server Helper" {
             # Copy mcp.py and a dummy millennium-diag.ps1 to the same flat directory
             $flatMcp = Join-Path -Path $tempBin -ChildPath "millennium-mcp.py"
             Copy-Item -Path $mcpScript -Destination $flatMcp
-            
+
             $flatDiag = Join-Path -Path $tempBin -ChildPath "millennium-diag.ps1"
             New-Item -ItemType File -Path $flatDiag -Value "exit 0" -Force | Out-Null
-            
+
             $resolvedFlat = & $pythonCmd -c "import sys, importlib.util; spec = importlib.util.spec_from_file_location('mcp', sys.argv[1]); mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod); mod.IS_WINDOWS = True; print(mod.find_executable('millennium-diag') or '')" $flatMcp
             $resolvedFlat = $resolvedFlat.Trim()
             $resolvedFlat | Should -Not -BeNullOrEmpty

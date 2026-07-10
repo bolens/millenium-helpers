@@ -9,10 +9,10 @@ load_user_config() {
   if [[ -z "$user_home" ]]; then
     user_home="$HOME"
   fi
-  
+
   local config_dir="${XDG_CONFIG_HOME:-$user_home/.config}/millennium-helpers"
   local config_file="${config_dir}/config.json"
-  
+
   if [[ -f "$config_file" ]]; then
     local parsed
     parsed=$(python3 -c "
@@ -24,14 +24,14 @@ try:
 except Exception:
     print(':::')
 " 2>/dev/null || echo ":::")
-    
+
     local config_token="${parsed%%:*}"
     local rest1="${parsed#*:}"
     local config_channel="${rest1%%:*}"
     local rest2="${rest1#*:}"
     local config_limit="${rest2%%:*}"
     local config_max_age="${rest2#*:}"
-    
+
     if [[ -n "$config_token" && -z "${GITHUB_TOKEN:-}" ]]; then
       export GITHUB_TOKEN="$config_token"
     fi
@@ -153,12 +153,12 @@ perform_rollback() {
   while IFS= read -r line; do
     backups+=("$line")
   done < <(list_backups)
-  
+
   if [[ ${#backups[@]} -eq 0 ]]; then
     echo -e "${RED}Error: No backups available to roll back to.${NC}" >&2
     exit 1
   fi
-  
+
   if [[ -z "$target" ]]; then
     if [[ ${#backups[@]} -eq 1 ]]; then
       target="${backups[0]}"
@@ -209,10 +209,10 @@ perform_rollback() {
     fi
     target="$found"
   fi
-  
+
   local backup_path="${lib_dir}/${target}"
   local dest_dir="${lib_dir}/millennium"
-  
+
   if [[ "$DRY_RUN" == "true" ]]; then
     echo -e "${YELLOW}[DRY RUN] Would swap active version with backup ${backup_path}${NC}"
   else

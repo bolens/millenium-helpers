@@ -85,7 +85,7 @@ If you installed via the standard installer script:
               /usr/share/bash-completion/completions/millennium-diag \
               /usr/share/bash-completion/completions/millennium-theme \
               /usr/share/bash-completion/completions/millennium-mcp
-   
+
    # Zsh completions & symlinks
    sudo rm -f /usr/share/zsh/site-functions/_millennium-helpers \
               /usr/share/zsh/site-functions/_millennium \
@@ -96,7 +96,7 @@ If you installed via the standard installer script:
               /usr/share/zsh/site-functions/_millennium-diag \
               /usr/share/zsh/site-functions/_millennium-theme \
               /usr/share/zsh/site-functions/_millennium-mcp
-   
+
    # Fish completions (including the millennium dispatcher)
    sudo rm -f /usr/share/fish/vendor_completions.d/millennium.fish \
               /usr/share/fish/vendor_completions.d/millennium-repair.fish \
@@ -106,7 +106,7 @@ If you installed via the standard installer script:
               /usr/share/fish/vendor_completions.d/millennium-diag.fish \
               /usr/share/fish/vendor_completions.d/millennium-theme.fish \
               /usr/share/fish/vendor_completions.d/millennium-mcp.fish
-   
+
    # Nushell completions
    sudo rm -f /usr/share/nushell/completions/millennium-helpers.nu \
               /usr/local/share/nushell/completions/millennium-helpers.nu \
@@ -143,7 +143,7 @@ systemctl --user daemon-reload 2>/dev/null || true
 
 ### 3. Linux (Nix Profile Install)
 
-If you installed the helpers via `nix profile install github:bolens/millenium-helpers`, Nix isolates files inside the Nix store. 
+If you installed the helpers via `nix profile install github:bolens/millenium-helpers`, Nix isolates files inside the Nix store.
 
 1. **Remove from Nix profile**:
    ```bash

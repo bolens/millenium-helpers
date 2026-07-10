@@ -190,17 +190,17 @@ update_single_theme() {
   local target_dir
   target_dir="$(_resolve_theme_dir "$theme_name")"
   local meta_file="${target_dir}/metadata.json"
-  
+
   if [[ ! -d "$target_dir" ]]; then
     echo -e "${RED}Error: Theme '${theme_name}' is not installed.${NC}" >&2
     return 1
   fi
-  
+
   if [[ ! -f "$meta_file" ]]; then
     echo -e "${YELLOW}Theme '${theme_name}' does not have GitHub metadata. Skipping.${NC}"
     return 0
   fi
-  
+
   local parsed_meta
   parsed_meta=$(python3 -c "
 import json
@@ -215,12 +215,12 @@ except Exception:
   local rest="${parsed_meta#*:}"
   local repo="${rest%%:*}"
   local current_commit="${rest#*:}"
-  
+
   if [[ -z "$owner" || -z "$repo" ]]; then
     echo -e "${RED}Error: Invalid metadata format in ${meta_file}.${NC}" >&2
     return 1
   fi
-  
+
   echo -e "Checking updates for theme '${theme_name}' (${owner}/${repo})..."
 
   local COMMIT=""
@@ -255,17 +255,17 @@ except Exception:
       rm -rf "$TMP"
       return 1
     fi
-    
+
     unzip -q "$TMP/theme.zip" -d "$TMP" || [[ $? -le 2 ]]
     if [[ ! -d "$TMP/${repo}-${COMMIT}" ]]; then
       echo -e "${RED}Error: Failed to extract theme archive.${NC}" >&2
       rm -rf "$TMP"
       return 1
     fi
-    
+
     mkdir -p "$theme_tmp"
     cp -a "$TMP/${repo}-${COMMIT}/." "$theme_tmp/"
-    
+
     cat > "$theme_tmp/metadata.json" <<EOF
 {
     "commit": "${COMMIT}",
@@ -273,14 +273,14 @@ except Exception:
     "repo": "${repo}"
 }
 EOF
-    
+
     chown -R "${RUNNING_USER}:${RUNNING_USER}" "$theme_tmp"
-    
+
     mv "$target_dir" "$theme_bak"
     mv "$theme_tmp" "$target_dir"
     rm -rf "$theme_bak"
     rm -rf "$TMP"
-    
+
     echo -e "${GREEN}Successfully updated theme '${theme_name}' to commit ${COMMIT:0:7}!${NC}"
   fi
   return 0
@@ -293,7 +293,7 @@ if [[ "$COMMAND" == "list" ]]; then
   active_theme="Steam"
   if [[ "$OUTPUT_JSON" == "false" ]]; then
     echo -e "${BLUE}=== Installed Millennium Themes ===${NC}"
-    
+
     # Active theme: Millennium config paths vary by XDG, Flatpak Steam, and install layout.
     user_name="${SUDO_USER:-$(id -un)}"
     user_home="$(get_user_home "$user_name")"
@@ -303,7 +303,7 @@ if [[ "$COMMAND" == "list" ]]; then
     user_xdg="${XDG_CONFIG_HOME:-$user_home/.config}"
     steam_path="${STEAM:-$user_home/.local/share/Steam}"
     config_json=""
-    
+
     for cand in \
       "${user_xdg}/millennium/config.json" \
       "${user_home}/.config/millennium/config.json" \
@@ -316,7 +316,7 @@ if [[ "$COMMAND" == "list" ]]; then
         break
       fi
     done
-    
+
     if [[ -n "$config_json" ]]; then
       active_theme=$(python3 -c "
 import json
@@ -339,23 +339,23 @@ except Exception:
     fi
     exit 0
   fi
-  
+
   found=false
   first=true
   if [[ "$OUTPUT_JSON" == "true" ]]; then
     printf "["
   fi
-  
+
   for dir in "$SKINS_DIR"/*; do
     [[ -d "$dir" ]] || continue
     theme_name=$(basename "$dir")
     found=true
-    
+
     owner=""
     repo=""
     commit=""
     type="local"
-    
+
     # Read metadata if exists
     meta_file="${dir}/metadata.json"
     if [[ -f "$meta_file" ]]; then
@@ -376,7 +376,7 @@ except Exception:
         type="github"
       fi
     fi
-    
+
     if [[ "$OUTPUT_JSON" == "true" ]]; then
       if [[ "$first" == "false" ]]; then
         printf ","
@@ -394,7 +394,7 @@ except Exception:
         status_flag="[Active]   "
         status_color="${GREEN}"
       fi
-      
+
       if [[ "$type" == "github" ]]; then
         printf "  %b%s%b  %-20s - %s/%s @ %s (GitHub)\n" \
           "$status_color" "$status_flag" "${NC}" \
@@ -407,7 +407,7 @@ except Exception:
       fi
     fi
   done
-  
+
   if [[ "$OUTPUT_JSON" == "true" ]]; then
     echo "]"
   elif [[ "$found" == "false" ]]; then
@@ -423,7 +423,7 @@ if [[ "$COMMAND" == "install" ]]; then
     echo -e "${RED}Error: Theme must be in 'owner/repo' format.${NC}" >&2
     exit 1
   fi
-  
+
   owner="${ARG%%/*}"
   repo="${ARG#*/}"
   _sanitize_theme_component "$owner" "theme owner"
@@ -466,10 +466,10 @@ if [[ "$COMMAND" == "install" ]]; then
       echo -e "${RED}Error: Failed to extract theme zip.${NC}" >&2
       exit 1
     fi
-    
+
     mkdir -p "$SKINS_DIR"
     cp -a "$TMP/${repo}-${COMMIT}/." "$target_dir/"
-    
+
     # Save metadata
     cat > "$target_dir/metadata.json" <<EOF
 {
@@ -478,7 +478,7 @@ if [[ "$COMMAND" == "install" ]]; then
     "repo": "${repo}"
 }
 EOF
-    
+
     # Ensure correct ownership
     chown -R "${RUNNING_USER}:${RUNNING_USER}" "$target_dir"
     echo -e "${GREEN}Successfully installed theme '${repo}'!${NC}"
@@ -545,7 +545,7 @@ except Exception:
         ;;
     esac
   fi
-  
+
   echo "Removing theme '${ARG}'..."
   execute rm -rf "$target_dir"
   echo -e "${GREEN}Theme '${ARG}' successfully removed.${NC}"
@@ -560,7 +560,7 @@ if [[ "$COMMAND" == "update" ]]; then
       echo "No themes skins directory found at ${SKINS_DIR}."
       exit 0
     fi
-    
+
     found_any=false
     for dir in "$SKINS_DIR"/*; do
       [[ -d "$dir" ]] || continue
@@ -569,7 +569,7 @@ if [[ "$COMMAND" == "update" ]]; then
       update_single_theme "$theme_name" || true
       echo ""
     done
-    
+
     if [[ "$found_any" == "false" ]]; then
       echo "No themes installed."
       echo "Install one with: millennium theme install SteamClientHomebrew/millennium-steam-skin"

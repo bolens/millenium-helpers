@@ -30,6 +30,9 @@ Thumbs.db
 /result
 /result-*
 
+# Local pre-commit cache (only if PRE_COMMIT_HOME is pointed here)
+.pre-commit-home/
+
 # Arch build/packaging artifacts
 /packaging/*.pkg.tar.*
 /packaging/pkg/

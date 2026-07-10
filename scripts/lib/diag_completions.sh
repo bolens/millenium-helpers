@@ -139,4 +139,3 @@ check_shell_completions() {
     fi
   done
 }
-

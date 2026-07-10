@@ -280,4 +280,3 @@ rm -rf "$FAKE_XDG_CONFIG"
 rm -rf "$FAKE_RELAUNCH_HOME"
 
 print_summary
-

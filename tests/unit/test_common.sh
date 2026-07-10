@@ -856,4 +856,3 @@ mock_cmd "systemctl" "exit 0"
 mock_cmd "runuser" "exit 0"
 
 print_summary
-

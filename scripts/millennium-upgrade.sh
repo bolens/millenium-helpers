@@ -280,11 +280,11 @@ else
 
   echo "Installing to /usr/lib/millennium/..."
   tar -xzf "$TMP/$ARCHIVE" -C "$TMP"
-  
+
   # Atomic directory swap
   dest_dir="/usr/lib/millennium"
   dest_tmp="${dest_dir}.tmp"
-  
+
   old_ver="unknown"
   if [[ -f "${dest_dir}/version.txt" ]]; then
     old_ver=$(cat "${dest_dir}/version.txt" | tr -d '[:space:]')
@@ -293,10 +293,10 @@ else
     old_ver=$(date +%Y%m%d%H%M%S)
   fi
   dest_bak="${dest_dir}.bak_${old_ver}"
-  
+
   rm -rf "$dest_tmp"
   mkdir -p "$dest_tmp"
-  
+
   extracted_dir="$TMP/usr/lib/millennium"
   if [[ ! -d "$extracted_dir" ]]; then
     extracted_dir="$TMP"
@@ -304,7 +304,7 @@ else
   find "$extracted_dir/" -type f -exec install -m755 -t "$dest_tmp/" {} + 2>/dev/null || true
   echo "${VER}" > "$dest_tmp/version.txt"
   chmod 644 "$dest_tmp/version.txt"
-  
+
   (cd "$dest_tmp" && sha256sum libmillennium_bootstrap_x86.so libmillennium_bootstrap_hhx64.so libmillennium_x86.so libmillennium_hhx64.so libmillennium_pvs64 > checksums.txt 2>/dev/null || true)
   chmod 644 "$dest_tmp/checksums.txt" 2>/dev/null || true
 
@@ -312,7 +312,7 @@ else
     rm -rf "$dest_bak"
     mv "$dest_dir" "$dest_bak"
   fi
-  
+
   if mv "$dest_tmp" "$dest_dir"; then
     echo "Millennium updated successfully."
     prune_backups
@@ -334,7 +334,7 @@ fi
 if [[ "$(uname)" != "Darwin" ]] && command -v getent &>/dev/null; then
   getent passwd | while IFS=: read -r _ _ uid _ _ home _; do
     [[ "$uid" -ge 1000 ]] || continue
-    
+
     # Find steam directory for this user
     steam_dir=""
     for cand in "$home/.local/share/Steam" "$home/.steam/steam" "$home/.steam/root" "$home/.var/app/com.valvesoftware.Steam/.local/share/Steam"; do
@@ -344,7 +344,7 @@ if [[ "$(uname)" != "Darwin" ]] && command -v getent &>/dev/null; then
       fi
     done
     [[ -n "$steam_dir" ]] || continue
-    
+
     execute mkdir -p "$steam_dir/ubuntu12_32" "$steam_dir/ubuntu12_64"
     execute ln -sf /usr/lib/millennium/libmillennium_bootstrap_x86.so   "$steam_dir/ubuntu12_32/libXtst.so.6"
     execute ln -sf /usr/lib/millennium/libmillennium_bootstrap_hhx64.so "$steam_dir/ubuntu12_64/libXtst.so.6"

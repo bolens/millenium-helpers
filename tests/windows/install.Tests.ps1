@@ -8,7 +8,7 @@ Describe "Windows Installer" {
     It "Successfully runs installation and uninstallation routines" {
         $installScript = Join-Path -Path $winScriptDir -ChildPath "install.ps1"
         $tempHome = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "pester_test_home"
-        
+
         # Override USERPROFILE so installer writes to temp directory
         $oldUserProfile = $env:USERPROFILE
         $env:USERPROFILE = $tempHome
@@ -130,7 +130,7 @@ Describe "Windows Installer" {
         It "Detects standalone mode and successfully delegates to extracted repository installer" {
             $installScript = Join-Path -Path $winScriptDir -ChildPath "install.ps1"
             $sb = [scriptblock]::Create((Get-Content $installScript -Raw))
-            
+
             $out = (& $sb *>&1) | Out-String
             $out | Should -BeLike "*Running in standalone/piped mode. Downloading latest Windows release*"
             $out | Should -BeLike "*SHA256 checksum verified*"

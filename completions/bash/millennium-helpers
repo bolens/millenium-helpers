@@ -77,7 +77,7 @@ _millennium_schedule_comp() {
   local cur="${COMP_WORDS[COMP_CWORD]}"
   local prev="${COMP_WORDS[COMP_CWORD-1]}"
   local subcmds="enable disable status setup config"
-  
+
   case "${prev}" in
     enable)
       COMPREPLY=( $(compgen -W "stable beta" -- "${cur}") )
@@ -92,7 +92,7 @@ _millennium_schedule_comp() {
       return 0
       ;;
   esac
-  
+
   COMPREPLY=( $(compgen -W "${subcmds} -c --cron -d --dry-run -q --quiet -V --version -h --help" -- "${cur}") )
   return 0
 }
@@ -121,7 +121,7 @@ _millennium_theme_comp() {
   local cur="${COMP_WORDS[COMP_CWORD]}"
   local prev="${COMP_WORDS[COMP_CWORD-1]}"
   local subcmds="list install remove update"
-  
+
   case "${prev}" in
     update)
       COMPREPLY=( $(compgen -W "--all -a $(_millennium_theme_names)" -- "${cur}") )
@@ -140,7 +140,7 @@ _millennium_theme_comp() {
       return 0
       ;;
   esac
-  
+
   COMPREPLY=( $(compgen -W "${subcmds} --json -y --yes -d --dry-run -q --quiet -V --version -h --help" -- "${cur}") )
   return 0
 }

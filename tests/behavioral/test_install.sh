@@ -395,4 +395,3 @@ assert_contains "$scoop" "millennium-helpers.ps1" "Scoop post_install wires Powe
 assert_contains "$scoop" "MillenniumUpdate" "Scoop pre_uninstall removes MillenniumUpdate task"
 
 print_summary
-

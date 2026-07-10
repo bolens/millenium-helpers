@@ -144,11 +144,11 @@ function Sanitize-ThemeComponent {
 function Resolve-ThemeDir {
     param([string]$Component)
     $candidate = Join-Path -Path $SkinsDir -ChildPath $Component
-    
+
     # Path traversal verification
     $resolvedCandidate = [System.IO.Path]::GetFullPath($candidate)
     $resolvedSkins = [System.IO.Path]::GetFullPath($SkinsDir)
-    
+
     if (!$resolvedCandidate.StartsWith($resolvedSkins)) {
         Log-Error "Error: Resolved theme path '$resolvedCandidate' escapes the skins directory."
         exit 1
@@ -277,10 +277,10 @@ if ($Command -eq "install") {
     $parts = $Theme -split "/"
     $owner = $parts[0]
     $repo = $parts[1]
-    
+
     Sanitize-ThemeComponent -Val $owner -Label "owner"
     Sanitize-ThemeComponent -Val $repo -Label "repo"
-    
+
     $targetDir = Resolve-ThemeDir -Component $repo
     if (Test-Path -Path $targetDir) {
         Log-Error "Error: Theme directory '$repo' already exists."
@@ -337,23 +337,23 @@ if ($Command -eq "install") {
         if (!(Test-Path -Path $SkinsDir)) {
             New-Item -ItemType Directory -Force -Path $SkinsDir | Out-Null
         }
-        
+
         # Extract zip to temp location
         $tempExtract = Join-Path -Path $tempDir -ChildPath "extract_${repo}_$commit"
         if (Test-Path -Path $tempExtract) {
             Remove-Item -Path $tempExtract -Recurse -Force
         }
         Expand-Archive -Path $localZip -DestinationPath $tempExtract -Force
-        
+
         # Move extracted folder (which has GitHub zip-naming: repo-commit)
         $extractedDir = Get-ChildItem -Path $tempExtract -Directory | Select-Object -First 1
         if ($extractedDir) {
             Move-Item -Path $extractedDir.FullName -Destination $targetDir -Force
         }
-        
+
         # Cleanup extract directory
         Remove-Item -Path $tempExtract -Recurse -Force
-        
+
         # Save metadata.json
         $metaObj = @{
             "owner" = $owner;
@@ -500,23 +500,23 @@ if ($Command -eq "update") {
         $targetDir = $t.FullName
         Execute-Cmd -ScriptBlock {
             Remove-Item -Path $targetDir -Recurse -Force
-            
+
             # Extract zip to temp location
             $tempExtract = Join-Path -Path $tempDir -ChildPath "extract_${repo}_$commit"
             if (Test-Path -Path $tempExtract) {
                 Remove-Item -Path $tempExtract -Recurse -Force
             }
             Expand-Archive -Path $localZip -DestinationPath $tempExtract -Force
-            
+
             # Move extracted folder (which has GitHub zip-naming: repo-commit)
             $extractedDir = Get-ChildItem -Path $tempExtract -Directory | Select-Object -First 1
             if ($extractedDir) {
                 Move-Item -Path $extractedDir.FullName -Destination $targetDir -Force
             }
-            
+
             # Cleanup extract directory
             Remove-Item -Path $tempExtract -Recurse -Force
-            
+
             # Save metadata.json
             $metaObj = @{
                 "owner" = $owner;

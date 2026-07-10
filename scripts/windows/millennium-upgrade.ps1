@@ -159,7 +159,7 @@ if ($Rollback) {
         # Restore from backup
         Copy-Item -Path (Join-Path -Path $targetBackup -ChildPath "millennium") -Destination $MillenniumDir -Recurse -Force
         Copy-Item -Path (Join-Path -Path $targetBackup -ChildPath "wsock32.dll") -Destination $WsockDll -Force
-        
+
         # Remove backup directory after successful rollback
         Remove-Item -Path $targetBackup -Recurse -Force
     } -Description "Rollback using backup $targetBackup"
@@ -201,7 +201,7 @@ if ($File) {
     }
 
     Log-Info "Resolving latest version on the '$Channel' channel..."
-    
+
     try {
         if ($Channel -eq "stable") {
             # Query latest stable release
@@ -328,7 +328,7 @@ if ((Test-Path -Path $MillenniumDir) -or (Test-Path -Path $WsockDll)) {
         $oldVer = (Get-Content -Path $installedVerFile -Raw).Trim()
     }
     $currBackupDir = Join-Path -Path $BackupDir -ChildPath "${oldVer}_${timestamp}"
-    
+
     Execute-Cmd -ScriptBlock {
         New-Item -ItemType Directory -Force -Path $currBackupDir | Out-Null
         if (Test-Path -Path $MillenniumDir) {
@@ -364,7 +364,7 @@ Execute-Cmd -ScriptBlock {
     # Extract new zip
     # Expand-Archive is native to PowerShell 5+
     Expand-Archive -Path $localArchive -DestinationPath $SteamPath -Force
-    
+
     # Save version info
     $latestVer | Set-Content -Path $installedVerFile -Force
 } -Description "Extract $localArchive to $SteamPath"

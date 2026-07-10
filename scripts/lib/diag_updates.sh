@@ -140,4 +140,3 @@ check_helper_updates() {
     cp -f "$release_mod" "$tmp_mod" 2>/dev/null || true
   done
 }
-

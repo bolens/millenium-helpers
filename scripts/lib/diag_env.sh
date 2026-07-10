@@ -39,7 +39,7 @@ check_directory_permissions() {
     if [[ "$steam_dir" == *"com.valvesoftware.Steam"* ]]; then
       type_env="Flatpak"
     fi
-    
+
     if [[ -d "$skins_dir" ]]; then
       local skins_owner
       skins_owner=$(get_file_owner "$skins_dir")

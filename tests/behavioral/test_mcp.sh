@@ -287,4 +287,3 @@ assert_failure "$rc" "millennium-mcp with invalid flag exits non-zero"
 assert_contains "$out" "unrecognized arguments" "millennium-mcp reports unrecognized arguments"
 
 print_summary
-

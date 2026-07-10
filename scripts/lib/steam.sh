@@ -147,11 +147,11 @@ is_game_running() {
     pid_dir="$(dirname "$environ_file")"
     local pid="${pid_dir##*/}"
     [[ "$pid" =~ ^[0-9]+$ ]] || continue
-    
+
     local comm
     comm=$(cat "${proc_dir}/${pid}/comm" 2>/dev/null || true)
     [[ "$comm" == "steam" || "$comm" == "steamwebhelper" ]] && continue
-    
+
     if { tr '\0' '\n' < "$environ_file"; } 2>/dev/null | grep -q "^SteamAppId=[1-9]"; then
       game_running=true
       break
@@ -178,14 +178,14 @@ capture_steam_env() {
   if command -v flatpak &>/dev/null && flatpak ps 2>/dev/null | grep -q "com.valvesoftware.Steam"; then
     was_flatpak=true
   fi
-  
+
   local steam_pid
   steam_pid=$(pgrep -x steam | head -n 1 || true)
 
   local tmp_file
   tmp_file="$(mktemp "${state_file}.XXXXXX")"
   chmod 600 "$tmp_file"
-  
+
   if [[ -n "$steam_pid" ]]; then
     local proc_dir="${MOCK_PROC:-/proc}"
     local steam_env
@@ -302,7 +302,7 @@ close_steam_gracefully() {
       fi
     fi
   fi
-  
+
   local state_file
   state_file="$(relaunch_state_file "$target_user")"
   local shutdown_cmd=""

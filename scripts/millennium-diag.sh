@@ -125,7 +125,7 @@ done
 
 if [[ "$SHARE_REPORT" == "true" ]]; then
   echo "Generating and uploading diagnostic report..."
-  
+
   safe_sed_i() {
     local use_E=false
     if [[ "$1" == "-E" ]]; then
@@ -143,7 +143,7 @@ if [[ "$SHARE_REPORT" == "true" ]]; then
     fi
     mv -f "$temp_file" "$file"
   }
-  
+
   clean_args=()
   # Bash 3.2 (macOS): empty "${arr[@]}" is unbound under set -u.
   for arg in ${ORIGINAL_ARGS[@]+"${ORIGINAL_ARGS[@]}"}; do
@@ -151,22 +151,22 @@ if [[ "$SHARE_REPORT" == "true" ]]; then
       clean_args+=("$arg")
     fi
   done
-  
+
   report_file=$(mktemp 2>/dev/null || mktemp -t tmp.XXXXXX)
   trap 'rm -f "$report_file"' EXIT INT TERM
-  
+
   # Run the diagnostic script itself with cleaned arguments.
   # Bash 3.2 (macOS) treats "${arr[@]}" as unbound under set -u when empty
   # (e.g. `millennium-diag --share` with no other flags).
   bash "$0" ${clean_args[@]+"${clean_args[@]}"} > "$report_file" 2>&1 || true
-  
+
   # Sanitize user home and user name
   user_name="${SUDO_USER:-$(id -un)}"
   user_home="$(get_user_home "$user_name")"
   if [[ -z "$user_home" ]]; then
     user_home="$HOME"
   fi
-  
+
   # Replace home path and username to prevent info leakage
   safe_sed_i "s|$user_home|~|g; s|$user_name|user|g" "$report_file"
 
@@ -192,10 +192,10 @@ except Exception:
   if [[ -n "${GITHUB_TOKEN:-}" && ${#GITHUB_TOKEN} -ge 4 ]]; then
     safe_sed_i "s|$GITHUB_TOKEN|\[REDACTED\]|g" "$report_file"
   fi
-  
+
   # Upload using curl
   upload_url=$(curl -fsSL --data-binary @"$report_file" https://paste.rs || true)
-  
+
   if [[ -n "$upload_url" && "$upload_url" == *"http"* ]]; then
     echo -e "${GREEN}Diagnostic report successfully shared!${NC}"
     echo -e "URL: ${BLUE}${upload_url}${NC}"
@@ -333,7 +333,7 @@ if [[ "$COMMAND" == "logs" ]]; then
   fi
 
   echo -e "${BLUE}=== Millennium & Steam WebHelper Logs ===${NC}"
-  
+
   # Find latest log files
   log_files=()
   for steam_dir in "${USER_HOME}/.local/share/Steam" "${USER_HOME}/.steam/steam" "${USER_HOME}/.steam/root" "${USER_HOME}/.var/app/com.valvesoftware.Steam/.local/share/Steam" "${USER_HOME}/Library/Application Support/Steam"; do
@@ -344,12 +344,12 @@ if [[ "$COMMAND" == "logs" ]]; then
       fi
     done
   done
-  
+
   if [[ ${#log_files[@]} -eq 0 ]]; then
     echo -e "${RED}Error: No Steam logs found on this system.${NC}" >&2
     exit 1
   fi
-  
+
   # Pick the newest log file
   latest_log=""
   latest_mtime=0
@@ -360,16 +360,16 @@ if [[ "$COMMAND" == "logs" ]]; then
       latest_log=$f
     fi
   done
-  
+
   if [[ -z "$latest_log" ]]; then
     echo -e "${RED}Error: Could not resolve the most recent log file.${NC}" >&2
     exit 1
   fi
-  
+
   echo -e "${YELLOW}Reading log file: ${latest_log}${NC}\n"
-  
+
   filter_regex="Millennium|BOOTSTRAP|update-check|plugin_loader|pressure-vessel|steamwebhelper"
-  
+
   if [[ "$FOLLOW_LOGS" == "true" ]]; then
     echo "Tailing log file (Ctrl+C to exit)..."
     tail -n 100 -f "$latest_log" | grep --line-buffered -iE "$filter_regex"
@@ -456,4 +456,3 @@ if [[ "$COMMAND" == "doctor" ]]; then
 fi
 
 exit 0
-

@@ -169,7 +169,7 @@ for home in ${user_homes[@]+"${user_homes[@]}"}; do
   # Find all Steam directories (native, Debian, Flatpak, and macOS candidates)
   for steam_dir in "$home/.local/share/Steam" "$home/.steam/steam" "$home/.steam/root" "$home/.var/app/com.valvesoftware.Steam/.local/share/Steam" "$home/Library/Application Support/Steam"; do
     [[ -d "$steam_dir" ]] || continue
-    
+
     # Check and remove 32-bit bootstrap hook
     hook32="${steam_dir}/ubuntu12_32/libXtst.so.6"
     if [[ -L "$hook32" ]]; then
@@ -179,7 +179,7 @@ for home in ${user_homes[@]+"${user_homes[@]}"}; do
         execute rm -f "$hook32"
       fi
     fi
-    
+
     # Check and remove 64-bit bootstrap hook
     hook64="${steam_dir}/ubuntu12_64/libXtst.so.6"
     if [[ -L "$hook64" ]]; then

@@ -42,7 +42,9 @@ Tools fall into three tiers. Install what matches the work you are doing.
 | **Pester** | Windows unit tests | `Install-Module Pester -Scope CurrentUser` (Dev Container post-create does this) |
 | **zsh**, **fish**, **Nushell (≥ 0.114)** | Completion syntax/runtime smokes in `make check-completions` / CI completions workflow | Distro packages or [Nushell releases](https://www.nushell.sh/); missing shells are skipped with a warning, not a hard fail |
 | `gh` | Release runbook / inspecting Actions | [GitHub CLI](https://cli.github.com/) |
-| `pre-commit` | Optional git hooks | `pip install pre-commit && pre-commit install` |
+| `pre-commit` | Optional git hooks | `pip install pre-commit && pre-commit install && pre-commit install --hook-type pre-push` |
+| `actionlint` | Workflow lint (pre-commit) | [actionlint releases](https://github.com/rhysd/actionlint/releases) or distro/`go install`; skipped if missing |
+| `gitleaks` | Secret scan (pre-commit) | [gitleaks](https://github.com/gitleaks/gitleaks); skipped if missing (`detect-private-key` from pre-commit-hooks still runs) |
 
 ### Optional (release / cross-distro)
 
@@ -136,7 +138,19 @@ make check-man       # every command has a man page
 make check-winget    # Winget manifest structure (docs-only; no winget validate)
 ```
 
-Optional local hooks: `pre-commit install` (see `.pre-commit-config.yaml`) runs shellcheck, ruff, VERSION presence, version sync, and man-page coverage.
+Optional local hooks (see `.pre-commit-config.yaml`):
+
+```bash
+pip install pre-commit   # if needed
+pre-commit install
+pre-commit install --hook-type pre-push
+```
+
+**pre-commit** runs: remote [pre-commit-hooks](https://github.com/pre-commit/pre-commit-hooks) sanity checks (private keys, merge conflicts, large files, symlinks, trailing whitespace, EOF newlines, LF line endings), plus local shellcheck, ruff check + format `--check`, VERSION presence, packaging version sync, winget manifests, completions tests (when `completions/` changes), man-page coverage, actionlint (workflows; skipped if not installed), gitleaks on staged changes (skipped if not installed), and **PKGBUILD `pkgver` sync on every commit**.
+
+**pre-push** runs: `make lint`, and `make test-windows` when the push range touches `scripts/windows/`, `tests/windows/`, or `completions/powershell/` (skipped if `pwsh` is missing).
+
+When `sync-pkgver` updates `packaging/PKGBUILD` / `.SRCINFO`, the commit is aborted once so you can re-stage those files and retry (normal pre-commit autofix flow). Committed `pkgver` matches **HEAD at hook time** (the parent of the new commit)—a commit cannot embed its own short SHA. `pkgver()` in the PKGBUILD still recalculates from the tip at `makepkg` time.
 
 ## Style
 
@@ -145,7 +159,7 @@ Optional local hooks: `pre-commit install` (see `.pre-commit-config.yaml`) runs 
 - Honor `NO_COLOR` (and `FORCE_COLOR` when forcing color).
 - PowerShell: `Set-StrictMode -Version Latest`; gate debug noise behind `MILLENNIUM_DEBUG` or `-Verbose`.
 - Do not commit packaging build artifacts (`packaging/*.pkg.tar.zst`, etc.).
-- Keep Arch `pkgver` / `.SRCINFO` current with `make sync-pkgver` (no full rebuild needed).
+- Keep Arch `pkgver` / `.SRCINFO` current with `make sync-pkgver` (no full rebuild needed). With `pre-commit install`, this runs automatically on every commit.
 
 ## Packaging notes
 

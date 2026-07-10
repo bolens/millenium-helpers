@@ -252,7 +252,7 @@ if [[ "$REFRESH_THEME" == "true" ]]; then
       exit 1
     fi
   fi
-  
+
   if [[ "$DRY_RUN" == "true" ]]; then
     echo -e "${YELLOW}[DRY RUN] Would refresh active theme from GitHub commit: ${COMMIT}${NC}"
     echo -e "          Target theme folder: ${THEME_DIR}"
@@ -267,22 +267,22 @@ if [[ "$REFRESH_THEME" == "true" ]]; then
     if ! download_file "https://github.com/${OWNER}/${REPO}/archive/${COMMIT}.zip" "$TMP/theme.zip" "Refreshing active theme ${ACTIVE_THEME}"; then
       exit 1
     fi
-    
+
     # Allow unzip to return warnings (exit code <= 2) and verify extraction
     unzip -q "$TMP/theme.zip" -d "$TMP" || [[ $? -le 2 ]]
     if [[ ! -d "$TMP/${REPO}-${COMMIT}" ]]; then
       echo "Error: Failed to extract theme archive." >&2
       exit 1
     fi
-    
+
     # Atomic theme directory swap
     theme_tmp="${THEME_DIR}.tmp"
     theme_bak="${THEME_DIR}.bak"
-    
+
     rm -rf "$theme_tmp" "$theme_bak"
     mkdir -p "$theme_tmp"
     cp -a "$TMP/${REPO}-${COMMIT}/." "$theme_tmp/"
-    
+
     write_file "$theme_tmp/metadata.json" <<EOF
 {
     "commit": "${COMMIT}",

@@ -89,7 +89,7 @@ echo "null"
   mkdir -p "${TEST_LIB_DIR}/millennium.bak_v2.0.0"
   mkdir -p "${TEST_LIB_DIR}/millennium.bak_v2.1.0"
   mkdir -p "${TEST_LIB_DIR}/millennium.bak_v2.2.0"
-  
+
   # 1. Rollback list command
   out=$(run_upgrade "$channel" --rollback list 2>&1)
   rc=$?

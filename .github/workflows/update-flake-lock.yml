@@ -29,7 +29,7 @@ jobs:
           pr-title: "chore(nix): update flake.lock"
           pr-body: |
             Automated weekly Nix flake lockfile update.
-            
+
             This pull request updates the `flake.lock` file to pull in the latest revisions of your inputs.
             The updates have been automatically built and verified on the runner.
           commit-msg: "chore(nix): update flake.lock"

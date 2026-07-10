@@ -14,4 +14,3 @@ post_upgrade() {
   echo "   If you need to reconfigure or regenerate your update schedule timers, run:"
   echo "     millennium-schedule setup"
 }
-

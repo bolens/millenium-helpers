@@ -37,7 +37,7 @@ Describe "Upgrade Script" {
     Context "Upgrade Validation" {
         It "Validates channels successfully" {
             $upgradeScript = Join-Path -Path $winScriptDir -ChildPath "millennium-upgrade.ps1"
-            
+
             # Test invalid channel exits with non-zero
             $proc = Start-Process pwsh -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$upgradeScript`" -Channel invalid -DryRun" -PassThru -Wait -NoNewWindow
             $proc.ExitCode | Should -Not -Be 0

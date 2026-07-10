@@ -71,7 +71,7 @@ Describe "Schedule CLI Manager" {
         BeforeAll {
             Mock Get-ItemProperty { return [pscustomobject]@{ SteamPath = "C:\MockedSteam" } }
             Mock Test-Path { return $true }
-            
+
             # Mock Read-Host inputs for wizard: 2 (beta channel), y (daily timer), empty (token)
             $inputs = @("2", "y", "")
             $global:readHostIdx = 0
@@ -97,7 +97,7 @@ Describe "Schedule CLI Manager" {
             $out = (& $scheduleScript setup -DryRun *>&1) | Out-String
             $out | Should -BeLike "*backup_limit*"
             $out | Should -Match "github_token\s+:\s+(\[set\]|\(not set\))"
-            
+
             Remove-Item -Path $tempConfigDir -Recurse -Force -ErrorAction SilentlyContinue
         }
     }

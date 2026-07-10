@@ -8,7 +8,7 @@ For general usage instructions, see the main [README.md](../README.md). For MCP 
 
 ## Security Design
 
-To allow background user-level timers to run updates that modify system directories, the updater scripts must run with elevated privileges. 
+To allow background user-level timers to run updates that modify system directories, the updater scripts must run with elevated privileges.
 
 This setup achieves this securely:
 1. **Sudoers Autoconfiguration (Linux)**: During `sudo ./install.sh`, the installer detects the original invoking user (`SUDO_USER`) and automatically configures a secure drop-in file at `/etc/sudoers.d/millennium-helpers`.

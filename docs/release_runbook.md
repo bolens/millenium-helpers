@@ -53,11 +53,13 @@ make check-winget     # Winget manifest structure
 make check-completions
 ```
 
-If Arch packaging files changed:
+If Arch packaging files changed (or after any commit if you do not use pre-commit):
 
 ```bash
 make sync-pkgver
 ```
+
+With `pre-commit install` + `pre-commit install --hook-type pre-push`, `pkgver` syncs on every commit and `make lint` runs on every push (see CONTRIBUTING.md).
 
 ---
 

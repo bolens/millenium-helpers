@@ -100,7 +100,7 @@ if ($Version -or $Command -eq "version" -or $Command -eq "--version" -or $Comman
 function Enable-Task {
     $channel_arg = $args[0]
     $upgradeScript = Join-Path -Path $ScriptDir -ChildPath "millennium-upgrade.ps1"
-    
+
     if (!(Test-Path -Path $upgradeScript)) {
         Log-Error "Error: Millennium upgrade script not found at $upgradeScript"
         exit 1
@@ -112,22 +112,22 @@ function Enable-Task {
     }
 
     Log-Info "Configuring Windows Task Scheduler task '$taskName' ($channel_arg channel)..."
-    
+
     # Generate random start delay to prevent DDoS on GitHub
     $delayMin = Get-Random -Minimum 0 -Maximum 60
-    
+
     Execute-Cmd -ScriptBlock {
         # Action executing powershell script
         # -WindowStyle Hidden keeps the console from flashing on screen
         $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$upgradeScript`" -Channel $channel_arg"
-        
+
         # Trigger daily
         $trigger = New-ScheduledTaskTrigger -Daily -At "2:00AM"
         $trigger.RandomDelay = [System.TimeSpan]::FromMinutes($delayMin)
-        
+
         # Settings
         $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
-        
+
         Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Force | Out-Null
     } -Description "Register-ScheduledTask -TaskName $taskName"
 

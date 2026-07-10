@@ -55,7 +55,7 @@ function Invoke-DoctorCleanup {
                 }
             }
         } else {
-            Write-Host "Tip: re-run with ${YELLOW}-Yes${NC} to run the package upgrade automatically."
+            Write-Host -ForegroundColor Yellow 'Tip: re-run with -Yes to run the package upgrade automatically.'
         }
     }
 }
