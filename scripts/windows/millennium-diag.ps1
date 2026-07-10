@@ -28,7 +28,7 @@ if ($Share) {
     if ($Force) { $cleanArgs += "-Force" }
     if ($Command) { $cleanArgs += $Command }
     
-    $reportOutput = & $PSCommandPath @cleanArgs 2>&1 | Out-String
+    $reportOutput = & $PSCommandPath @cleanArgs *>&1 | Out-String
     
     # Redact user directory and user name
     $userName = $env:USERNAME
