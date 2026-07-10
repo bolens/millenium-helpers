@@ -1,27 +1,29 @@
 # bolens.millenniumhelpers.installer.yaml
+# Multi-command portable package: zip archive + NestedInstallerFiles.
+# GitHub source zips extract under millenium-helpers-<ref>/ (tag vX.Y.Z → X.Y.Z; branch main → main).
 PackageIdentifier: bolens.millenniumhelpers
 PackageVersion: 2.2.0
 MinimumOSVersion: 10.0.0.0
 ReleaseDate: 2026-07-10
+InstallerType: zip
+NestedInstallerType: portable
+NestedInstallerFiles:
+- RelativeFilePath: millenium-helpers-2.2.0\scripts\windows\millennium-diag.ps1
+  PortableCommandAlias: millennium-diag
+- RelativeFilePath: millenium-helpers-2.2.0\scripts\windows\millennium-purge.ps1
+  PortableCommandAlias: millennium-purge
+- RelativeFilePath: millenium-helpers-2.2.0\scripts\windows\millennium-repair.ps1
+  PortableCommandAlias: millennium-repair
+- RelativeFilePath: millenium-helpers-2.2.0\scripts\windows\millennium-schedule.ps1
+  PortableCommandAlias: millennium-schedule
+- RelativeFilePath: millenium-helpers-2.2.0\scripts\windows\millennium-theme.ps1
+  PortableCommandAlias: millennium-theme
+- RelativeFilePath: millenium-helpers-2.2.0\scripts\windows\millennium-upgrade.ps1
+  PortableCommandAlias: millennium-upgrade
 Installers:
 - Architecture: neutral
-  InstallerType: portable
   InstallerUrl: https://github.com/bolens/millenium-helpers/archive/refs/tags/v2.2.0.zip
   InstallerSha256: "FF884DA71CE676EB2F2ED2C985A2FB5946F69D6F38F7930EDCB8EB6A32390535"
   UpgradeBehavior: uninstallPrevious
-  Commands:
-  - millennium-diag
-  - millennium-purge
-  - millennium-repair
-  - millennium-schedule
-  - millennium-theme
-  - millennium-upgrade
-  PortableCommandAliases:
-    millennium-diag: scripts/windows/millennium-diag.ps1
-    millennium-purge: scripts/windows/millennium-purge.ps1
-    millennium-repair: scripts/windows/millennium-repair.ps1
-    millennium-schedule: scripts/windows/millennium-schedule.ps1
-    millennium-theme: scripts/windows/millennium-theme.ps1
-    millennium-upgrade: scripts/windows/millennium-upgrade.ps1
 ManifestType: installer
 ManifestVersion: 1.5.0
