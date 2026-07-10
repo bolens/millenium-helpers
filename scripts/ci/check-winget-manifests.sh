@@ -64,8 +64,8 @@ if version.get("ManifestType") != "version":
     errors.append(f"{version_path}: ManifestType must be 'version'")
 if installer.get("ManifestType") != "installer":
     errors.append(f"{installer_path}: ManifestType must be 'installer'")
-if locale.get("ManifestType") != "locale":
-    errors.append(f"{locale_path}: ManifestType must be 'locale'")
+if locale.get("ManifestType") != "defaultLocale":
+    errors.append(f"{locale_path}: ManifestType must be 'defaultLocale'")
 
 installers = installer.get("Installers")
 if not isinstance(installers, list) or not installers:
