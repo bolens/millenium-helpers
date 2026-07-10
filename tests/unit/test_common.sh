@@ -522,5 +522,31 @@ assert_contains "$diag_out" "✔" "print_diag_item ok uses the check mark"
 assert_contains "$diag_out" "!" "print_diag_item warn uses the bang marker"
 assert_contains "$diag_out" "✘" "print_diag_item error uses the cross mark"
 
+# --- prune_backups age-prunes the last remaining backup without unbound-array abort ---
+# Bash 3.2 (macOS) treats empty "${arr[@]}" as unbound under set -u; pruning the
+# final backup used to reassign sorted_backups from an empty temp array and die.
+
+PRUNE_LIB=$(mktemp -d 2>/dev/null || mktemp -d -t prune.XXXXXX)
+mkdir -p "${PRUNE_LIB}/millennium.bak_v1.0.0"
+# Make the backup look old enough to age out (mtime ~ 10 days ago).
+if touch -d "10 days ago" "${PRUNE_LIB}/millennium.bak_v1.0.0" 2>/dev/null; then
+  :
+elif touch -t "$(date -v-10d +%Y%m%d%H%M.%S)" "${PRUNE_LIB}/millennium.bak_v1.0.0" 2>/dev/null; then
+  :
+else
+  # Last resort: set mtime via python for exotic environments.
+  python3 -c "import os, time; os.utime('${PRUNE_LIB}/millennium.bak_v1.0.0', (time.time()-10*86400, time.time()-10*86400))"
+fi
+export MOCK_LIB_DIR="$PRUNE_LIB"
+export DRY_RUN=false
+out=$(prune_backups 5 1 2>&1)
+rc=$?
+assert_success "$rc" "prune_backups age-prunes the last backup without aborting"
+assert_contains "$out" "Removed old backup" "prune_backups reports removal of the aged-out backup"
+assert_file_not_exists "${PRUNE_LIB}/millennium.bak_v1.0.0" "prune_backups deletes the aged-out backup directory"
+unset MOCK_LIB_DIR
+export DRY_RUN=true
+rm -rf "$PRUNE_LIB"
+
 print_summary
 

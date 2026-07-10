@@ -506,7 +506,9 @@ check_obsolete_files() {
   fi
 
   local found_any=false
-  for f in "${obsolete_list[@]}"; do
+  # Bash 3.2 (macOS): empty "${arr[@]}" is unbound under set -u
+  # (e.g. DIAG_TEST_OBSOLETE_LIST="" leaves obsolete_list empty).
+  for f in ${obsolete_list[@]+"${obsolete_list[@]}"}; do
     if [[ -f "$f" || -L "$f" ]]; then
       found_any=true
       obsolete_files_found+=("$f")

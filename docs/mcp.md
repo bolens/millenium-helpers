@@ -15,7 +15,7 @@ For general usage instructions, see the main [README.md](../README.md). For trou
 | `millennium_upgrade` | Upgrades, reinstalls, or rolls back the Millennium client system-wide. | `channel` (string, optional): `stable` (default) or `beta`. <br> `force` (boolean, optional): force reinstall/upgrade. <br> `rollback` (string, optional): list backups ('list') or specify backup name to roll back to. |
 | `millennium_schedule` | Manages background auto-update timers. | `action` (string, required): `enable`, `disable`, `status`. <br> `channel` (string, optional): `stable` or `beta`. <br> `cron` (boolean, optional): force crontab (Linux only). |
 | `millennium_repair` | Runs system-wide permissions and symlink repairs. | None. |
-| `millennium_purge` | Completely uninstalls all Millennium client hooks and files. | None. (MCP always passes `--yes` / `-Yes` so agents are not blocked by the interactive confirmation.) |
+| `millennium_purge` | Completely uninstalls all Millennium client hooks and files. | None. Always runs non-interactively (`--yes` on Linux/macOS, `-Yes` on Windows) so agents are not blocked by the confirmation prompt. Escalates via `sudo -n` / elevated PowerShell like the other write tools. |
 
 ---
 

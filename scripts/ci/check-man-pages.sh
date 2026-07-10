@@ -53,14 +53,21 @@ done < <(find man -maxdepth 1 -type f -name '*.1' -print0 | sort -z)
 if command -v mandoc >/dev/null 2>&1; then
   echo "Running mandoc -T lint on man pages..."
   for page in man/*.1; do
-    if ! mandoc -T lint "$page" >/tmp/mandoc-lint.out 2>&1; then
-      cat /tmp/mandoc-lint.out >&2
-      fail "mandoc lint failed for $page"
-    fi
-    # Surface warnings without failing the job
+    # mandoc returns non-zero for warnings as well as errors. Treat ERROR/
+    # FATAL as failures; surface WARNING/STYLE as notes without failing CI.
+    set +e
+    mandoc -T lint "$page" >/tmp/mandoc-lint.out 2>&1
+    mandoc_rc=$?
+    set -e
     if [[ -s /tmp/mandoc-lint.out ]]; then
+      if grep -Eq '[[:space:]](ERROR|FATAL):' /tmp/mandoc-lint.out; then
+        cat /tmp/mandoc-lint.out >&2
+        fail "mandoc lint failed for $page"
+      fi
       echo "lint notes for $page:"
       cat /tmp/mandoc-lint.out
+    elif [[ "$mandoc_rc" -ne 0 ]]; then
+      fail "mandoc lint failed for $page (exit $mandoc_rc, no diagnostics)"
     else
       echo "lint OK  $page"
     fi

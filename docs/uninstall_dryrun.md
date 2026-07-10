@@ -141,17 +141,24 @@ If you installed the helpers via `nix profile install github:bolens/millenium-he
 
 ### 4. macOS / Linux (Homebrew Install)
 
-If you installed the helpers via Homebrew:
+If you installed the helpers via Homebrew (`Formula/millennium-helpers.rb` in this repo):
 
 1. **Uninstall the formula**:
    ```bash
    brew uninstall millennium-helpers
    ```
 
+   If you tapped this repository earlier, you can also remove the tap:
+   ```bash
+   brew untap bolens/millenium-helpers
+   ```
+
 2. **Clean up user-level configs (optional)**:
    ```bash
    rm -rf ${XDG_CONFIG_HOME:-~/.config}/millennium-helpers
    ```
+
+   Homebrew does not remove Millennium client hooks under Steam; use `sudo millennium-purge --yes` before uninstalling the formula if you also want those gone.
 
 ### 5. Windows (Standard Install)
 

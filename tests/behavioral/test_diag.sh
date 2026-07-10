@@ -172,6 +172,12 @@ assert_contains "$captured_content" "[REDACTED]" "Diagnostic report redacts toke
 assert_not_contains "$captured_content" "ghp_MySecretToken" "Diagnostic report does not leak raw tokens"
 assert_not_contains "$captured_content" "github_pat_testtoken" "Diagnostic report does not leak env tokens"
 
+# --share alone leaves clean_args empty; bash 3.2 + set -u must not abort.
+out=$(SUDO_USER='' USER=faketestuser bash "$DIAG_SH" --share 2>&1)
+rc=$?
+assert_success "$rc" "millennium-diag.sh --share alone completes successfully"
+assert_contains "$out" "Diagnostic report successfully shared" "millennium-diag.sh --share alone reports share success"
+
 # Clean up mock
 rm -f "${MOCK_BIN}/curl"
 rm -f "${MOCK_BIN}/getent"
@@ -217,6 +223,12 @@ assert_contains "$out" "Removing deprecated file: ${obs_file1}" "millennium-diag
 assert_contains "$out" "Removing deprecated file: ${obs_file2}" "millennium-diag.sh doctor reports removing second obsolete file"
 assert_file_not_exists "$obs_file1" "First obsolete file was actually deleted"
 assert_file_not_exists "$obs_file2" "Second obsolete file was actually deleted"
+
+# Empty obsolete list must not trip bash 3.2 unbound-array under set -u.
+out=$(DIAG_TEST_OBSOLETE_LIST="" DIAG_TEST_BYPASS_CHECKS=true bash "$DIAG_SH" --json 2>&1)
+rc=$?
+assert_success "$rc" "millennium-diag.sh --json with empty obsolete list exits 0"
+assert_contains "$out" '"clean_of_obsolete": true' "millennium-diag.sh --json with empty obsolete list reports clean"
 
 rm -rf "${TEST_OBS_DIR}"
 

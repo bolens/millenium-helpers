@@ -125,7 +125,9 @@ else
   done
 fi
 
-for home in "${user_homes[@]}"; do
+# Bash 3.2 (macOS) treats "${arr[@]}" as unbound under set -u when empty.
+# The ${arr[@]+"${arr[@]}"} idiom expands to nothing safely in that case.
+for home in ${user_homes[@]+"${user_homes[@]}"}; do
   # Find all Steam directories (native, Debian, Flatpak, and macOS candidates)
   for steam_dir in "$home/.local/share/Steam" "$home/.steam/steam" "$home/.steam/root" "$home/.var/app/com.valvesoftware.Steam/.local/share/Steam" "$home/Library/Application Support/Steam"; do
     [[ -d "$steam_dir" ]] || continue

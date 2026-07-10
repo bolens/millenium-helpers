@@ -116,7 +116,8 @@ if [[ "$SHARE_REPORT" == "true" ]]; then
   }
   
   clean_args=()
-  for arg in "${ORIGINAL_ARGS[@]}"; do
+  # Bash 3.2 (macOS): empty "${arr[@]}" is unbound under set -u.
+  for arg in ${ORIGINAL_ARGS[@]+"${ORIGINAL_ARGS[@]}"}; do
     if [[ "$arg" != "-s" && "$arg" != "--share" ]]; then
       clean_args+=("$arg")
     fi
@@ -125,8 +126,10 @@ if [[ "$SHARE_REPORT" == "true" ]]; then
   report_file=$(mktemp 2>/dev/null || mktemp -t tmp.XXXXXX)
   trap 'rm -f "$report_file"' EXIT INT TERM
   
-  # Run the diagnostic script itself with cleaned arguments
-  bash "$0" "${clean_args[@]}" > "$report_file" 2>&1 || true
+  # Run the diagnostic script itself with cleaned arguments.
+  # Bash 3.2 (macOS) treats "${arr[@]}" as unbound under set -u when empty
+  # (e.g. `millennium-diag --share` with no other flags).
+  bash "$0" ${clean_args[@]+"${clean_args[@]}"} > "$report_file" 2>&1 || true
   
   # Sanitize user home and user name
   user_name="${SUDO_USER:-$(id -un)}"
@@ -408,7 +411,7 @@ if [[ "$COMMAND" == "doctor" ]]; then
       echo -e "${RED}Error: Root privileges are required to update helper scripts.${NC}" >&2
       echo -e "Please re-run the doctor with sudo: ${YELLOW}sudo $(basename "$0") doctor${NC}" >&2
     else
-      for cmd_name in "${out_of_date_scripts[@]:-}"; do
+      for cmd_name in ${out_of_date_scripts[@]+"${out_of_date_scripts[@]}"}; do
         [[ -n "$cmd_name" ]] || continue
         tmp_src="${TMP_SCRIPTS}/${cmd_name}"
         dest_path="/usr/local/bin/${cmd_name}"
@@ -442,7 +445,7 @@ if [[ "$COMMAND" == "doctor" ]]; then
     echo -e "\n${YELLOW}[DOCTOR] Repairing bootstrap hooks for Steam...${NC}"
     
     # Process broken symlinks
-    for item in "${broken_hooks[@]:-}"; do
+    for item in ${broken_hooks[@]+"${broken_hooks[@]}"}; do
       [[ -n "$item" ]] || continue
       sdir="${item%%:*}"
       folder_arch="${item#*:}"
@@ -456,7 +459,7 @@ if [[ "$COMMAND" == "doctor" ]]; then
     done
 
     # Process missing symlinks
-    for item in "${missing_hooks[@]:-}"; do
+    for item in ${missing_hooks[@]+"${missing_hooks[@]}"}; do
       [[ -n "$item" ]] || continue
       sdir="${item%%:*}"
       folder_arch="${item#*:}"
@@ -514,7 +517,7 @@ if [[ "$COMMAND" == "doctor" ]]; then
   # Issue 8: Incorrect directory permissions or ownership
   if [[ "$PERMISSIONS_OK" == false ]]; then
     echo -e "\n${YELLOW}[DOCTOR] Repairing directory permissions and ownership...${NC}"
-    for dir in "${unwritable_dirs[@]:-}"; do
+    for dir in ${unwritable_dirs[@]+"${unwritable_dirs[@]}"}; do
       [[ -n "$dir" ]] || continue
       echo "Correcting ownership and permissions for: ${dir}"
       if [[ "$(id -u)" -eq 0 ]]; then
@@ -547,7 +550,7 @@ if [[ "$COMMAND" == "doctor" ]]; then
     echo -e "\n${YELLOW}[DOCTOR] Repairing shell autocompletions...${NC}"
     
     # 1. Restore files
-    for local_path in "${missing_completions[@]:-}" "${out_of_date_completions[@]:-}"; do
+    for local_path in ${missing_completions[@]+"${missing_completions[@]}"} ${out_of_date_completions[@]+"${out_of_date_completions[@]}"}; do
       [[ -n "$local_path" ]] || continue
       remote_rel="${COMPLETION_FILES[$local_path]}"
       remote_url="https://raw.githubusercontent.com/bolens/millenium-helpers/${latest_sha:-main}/${remote_rel}"
@@ -561,7 +564,7 @@ if [[ "$COMMAND" == "doctor" ]]; then
     done
     
     # 2. Restore symlinks
-    for symlink_item in "${broken_symlinks[@]:-}"; do
+    for symlink_item in ${broken_symlinks[@]+"${broken_symlinks[@]}"}; do
       [[ -n "$symlink_item" ]] || continue
       symlink_path="${symlink_item%%:*}"
       symlink_target="${symlink_item#*:}"
@@ -578,7 +581,7 @@ if [[ "$COMMAND" == "doctor" ]]; then
   # Issue 11: Cleanup of obsolete / deprecated files
   if [[ "$CLEAN_OF_OBSOLETE" == false ]]; then
     echo -e "\n${YELLOW}[DOCTOR] Cleaning up obsolete / deprecated legacy files...${NC}"
-    for f in "${obsolete_files_found[@]:-}"; do
+    for f in ${obsolete_files_found[@]+"${obsolete_files_found[@]}"}; do
       [[ -n "$f" ]] || continue
       parent_dir=$(dirname "$f")
       if [[ -w "$parent_dir" ]]; then

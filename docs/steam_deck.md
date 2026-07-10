@@ -80,7 +80,7 @@ After changing overrides, fully quit Steam and relaunch it.
    curl -fsSL https://raw.githubusercontent.com/bolens/millenium-helpers/main/install.sh | sudo bash
    ```
 
-   Prefer verifying a release checksum / using Nix, Homebrew, or AUR when you can avoid curl-pipe.
+   Prefer verifying a release checksum / using Nix, Homebrew (`Formula/millennium-helpers.rb`), or AUR when you can avoid curl-pipe.
 4. **Read-only root** — SteamOS uses an immutable root. Millennium itself installs under `/usr/lib/millennium`; if writes fail after an OS update, re-run `sudo millennium-upgrade` or `sudo millennium-repair`, then `millennium-diag`.
 5. **Updates** — Deck OS updates can reset or conflict with custom system files. After a SteamOS update, run:
 

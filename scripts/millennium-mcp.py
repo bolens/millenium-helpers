@@ -176,13 +176,64 @@ def find_executable(cmd):
                 return full_path
     return shutil.which(cmd)
 
+def _run_under_test_suite(args, cmd_args, mock_bin, timeout):
+    """Log the production command line, then run MOCK_BIN stub or skip.
+
+    find_executable prefers /usr/bin over $PATH mocks, and sudo -n strips
+    TEST_SUITE_RUN / MOCK_BIN, so a real millennium-repair/upgrade would
+    close and relaunch the developer's Steam client. CI runners also often
+    have no system-installed helpers at all.
+    """
+    log(f"Executing: {' '.join(cmd_args)}")
+    mock_path = os.path.join(mock_bin, args[0]) if mock_bin else ""
+    if mock_path and os.path.isfile(mock_path) and os.access(mock_path, os.X_OK):
+        res = subprocess.run(
+            [mock_path] + args[1:],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=timeout,
+        )
+        combined_output = ""
+        if res.stdout:
+            combined_output += res.stdout
+        if res.stderr:
+            combined_output += f"\n{res.stderr}"
+        return {
+            "content": [
+                {
+                    "type": "text",
+                    "text": combined_output.strip() or f"Command finished with exit code {res.returncode}",
+                }
+            ],
+            "isError": res.returncode != 0,
+        }
+    log("[TEST] Skipping host execution to protect Steam/system state")
+    return {
+        "content": [{"type": "text", "text": "[TEST] Skipped host execution"}],
+        "isError": False,
+    }
+
 def run_cmd(args, run_as_root=False, timeout=DEFAULT_TIMEOUT_SECONDS):
     executable = find_executable(args[0])
-    if not executable:
-        return {"isError": True, "content": [{"type": "text", "text": f"Error: Command '{args[0]}' not found on system."}]}
-
     test_suite = bool(os.environ.get("TEST_SUITE_RUN"))
     mock_bin = os.environ.get("MOCK_BIN", "")
+
+    if not executable:
+        if not test_suite:
+            return {"isError": True, "content": [{"type": "text", "text": f"Error: Command '{args[0]}' not found on system."}]}
+        # Still log a production-shaped command line so tests can assert on it.
+        cmd_args = list(args)
+        if run_as_root:
+            cmd_args = (["sudo.exe"] if IS_WINDOWS else ["sudo", "-n"]) + cmd_args
+        try:
+            return _run_under_test_suite(args, cmd_args, mock_bin, timeout)
+        except subprocess.TimeoutExpired:
+            log(f"Command timed out after {timeout}s: {' '.join(cmd_args)}")
+            return {
+                "isError": True,
+                "content": [{"type": "text", "text": f"Error: Command '{' '.join(args)}' timed out after {timeout} seconds and was terminated."}],
+            }
 
     if IS_WINDOWS and executable.endswith(".ps1"):
         cmd_args = [
@@ -209,43 +260,11 @@ def run_cmd(args, run_as_root=False, timeout=DEFAULT_TIMEOUT_SECONDS):
             cmd_args = ["sudo", "-n"] + cmd_args
 
     # Always log the production command line (tests assert against this).
-    # Under the test suite, never exec system-installed helpers: find_executable
-    # prefers /usr/bin over $PATH mocks, and sudo -n strips TEST_SUITE_RUN /
-    # MOCK_BIN, so a real millennium-repair/upgrade would close and relaunch
-    # the developer's Steam client.
     try:
-        log(f"Executing: {' '.join(cmd_args)}")
-
         if test_suite:
-            mock_path = os.path.join(mock_bin, args[0]) if mock_bin else ""
-            if mock_path and os.path.isfile(mock_path) and os.access(mock_path, os.X_OK):
-                res = subprocess.run(
-                    [mock_path] + args[1:],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True,
-                    timeout=timeout,
-                )
-                combined_output = ""
-                if res.stdout:
-                    combined_output += res.stdout
-                if res.stderr:
-                    combined_output += f"\n{res.stderr}"
-                return {
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": combined_output.strip() or f"Command finished with exit code {res.returncode}",
-                        }
-                    ],
-                    "isError": res.returncode != 0,
-                }
-            log("[TEST] Skipping host execution to protect Steam/system state")
-            return {
-                "content": [{"type": "text", "text": "[TEST] Skipped host execution"}],
-                "isError": False,
-            }
+            return _run_under_test_suite(args, cmd_args, mock_bin, timeout)
 
+        log(f"Executing: {' '.join(cmd_args)}")
         res = subprocess.run(cmd_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=timeout)
         combined_output = ""
         if res.stdout:

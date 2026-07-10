@@ -64,21 +64,9 @@ text = re.sub(
     text,
     count=1,
 )
-if re.search(r'^\s*version\s+"', text, re.M):
-    text = re.sub(
-        r'^\s*version\s+"[^"]+"',
-        f'  version "{version}"',
-        text,
-        count=1,
-        flags=re.M,
-    )
-else:
-    text = re.sub(
-        r'(homepage\s+"[^"]+"\n)',
-        rf'\1  version "{version}"\n',
-        text,
-        count=1,
-    )
+# Drop an explicit version line when the stable URL already encodes the
+# tag — brew audit flags a redundant version as an error.
+text = re.sub(r'^\s*version\s+"[^"]+"\n', '', text, count=1, flags=re.M)
 
 path.write_text(text, encoding="utf-8")
 print(f"Updated {path}")
