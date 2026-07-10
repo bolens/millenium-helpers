@@ -1,0 +1,37 @@
+# GitHub PR Labeler Configuration
+# Ref: https://github.com/actions/labeler
+
+"area: windows":
+  - changed-files:
+      - any-glob-to-any-file: 'scripts/windows/**/*'
+      - any-glob-to-any-file: 'tests/windows/**/*'
+      - any-glob-to-any-file: 'packaging/scoop/**/*'
+      - any-glob-to-any-file: 'packaging/winget/**/*'
+
+"area: nix":
+  - changed-files:
+      - any-glob-to-any-file: 'flake.nix'
+      - any-glob-to-any-file: 'flake.lock'
+      - any-glob-to-any-file: 'default.nix'
+
+"area: homebrew":
+  - changed-files:
+      - any-glob-to-any-file: 'Formula/**/*'
+
+"area: archlinux":
+  - changed-files:
+      - any-glob-to-any-file: 'packaging/aur/**/*'
+
+"area: mcp":
+  - changed-files:
+      - any-glob-to-any-file: 'scripts/millennium-mcp.py'
+      - any-glob-to-any-file: 'tests/behavioral/test_mcp.sh'
+
+"area: docs":
+  - changed-files:
+      - any-glob-to-any-file: 'README.md'
+      - any-glob-to-any-file: 'docs/**/*'
+
+"area: ci-cd":
+  - changed-files:
+      - any-glob-to-any-file: '.github/workflows/**/*'
