@@ -119,6 +119,7 @@ millennium-schedule enable [stable|beta]
 | **irm (recommended)** | `irm https://raw.githubusercontent.com/bolens/millenium-helpers/main/scripts/windows/install.ps1 \| iex` |
 | Clone | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\install.ps1` |
 | Scoop | `scoop install https://raw.githubusercontent.com/bolens/millenium-helpers/main/packaging/scoop/millennium-helpers.json` |
+| Winget | `winget install --manifest packaging/winget/` |
 
 <details>
 <summary>Prerequisites & details</summary>
