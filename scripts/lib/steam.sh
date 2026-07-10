@@ -224,6 +224,34 @@ capture_steam_env() {
   mv -f "$tmp_file" "$state_file"
 }
 
+# Confirm before closing Steam when stdin is a TTY.
+# Non-interactive sessions, --yes / ASSUME_YES, scheduled jobs, and test suite skip the prompt.
+# Returns 1 if the user declines.
+confirm_close_steam() {
+  local target_user="$1"
+  local assume_yes="${2:-${ASSUME_YES:-false}}"
+
+  if [[ "$assume_yes" == "true" ]] || [[ ! -t 0 ]] || [[ -n "${TEST_SUITE_RUN:-}" ]]; then
+    close_steam_gracefully "$target_user"
+    return $?
+  fi
+
+  echo -e "${YELLOW}Steam is running and must be closed to continue.${NC}" >&2
+  printf "Close Steam now? [y/N]: " >&2
+  local reply=""
+  read -r reply || true
+  case "$reply" in
+    [Yy]|[Yy][Ee][Ss])
+      close_steam_gracefully "$target_user"
+      return $?
+      ;;
+    *)
+      echo -e "${RED}Aborted: Steam must be closed to continue. Re-run with --yes to skip this prompt.${NC}" >&2
+      return 1
+      ;;
+  esac
+}
+
 close_steam_gracefully() {
   local target_user="$1"
   local user_home

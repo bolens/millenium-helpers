@@ -29,6 +29,7 @@ fi
 
 SKIP_THEME=false
 DRY_RUN=false
+ASSUME_YES=false
 
 show_help() {
   cat << EOF
@@ -38,6 +39,7 @@ Fix Millennium settings panel, ownership, and Steam theme hooks. Close Steam fir
 
 Options:
   -s, --skip-theme  Skip theme refresh during repair
+  -y, --yes         Skip confirmation when closing Steam
   -d, --dry-run     Simulate operations without modifying files
   -V, --version     Show version information
   -h, --help        Show this help message
@@ -48,6 +50,10 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     -s|--skip-theme)
       SKIP_THEME=true
+      shift
+      ;;
+    -y|--yes)
+      ASSUME_YES=true
       shift
       ;;
     -d|--dry-run)
@@ -114,12 +120,11 @@ if pgrep -x steam >/dev/null 2>&1; then
     exit 1
   fi
 
-  echo "Steam is currently running. Closing Steam gracefully to apply repairs..."
+  echo "Steam is currently running and must be closed to apply repairs."
 
   if [[ "$DRY_RUN" == "false" ]]; then
-    # Capture env and command line arguments
     capture_steam_env "$USER_NAME"
-    close_steam_gracefully "$USER_NAME"
+    confirm_close_steam "$USER_NAME" "${ASSUME_YES:-false}" || exit 1
   else
     echo -e "${YELLOW}[DRY RUN] Would capture Steam's environment and close it to apply repairs.${NC}"
   fi

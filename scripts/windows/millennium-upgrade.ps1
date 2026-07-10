@@ -6,6 +6,8 @@ param(
     [string]$File = $null,
     [string]$Rollback = $null,
     [switch]$DryRun = $false,
+    [Alias("y")]
+    [switch]$Yes = $false,
     [Alias("h")]
     [switch]$Help = $false,
     [Alias("V")]
@@ -15,7 +17,7 @@ set-strictmode -version Latest
 
 if ($Help) {
     Write-Host @"
-Usage: millennium-upgrade.ps1 [-Channel stable|beta] [-Force] [-File PATH] [-Rollback ID|list] [-DryRun] [-Version] [-Help]
+Usage: millennium-upgrade.ps1 [-Channel stable|beta] [-Force] [-File PATH] [-Rollback ID|list] [-DryRun] [-Yes] [-Version] [-Help]
 
 Install official Millennium (stable or beta) releases over system files.
 
@@ -25,6 +27,7 @@ Options:
   -File PATH        Install from a local archive instead of downloading
   -Rollback ID      Roll back to a previous backup (or pass "list" to list backups)
   -DryRun           Simulate operations without modifying files
+  -Yes, -y          Skip confirmation when closing Steam
   -Version, -V      Show version information
   -Help, -h         Show this help message
 "@
@@ -44,6 +47,10 @@ if (Test-Path -Path $CommonPs1) {
 if ($Version) {
     Write-HelpersVersion -Name "millennium-upgrade"
     exit 0
+}
+
+if ($Yes) {
+    $global:AssumeYes = $true
 }
 
 if ($DryRun) {
@@ -123,7 +130,9 @@ if ($Rollback) {
     $steamRunning = $null -ne (Get-Process -Name "steam" -ErrorAction SilentlyContinue)
     if ($steamRunning) {
         Capture-SteamEnv
-        Close-SteamGracefully
+        if (-not (Confirm-CloseSteam)) {
+            exit 1
+        }
     }
 
     Log-Info "Rolling back Millennium installation to $Rollback..."
@@ -147,12 +156,14 @@ if ($Rollback) {
     Log-Info "Rollback completed successfully."
     if ($steamRunning) {
         Relaunch-Steam
+        Write-Host -ForegroundColor Green "Steam relaunched."
     }
     exit 0
 }
 
 # --- Version Tag Resolution ---
 $latestVer = ""
+$githubToken = $null
 if ($File) {
     if (!(Test-Path -Path $File)) {
         Log-Error "Error: Local archive file '$File' not found."
@@ -203,12 +214,16 @@ if ($File) {
         }
     } catch {
         Log-Error "Error: Could not retrieve release details from GitHub API: $_"
+        Log-Error "If you are rate-limited, set a PAT: millennium-schedule setup"
+        Log-Error "  or: millennium-schedule config set github_token <token>"
         exit 1
     }
 }
 
 if (!$latestVer) {
     Log-Error "Error: Could not resolve a valid version tag."
+    Log-Error "If you are rate-limited, set a PAT: millennium-schedule setup"
+    Log-Error "  or: millennium-schedule config set github_token <token>"
     exit 1
 }
 
@@ -247,7 +262,9 @@ if (Is-GameRunning) {
 $steamRunning = $null -ne (Get-Process -Name "steam" -ErrorAction SilentlyContinue)
 if ($steamRunning) {
     Capture-SteamEnv
-    Close-SteamGracefully
+    if (-not (Confirm-CloseSteam)) {
+        exit 1
+    }
 }
 
 # --- Backup current files ---
@@ -306,9 +323,19 @@ if (!$File -and !$global:DryRun -and (Test-Path -Path $localArchive)) {
     Remove-Item -Path $localArchive -Force
 }
 
-Log-Info "Millennium v$latestVer installed successfully."
+if ($global:DryRun) {
+    Write-Host -ForegroundColor Green "Dry run completed successfully!"
+} else {
+    Write-Host -ForegroundColor Green "Done. Installed Millennium v$latestVer ($Channel channel)."
+    if ($steamRunning) {
+        Write-Host "Steam will be relaunched."
+    }
+}
 
 if ($steamRunning) {
     Relaunch-Steam
+    if (-not $global:DryRun) {
+        Write-Host -ForegroundColor Green "Steam relaunched."
+    }
 }
 exit 0

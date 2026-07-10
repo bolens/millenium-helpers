@@ -38,4 +38,31 @@ Describe "MCP Server Helper" {
             Remove-Item -Path $tempBin -Recurse -Force -ErrorAction SilentlyContinue | Out-Null
         }
     }
+
+    It "Requires confirm=true for millennium_purge and supports dry_run" {
+        $mcpScript = Join-Path -Path $PSScriptRoot -ChildPath "..\..\scripts\millennium-mcp.py"
+        $pythonCmd = if ($IsWindows) { "python" } else { "python3" }
+
+        $reject = & $pythonCmd -c @"
+import importlib.util, json, sys
+spec = importlib.util.spec_from_file_location('mcp', sys.argv[1])
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+result = mod.handle_tool_call('millennium_purge', {})
+print(json.dumps(result))
+"@ $mcpScript
+        $rejectObj = $reject | ConvertFrom-Json
+        $rejectObj.isError | Should -Be $true
+        ($rejectObj.content[0].text) | Should -BeLike "*confirm=true*"
+
+        $tools = & $pythonCmd -c @"
+import importlib.util, json, sys
+spec = importlib.util.spec_from_file_location('mcp', sys.argv[1])
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+print(json.dumps(mod.get_tools_list()))
+"@ $mcpScript
+        $tools | Should -BeLike "*confirm*"
+        $tools | Should -BeLike "*dry_run*"
+    }
 }

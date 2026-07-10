@@ -39,6 +39,7 @@ stdenv.mkDerivation rec {
     install -m755 scripts/millennium-diag.sh $out/bin/millennium-diag
     install -m755 scripts/millennium-theme.sh $out/bin/millennium-theme
     install -m755 scripts/millennium-mcp.py $out/bin/millennium-mcp
+    install -m755 scripts/millennium.sh $out/bin/millennium
 
     # Install shared library and its modules
     mkdir -p $out/lib/millennium-helpers/lib
@@ -46,7 +47,7 @@ stdenv.mkDerivation rec {
     install -m644 scripts/lib/*.sh $out/lib/millennium-helpers/lib/
 
     # Wrap the scripts to ensure they have the runtime dependencies on PATH
-    for script in millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp; do
+    for script in millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp millennium; do
       wrapProgram $out/bin/$script \
         --prefix PATH : ${lib.makeBinPath [ bash python3 curl unzip git ]}
     done
@@ -54,13 +55,13 @@ stdenv.mkDerivation rec {
     # Install completions
     mkdir -p $out/share/bash-completion/completions
     install -m644 completions/bash/millennium-helpers $out/share/bash-completion/completions/millennium-helpers
-    for script in millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp; do
+    for script in millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp millennium; do
       ln -sf millennium-helpers $out/share/bash-completion/completions/$script
     done
 
     mkdir -p $out/share/zsh/site-functions
     install -m644 completions/zsh/_millennium-helpers $out/share/zsh/site-functions/_millennium-helpers
-    for script in millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp; do
+    for script in millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp millennium; do
       ln -sf _millennium-helpers $out/share/zsh/site-functions/_$script
     done
 

@@ -21,6 +21,7 @@ class MillenniumHelpers < Formula
     bin.install "scripts/millennium-diag.sh" => "millennium-diag"
     bin.install "scripts/millennium-theme.sh" => "millennium-theme"
     bin.install "scripts/millennium-mcp.py" => "millennium-mcp"
+    bin.install "scripts/millennium.sh" => "millennium"
 
     # Install shared library
     (lib/"millennium-helpers").install "scripts/common.sh"

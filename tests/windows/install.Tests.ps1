@@ -15,7 +15,7 @@ Describe "Windows Installer" {
 
         try {
             # 1. Run Install
-            & $installScript
+            $installOut = (& $installScript *>&1) | Out-String
 
             # Verify directory and files exist
             $expectedInstallDir = Join-Path -Path $tempHome -ChildPath ".millennium-helpers"
@@ -25,6 +25,7 @@ Describe "Windows Installer" {
 
             $expectedScripts = @(
                 "common.ps1",
+                "millennium.ps1",
                 "millennium-diag.ps1",
                 "millennium-purge.ps1",
                 "millennium-repair.ps1",
@@ -37,6 +38,7 @@ Describe "Windows Installer" {
             }
 
             $expectedWrappers = @(
+                "millennium.cmd",
                 "millennium-diag.cmd",
                 "millennium-purge.cmd",
                 "millennium-repair.cmd",
@@ -47,6 +49,10 @@ Describe "Windows Installer" {
             foreach ($wrapper in $expectedWrappers) {
                 Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath $wrapper) | Should -Be $true
             }
+
+            $installOut | Should -BeLike "*Getting started*"
+            $installOut | Should -BeLike "*millennium-diag*"
+            $installOut | Should -BeLike "*millennium diag*"
 
             # 2. Run Uninstall
             & $installScript -Uninstall

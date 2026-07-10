@@ -5,6 +5,10 @@ param(
     [switch]$Json = $false,
     [switch]$DryRun = $false,
     [switch]$Share = $false,
+    [Alias("l")]
+    [switch]$Follow = $false,
+    [Alias("y")]
+    [switch]$Yes = $false,
     [Alias("h")]
     [switch]$Help = $false,
     [Alias("V")]
@@ -29,12 +33,15 @@ Usage: millennium-diag [COMMAND] [OPTIONS]
 Commands:
   (None)        Run read-only diagnostics report (default)
   doctor        Detect and automatically repair partial or broken installations
+  logs          Display recent Millennium and Steam WebHelper startup logs
 
 Options:
   -Force        Force all doctor repairs even if system is healthy
   -Json         Output diagnostics report in structured JSON format
   -DryRun       Simulate doctor repairs without modifying anything
   -Share        Upload diagnostic report to a pastebin and return a short link
+  -Follow, -l   Follow (tail -f) real-time log output
+  -Yes, -y      Skip confirmation when doctor closes Steam
   -Version, -V  Show version information
   -Help, -h     Show this help message
 "@
@@ -45,6 +52,10 @@ if ($Version -or $Command -eq "version" -or $Command -eq "--version" -or $Comman
     exit 0
 }
 
+if ($Yes) {
+    $global:AssumeYes = $true
+}
+
 if ($Share) {
     Write-Host "Generating and uploading diagnostic report..."
     
@@ -53,6 +64,7 @@ if ($Share) {
     if ($Json) { $cleanArgs += "-Json" }
     if ($DryRun) { $cleanArgs += "-DryRun" }
     if ($Force) { $cleanArgs += "-Force" }
+    if ($Yes) { $cleanArgs += "-Yes" }
     if ($Command) { $cleanArgs += $Command }
     
     $reportOutput = & $PSCommandPath @cleanArgs *>&1 | Out-String
@@ -107,9 +119,13 @@ if ($Share) {
     exit 0
 }
 
-# Support command alias doctor
-if ($args.Count -gt 0 -and ($args[0] -eq "doctor" -or $args[0] -eq "-f" -or $args[0] -eq "--fix")) {
-    $Command = "doctor"
+# Support command aliases
+if ($args.Count -gt 0) {
+    if ($args[0] -eq "doctor" -or $args[0] -eq "-f" -or $args[0] -eq "--fix") {
+        $Command = "doctor"
+    } elseif ($args[0] -eq "logs") {
+        $Command = "logs"
+    }
 }
 
 if ($DryRun) {
@@ -117,6 +133,66 @@ if ($DryRun) {
 }
 
 $SteamPath = Resolve-SteamPath
+
+# --- Logs Viewer Execution ---
+if ($Command -eq "logs") {
+    $helpersStateDir = Join-Path -Path $env:LOCALAPPDATA -ChildPath "millennium-helpers"
+    $updaterLog = Join-Path -Path $helpersStateDir -ChildPath "updater.log"
+    if (Test-Path -Path $updaterLog) {
+        Write-Host -ForegroundColor Blue "=== Millennium Background Auto-Updater Logs ==="
+        Get-Content -Path $updaterLog -Tail 50 -ErrorAction SilentlyContinue
+        Write-Host ""
+    }
+
+    Write-Host -ForegroundColor Blue "=== Millennium & Steam WebHelper Logs ==="
+
+    if (!$SteamPath) {
+        Log-Error "Error: Steam installation path could not be resolved."
+        exit 1
+    }
+
+    $steamLogsDir = Join-Path -Path $SteamPath -ChildPath "logs"
+    $logNames = @(
+        "webhelper.txt",
+        "console_log.txt",
+        "console.txt",
+        "content_log.txt",
+        "stderr.txt",
+        "stdout.txt"
+    )
+    $logFiles = @()
+    foreach ($logName in $logNames) {
+        $candidate = Join-Path -Path $steamLogsDir -ChildPath $logName
+        if (Test-Path -Path $candidate -PathType Leaf) {
+            $logFiles += Get-Item -Path $candidate
+        }
+    }
+
+    if ($logFiles.Count -eq 0) {
+        Log-Error "Error: No Steam logs found under $steamLogsDir."
+        exit 1
+    }
+
+    $latestLog = $logFiles | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    Write-Host -ForegroundColor Yellow "Reading log file: $($latestLog.FullName)`n"
+
+    $filterRegex = "Millennium|BOOTSTRAP|update-check|plugin_loader|steamwebhelper|wsock32"
+
+    if ($Follow) {
+        Write-Host "Tailing log file (Ctrl+C to exit)..."
+        Get-Content -Path $latestLog.FullName -Tail 100 -Wait | Where-Object { $_ -match $filterRegex }
+    } else {
+        $matches = Get-Content -Path $latestLog.FullName -Tail 200 -ErrorAction SilentlyContinue |
+            Where-Object { $_ -match $filterRegex }
+        if ($matches) {
+            $matches | ForEach-Object { Write-Host $_ }
+        } else {
+            Write-Host "No recent Millennium-related log entries found."
+        }
+    }
+    exit 0
+}
+
 $SteamRunning = $null -ne (Get-Process -Name "steam" -ErrorAction SilentlyContinue)
 $BinariesOk = $true
 $SkinsDirOk = $true
@@ -283,6 +359,10 @@ function Print-DiagItem {
         Write-Host -NoNewline "  [ " -ForegroundColor White
         Write-Host -NoNewline "OK" -ForegroundColor Green
         Write-Host -NoNewline " ] " -ForegroundColor White
+    } elseif ($Status -eq "warn") {
+        Write-Host -NoNewline "  [" -ForegroundColor White
+        Write-Host -NoNewline "WARN" -ForegroundColor Yellow
+        Write-Host -NoNewline "] " -ForegroundColor White
     } else {
         Write-Host -NoNewline "  [" -ForegroundColor White
         Write-Host -NoNewline "FAIL" -ForegroundColor Red
@@ -294,10 +374,53 @@ function Print-DiagItem {
     Write-Host " : $Value"
 }
 
+function Print-DiagNextSteps {
+    $issues = 0
+    $suggestions = [System.Collections.Generic.List[string]]::new()
+
+    if (-not $diagReport["binaries_ok"]) {
+        $issues++
+        $suggestions.Add("millennium-upgrade -Force          # repair/reinstall Millennium binaries")
+    }
+    if (-not $PermissionsOk) {
+        $issues++
+        $suggestions.Add("millennium-repair                  # fix Steam folder permissions")
+    }
+    if (-not $SkinsDirOk) {
+        $issues++
+        $suggestions.Add("millennium-diag doctor             # create missing skins directory")
+    }
+    if (-not $diagReport["task_scheduled"]) {
+        $issues++
+        $suggestions.Add("millennium-schedule enable         # enable daily auto-updates")
+    }
+    if (-not $CleanOfObsolete) {
+        $issues++
+        $suggestions.Add("millennium-diag doctor             # remove legacy wrapper files")
+    }
+
+    Write-Host ""
+    if ($issues -eq 0) {
+        Write-Host -ForegroundColor Green "No issues detected. Your Millennium installation looks healthy."
+        Write-Host "Tip: run ${YELLOW}millennium-schedule status${NC} to review auto-updates, or ${YELLOW}millennium-theme list${NC} for skins."
+        return
+    }
+
+    Write-Host -ForegroundColor Yellow "$issues issue(s) detected. Suggested next steps:"
+    $seen = @{}
+    foreach ($s in $suggestions) {
+        if ($seen.ContainsKey($s)) { continue }
+        $seen[$s] = $true
+        Write-Host "  • $s"
+    }
+    Write-Host ""
+    Write-Host "Or run ${GREEN}millennium-diag doctor${NC} to attempt automatic repairs."
+}
+
 if ($diagReport["steam_running"]) {
     Print-DiagItem -Status "ok" -Label "Steam Client" -Value "Running (PID: $($diagReport['steam_pid']))"
 } else {
-    Print-DiagItem -Status "error" -Label "Steam Client" -Value "Not Running"
+    Print-DiagItem -Status "warn" -Label "Steam Client" -Value "Not Running"
 }
 
 if ($diagReport["binaries_ok"]) {
@@ -322,13 +445,18 @@ if ($SkinsDirOk) {
 if ($diagReport["task_scheduled"]) {
     Print-DiagItem -Status "ok" -Label "Auto-Update Task Scheduler" -Value "Enabled (State: $($diagReport['task_state']))"
 } else {
-    Print-DiagItem -Status "error" -Label "Auto-Update Task Scheduler" -Value "Disabled / Not Scheduled"
+    Print-DiagItem -Status "warn" -Label "Auto-Update Task Scheduler" -Value "Disabled / Not Scheduled"
 }
 
 if ($CleanOfObsolete) {
     Print-DiagItem -Status "ok" -Label "Legacy Wrapper Files" -Value "None detected (Clean)"
 } else {
-    Print-DiagItem -Status "error" -Label "Legacy Wrapper Files" -Value "Detected $($obsoleteFilesFound.Count) deprecated files needing cleanup"
+    Print-DiagItem -Status "warn" -Label "Legacy Wrapper Files" -Value "Detected $($obsoleteFilesFound.Count) deprecated files needing cleanup"
+}
+
+# Actionable next steps for the default (read-only) report
+if ($Command -ne "doctor") {
+    Print-DiagNextSteps
 }
 
 # --- Doctor / Auto-Repair Execution ---
@@ -349,17 +477,39 @@ if ($Command -eq "doctor") {
         $CleanOfObsolete = $false
     }
 
+    $relaunchSteamAfterDoctor = $false
+    if ($SteamRunning -and (-not $BinariesOk)) {
+        if (Is-GameRunning) {
+            Log-Error "Error: A Steam game is currently running. Doctor repairs cannot proceed while a game is active."
+            exit 1
+        }
+
+        Write-Host -ForegroundColor Yellow "Steam is currently running and must be closed to apply repairs to binaries."
+
+        if (-not $global:DryRun) {
+            Capture-SteamEnv
+            if (-not (Confirm-CloseSteam)) {
+                exit 1
+            }
+        } else {
+            Log-Warn "[DRY RUN] Would capture Steam's environment and close it to apply repairs."
+        }
+
+        $SteamRunning = $false
+        $relaunchSteamAfterDoctor = $true
+    }
+
     # Issue 1: Missing or corrupted binaries
     if (!$BinariesOk) {
         Write-Host "`n[DOCTOR] Repairing Millennium binaries..."
         $upgradeScript = Join-Path -Path $ScriptDir -ChildPath "millennium-upgrade.ps1"
         if (Test-Path -Path $upgradeScript) {
-            $upgradeArgs = "-Channel $Channel -Force"
-            if ($global:DryRun) { $upgradeArgs += " -DryRun" }
-            Log-Info "Invoking upgrade script: Powershell -File `"$upgradeScript`" $upgradeArgs"
+            $upgradeArgs = @("-Channel", $Channel, "-Force", "-Yes")
+            if ($global:DryRun) { $upgradeArgs += "-DryRun" }
+            Log-Info "Invoking upgrade script: Powershell -File `"$upgradeScript`" $($upgradeArgs -join ' ')"
             Execute-Cmd -ScriptBlock {
-                & $upgradeScript -Channel $Channel -Force
-            } -Description "powershell -File $upgradeScript -Channel $Channel -Force"
+                & $upgradeScript @upgradeArgs
+            } -Description "powershell -File $upgradeScript -Channel $Channel -Force -Yes"
         } else {
             Log-Error "Upgrade script not found at $upgradeScript"
         }
@@ -400,7 +550,18 @@ if ($Command -eq "doctor") {
     if ($global:DryRun) {
         Write-Host -ForegroundColor Green "`nDoctor dry-run simulation finished successfully!"
     } else {
-        Write-Host -ForegroundColor Green "`nDoctor repairs applied successfully! Re-run diagnostics to verify."
+        Write-Host -ForegroundColor Green "`nDoctor repairs applied successfully."
+        Write-Host "Channel: $Channel. Re-run ${YELLOW}millennium-diag${NC} to verify, or ${YELLOW}millennium-diag doctor${NC} again if issues remain."
+    }
+
+    if ($relaunchSteamAfterDoctor) {
+        Write-Host -ForegroundColor Green "`nRelaunching Steam..."
+        if ($global:DryRun) {
+            Log-Warn "[DRY RUN] Would relaunch Steam."
+        } else {
+            Relaunch-Steam
+            Write-Host -ForegroundColor Green "Steam relaunched."
+        }
     }
 }
 exit 0

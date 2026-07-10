@@ -3,6 +3,7 @@
 # Run Millennium theme and hook link repair
 export extern "millennium-repair" [
   --skip-theme(-s) # Skip theme refresh during repair
+  --yes(-y)      # Skip confirmation when closing Steam
   --dry-run(-d)  # Simulation mode
   --version(-V)  # Show version information
   --help(-h)     # Show help message
@@ -16,6 +17,7 @@ export extern "millennium-upgrade" [
   --rollback(-r): string # Rollback to a specific version or list backups
   --file: string # Install from a local archive
   --force(-f)    # Force reinstall
+  --yes(-y)      # Skip confirmation when closing Steam
   --dry-run(-d)  # Simulation mode
   --version(-V)  # Show version information
   --help(-h)     # Show help message
@@ -52,6 +54,7 @@ export extern "millennium-diag" [
   --force        # Force all doctor repairs even if system is healthy
   --json         # Output diagnostics report in structured JSON format
   --follow(-l)   # Follow real-time log output
+  --yes(-y)      # Skip confirmation when doctor closes Steam
   --share(-s)    # Upload diagnostic report to a pastebin
   --dry-run(-d)  # Simulation mode
   --version(-V)  # Show version information
@@ -67,7 +70,8 @@ export extern "millennium-theme" [
   action?: string@"_millennium_theme_actions" # Theme action (list, install, remove, update)
   theme?: string # Theme name or GitHub repository URL
   --all(-a) # Update all themes (only applicable if action is update)
-  --json # Output list command results in structured JSON format
+  --json # Output list command results as structured JSON
+  --yes(-y) # Skip confirmation when removing a theme
   --dry-run(-d)  # Simulation mode
   --version(-V)  # Show version information
   --help(-h)     # Show help message
@@ -79,7 +83,18 @@ def _millennium_theme_actions [] {
 
 # Run Model Context Protocol (MCP) server
 export extern "millennium-mcp" [
-  --register(-r) # Register MCP server with Claude Desktop and Windsurf
+  --register(-r) # Register MCP server with Claude Desktop, Windsurf, and Cursor
   --version(-V)  # Show version information
   --help(-h)     # Show help message
+]
+
+# Unified dispatcher
+export extern "millennium" [
+  command?: string@"_millennium_dispatcher_commands"
+  --version(-V)
+  --help(-h)
+]
+
+def _millennium_dispatcher_commands [] {
+  [ "diag", "upgrade", "schedule", "theme", "repair", "purge", "mcp", "help" ]
 ]

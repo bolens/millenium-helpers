@@ -309,6 +309,94 @@ mock_cmd "runuser" 'exit 0'
 mock_cmd "pgrep" 'exit 1'
 mock_cmd "steam" 'exit 0'
 
+# --- confirm_close_steam() ---
+
+mock_cmd "getent" 'echo "closetest:x:1000:1000::/home/closetest:/bin/bash"'
+mock_cmd "runuser" 'echo "runuser: $*" >> "'"${MOCK_BIN}"'/confirm_close.calls"; exit 0'
+mock_cmd "pgrep" 'exit 1'
+mock_cmd "steam" 'exit 0'
+
+# ASSUME_YES / explicit true skips the prompt and closes
+confirm_out=$(confirm_close_steam "closetest" "true" 2>&1)
+rc=$?
+assert_success "$rc" "confirm_close_steam with assume_yes=true exits 0"
+assert_contains "$confirm_out" "Steam closed successfully" "confirm_close_steam with assume_yes=true closes Steam"
+
+# Non-interactive stdin (not a TTY) auto-confirms even without TEST_SUITE_RUN
+saved_test_suite="${TEST_SUITE_RUN:-}"
+unset TEST_SUITE_RUN
+confirm_out=$(confirm_close_steam "closetest" "false" </dev/null 2>&1)
+rc=$?
+assert_success "$rc" "confirm_close_steam non-interactive auto-confirms and exits 0"
+assert_contains "$confirm_out" "Steam closed successfully" "confirm_close_steam non-interactive closes Steam"
+if [[ -n "$saved_test_suite" ]]; then
+  export TEST_SUITE_RUN="$saved_test_suite"
+else
+  export TEST_SUITE_RUN=true
+fi
+
+# Interactive decline via a PTY when script(1) is available
+if command -v script >/dev/null 2>&1; then
+  unset TEST_SUITE_RUN
+  confirm_out=$(
+    printf 'n\n' | script -q -c "bash -c '
+      export MOCK_BIN=\"${MOCK_BIN}\"
+      export PATH=\"${MOCK_BIN}:\$PATH\"
+      source \"${REPO_ROOT}/scripts/common.sh\"
+      confirm_close_steam closetest false
+      echo CONFIRM_RC=\$?
+    '" /dev/null 2>&1
+  ) || true
+  export TEST_SUITE_RUN=true
+  # script(1) may wrap lines with CR; normalize before asserting.
+  confirm_flat=$(printf '%s' "$confirm_out" | tr -d '\r')
+  assert_contains "$confirm_flat" "CONFIRM_RC=1" "confirm_close_steam declines when user answers n on a TTY"
+  assert_contains "$confirm_flat" "Aborted" "confirm_close_steam decline message mentions Aborted"
+  assert_not_contains "$confirm_flat" "Steam closed successfully" "confirm_close_steam decline does not close Steam"
+fi
+
+rm -f "${MOCK_BIN}/confirm_close.calls" "${MOCK_BIN}/getent"
+mock_cmd "runuser" 'exit 0'
+mock_cmd "pgrep" 'exit 1'
+mock_cmd "steam" 'exit 0'
+
+# --- print_diag_next_steps() ---
+
+# shellcheck source=../../scripts/lib/diag_report.sh
+source "${REPO_ROOT}/scripts/lib/diag_report.sh"
+
+BINARIES_OK=true HOOKS_OK=true FLATPAK_OK=true PERMISSIONS_OK=true SKINS_DIR_OK=true \
+SUDOERS_OK=true TIMER_ACTIVE=true LINGER_OK=true SCRIPTS_UP_TO_DATE=true \
+COMPLETIONS_OK=true CLEAN_OF_OBSOLETE=true RUNNING_USER=testuser \
+  next_out=$(print_diag_next_steps 2>&1)
+assert_contains "$next_out" "No issues detected" "print_diag_next_steps reports healthy when all flags are ok"
+assert_contains "$next_out" "millennium-schedule status" "print_diag_next_steps healthy tip mentions schedule status"
+
+BINARIES_OK=false HOOKS_OK=false FLATPAK_OK=true PERMISSIONS_OK=true SKINS_DIR_OK=true \
+SUDOERS_OK=true TIMER_ACTIVE=false LINGER_OK=true SCRIPTS_UP_TO_DATE=true \
+COMPLETIONS_OK=true CLEAN_OF_OBSOLETE=true RUNNING_USER=testuser \
+  next_out=$(print_diag_next_steps 2>&1)
+assert_contains "$next_out" "issue(s) detected" "print_diag_next_steps reports issue count when flags fail"
+assert_contains "$next_out" "millennium-diag doctor" "print_diag_next_steps suggests doctor"
+assert_contains "$next_out" "millennium-upgrade" "print_diag_next_steps suggests upgrade for bad binaries"
+assert_contains "$next_out" "millennium-schedule enable" "print_diag_next_steps suggests enabling the scheduler"
+
+# --- _github_explain_http_error() ---
+
+err_out=$(_github_explain_http_error "401" 2>&1)
+assert_contains "$err_out" "401" "_github_explain_http_error mentions HTTP 401"
+assert_contains "$err_out" "millennium-schedule setup" "_github_explain_http_error 401 tip points at schedule setup"
+
+err_hdr=$(mktemp 2>/dev/null || mktemp -t mh-hdr.XXXXXX)
+printf 'x-ratelimit-remaining: 0\nx-ratelimit-reset: 9999999999\n' > "$err_hdr"
+err_out=$(_github_explain_http_error "403" "$err_hdr" 2>&1)
+assert_contains "$err_out" "rate limit" "_github_explain_http_error 403 with remaining=0 mentions rate limit"
+assert_contains "$err_out" "github_token" "_github_explain_http_error 403 tip mentions github_token"
+rm -f "$err_hdr"
+
+err_out=$(_github_explain_http_error "404" 2>&1)
+assert_contains "$err_out" "404" "_github_explain_http_error mentions HTTP 404"
+
 # --- send_notification() ---
 
 # Root target user must be a strict no-op regardless of notify-send availability
@@ -521,6 +609,19 @@ assert_contains "$diag_out" "Binaries" "print_diag_item error includes the label
 assert_contains "$diag_out" "✔" "print_diag_item ok uses the check mark"
 assert_contains "$diag_out" "!" "print_diag_item warn uses the bang marker"
 assert_contains "$diag_out" "✘" "print_diag_item error uses the cross mark"
+
+diag_ascii=$(
+  NO_COLOR=1 NO_UNICODE=1 bash -c '
+    source "'"${REPO_ROOT}"'/scripts/lib/logging.sh"
+    source "'"${REPO_ROOT}"'/scripts/lib/diag_report.sh"
+    print_diag_item "ok" "Steam Client" "Running"
+    print_diag_item "warn" "Hooks" "Missing"
+    print_diag_item "error" "Binaries" "Corrupted"
+  '
+)
+assert_contains "$diag_ascii" "OK" "print_diag_item ok uses ASCII OK when NO_UNICODE=1"
+assert_contains "$diag_ascii" "WARN" "print_diag_item warn uses ASCII WARN when NO_UNICODE=1"
+assert_contains "$diag_ascii" "FAIL" "print_diag_item error uses ASCII FAIL when NO_UNICODE=1"
 
 # --- prune_backups age-prunes the last remaining backup without unbound-array abort ---
 # Bash 3.2 (macOS) treats empty "${arr[@]}" as unbound under set -u; pruning the

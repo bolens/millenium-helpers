@@ -20,13 +20,17 @@ Update one theme, or all themes with
 .BR \-\-all .
 .TP
 .BR remove " " \fItheme\-name\fR
-Remove an installed theme.
+Remove an installed theme (confirms interactively unless
+.BR \-\-yes ).
 .SH OPTIONS
 .TP
 .B \-\-json
 Output
 .B list
 results as structured JSON.
+.TP
+.BR \-y ", " \-\-yes
+Skip confirmation when removing a theme.
 .TP
 .BR \-d ", " \-\-dry\-run
 Simulate operations without modifying files.
@@ -36,6 +40,17 @@ Show version information.
 .TP
 .BR \-h ", " \-\-help
 Show help message.
+.SH EXAMPLES
+.TP
+Install a theme from GitHub:
+.B millennium-theme install SteamClientHomebrew/millennium-steam-skin
+.TP
+Update all installed themes:
+.B millennium-theme update \-\-all
+.TP
+Remove a theme:
+.B millennium-theme remove millennium-steam-skin \-\-yes
 .SH SEE ALSO
 .BR millennium-repair (1),
-.BR millennium-diag (1)
+.BR millennium-diag (1),
+.BR millennium (1)

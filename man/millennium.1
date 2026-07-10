@@ -1,0 +1,55 @@
+.TH MILLENNIUM 1 "July 9, 2026" "millennium-helpers" "User Commands"
+.SH NAME
+millennium \- unified dispatcher for Millennium Helpers
+.SH SYNOPSIS
+.B millennium
+\fICOMMAND\fR [\fIARGUMENTS\fR...]
+.SH DESCRIPTION
+Thin wrapper that dispatches to the individual Millennium Helper commands.
+.SH COMMANDS
+.TP
+.B diag
+Run
+.BR millennium-diag .
+.TP
+.B upgrade
+Run
+.BR millennium-upgrade .
+.TP
+.B schedule
+Run
+.BR millennium-schedule .
+.TP
+.B theme
+Run
+.BR millennium-theme .
+.TP
+.B repair
+Run
+.BR millennium-repair .
+.TP
+.B purge
+Run
+.BR millennium-purge .
+.TP
+.B mcp
+Run
+.BR millennium-mcp .
+.TP
+.B help
+Show dispatcher help.
+.SH EXAMPLES
+.TP
+.B millennium diag
+.TP
+.B millennium upgrade \-\-channel beta
+.TP
+.B millennium schedule status
+.SH SEE ALSO
+.BR millennium-diag (1),
+.BR millennium-upgrade (1),
+.BR millennium-schedule (1),
+.BR millennium-theme (1),
+.BR millennium-repair (1),
+.BR millennium-purge (1),
+.BR millennium-mcp (1)

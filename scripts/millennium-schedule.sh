@@ -315,10 +315,13 @@ disable_timer() {
 }
 
 show_status() {
+  local scheduler_configured=false
+
   if [[ "$(uname)" == "Darwin" ]]; then
     local plist_path="${USER_HOME}/Library/LaunchAgents/com.millennium.update.plist"
     echo -e "${BLUE}=== Millennium LaunchAgent Status ===${NC}"
     if [[ -f "$plist_path" ]]; then
+      scheduler_configured=true
       echo "LaunchAgent plist file exists: $plist_path"
       launchctl list | grep "com.millennium.update" || echo "LaunchAgent is registered but currently idle."
     else
@@ -327,13 +330,22 @@ show_status() {
 
     if command -v crontab &>/dev/null; then
       echo -e "\n${BLUE}=== Millennium Crontab Status ===${NC}"
-      crontab -l 2>/dev/null | grep "millennium-schedule" || echo "No crontab entry configured."
+      if crontab -l 2>/dev/null | grep -q "millennium-schedule"; then
+        scheduler_configured=true
+        crontab -l 2>/dev/null | grep "millennium-schedule"
+      else
+        echo "No crontab entry configured."
+      fi
+    fi
+    if [[ "$scheduler_configured" != "true" ]]; then
+      echo -e "\n${YELLOW}Scheduler disabled.${NC} Enable with: ${GREEN}millennium-schedule enable [stable|beta]${NC}"
     fi
     return 0
   fi
 
   echo -e "${BLUE}=== Millennium User Update Timer Status ===${NC}"
   if [[ -f "$TIMER_PATH" ]]; then
+    scheduler_configured=true
     systemctl --user status "$TIMER_NAME" || true
   else
     echo -e "${YELLOW}Timer is not installed/configured.${NC}"
@@ -341,6 +353,7 @@ show_status() {
 
   echo -e "\n${BLUE}=== Millennium User Update Service Status ===${NC}"
   if [[ -f "$SERVICE_PATH" ]]; then
+    scheduler_configured=true
     systemctl --user status "$SERVICE_NAME" || true
   else
     echo -e "${YELLOW}Service is not installed/configured.${NC}"
@@ -348,7 +361,16 @@ show_status() {
 
   if command -v crontab &>/dev/null; then
     echo -e "\n${BLUE}=== Millennium Crontab Status ===${NC}"
-    crontab -l 2>/dev/null | grep "millennium-schedule" || echo "No crontab entry configured."
+    if crontab -l 2>/dev/null | grep -q "millennium-schedule"; then
+      scheduler_configured=true
+      crontab -l 2>/dev/null | grep "millennium-schedule"
+    else
+      echo "No crontab entry configured."
+    fi
+  fi
+
+  if [[ "$scheduler_configured" != "true" ]]; then
+    echo -e "\n${YELLOW}Scheduler disabled.${NC} Enable with: ${GREEN}millennium-schedule enable [stable|beta]${NC}"
   fi
 }
 
@@ -599,14 +621,21 @@ run_setup_wizard() {
   echo -e "To prevent hitting GitHub API rate limits during updates, you can optionally provide a GitHub Personal Access Token (PAT)."
   if [[ -n "${GITHUB_TOKEN:-}" ]]; then
     printf "Enter GitHub PAT (leave empty to keep existing token): " >&2
-    read -r github_token
+    read -rs github_token
+    echo "" >&2
     if [[ -z "$github_token" ]]; then
       github_token="$GITHUB_TOKEN"
       echo -e "Keeping existing GitHub PAT.\n"
+    else
+      echo -e "GitHub PAT received (hidden).\n"
     fi
   else
     printf "Enter GitHub PAT (leave empty to skip): " >&2
-    read -r github_token
+    read -rs github_token
+    echo "" >&2
+    if [[ -n "$github_token" ]]; then
+      echo -e "GitHub PAT received (hidden).\n"
+    fi
   fi
 
   # Write configuration to the user's config directory
@@ -636,7 +665,11 @@ EOF
   else
     echo -e "\n${YELLOW}[DRY RUN] Would write config to ${user_config_dir}/config.json:${NC}"
     echo "update_channel: ${channel}"
-    echo "github_token: ${github_token}"
+    if [[ -n "$github_token" ]]; then
+      echo "github_token: [set]"
+    else
+      echo "github_token: (not set)"
+    fi
   fi
 
   # Reload configuration in memory
@@ -652,6 +685,10 @@ EOF
       enable_timer "$channel"
     fi
   fi
+
+  echo -e "\n${BLUE}Tip:${NC} tune backup retention anytime with:"
+  echo -e "  millennium-schedule config set backup_limit 5"
+  echo -e "  millennium-schedule config set backup_max_age_days 30"
 }
 
 manage_config() {

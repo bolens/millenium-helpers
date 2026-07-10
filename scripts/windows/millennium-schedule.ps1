@@ -140,6 +140,42 @@ function Show-Status {
         Write-Host "  Action      : $(($task.Actions | Select-Object -First 1).Execute) $(($task.Actions | Select-Object -First 1).Arguments)"
     } else {
         Write-Host "  Scheduled task is not registered."
+        Write-Host ""
+        Write-Host -ForegroundColor Yellow "Scheduler disabled. Enable with: millennium-schedule enable [stable|beta]"
+    }
+}
+
+function ConvertFrom-SecureStringPlain {
+    param($SecureInput)
+    if ($null -eq $SecureInput) {
+        return ""
+    }
+    if ($SecureInput -is [string]) {
+        return $SecureInput
+    }
+    if ($SecureInput -is [SecureString]) {
+        if ($SecureInput.Length -eq 0) {
+            return ""
+        }
+        $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecureInput)
+        try {
+            return [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
+        } finally {
+            [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
+        }
+    }
+    return [string]$SecureInput
+}
+
+function Read-MaskedHost {
+    param([string]$Prompt)
+    [System.Console]::Error.Write($Prompt)
+    try {
+        $secure = Read-Host -AsSecureString
+        return (ConvertFrom-SecureStringPlain -SecureInput $secure)
+    } catch {
+        # Fallback for mocked / non-console hosts
+        return (Read-Host)
     }
 }
 
@@ -249,15 +285,18 @@ function Run-Setup-Wizard {
 
     Write-Host "To prevent hitting GitHub API rate limits during updates, you can optionally provide a GitHub Personal Access Token (PAT)."
     if ($existingToken) {
-        [System.Console]::Error.Write("Enter GitHub PAT (leave empty to keep existing token): ")
-        $githubToken = Read-Host
+        $githubToken = Read-MaskedHost -Prompt "Enter GitHub PAT (leave empty to keep existing token): "
         if ([string]::IsNullOrWhiteSpace($githubToken)) {
             $githubToken = $existingToken
             Write-Host "Keeping existing GitHub PAT.`n"
+        } else {
+            Write-Host "GitHub PAT received (hidden).`n"
         }
     } else {
-        [System.Console]::Error.Write("Enter GitHub PAT (leave empty to skip): ")
-        $githubToken = Read-Host
+        $githubToken = Read-MaskedHost -Prompt "Enter GitHub PAT (leave empty to skip): "
+        if (-not [string]::IsNullOrWhiteSpace($githubToken)) {
+            Write-Host "GitHub PAT received (hidden).`n"
+        }
     }
 
     # Write configuration to LocalAppData config folder
@@ -274,7 +313,11 @@ function Run-Setup-Wizard {
     } else {
         Write-Host "`n[DRY RUN] Would write config to $($configFile):" -ForegroundColor Yellow
         Write-Host "  update_channel : $channelVal"
-        Write-Host "  github_token   : $githubToken"
+        if ($githubToken) {
+            Write-Host "  github_token   : [set]"
+        } else {
+            Write-Host "  github_token   : (not set)"
+        }
     }
 
     # Trigger Scheduled Task enablement if chosen
@@ -282,6 +325,10 @@ function Run-Setup-Wizard {
         Write-Host "`nConfiguring background update scheduled task..." -ForegroundColor Blue
         Enable-Task $channelVal
     }
+
+    Write-Host "`nTip: tune backup retention anytime with:" -ForegroundColor Blue
+    Write-Host "  millennium-schedule config set backup_limit 5"
+    Write-Host "  millennium-schedule config set backup_max_age_days 30"
 }
 
 function Manage-Config {

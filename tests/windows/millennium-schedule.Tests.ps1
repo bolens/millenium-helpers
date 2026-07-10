@@ -67,9 +67,24 @@ Describe "Schedule CLI Manager" {
             $env:LOCALAPPDATA = $tempConfigDir
             $env:FORCE_WIZARD = "true"
 
-            & $scheduleScript setup -DryRun
+            $out = (& $scheduleScript setup -DryRun *>&1) | Out-String
+            $out | Should -BeLike "*backup_limit*"
+            $out | Should -Match "github_token\s+:\s+(\[set\]|\(not set\))"
             
             Remove-Item -Path $tempConfigDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    Context "Status CTA" {
+        BeforeAll {
+            Mock Get-ScheduledTask { return $null }
+        }
+
+        It "Prints enable command when task is not registered" {
+            $scheduleScript = Join-Path -Path $winScriptDir -ChildPath "millennium-schedule.ps1"
+            $out = (& $scheduleScript status *>&1) | Out-String
+            $out | Should -BeLike "*Scheduler disabled*"
+            $out | Should -BeLike "*millennium-schedule enable*"
         }
     }
 }

@@ -1,6 +1,8 @@
 # Millennium Client Force Reinstall and Repair utility on Windows
 param(
     [switch]$DryRun = $false,
+    [Alias("y")]
+    [switch]$Yes = $false,
     [Alias("h")]
     [switch]$Help = $false,
     [Alias("V")]
@@ -10,12 +12,13 @@ set-strictmode -version Latest
 
 if ($Help) {
     Write-Host @"
-Usage: millennium-repair.ps1 [-DryRun] [-Version] [-Help]
+Usage: millennium-repair.ps1 [-DryRun] [-Yes] [-Version] [-Help]
 
 Force reinstall and repair the Millennium client on Windows.
 
 Options:
   -DryRun      Simulate operations without modifying files
+  -Yes, -y     Skip confirmation when closing Steam
   -Version, -V Show version information
   -Help, -h    Show this help message
 "@
@@ -35,6 +38,10 @@ if (Test-Path -Path $CommonPs1) {
 if ($Version) {
     Write-HelpersVersion -Name "millennium-repair"
     exit 0
+}
+
+if ($Yes) {
+    $global:AssumeYes = $true
 }
 
 if ($DryRun) {
@@ -66,18 +73,20 @@ Log-Info "=== Initiating Millennium Force Repair ==="
 $steamRunning = $null -ne (Get-Process -Name "steam" -ErrorAction SilentlyContinue)
 if ($steamRunning) {
     Capture-SteamEnv
-    Close-SteamGracefully
+    if (-not (Confirm-CloseSteam)) {
+        exit 1
+    }
 }
 
 # 2. Invoke upgrade script with Force option
 $upgradeScript = Join-Path -Path $ScriptDir -ChildPath "millennium-upgrade.ps1"
 if (Test-Path -Path $upgradeScript) {
-    $upgradeArgs = "-Channel $Channel -Force"
-    if ($global:DryRun) { $upgradeArgs += " -DryRun" }
-    Log-Info "Invoking client reinstalls: Powershell -File `"$upgradeScript`" $upgradeArgs"
+    $upgradeArgs = @("-Channel", $Channel, "-Force", "-Yes")
+    if ($global:DryRun) { $upgradeArgs += "-DryRun" }
+    Log-Info "Invoking client reinstalls: Powershell -File `"$upgradeScript`" $($upgradeArgs -join ' ')"
     Execute-Cmd -ScriptBlock {
-        & $upgradeScript -Channel $Channel -Force
-    } -Description "powershell -File $upgradeScript -Channel $Channel -Force"
+        & $upgradeScript @upgradeArgs
+    } -Description "powershell -File $upgradeScript -Channel $Channel -Force -Yes"
 } else {
     Log-Error "Error: Upgrade script not found at $upgradeScript"
 }

@@ -65,6 +65,7 @@ package() {
   install -m755 scripts/millennium-diag.sh "${pkgdir}/usr/bin/millennium-diag"
   install -m755 scripts/millennium-theme.sh "${pkgdir}/usr/bin/millennium-theme"
   install -m755 scripts/millennium-mcp.py "${pkgdir}/usr/bin/millennium-mcp"
+  install -m755 scripts/millennium.sh "${pkgdir}/usr/bin/millennium"
 
   # Install shared helper library and its modules
   install -d "${pkgdir}/usr/lib/millennium-helpers/lib"
@@ -73,13 +74,13 @@ package() {
 
   # Install Bash completions
   install -Dm644 completions/bash/millennium-helpers "${pkgdir}/usr/share/bash-completion/completions/millennium-helpers"
-  for script in millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp; do
+  for script in millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp millennium; do
     ln -sf millennium-helpers "${pkgdir}/usr/share/bash-completion/completions/${script}"
   done
 
   # Install Zsh completions
   install -Dm644 completions/zsh/_millennium-helpers "${pkgdir}/usr/share/zsh/site-functions/_millennium-helpers"
-  for script in millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp; do
+  for script in millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp millennium; do
     ln -sf _millennium-helpers "${pkgdir}/usr/share/zsh/site-functions/_${script}"
   done
 

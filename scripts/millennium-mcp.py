@@ -148,10 +148,20 @@ def get_tools_list():
         },
         {
             "name": "millennium_purge",
-            "description": "Uninstall and completely purge all Millennium client files, themes, and bootstrap hooks.",
+            "description": "Uninstall and completely purge all Millennium client files, themes, and bootstrap hooks. Destructive: requires confirm=true.",
             "inputSchema": {
                 "type": "object",
-                "properties": {}
+                "properties": {
+                    "confirm": {
+                        "type": "boolean",
+                        "description": "Must be true to actually purge. Refuses otherwise."
+                    },
+                    "dry_run": {
+                        "type": "boolean",
+                        "description": "If true, simulate the purge without deleting anything."
+                    }
+                },
+                "required": ["confirm"]
             }
         }
     ]
@@ -372,8 +382,22 @@ def handle_tool_call(tool_name: str, arguments: DiagArgs | ThemeArgs | UpgradeAr
         return run_cmd(["millennium-repair"], run_as_root=True, timeout=LONG_TIMEOUT_SECONDS)
         
     elif tool_name == "millennium_purge":
-        yes_flag = "-Yes" if IS_WINDOWS else "--yes"
-        return run_cmd(["millennium-purge", yes_flag], run_as_root=True, timeout=LONG_TIMEOUT_SECONDS)
+        confirm = bool(arguments.get("confirm", False))
+        dry_run = bool(arguments.get("dry_run", False))
+        if not confirm and not dry_run:
+            return {
+                "isError": True,
+                "content": [{
+                    "type": "text",
+                    "text": "Error: millennium_purge requires confirm=true (or dry_run=true to simulate). This permanently removes Millennium."
+                }],
+            }
+        args = ["millennium-purge"]
+        if dry_run:
+            args.append("-DryRun" if IS_WINDOWS else "--dry-run")
+        else:
+            args.append("-Yes" if IS_WINDOWS else "--yes")
+        return run_cmd(args, run_as_root=True, timeout=LONG_TIMEOUT_SECONDS)
         
     else:
         return {
@@ -461,12 +485,20 @@ def register_mcp():
         except Exception as e:
             print(f"  Error: failed to write config to {path}: {e}")
 
+    snippet = {
+        "mcpServers": {
+            server_name: server_config
+        }
+    }
+    print("\nManual config snippet (any MCP host):")
+    print(json.dumps(snippet, indent=2))
+
     if not registered_any:
-        print("No active config directories found (Claude Desktop, Windsurf, or Cursor).")
-        print("Please configure manually as described in the README.")
+        print("\nNo active config directories found (Claude Desktop, Windsurf, or Cursor).")
+        print("Paste the snippet above into your MCP client's config file.")
         sys.exit(1)
     else:
-        print("Registration check completed successfully.")
+        print("\nRegistration check completed successfully.")
         sys.exit(0)
 
 def main():
