@@ -20,6 +20,7 @@ else
 fi
 
 DRY_RUN=false
+QUIET=false
 ASSUME_YES=false
 
 show_help() {
@@ -30,6 +31,7 @@ De-register and purge Millennium client hooks and files from Steam.
 
 Options:
   -d, --dry-run  Simulate operations without modifying files
+  -q, --quiet    Suppress informational output
   -y, --yes      Skip the interactive confirmation prompt
   -V, --version  Show version information
   -h, --help     Show this help message
@@ -40,6 +42,11 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     -d|--dry-run)
       DRY_RUN=true
+      shift
+      ;;
+    -q|--quiet)
+      QUIET=true
+      export MILLENNIUM_QUIET=1
       shift
       ;;
     -y|--yes)
@@ -56,7 +63,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     *)
       echo "Unknown option: $1" >&2
-      show_help
+      echo "Try '$(basename "$0") --help' for usage." >&2
       exit 1
       ;;
   esac

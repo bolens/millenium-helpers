@@ -146,6 +146,7 @@ $scriptsToCopy = @(
     "common.ps1",
     "millennium.ps1",
     "millennium-diag.ps1",
+    "millennium-mcp.ps1",
     "millennium-purge.ps1",
     "millennium-repair.ps1",
     "millennium-schedule.ps1",
@@ -170,10 +171,21 @@ if (Test-Path -Path $versionSrc) {
     Log-Info "Installed: VERSION"
 }
 
+# Also install the Python MCP server next to the PowerShell wrapper
+$mcpPySrc = Join-Path -Path $srcDir -ChildPath "..\millennium-mcp.py"
+if (!(Test-Path -Path $mcpPySrc)) {
+    $mcpPySrc = Join-Path -Path $srcDir -ChildPath "millennium-mcp.py"
+}
+if (Test-Path -Path $mcpPySrc) {
+    Copy-Item -Path $mcpPySrc -Destination (Join-Path -Path $binDir -ChildPath "millennium-mcp.py") -Force
+    Log-Info "Installed: millennium-mcp.py"
+}
+
 # Generate CMD wrappers
 $wrappers = @(
     "millennium",
     "millennium-diag",
+    "millennium-mcp",
     "millennium-purge",
     "millennium-repair",
     "millennium-schedule",
@@ -229,9 +241,10 @@ if ($isInteractive -and !$Uninstall -and $env:PSTESTS -ne "true") {
 
 Write-Host ""
 Write-Host "${cyan}Getting started:${reset}"
-Write-Host "  1. Check health:     ${green}millennium-diag${reset}"
-Write-Host "  2. Install/update:   ${green}millennium-upgrade${reset}   (if Millennium is missing)"
-Write-Host "  3. Review scheduler: ${green}millennium-schedule status${reset}"
-Write-Host "  Tip: manage skins with ${green}millennium-theme list${reset}"
+Write-Host "  1. Check health:     ${green}millennium diag${reset}"
+Write-Host "  2. Install/update:   ${green}millennium upgrade${reset}   (if Millennium is missing)"
+Write-Host "  3. Review scheduler: ${green}millennium schedule status${reset}"
+Write-Host "  Tip: manage skins with ${green}millennium theme list${reset}"
 Write-Host ""
-Write-Host "You can also use the dispatcher: ${cyan}millennium diag|upgrade|schedule|theme|...${reset}"
+Write-Host "Long names (millennium-diag, …) still work as aliases."
+Write-Host "Dispatcher: ${cyan}millennium diag|upgrade|doctor|schedule|theme|...${reset}"

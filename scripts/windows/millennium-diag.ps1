@@ -380,29 +380,29 @@ function Print-DiagNextSteps {
 
     if (-not $diagReport["binaries_ok"]) {
         $issues++
-        $suggestions.Add("millennium-upgrade -Force          # repair/reinstall Millennium binaries")
+        $suggestions.Add("millennium upgrade -Force         # repair/reinstall Millennium binaries")
     }
     if (-not $PermissionsOk) {
         $issues++
-        $suggestions.Add("millennium-repair                  # fix Steam folder permissions")
+        $suggestions.Add("millennium repair                 # fix Steam folder permissions")
     }
     if (-not $SkinsDirOk) {
         $issues++
-        $suggestions.Add("millennium-diag doctor             # create missing skins directory")
+        $suggestions.Add("millennium doctor                 # create missing skins directory")
     }
     if (-not $diagReport["task_scheduled"]) {
         $issues++
-        $suggestions.Add("millennium-schedule enable         # enable daily auto-updates")
+        $suggestions.Add("millennium schedule enable        # enable daily auto-updates")
     }
     if (-not $CleanOfObsolete) {
         $issues++
-        $suggestions.Add("millennium-diag doctor             # remove legacy wrapper files")
+        $suggestions.Add("millennium doctor                 # remove legacy wrapper files")
     }
 
     Write-Host ""
     if ($issues -eq 0) {
         Write-Host -ForegroundColor Green "No issues detected. Your Millennium installation looks healthy."
-        Write-Host "Tip: run ${YELLOW}millennium-schedule status${NC} to review auto-updates, or ${YELLOW}millennium-theme list${NC} for skins."
+        Write-Host "Tip: run ${YELLOW}millennium schedule status${NC} to review auto-updates, or ${YELLOW}millennium theme list${NC} for skins."
         return
     }
 
@@ -414,7 +414,7 @@ function Print-DiagNextSteps {
         Write-Host "  • $s"
     }
     Write-Host ""
-    Write-Host "Or run ${GREEN}millennium-diag doctor${NC} to attempt automatic repairs."
+    Write-Host "Or run ${GREEN}millennium doctor${NC} to attempt automatic repairs."
 }
 
 if ($diagReport["steam_running"]) {

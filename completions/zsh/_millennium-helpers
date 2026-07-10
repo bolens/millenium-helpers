@@ -104,6 +104,7 @@ _millennium_helpers() {
       local -a cmds
       cmds=(
         'diag:Run diagnostics'
+        'doctor:Alias for diag doctor'
         'upgrade:Upgrade / install Millennium'
         'schedule:Manage auto-update scheduler'
         'theme:Manage skins/themes'
@@ -112,9 +113,87 @@ _millennium_helpers() {
         'mcp:Run / register MCP server'
         'help:Show help'
       )
-      _arguments \
+      _arguments -C \
         '1:command:((${cmds}))' \
         '*::arg:->args'
+      case $state in
+        (args)
+          case $line[1] in
+            (diag|doctor)
+              _arguments \
+                '1:command:(doctor logs)' \
+                '--json[Output diagnostics report in structured JSON format]' \
+                {-f,--fix}'[Alias for the doctor command]' \
+                '--force[Force all doctor repairs]' \
+                {-l,--follow}'[Follow real-time log output]' \
+                {-y,--yes}'[Skip confirmation when doctor closes Steam]' \
+                {-d,--dry-run}'[Simulate doctor repairs]' \
+                {-q,--quiet}'[Suppress informational output]' \
+                {-s,--share}'[Upload diagnostic report]' \
+                {-V,--version}'[Show version information]' \
+                {-h,--help}'[Show help message]'
+              ;;
+            (upgrade)
+              _arguments \
+                {-c,--channel}'[Update channel]:channel:(stable beta)' \
+                '--stable[Alias for --channel stable]' \
+                '--beta[Alias for --channel beta]' \
+                {-r,--rollback}'[Roll back to a previous backup]:backup:_millennium_backup_ids' \
+                '--file[Install from a local archive]:file:_files' \
+                {-f,--force}'[Force reinstall]' \
+                {-y,--yes}'[Skip confirmation when closing Steam]' \
+                {-d,--dry-run}'[Simulation mode]' \
+                {-q,--quiet}'[Suppress informational output]' \
+                {-V,--version}'[Show version information]' \
+                {-h,--help}'[Show help message]'
+              ;;
+            (schedule)
+              _arguments \
+                '1:command:(enable disable status setup config)' \
+                {-c,--cron}'[Force use of crontab instead of systemd]' \
+                {-d,--dry-run}'[Simulation mode]' \
+                {-q,--quiet}'[Suppress informational output]' \
+                {-V,--version}'[Show version information]' \
+                {-h,--help}'[Show help message]'
+              ;;
+            (theme)
+              _arguments \
+                '1:command:(list install update remove)' \
+                '2:theme:_millennium_theme_names' \
+                {-a,--all}'[Update all themes]' \
+                '--json[Output list as JSON]' \
+                {-y,--yes}'[Skip confirmation when removing]' \
+                {-d,--dry-run}'[Simulation mode]' \
+                {-q,--quiet}'[Suppress informational output]' \
+                {-V,--version}'[Show version information]' \
+                {-h,--help}'[Show help message]'
+              ;;
+            (repair)
+              _arguments \
+                {-s,--skip-theme}'[Skip theme refresh]' \
+                {-y,--yes}'[Skip confirmation when closing Steam]' \
+                {-d,--dry-run}'[Simulation mode]' \
+                {-q,--quiet}'[Suppress informational output]' \
+                {-V,--version}'[Show version information]' \
+                {-h,--help}'[Show help message]'
+              ;;
+            (purge)
+              _arguments \
+                {-y,--yes}'[Skip confirmation]' \
+                {-d,--dry-run}'[Simulation mode]' \
+                {-q,--quiet}'[Suppress informational output]' \
+                {-V,--version}'[Show version information]' \
+                {-h,--help}'[Show help message]'
+              ;;
+            (mcp)
+              _arguments \
+                {-r,--register}'[Register MCP server with AI clients]' \
+                {-V,--version}'[Show version information]' \
+                {-h,--help}'[Show help message]'
+              ;;
+          esac
+          ;;
+      esac
       ;;
   esac
 }

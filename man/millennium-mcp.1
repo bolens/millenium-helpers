@@ -1,4 +1,4 @@
-.TH MILLENNIUM\-MCP 1 "July 9, 2026" "millennium-helpers" "User Commands"
+.TH MILLENNIUM\-MCP 1 "July 10, 2026" "millennium-helpers" "User Commands"
 .SH NAME
 millennium-mcp \- Model Context Protocol server for Millennium Helpers
 .SH SYNOPSIS
@@ -13,13 +13,32 @@ With no options, runs as a stdio JSON-RPC MCP server.
 .TP
 .BR \-r ", " \-\-register
 Register the server in Claude Desktop, Windsurf, and Cursor config files
-when those directories exist.
+when those directories exist. Prints a JSON snippet you can paste into
+other MCP clients.
 .TP
 .BR \-V ", " \-\-version
 Show version information.
 .TP
 .BR \-h ", " \-\-help
 Show help message.
+.SH EXAMPLES
+.TP
+Register with supported AI clients and print a JSON snippet:
+.B millennium-mcp --register
+.TP
+Via the dispatcher:
+.B millennium mcp --register
+.TP
+Example JSON snippet (paths vary by install):
+.nf
+{
+  "mcpServers": {
+    "millennium-helpers": {
+      "command": "millennium-mcp"
+    }
+  }
+}
+.fi
 .SH FILES
 .TP
 .I ~/.config/Claude/claude_desktop_config.json

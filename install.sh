@@ -592,10 +592,10 @@ EOF
   else
     echo -e "${GREEN}Installation completed successfully!${NC}"
     echo -e "\n${BLUE}Getting started:${NC}"
-    echo -e "  1. Check health:     ${GREEN}millennium-diag${NC}"
-    echo -e "  2. Install/update:   ${GREEN}millennium-upgrade${NC}   (if Millennium is missing)"
-    echo -e "  3. Review scheduler: ${GREEN}millennium-schedule status${NC}"
-    echo -e "  Tip: manage skins with ${GREEN}millennium-theme list${NC}"
+    echo -e "  1. Check health:     ${GREEN}millennium diag${NC}"
+    echo -e "  2. Install/update:   ${GREEN}millennium upgrade${NC}   (if Millennium is missing)"
+    echo -e "  3. Review scheduler: ${GREEN}millennium schedule status${NC}"
+    echo -e "  Tip: manage skins with ${GREEN}millennium theme list${NC}"
     if [[ -d "${user_home}/.var/app/com.valvesoftware.Steam" ]] || command -v flatpak &>/dev/null; then
       if flatpak info com.valvesoftware.Steam &>/dev/null 2>&1 || [[ -d "${user_home}/.var/app/com.valvesoftware.Steam" ]]; then
         echo -e "  Steam Deck / Flatpak: see docs/steam_deck.md"
@@ -606,7 +606,8 @@ EOF
       local dest="${item#*:}"
       echo -e "  - ${dest}"
     done
-    echo -e "  - millennium   (dispatcher: millennium diag|upgrade|...)"
+    echo -e "  - millennium   (dispatcher: millennium diag|upgrade|doctor|...)"
+    echo -e "\nLong names (millennium-diag, …) still work as aliases."
   fi
 }
 

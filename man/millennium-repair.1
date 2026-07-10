@@ -1,4 +1,4 @@
-.TH MILLENNIUM\-REPAIR 1 "July 9, 2026" "millennium-helpers" "User Commands"
+.TH MILLENNIUM\-REPAIR 1 "July 10, 2026" "millennium-helpers" "User Commands"
 .SH NAME
 millennium-repair \- fix Millennium hooks, ownership, and theme refresh
 .SH SYNOPSIS
@@ -13,14 +13,30 @@ active theme.
 .BR \-s ", " \-\-skip\-theme
 Skip theme refresh during repair.
 .TP
+.BR \-y ", " \-\-yes
+Skip confirmation when closing Steam.
+.TP
 .BR \-d ", " \-\-dry\-run
 Simulate operations without modifying files.
+.TP
+.BR \-q ", " \-\-quiet
+Suppress informational output (warnings and errors still print).
 .TP
 .BR \-V ", " \-\-version
 Show version information.
 .TP
 .BR \-h ", " \-\-help
 Show help message.
+.SH EXAMPLES
+.TP
+Close Steam (with confirm) and repair hooks:
+.B sudo millennium-repair
+.TP
+Skip prompts and theme refresh:
+.B sudo millennium-repair --yes --skip-theme
+.TP
+Via the dispatcher:
+.B sudo millennium repair --yes
 .SH NOTES
 Requires root on Linux for ownership and hook fixes. Prefer closing Steam
 before running; the script will close Steam gracefully when needed.

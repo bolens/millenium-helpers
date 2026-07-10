@@ -24,6 +24,11 @@ else
   NC=''
 fi
 
+# Quiet mode: suppress INFO (WARN/ERROR always print). Set via --quiet or MILLENNIUM_QUIET=1.
+is_quiet() {
+  [[ "${QUIET:-false}" == "true" || -n "${MILLENNIUM_QUIET:-}" ]]
+}
+
 log_msg() {
   local level="$1"
   local msg="$2"
@@ -33,6 +38,9 @@ log_msg() {
 }
 
 log_info() {
+  if is_quiet; then
+    return 0
+  fi
   log_msg "INFO" "$1"
 }
 
@@ -104,7 +112,7 @@ download_file() {
   local tmp_log
   tmp_log=$(mktemp 2>/dev/null || mktemp -t tmp.XXXXXX)
   
-  if [[ ! -t 1 ]]; then
+  if [[ ! -t 1 ]] || is_quiet; then
     printf "%s... " "$msg"
     if curl -fsSL --retry 3 --retry-delay 2 ${headers[@]+"${headers[@]}"} "$url" -o "$dest" >"$tmp_log" 2>&1; then
       echo -e "${GREEN}OK${NC}"
@@ -118,21 +126,13 @@ download_file() {
     fi
   fi
 
-  curl -fsSL --retry 3 --retry-delay 2 ${headers[@]+"${headers[@]}"} "$url" -o "$dest" >"$tmp_log" 2>&1 &
-  local pid=$!
-  local spinner="/-\|"
-  local i=0
+  # TTY: show curl's progress bar (bytes) instead of a spinner-only UX.
+  printf "%s...\n" "$msg"
+  local rc=0
+  if ! curl -fL --progress-bar --retry 3 --retry-delay 2 ${headers[@]+"${headers[@]}"} "$url" -o "$dest" 2>"$tmp_log"; then
+    rc=$?
+  fi
 
-  printf "%s...  " "$msg"
-  while kill -0 "$pid" 2>/dev/null; do
-    printf "\b%s" "${spinner:i++%4:1}"
-    sleep 0.1
-  done
-  
-  wait "$pid"
-  local rc=$?
-  
-  printf "\b\b"
   if [[ $rc -eq 0 ]]; then
     echo -e "${GREEN}OK${NC}"
   else
@@ -141,6 +141,21 @@ download_file() {
   fi
   rm -f "$tmp_log"
   return $rc
+}
+
+# Printed after upgrade failures so users know how to recover.
+print_upgrade_failure_tips() {
+  local exit_code="${1:-}"
+  echo "" >&2
+  if [[ -n "$exit_code" ]]; then
+    echo -e "${RED}Upgrade failed (exit code: ${exit_code}).${NC}" >&2
+  else
+    echo -e "${RED}Upgrade failed.${NC}" >&2
+  fi
+  echo -e "Next steps:" >&2
+  echo -e "  • ${YELLOW}millennium upgrade --rollback list${NC}   # list backups" >&2
+  echo -e "  • ${YELLOW}millennium diag${NC}                     # check installation health" >&2
+  echo -e "  • Re-run with ${YELLOW}--yes${NC} if Steam close confirmation blocked the update" >&2
 }
 
 send_notification() {

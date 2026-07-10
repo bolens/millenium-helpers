@@ -8,6 +8,7 @@ Usage: $(basename "$0") <command> [args...]
 
 Commands:
   diag       Run diagnostics (millennium-diag)
+  doctor     Alias for: diag doctor
   upgrade    Upgrade / install Millennium (millennium-upgrade)
   schedule   Manage auto-update scheduler (millennium-schedule)
   theme      Manage skins/themes (millennium-theme)
@@ -18,15 +19,56 @@ Commands:
 
 Examples:
   millennium diag
+  millennium doctor
   millennium upgrade --channel beta
   millennium schedule status
   millennium theme list
 EOF
 }
 
+# Suggest the closest known command for typos (prefix / substring / shared prefix).
+suggest_command() {
+  local input="$1"
+  local -a cmds=(diag doctor upgrade schedule theme repair purge mcp help)
+  local c best="" best_score=0
+  local score
+  for c in "${cmds[@]}"; do
+    score=0
+    if [[ "$c" == "$input" ]]; then
+      echo "$c"
+      return 0
+    fi
+    if [[ "$c" == "$input"* || "$input" == "$c"* ]]; then
+      score=3
+    elif [[ "$c" == *"$input"* || "$input" == *"$c"* ]]; then
+      score=2
+    else
+      # Shared leading characters
+      local i=0
+      while [[ $i -lt ${#c} && $i -lt ${#input} && "${c:$i:1}" == "${input:$i:1}" ]]; do
+        i=$((i + 1))
+      done
+      score=$i
+    fi
+    if [[ $score -gt $best_score ]]; then
+      best_score=$score
+      best=$c
+    fi
+  done
+  if [[ $best_score -ge 2 && -n "$best" ]]; then
+    echo "$best"
+  fi
+}
+
 cmd="${1:-help}"
 if [[ $# -gt 0 ]]; then
   shift
+fi
+
+# Natural alias: millennium doctor → millennium-diag doctor
+if [[ "$cmd" == "doctor" ]]; then
+  set -- doctor "$@"
+  cmd="diag"
 fi
 
 case "$cmd" in
@@ -60,6 +102,10 @@ case "$cmd" in
     ;;
   *)
     echo "Unknown command: ${cmd}" >&2
+    suggestion="$(suggest_command "$cmd" || true)"
+    if [[ -n "$suggestion" ]]; then
+      echo "Did you mean '${suggestion}'?" >&2
+    fi
     echo "Run '$(basename "$0") help' for usage." >&2
     exit 1
     ;;

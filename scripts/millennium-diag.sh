@@ -35,6 +35,7 @@ Options:
   -l, --follow  Follow (tail -f) real-time log output
   -y, --yes     Skip confirmation when doctor closes Steam
   -d, --dry-run Perform a dry-run (simulates doctor repairs without modifying anything)
+  -q, --quiet   Suppress informational output
   -s, --share   Upload diagnostic report to a pastebin and return a short link
   -V, --version Show version information
   -h, --help    Show this help message
@@ -44,6 +45,7 @@ EOF
 ORIGINAL_ARGS=("$@")
 COMMAND=""
 DRY_RUN=false
+QUIET=false
 ASSUME_YES=false
 FOLLOW_LOGS=false
 FORCE_REPAIR=false
@@ -80,6 +82,11 @@ while [[ $# -gt 0 ]]; do
       DRY_RUN=true
       shift
       ;;
+    -q|--quiet)
+      QUIET=true
+      export MILLENNIUM_QUIET=1
+      shift
+      ;;
     -s|--share)
       SHARE_REPORT=true
       shift
@@ -94,7 +101,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     *)
       echo -e "${RED}Unknown option: $1${NC}" >&2
-      show_help
+      echo "Try '$(basename "$0") --help' for usage." >&2
       exit 1
       ;;
   esac

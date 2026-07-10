@@ -7,6 +7,8 @@ param(
     [switch]$DryRun = $false,
     [Alias("y")]
     [switch]$Yes = $false,
+    [Alias("q")]
+    [switch]$Quiet = $false,
     [Alias("h")]
     [switch]$Help = $false,
     [Alias("V")]
@@ -35,15 +37,55 @@ Commands:
   remove [theme-name]   Uninstall/remove an installed theme
 
 Options:
-  --json                Output list command results in structured JSON format
-  -d, --dry-run         Perform a dry-run (simulates operations without modifying files)
-  -y, --yes             Skip confirmation when removing a theme
-  -V, --version         Show version information
-  -h, --help            Show this help message
+  -Json                 Output list command results in structured JSON format
+  -d, -DryRun           Perform a dry-run (simulates operations without modifying files)
+  -y, -Yes              Skip confirmation when removing a theme
+  -q, -Quiet            Suppress informational output
+  -V, -Version          Show version information
+  -h, -Help             Show this help message
+
+GNU-style flags (--json, --dry-run, --yes, --quiet) are also accepted.
 
 Examples:
   millennium-theme install SteamClientHomebrew/millennium-steam-skin
+  millennium theme list
 "@
+}
+
+# Resolve command positional parameters / GNU-style flags from unbound args
+if ($args.Count -gt 0) {
+    $gnuFlags = @{
+        Json = [bool]$Json
+        DryRun = [bool]$DryRun
+        Yes = [bool]$Yes
+        Quiet = [bool]$Quiet
+        Help = [bool]$Help
+        Version = [bool]$Version
+        All = [bool]$All
+    }
+    $remaining = Apply-GnuStyleArgs -InputArgs ([string[]]$args) -Target $gnuFlags
+    if ($gnuFlags.Json) { $Json = $true }
+    if ($gnuFlags.DryRun) { $DryRun = $true }
+    if ($gnuFlags.Yes) { $Yes = $true }
+    if ($gnuFlags.Quiet) { $Quiet = $true; $global:Quiet = $true; $env:MILLENNIUM_QUIET = "1" }
+    if ($gnuFlags.Help) { $Help = $true }
+    if ($gnuFlags.Version) { $Version = $true }
+    if ($gnuFlags.All) { $All = $true }
+    if ($remaining.Count -gt 0) {
+        if (!$Command) { $Command = $remaining[0] }
+        if ($remaining.Count -gt 1 -and !$Theme) {
+            if ($remaining[1] -ne "-a" -and $remaining[1] -ne "--all") {
+                $Theme = $remaining[1]
+            } else {
+                $All = $true
+            }
+        }
+    }
+}
+
+if ($Quiet) {
+    $global:Quiet = $true
+    $env:MILLENNIUM_QUIET = "1"
 }
 
 if ($Help -or $Command -eq "help" -or $Command -eq "--help" -or $Command -eq "-h") {
@@ -57,18 +99,6 @@ if ($Version -or $Command -eq "version" -or $Command -eq "--version" -or $Comman
 
 if ($Yes) {
     $global:AssumeYes = $true
-}
-
-# Resolve command positional parameters
-if ($args.Count -gt 0) {
-    if (!$Command) { $Command = $args[0] }
-    if ($args.Count -gt 1 -and !$Theme) {
-        if ($args[1] -ne "-a" -and $args[1] -ne "--all") {
-            $Theme = $args[1]
-        } else {
-            $All = $true
-        }
-    }
 }
 
 if ($DryRun) {
@@ -188,17 +218,19 @@ if ($Command -eq "list") {
             $list | ConvertTo-Json
         }
     } else {
+        $activeTheme = Get-ActiveThemeName
         Write-Host "=== Installed Millennium Themes ==="
         if ($list.Count -eq 0) {
             Write-Host "  (none)"
             Write-Host "Install one with: millennium-theme install SteamClientHomebrew/millennium-steam-skin"
         } else {
             foreach ($item in $list) {
+                $state = if ($item.name -eq $activeTheme) { "Active" } else { "Installed" }
                 if ($item.type -eq "github") {
                     $short = if ($item.commit -and $item.commit.Length -ge 7) { $item.commit.Substring(0,7) } else { $item.commit }
-                    Write-Host "  - $($item.name) [GitHub: $($item.owner)/$($item.repo) @ $short]"
+                    Write-Host "  - $($item.name) [$state] [GitHub: $($item.owner)/$($item.repo) @ $short]"
                 } else {
-                    Write-Host "  - $($item.name) [Local Theme (untracked)]"
+                    Write-Host "  - $($item.name) [$state] [Local Theme (untracked)]"
                 }
             }
         }
