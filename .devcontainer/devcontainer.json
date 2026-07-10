@@ -9,6 +9,9 @@
     },
     "ghcr.io/devcontainers/features/nix:1": {
       "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest"
     }
   },
   "customizations": {
