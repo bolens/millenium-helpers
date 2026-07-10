@@ -46,6 +46,13 @@ assert_success "$rc" "millennium-schedule --help exits 0"
 assert_contains "$out" "enable" "millennium-schedule --help documents the enable command"
 assert_contains "$out" "disable" "millennium-schedule --help documents the disable command"
 assert_contains "$out" "status" "millennium-schedule --help documents the status command"
+assert_contains "$out" "setup" "millennium-schedule --help documents the setup command"
+assert_contains "$out" "config" "millennium-schedule --help documents the config command"
+
+out=$(run_schedule --version 2>&1)
+rc=$?
+assert_success "$rc" "millennium-schedule --version exits 0"
+assert_contains "$out" "2.2.0" "millennium-schedule --version prints VERSION file value"
 
 out=$(run_schedule 2>&1)
 rc=$?
@@ -107,7 +114,7 @@ out=$(run_schedule pre-update 2>&1)
 rc=$?
 assert_success "$rc" "millennium-schedule pre-update exits 0 when Steam isn't running"
 assert_contains "$out" "not running" "millennium-schedule pre-update reports that Steam is not running"
-rm -f "${MOCK_BIN}/pgrep"
+mock_cmd "pgrep" 'exit 1'
 
 # --- post-update: no saved relaunch state ---
 
@@ -125,6 +132,28 @@ rc=$?
 assert_failure "$rc" "millennium-schedule post-update exits non-zero when diagnostics fail"
 assert_contains "$out" "failed verification" "millennium-schedule post-update explains the verification failure"
 mock_cmd "millennium-diag" 'exit 0'
+
+# --- post-update with saved state must not launch host Steam under TEST_SUITE_RUN ---
+# Ownership checks require the state file owner to match RUNNING_USER (the
+# invoking user). Point getent's home at the fake dir while keeping the
+# username as the real user so _is_safe_relaunch_state_file accepts it.
+real_user="$(id -un)"
+mock_cmd "getent" 'echo "'"${real_user}"':x:1000:1000::'"${FAKE_RELAUNCH_HOME}"':/bin/bash"'
+mkdir -p "$(dirname "$EXPECTED_STATE_FILE")"
+cat > "$EXPECTED_STATE_FILE" << EOF
+export DISPLAY=':1'
+export STEAM_ARGS=""
+export WAS_FLATPAK='false'
+EOF
+mock_cmd "steam" 'echo "REAL_STEAM_INVOKED" >> "'"${MOCK_BIN}"'/steam.calls"; exit 0'
+rm -f "${MOCK_BIN}/steam.calls"
+out=$(run_schedule post-update 2>&1)
+rc=$?
+assert_success "$rc" "millennium-schedule post-update exits 0 when relaunch state exists under TEST_SUITE_RUN"
+assert_contains "$out" "[TEST] Bypassing real Steam relaunch" "millennium-schedule post-update bypasses Steam relaunch under TEST_SUITE_RUN"
+assert_file_not_exists "${MOCK_BIN}/steam.calls" "millennium-schedule post-update does not invoke steam under TEST_SUITE_RUN"
+assert_file_not_exists "$EXPECTED_STATE_FILE" "millennium-schedule post-update consumes the relaunch state file"
+mock_cmd "steam" 'exit 0'
 
 # --- Default channel selection from CONFIG_UPDATE_CHANNEL ---
 

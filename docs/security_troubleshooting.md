@@ -39,3 +39,6 @@ millennium-repair
    ```bash
    loginctl enable-linger $USER
    ```
+
+### Steam Deck or Flatpak Steam issues
+Hooks, sandbox overrides, Desktop Mode install, and post-SteamOS-update recovery are covered in the [Steam Deck & Flatpak Troubleshooting](steam_deck.md) guide.

@@ -1,8 +1,29 @@
 # Millennium client uninstaller and files purge utility on Windows
 param(
-    [switch]$DryRun = $false
+    [switch]$DryRun = $false,
+    [Alias("y")]
+    [switch]$Yes = $false,
+    [Alias("h")]
+    [switch]$Help = $false,
+    [Alias("V")]
+    [switch]$Version = $false
 )
 set-strictmode -version Latest
+
+if ($Help) {
+    Write-Host @"
+Usage: millennium-purge.ps1 [-DryRun] [-Yes] [-Version] [-Help]
+
+De-register and purge Millennium client hooks and files from Steam.
+
+Options:
+  -DryRun, -d     Simulate operations without modifying files
+  -Yes, -y        Skip the interactive confirmation prompt
+  -Version, -V    Show version information
+  -Help, -h       Show this help message
+"@
+    exit 0
+}
 
 # Source shared helpers
 $ScriptDir = $PSScriptRoot
@@ -12,6 +33,11 @@ if (Test-Path -Path $CommonPs1) {
 } else {
     Write-Error "Shared helper library not found at $CommonPs1"
     exit 1
+}
+
+if ($Version) {
+    Write-HelpersVersion -Name "millennium-purge"
+    exit 0
 }
 
 if ($DryRun) {
@@ -27,6 +53,23 @@ if (!$SteamPath) {
 $MillenniumDir = Join-Path -Path $SteamPath -ChildPath "millennium"
 $WsockDll = Join-Path -Path $SteamPath -ChildPath "wsock32.dll"
 $BackupDir = Join-Path -Path $SteamPath -ChildPath "millennium_backups"
+
+if ($DryRun) {
+    Log-Warn "=== DRY RUN MODE: No changes will be made ==="
+} elseif (-not $Yes) {
+    if ([Environment]::UserInteractive -and -not [Console]::IsInputRedirected) {
+        Write-Host "${YELLOW}This will permanently remove Millennium hooks, binaries, backups, and helper config.${NC}"
+        $resp = Read-Host "Are you sure you want to continue? [y/N]"
+        if ($resp -notmatch '^[Yy]$') {
+            Log-Info "Purge cancelled."
+            exit 0
+        }
+    } else {
+        Log-Error "Error: Refusing to purge without confirmation in a non-interactive session."
+        Log-Error "Re-run with -Yes (or -y) to confirm, or use -DryRun to simulate."
+        exit 1
+    }
+}
 
 Log-Info "=== Initiating Millennium Purge (Uninstall) ==="
 

@@ -1,12 +1,35 @@
 # PowerShell script to upgrade or reinstall the Millennium client on Windows
 param(
+    [ValidateSet("stable", "beta")]
     [string]$Channel = "stable",
     [switch]$Force = $false,
     [string]$File = $null,
     [string]$Rollback = $null,
-    [switch]$DryRun = $false
+    [switch]$DryRun = $false,
+    [Alias("h")]
+    [switch]$Help = $false,
+    [Alias("V")]
+    [switch]$Version = $false
 )
 set-strictmode -version Latest
+
+if ($Help) {
+    Write-Host @"
+Usage: millennium-upgrade.ps1 [-Channel stable|beta] [-Force] [-File PATH] [-Rollback ID|list] [-DryRun] [-Version] [-Help]
+
+Install official Millennium (stable or beta) releases over system files.
+
+Options:
+  -Channel CHANNEL  Update channel: stable or beta (default: stable)
+  -Force            Force reinstall even if already up to date
+  -File PATH        Install from a local archive instead of downloading
+  -Rollback ID      Roll back to a previous backup (or pass "list" to list backups)
+  -DryRun           Simulate operations without modifying files
+  -Version, -V      Show version information
+  -Help, -h         Show this help message
+"@
+    exit 0
+}
 
 # Source shared helpers
 $ScriptDir = $PSScriptRoot
@@ -16,6 +39,11 @@ if (Test-Path -Path $CommonPs1) {
 } else {
     Write-Error "Shared helper library not found at $CommonPs1"
     exit 1
+}
+
+if ($Version) {
+    Write-HelpersVersion -Name "millennium-upgrade"
+    exit 0
 }
 
 if ($DryRun) {

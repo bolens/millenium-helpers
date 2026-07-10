@@ -2,17 +2,27 @@
 # Logging and output helpers for Millennium Helpers.
 # Sourced by common.sh
 
-# Text color formatting
+# Text color formatting (honors NO_COLOR / FORCE_COLOR / TTY)
 # shellcheck disable=SC2034
-RED='\033[0;31m'
-# shellcheck disable=SC2034
-GREEN='\033[0;32m'
-# shellcheck disable=SC2034
-YELLOW='\033[0;33m'
-# shellcheck disable=SC2034
-BLUE='\033[0;34m'
-# shellcheck disable=SC2034
-NC='\033[0m' # No Color
+if [[ -n "${NO_COLOR:-}" ]]; then
+  RED=''
+  GREEN=''
+  YELLOW=''
+  BLUE=''
+  NC=''
+elif [[ -n "${FORCE_COLOR:-}" ]] || [[ -t 1 ]]; then
+  RED='\033[0;31m'
+  GREEN='\033[0;32m'
+  YELLOW='\033[0;33m'
+  BLUE='\033[0;34m'
+  NC='\033[0m' # No Color
+else
+  RED=''
+  GREEN=''
+  YELLOW=''
+  BLUE=''
+  NC=''
+fi
 
 log_msg() {
   local level="$1"

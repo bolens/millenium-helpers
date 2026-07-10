@@ -17,6 +17,21 @@ Describe "Diagnostics & Doctor" {
         . (Join-Path -Path $winScriptDir -ChildPath "common.ps1")
     }
 
+    Context "Help and Version" {
+        It "Prints usage with -Help" {
+            $diagScript = Join-Path -Path $winScriptDir -ChildPath "millennium-diag.ps1"
+            $out = (& $diagScript -Help *>&1) | Out-String
+            $out | Should -BeLike "*Usage:*"
+            $out | Should -BeLike "*doctor*"
+        }
+
+        It "Prints version with -Version" {
+            $diagScript = Join-Path -Path $winScriptDir -ChildPath "millennium-diag.ps1"
+            $out = (& $diagScript -Version *>&1) | Out-String
+            $out | Should -BeLike "*millennium-diag*"
+        }
+    }
+
     Context "JSON Diagnostics" {
         BeforeAll {
             Mock Get-ItemProperty { return [pscustomobject]@{ SteamPath = "C:\MockedSteam" } }

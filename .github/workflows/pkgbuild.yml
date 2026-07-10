@@ -7,6 +7,8 @@ on:
       - 'packaging/**'
       - 'scripts/**'
       - 'completions/**'
+      - 'man/**'
+      - 'VERSION'
       - 'LICENSE'
   pull_request:
     branches: [ main ]
@@ -14,11 +16,16 @@ on:
       - 'packaging/**'
       - 'scripts/**'
       - 'completions/**'
+      - 'man/**'
+      - 'VERSION'
       - 'LICENSE'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   validate:

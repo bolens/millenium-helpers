@@ -1,0 +1,49 @@
+.TH MILLENNIUM\-SCHEDULE 1 "July 2026" "millennium-helpers" "User Commands"
+.SH NAME
+millennium-schedule \- manage Millennium helper auto-update timers
+.SH SYNOPSIS
+.B millennium-schedule
+\fICOMMAND\fR [\fIARGUMENTS\fR] [\fIOPTIONS\fR]
+.SH DESCRIPTION
+Configures daily auto-update scheduling via systemd user timers (Linux),
+crontab fallback, LaunchAgents/cron (macOS), or Windows Task Scheduler.
+.SH COMMANDS
+.TP
+.BR enable " [" \fIstable\fR | \fIbeta\fR "]"
+Enable the daily updater (defaults to stable, or config channel).
+.TP
+.B disable
+Disable the scheduled updater.
+.TP
+.B status
+Show scheduler status.
+.TP
+.B setup
+Run the interactive configuration wizard.
+.TP
+.BR config " " \fIget\fR|\fIset\fR|\fIlist\fR " ..."
+Manage helper configuration keys
+.RB ( update_channel ,
+.BR github_token ,
+.BR backup_limit ,
+.BR backup_max_age_days ).
+.SH OPTIONS
+.TP
+.BR \-d ", " \-\-dry\-run
+Simulate without writing files or changing scheduler state.
+.TP
+.BR \-V ", " \-\-version
+Show version information.
+.TP
+.BR \-h ", " \-\-help
+Show help message.
+.SH FILES
+.TP
+.I ~/.config/millennium-helpers/config.json
+Linux/macOS user configuration.
+.TP
+.I %LOCALAPPDATA%\\millennium-helpers\\config.json
+Windows user configuration.
+.SH SEE ALSO
+.BR millennium-upgrade (1),
+.BR millennium-diag (1)

@@ -24,6 +24,19 @@ run_upgrade() {
   bash "${REPO_ROOT}/scripts/millennium-upgrade.sh" --channel "$channel" "$@"
 }
 
+# --- Help ---
+out=$(bash "${REPO_ROOT}/scripts/millennium-upgrade.sh" --help 2>&1)
+rc=$?
+assert_success "$rc" "millennium-upgrade.sh --help exits 0"
+assert_contains "$out" "Usage:" "millennium-upgrade.sh --help prints usage"
+assert_contains "$out" "--channel" "millennium-upgrade.sh --help documents --channel"
+
+# --- Version ---
+out=$(bash "${REPO_ROOT}/scripts/millennium-upgrade.sh" --version 2>&1)
+rc=$?
+assert_success "$rc" "millennium-upgrade.sh --version exits 0"
+assert_contains "$out" "2.2.0" "millennium-upgrade.sh --version prints VERSION file value"
+
 for channel in stable beta; do
   script_name="millennium-upgrade.sh --channel ${channel}"
 
@@ -32,6 +45,7 @@ for channel in stable beta; do
   rc=$?
   assert_failure "$rc" "${script_name} exits non-zero on an unknown option"
   assert_contains "$out" "Unknown option" "${script_name} reports the unrecognized option"
+  assert_contains "$out" "Usage:" "${script_name} unknown option prints usage"
 
   # --- Network offline aborts immediately ---
   mock_cmd "curl" 'exit 1'
@@ -227,7 +241,8 @@ assert_contains "$out" "Upgrade cannot proceed while a game is active" "millenni
 
 rm -rf "${MOCK_PROC}"
 unset MOCK_PROC
-rm -f "${MOCK_BIN}/pgrep"
+export MOCK_PROC="/nonexistent_mock_proc"
+mock_cmd "pgrep" 'exit 1'
 rm -f "${MOCK_BIN}/curl"
 unmock_cmd "uname"
 

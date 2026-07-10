@@ -35,6 +35,22 @@ assert_contains "$out" "Usage:" "install.sh --help prints usage banner"
 assert_contains "$out" "install" "install.sh --help documents the install command"
 assert_contains "$out" "uninstall" "install.sh --help documents the uninstall command"
 
+out=$(bash "$INSTALL_SH" --version 2>&1)
+rc=$?
+assert_success "$rc" "install.sh --version exits 0"
+assert_contains "$out" "2.2.0" "install.sh --version prints VERSION file value"
+
+# --- Man pages ship with the repo ---
+
+for page in millennium-upgrade millennium-repair millennium-diag millennium-schedule \
+            millennium-purge millennium-theme millennium-mcp; do
+  assert_file_exists "${REPO_ROOT}/man/${page}.1" "man page exists for ${page}"
+  man_body=$(cat "${REPO_ROOT}/man/${page}.1")
+  assert_contains "$man_body" ".TH" "man/${page}.1 has a .TH title header"
+  assert_contains "$man_body" ".SH NAME" "man/${page}.1 has a NAME section"
+  assert_contains "$man_body" ".SH SYNOPSIS" "man/${page}.1 has a SYNOPSIS section"
+done
+
 # --- Unknown option handling ---
 
 out=$(bash "$INSTALL_SH" --bogus-flag 2>&1)
@@ -50,6 +66,8 @@ assert_success "$rc" "install.sh install --dry-run exits 0 without root"
 assert_contains "$out" "DRY RUN MODE" "install.sh install --dry-run announces dry-run mode"
 assert_contains "$out" "millennium-repair" "install.sh install --dry-run lists millennium-repair as a managed script"
 assert_contains "$out" "millennium-mcp" "install.sh install --dry-run lists millennium-mcp as a managed script"
+assert_contains "$out" "Installing man pages" "install.sh install --dry-run installs man pages"
+assert_contains "$out" "millennium-diag.1" "install.sh install --dry-run copies a man page file"
 assert_not_contains "$out" "Traceback" "install.sh install --dry-run has no Python trailing tracebacks"
 
 if [[ -f /usr/local/bin/millennium-repair ]]; then
@@ -74,10 +92,20 @@ rc=$?
 assert_success "$rc" "install.sh uninstall --dry-run exits 0 without root"
 assert_contains "$out" "DRY RUN MODE" "install.sh uninstall --dry-run announces dry-run mode"
 assert_contains "$out" "Uninstalling" "install.sh uninstall --dry-run describes the uninstall action"
+assert_contains "$out" "Uninstalling man pages" "install.sh uninstall --dry-run uninstalls man pages"
 
+out=$(TARGET_DIR=/var/invalid/nonexistent bash "$INSTALL_SH" install 2>&1 < /dev/null || true)
+# As root, check_root is skipped and install fails on the unwritable path instead.
+# Force a non-root identity so we assert the sudo hint path CI expects.
+mock_cmd "id" '
+if [[ "$*" == "-u" ]]; then echo 1000; exit 0; fi
+if [[ "$*" == "-un" ]]; then echo installtestuser; exit 0; fi
+/usr/bin/id "$@"
+'
 out=$(TARGET_DIR=/var/invalid/nonexistent bash "$INSTALL_SH" install 2>&1 < /dev/null || true)
 assert_contains "$out" "sudo" "install.sh without --dry-run and without root tells the user to use sudo"
 assert_contains "$out" "install.sh install" "install.sh's sudo hint preserves the original arguments (e.g. 'install')"
+rm -f "${MOCK_BIN}/id"
 
 # --- Interactive Wizard (Dry run) ---
 

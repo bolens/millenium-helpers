@@ -1,8 +1,26 @@
 # Millennium Client Force Reinstall and Repair utility on Windows
 param(
-    [switch]$DryRun = $false
+    [switch]$DryRun = $false,
+    [Alias("h")]
+    [switch]$Help = $false,
+    [Alias("V")]
+    [switch]$Version = $false
 )
 set-strictmode -version Latest
+
+if ($Help) {
+    Write-Host @"
+Usage: millennium-repair.ps1 [-DryRun] [-Version] [-Help]
+
+Force reinstall and repair the Millennium client on Windows.
+
+Options:
+  -DryRun      Simulate operations without modifying files
+  -Version, -V Show version information
+  -Help, -h    Show this help message
+"@
+    exit 0
+}
 
 # Source shared helpers
 $ScriptDir = $PSScriptRoot
@@ -12,6 +30,11 @@ if (Test-Path -Path $CommonPs1) {
 } else {
     Write-Error "Shared helper library not found at $CommonPs1"
     exit 1
+}
+
+if ($Version) {
+    Write-HelpersVersion -Name "millennium-repair"
+    exit 0
 }
 
 if ($DryRun) {

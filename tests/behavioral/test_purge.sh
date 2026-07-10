@@ -17,12 +17,29 @@ trap teardown_mock_bin EXIT
 
 echo -e "${YELLOW}=== Behavioral tests: millennium-purge.sh ===${NC}"
 
+# --- Help ---
+
+out=$(bash "$PURGE_SH" --help 2>&1)
+rc=$?
+assert_success "$rc" "millennium-purge --help exits 0"
+assert_contains "$out" "Usage:" "millennium-purge --help prints usage"
+assert_contains "$out" "--yes" "millennium-purge --help documents the --yes option"
+
+# --- Version ---
+
+out=$(bash "$PURGE_SH" --version 2>&1)
+rc=$?
+assert_success "$rc" "millennium-purge --version exits 0"
+assert_contains "$out" "millennium-purge" "millennium-purge --version prints command name"
+assert_contains "$out" "2.2.0" "millennium-purge --version prints VERSION file value"
+
 # --- Unknown option ---
 
 out=$(bash "$PURGE_SH" --bogus 2>&1)
 rc=$?
 assert_failure "$rc" "millennium-purge exits non-zero on an unknown option"
 assert_contains "$out" "Unknown option" "millennium-purge reports the unrecognized option"
+assert_contains "$out" "Usage:" "millennium-purge unknown option prints usage"
 
 # --- Dry-run: no Steam running, no installed hooks ---
 
@@ -85,5 +102,40 @@ out=$(bash "$PURGE_SH" --dry-run 2>&1)
 rc=$?
 assert_success "$rc" "millennium-purge --dry-run handles a running Steam process without crashing"
 assert_contains "$out" "Steam is currently running" "millennium-purge --dry-run detects the running Steam process"
+
+# --- Non-interactive purge without --yes must refuse ---
+# Dry-run skips confirmation; a live non-TTY run without --yes must exit 1.
+# Mock root so we reach the confirmation gate (not the sudo requirement).
+
+mock_cmd "pgrep" 'exit 1'
+mock_cmd "id" '
+if [[ "$*" == "-u" ]]; then echo 0; exit 0; fi
+if [[ "$*" == "-un" ]]; then echo root; exit 0; fi
+/usr/bin/id "$@"
+'
+out=$(bash "$PURGE_SH" </dev/null 2>&1)
+rc=$?
+assert_failure "$rc" "millennium-purge without --yes refuses non-interactive purge"
+assert_contains "$out" "Refusing to purge without confirmation" "millennium-purge explains non-interactive refusal"
+assert_contains "$out" "--yes" "millennium-purge refusal mentions --yes"
+rm -f "${MOCK_BIN}/id"
+
+# --- --yes skips confirmation in non-interactive mode ---
+# Stub rm and getent so a live --yes run cannot touch host Steam/Millennium files.
+
+mock_cmd "id" '
+if [[ "$*" == "-u" ]]; then echo 0; exit 0; fi
+if [[ "$*" == "-un" ]]; then echo root; exit 0; fi
+/usr/bin/id "$@"
+'
+mock_cmd "getent" 'exit 1'
+mock_cmd "rm" 'exit 0'
+out=$(bash "$PURGE_SH" --yes </dev/null 2>&1)
+rc=$?
+assert_success "$rc" "millennium-purge --yes completes without interactive confirmation"
+assert_contains "$out" "Purging Millennium hooks" "millennium-purge --yes proceeds with purge"
+assert_not_contains "$out" "Are you sure" "millennium-purge --yes does not prompt for confirmation"
+assert_contains "$out" "successfully purged" "millennium-purge --yes reports success"
+rm -f "${MOCK_BIN}/id" "${MOCK_BIN}/rm"
 
 print_summary

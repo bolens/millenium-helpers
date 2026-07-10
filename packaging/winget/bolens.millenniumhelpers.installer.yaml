@@ -7,7 +7,7 @@ Installers:
 - Architecture: neutral
   InstallerType: portable
   InstallerUrl: https://github.com/bolens/millenium-helpers/archive/refs/heads/main.zip
-  InstallerSha256: 0000000000000000000000000000000000000000000000000000000000000000 # Dummy value to be populated by publisher
+  InstallerSha256: "0000000000000000000000000000000000000000000000000000000000000000" # Dummy value to be populated by publisher
   UpgradeBehavior: uninstallPrevious
   Commands:
   - millennium-diag

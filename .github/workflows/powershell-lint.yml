@@ -1,0 +1,46 @@
+name: "CI: PowerShell Script Analysis"
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'scripts/windows/**'
+      - '.github/workflows/powershell-lint.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'scripts/windows/**'
+      - '.github/workflows/powershell-lint.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  psscriptanalyzer:
+    name: PSScriptAnalyzer
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Run PSScriptAnalyzer
+        uses: microsoft/psscriptanalyzer-action@v1.1
+        with:
+          path: scripts/windows
+          recurse: true
+          severity: '"Error"'
+          enableExit: true
+          excludeRule: '"PSAvoidUsingWriteHost","PSUseApprovedVerbs","PSAvoidUsingCmdletAliases","PSUseShouldProcessForStateChangingFunctions"'
+          output: results.sarif
+
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif
+        continue-on-error: true

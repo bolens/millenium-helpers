@@ -47,6 +47,13 @@ rc=$?
 assert_success "$rc" "millennium-diag.sh -h exits 0"
 assert_contains "$out" "Usage:" "millennium-diag.sh -h prints usage"
 
+# --- Version ---
+out=$(bash "$DIAG_SH" --version 2>&1)
+rc=$?
+assert_success "$rc" "millennium-diag.sh --version exits 0"
+assert_contains "$out" "millennium-diag" "millennium-diag.sh --version prints command name"
+assert_contains "$out" "2.2.0" "millennium-diag.sh --version prints VERSION file value"
+
 # --- Unknown option ---
 out=$(bash "$DIAG_SH" --bogus 2>&1)
 rc=$?

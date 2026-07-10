@@ -1,0 +1,51 @@
+.TH MILLENNIUM\-DIAG 1 "July 2026" "millennium-helpers" "User Commands"
+.SH NAME
+millennium-diag \- diagnose Millennium and Steam helper health
+.SH SYNOPSIS
+.B millennium-diag
+[\fICOMMAND\fR] [\fIOPTIONS\fR]
+.SH DESCRIPTION
+Runs a read-only diagnostics report by default. Can also show logs, upload a
+redacted report, or run doctor mode to auto-repair common problems.
+.SH COMMANDS
+.TP
+.B (none)
+Print the diagnostics report (default).
+.TP
+.B doctor
+Detect and repair partial or broken installations.
+.TP
+.B logs
+Display recent Millennium and Steam WebHelper startup logs.
+.SH OPTIONS
+.TP
+.BR \-f ", " \-\-fix
+Alias for the
+.B doctor
+command.
+.TP
+.B \-\-force
+Force doctor repairs even if the system looks healthy.
+.TP
+.B \-\-json
+Emit the diagnostics report as structured JSON.
+.TP
+.BR \-l ", " \-\-follow
+Follow (tail \-f) real-time log output with
+.BR logs .
+.TP
+.BR \-d ", " \-\-dry\-run
+Simulate doctor repairs without modifying anything.
+.TP
+.BR \-s ", " \-\-share
+Upload a redacted diagnostic report to a pastebin and print a short link.
+.TP
+.BR \-V ", " \-\-version
+Show version information.
+.TP
+.BR \-h ", " \-\-help
+Show help message.
+.SH SEE ALSO
+.BR millennium-repair (1),
+.BR millennium-upgrade (1),
+.BR millennium-schedule (1)

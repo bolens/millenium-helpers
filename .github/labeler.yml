@@ -20,7 +20,10 @@
 
 "area: archlinux":
   - changed-files:
-      - any-glob-to-any-file: 'packaging/aur/**/*'
+      - any-glob-to-any-file: 'packaging/PKGBUILD'
+      - any-glob-to-any-file: 'packaging/.SRCINFO'
+      - any-glob-to-any-file: 'packaging/*.install'
+      - any-glob-to-any-file: 'packaging/*.sudoers'
 
 "area: mcp":
   - changed-files:
@@ -31,7 +34,9 @@
   - changed-files:
       - any-glob-to-any-file: 'README.md'
       - any-glob-to-any-file: 'docs/**/*'
+      - any-glob-to-any-file: 'man/**/*'
 
 "area: ci-cd":
   - changed-files:
       - any-glob-to-any-file: '.github/workflows/**/*'
+      - any-glob-to-any-file: 'scripts/ci/**/*'

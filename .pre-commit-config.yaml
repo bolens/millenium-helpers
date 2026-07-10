@@ -1,0 +1,36 @@
+repos:
+  - repo: local
+    hooks:
+      - id: shellcheck
+        name: shellcheck
+        entry: shellcheck
+        language: system
+        types: [shell]
+        files: '^(install\.sh|scripts/.*\.sh|tests/.*\.sh)$'
+
+      - id: ruff
+        name: ruff
+        entry: ruff check
+        language: system
+        types: [python]
+        files: '^scripts/.*\.py$'
+
+      - id: version-file
+        name: VERSION file present
+        entry: bash -c 'test -f VERSION && test -s VERSION'
+        language: system
+        pass_filenames: false
+
+      - id: version-sync
+        name: packaging versions match VERSION
+        entry: bash scripts/ci/check-version-sync.sh
+        language: system
+        pass_filenames: false
+        files: '^(VERSION|Formula/.*|packaging/scoop/.*|packaging/winget/.*)$'
+
+      - id: man-pages
+        name: man page coverage
+        entry: bash scripts/ci/check-man-pages.sh
+        language: system
+        pass_filenames: false
+        files: '^(man/.*|scripts/millennium-.*)$'

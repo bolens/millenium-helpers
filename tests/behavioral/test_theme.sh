@@ -44,6 +44,11 @@ assert_contains "$out" "install" "millennium-theme --help documents the install 
 assert_contains "$out" "update" "millennium-theme --help documents the update command"
 assert_contains "$out" "remove" "millennium-theme --help documents the remove command"
 
+out=$(run_theme --version 2>&1)
+rc=$?
+assert_success "$rc" "millennium-theme --version exits 0"
+assert_contains "$out" "2.2.0" "millennium-theme --version prints VERSION file value"
+
 # --- No command given ---
 
 out=$(run_theme 2>&1)

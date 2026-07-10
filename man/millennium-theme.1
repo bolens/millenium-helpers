@@ -1,0 +1,41 @@
+.TH MILLENNIUM\-THEME 1 "July 2026" "millennium-helpers" "User Commands"
+.SH NAME
+millennium-theme \- manage Millennium Steam skins/themes
+.SH SYNOPSIS
+.B millennium-theme
+\fICOMMAND\fR [\fIARGUMENTS\fR] [\fIOPTIONS\fR]
+.SH DESCRIPTION
+Lists, installs, updates, and removes Millennium theme/skin directories from
+GitHub repositories or local installs.
+.SH COMMANDS
+.TP
+.B list
+List installed themes.
+.TP
+.BR install " " \fIowner/repo\fR
+Install a theme from a GitHub repository.
+.TP
+.BR update " [" \fItheme\-name\fR " | " \fB\-\-all\fR "]"
+Update one theme, or all themes with
+.BR \-\-all .
+.TP
+.BR remove " " \fItheme\-name\fR
+Remove an installed theme.
+.SH OPTIONS
+.TP
+.B \-\-json
+Output
+.B list
+results as structured JSON.
+.TP
+.BR \-d ", " \-\-dry\-run
+Simulate operations without modifying files.
+.TP
+.BR \-V ", " \-\-version
+Show version information.
+.TP
+.BR \-h ", " \-\-help
+Show help message.
+.SH SEE ALSO
+.BR millennium-repair (1),
+.BR millennium-diag (1)

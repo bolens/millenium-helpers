@@ -1,7 +1,8 @@
 class MillenniumHelpers < Formula
   desc "Cross-platform utilities and MCP server for Millennium Steam Client hook"
   homepage "https://github.com/bolens/millenium-helpers"
-  url "https://github.com/bolens/millenium-helpers/archive/refs/tags/v0.1.0.tar.gz"
+  version "2.2.0"
+  url "https://github.com/bolens/millenium-helpers/archive/refs/tags/v2.2.0.tar.gz"
   sha256 "0000000000000000000000000000000000000000000000000000000000000000"
   head "https://github.com/bolens/millenium-helpers.git", branch: "main"
 
@@ -29,6 +30,12 @@ class MillenniumHelpers < Formula
     bash_completion.install "completions/bash/millennium-helpers" => "millennium-helpers"
     zsh_completion.install "completions/zsh/_millennium-helpers" => "_millennium-helpers"
     fish_completion.install Dir["completions/fish/*.fish"]
+
+    # Install man pages
+    man1.install Dir["man/*.1"]
+
+    # Install VERSION for --version lookups
+    (lib/"millennium-helpers").install "VERSION"
   end
 
   def caveats

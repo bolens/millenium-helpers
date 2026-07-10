@@ -1,0 +1,40 @@
+.TH MILLENNIUM\-MCP 1 "July 2026" "millennium-helpers" "User Commands"
+.SH NAME
+millennium-mcp \- Model Context Protocol server for Millennium Helpers
+.SH SYNOPSIS
+.B millennium-mcp
+[\fIOPTIONS\fR]
+.SH DESCRIPTION
+Exposes Millennium helper commands as MCP tools for AI assistants
+(Claude Desktop, Cursor, Windsurf, and similar clients).
+.P
+With no options, runs as a stdio JSON-RPC MCP server.
+.SH OPTIONS
+.TP
+.BR \-r ", " \-\-register
+Register the server in Claude Desktop, Windsurf, and Cursor config files
+when those directories exist.
+.TP
+.BR \-V ", " \-\-version
+Show version information.
+.TP
+.BR \-h ", " \-\-help
+Show help message.
+.SH FILES
+.TP
+.I ~/.config/Claude/claude_desktop_config.json
+Claude Desktop MCP config (Linux).
+.TP
+.I ~/.cursor/mcp.json
+Cursor MCP config.
+.TP
+.I ~/.codeium/windsurf/mcp_config.json
+Windsurf MCP config.
+.SH SEE ALSO
+Full tool list and setup:
+.I docs/mcp.md
+in the millennium-helpers repository.
+.P
+.BR millennium-diag (1),
+.BR millennium-upgrade (1),
+.BR millennium-theme (1)

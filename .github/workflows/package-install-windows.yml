@@ -14,6 +14,13 @@ on:
       - 'scripts/windows/**'
       - '.github/workflows/package-install-windows.yml'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   test-scoop:
     name: Test Scoop Package Install

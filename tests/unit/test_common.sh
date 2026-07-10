@@ -215,7 +215,9 @@ assert_file_exists "${MOCK_BIN}/runuser.calls" "relaunch_steam invokes runuser t
 runuser_call=$(cat "${MOCK_BIN}/runuser.calls" 2>/dev/null || true)
 assert_contains "$runuser_call" "$test_relaunch_user" "relaunch_steam's runuser call targets the correct user"
 assert_contains "$runuser_call" "steam" "relaunch_steam's runuser call launches steam"
-rm -f "${MOCK_BIN}/steam" "${MOCK_BIN}/runuser.calls"
+rm -f "${MOCK_BIN}/runuser.calls"
+# Keep the default steam mock; never leave PATH pointing at the real client.
+mock_cmd "steam" 'exit 0'
 
 # With WAS_FLATPAK=true -> should invoke flatpak run instead of steam
 cat > "$expected_state_file" << EOF
@@ -227,6 +229,22 @@ relaunch_steam "$test_relaunch_user" > /dev/null 2>&1
 runuser_call=$(cat "${MOCK_BIN}/runuser.calls" 2>/dev/null || true)
 assert_contains "$runuser_call" "flatpak run com.valvesoftware.Steam" "relaunch_steam launches flatpak Steam when WAS_FLATPAK=true"
 rm -f "${MOCK_BIN}/runuser.calls" "$expected_state_file"
+
+# Even with the runuser mock deleted, TEST_SUITE_RUN must still prevent a
+# real steam launch (regression for the ordering bug where MOCK_BIN alone
+# was treated as "safe to runuser" and then fell through to eval).
+cat > "$expected_state_file" << EOF
+export DISPLAY=':1'
+export STEAM_ARGS=""
+export WAS_FLATPAK='false'
+EOF
+mock_cmd "steam" 'echo "REAL_STEAM_INVOKED $*" >> "'"${MOCK_BIN}"'/steam.calls"; exit 0'
+rm -f "${MOCK_BIN}/runuser" "${MOCK_BIN}/runuser.calls" "${MOCK_BIN}/steam.calls"
+bypass_out=$(relaunch_steam "$test_relaunch_user" 2>&1)
+assert_contains "$bypass_out" "[TEST] Bypassing" "relaunch_steam bypasses host Steam when runuser mock is missing under TEST_SUITE_RUN"
+assert_file_not_exists "${MOCK_BIN}/steam.calls" "relaunch_steam does not invoke steam when bypassing under TEST_SUITE_RUN"
+mock_cmd "runuser" 'echo "runuser called: $*" >> "'"${MOCK_BIN}"'/runuser.calls"'
+mock_cmd "steam" 'exit 0'
 
 # relaunch_steam must refuse to follow a symlink planted at the state file
 # path (defense against a race that pre-dates directory lockdown).
@@ -249,19 +267,30 @@ assert_equals "700" "$capture_dir_perms" "capture_steam_env locks the state dire
 capture_contents=$(cat "$expected_state_file")
 assert_contains "$capture_contents" "WAS_FLATPAK='false'" "capture_steam_env records WAS_FLATPAK=false when Steam/Flatpak aren't running"
 assert_not_contains "$capture_contents" "STEAM_ARGS" "capture_steam_env skips STEAM_ARGS when no Steam process is found"
-rm -f "$expected_state_file" "${MOCK_BIN}/pgrep" "${MOCK_BIN}/flatpak"
+rm -f "$expected_state_file" "${MOCK_BIN}/flatpak"
+mock_cmd "pgrep" 'exit 1'
 
-# Steam process found -> should capture DISPLAY and STEAM_ARGS from /proc/<pid>/environ & cmdline
-fake_pid=$$
+# Steam process found -> capture DISPLAY/STEAM_ARGS from MOCK_PROC, never host /proc
+fake_pid=424242
+MOCK_PROC=$(mktemp -d)
+export MOCK_PROC
+mkdir -p "${MOCK_PROC}/${fake_pid}"
+printf 'DISPLAY=:99\0STEAM_ARGS=\0' > "${MOCK_PROC}/${fake_pid}/environ"
+printf 'steam\0-silent\0' > "${MOCK_PROC}/${fake_pid}/cmdline"
 mock_cmd "pgrep" "echo ${fake_pid}"
 capture_steam_env "$test_relaunch_user"
 assert_file_exists "$expected_state_file" "capture_steam_env creates state file when a Steam pid is found"
 capture_contents2=$(cat "$expected_state_file")
 assert_contains "$capture_contents2" "WAS_FLATPAK='false'" "capture_steam_env still records WAS_FLATPAK correctly when Steam is running"
 assert_contains "$capture_contents2" "STEAM_ARGS=" "capture_steam_env records a STEAM_ARGS line when a Steam pid is found"
-rm -f "$expected_state_file" "${MOCK_BIN}/pgrep"
+assert_contains "$capture_contents2" "DISPLAY=':99'" "capture_steam_env reads DISPLAY from MOCK_PROC, not host /proc"
+rm -f "$expected_state_file"
+rm -rf "$MOCK_PROC"
+export MOCK_PROC="/nonexistent_mock_proc"
+mock_cmd "pgrep" 'exit 1'
 rm -rf "$relaunch_test_home"
 rm -f "${MOCK_BIN}/getent"
+mock_cmd "getent" 'exit 1'
 
 # --- close_steam_gracefully() ---
 
@@ -274,7 +303,11 @@ close_out=$(close_steam_gracefully "closetest" 2>&1)
 assert_contains "$close_out" "Steam closed successfully" "close_steam_gracefully reports success once pgrep no longer finds steam"
 close_calls=$(cat "${MOCK_BIN}/close_runuser.calls" 2>/dev/null || true)
 assert_contains "$close_calls" "steam -shutdown" "close_steam_gracefully issues a native 'steam -shutdown' command via runuser"
-rm -f "${MOCK_BIN}/close_runuser.calls" "${MOCK_BIN}/getent" "${MOCK_BIN}/runuser" "${MOCK_BIN}/pgrep" "${MOCK_BIN}/steam"
+rm -f "${MOCK_BIN}/close_runuser.calls" "${MOCK_BIN}/getent"
+# Restore host-protection defaults after this section's custom mocks
+mock_cmd "runuser" 'exit 0'
+mock_cmd "pgrep" 'exit 1'
+mock_cmd "steam" 'exit 0'
 
 # --- send_notification() ---
 
@@ -295,7 +328,9 @@ send_notification "Millennium Updated" "All good" "notify-test-user"
 notify_calls=$(cat "${MOCK_BIN}/notify.calls" 2>/dev/null || true)
 assert_contains "$notify_calls" "Millennium Updated" "send_notification passes the title through to notify-send"
 assert_contains "$notify_calls" "All good" "send_notification passes the message through to notify-send"
-rm -f "${MOCK_BIN}/notify.calls" "${MOCK_BIN}/notify-send" "${MOCK_BIN}/runuser"
+rm -f "${MOCK_BIN}/notify.calls" "${MOCK_BIN}/notify-send"
+mock_cmd "runuser" 'exit 0'
+mock_cmd "notify-send" 'exit 0'
 unmock_cmd "uname"
 
 # --- load_user_config() ---
@@ -426,6 +461,66 @@ home_dir=$(get_user_home "$current_user")
 assert_equals "$HOME" "$home_dir" "get_user_home falls back to tilde expansion"
 unmock_cmd "getent"
 unmock_cmd "dscl"
+
+# --- get_helpers_version / print_helpers_version ---
+
+ver=$(get_helpers_version)
+assert_equals "2.2.0" "$ver" "get_helpers_version reads the repo VERSION file"
+
+out=$(print_helpers_version)
+assert_contains "$out" "2.2.0" "print_helpers_version includes the version number"
+assert_contains "$out" "$(basename "$0")" "print_helpers_version includes the invoking script name"
+
+# Isolated VERSION file: copy version.sh into a temp tree with its own VERSION
+ver_tmp=$(mktemp -d)
+mkdir -p "${ver_tmp}/scripts/lib"
+cp "${REPO_ROOT}/scripts/lib/version.sh" "${ver_tmp}/scripts/lib/version.sh"
+echo "7.7.7" > "${ver_tmp}/VERSION"
+ver_isolated=$(
+  bash -c 'source "'"${ver_tmp}"'/scripts/lib/version.sh"; get_helpers_version'
+)
+assert_equals "7.7.7" "$ver_isolated" "get_helpers_version prefers VERSION next to the sourced lib tree"
+rm -rf "$ver_tmp"
+
+# --- NO_COLOR disables ANSI escapes in logging helpers ---
+
+# shellcheck disable=SC2016
+no_color_out=$(
+  NO_COLOR=1 bash -c '
+    source "'"${REPO_ROOT}"'/scripts/lib/logging.sh"
+    printf "%s" "${RED}${GREEN}${YELLOW}${BLUE}${NC}"
+  '
+)
+assert_equals "" "$no_color_out" "NO_COLOR clears ANSI color variables in logging.sh"
+
+# shellcheck disable=SC2016
+force_color_out=$(
+  env -u NO_COLOR FORCE_COLOR=1 bash -c '
+    source "'"${REPO_ROOT}"'/scripts/lib/logging.sh"
+    printf "%s" "${GREEN}"
+  '
+)
+assert_not_equals "" "$force_color_out" "FORCE_COLOR enables ANSI color variables in logging.sh"
+
+# --- print_diag_item (diag_report.sh) ---
+
+# shellcheck disable=SC2016
+diag_out=$(
+  NO_COLOR=1 bash -c '
+    source "'"${REPO_ROOT}"'/scripts/lib/logging.sh"
+    source "'"${REPO_ROOT}"'/scripts/lib/diag_report.sh"
+    print_diag_item "ok" "Steam Client" "Running"
+    print_diag_item "warn" "Hooks" "Missing"
+    print_diag_item "error" "Binaries" "Corrupted"
+  '
+)
+assert_contains "$diag_out" "Steam Client" "print_diag_item ok includes the label"
+assert_contains "$diag_out" "Running" "print_diag_item ok includes the value"
+assert_contains "$diag_out" "Hooks" "print_diag_item warn includes the label"
+assert_contains "$diag_out" "Binaries" "print_diag_item error includes the label"
+assert_contains "$diag_out" "✔" "print_diag_item ok uses the check mark"
+assert_contains "$diag_out" "!" "print_diag_item warn uses the bang marker"
+assert_contains "$diag_out" "✘" "print_diag_item error uses the cross mark"
 
 print_summary
 

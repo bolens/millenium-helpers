@@ -37,4 +37,11 @@ rc=$?
 assert_equals "static text" "$out" "mock_cmd_output prints expected stdout"
 assert_equals "42" "$rc" "mock_cmd_output returns expected exit code"
 
+# Host-protection defaults: without these, local suite runs can close/relaunch
+# the developer's real Steam client (or kill processes via killall/pkill).
+assert_equals "true" "${TEST_SUITE_RUN:-}" "setup_mock_bin exports TEST_SUITE_RUN=true"
+for host_cmd in steam pgrep runuser killall pkill; do
+  assert_file_exists "${MOCK_BIN}/${host_cmd}" "setup_mock_bin stubs ${host_cmd} to protect the host"
+done
+
 print_summary

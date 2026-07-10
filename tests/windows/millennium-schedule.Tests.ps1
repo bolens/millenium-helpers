@@ -24,6 +24,22 @@ Describe "Schedule CLI Manager" {
         . (Join-Path -Path $winScriptDir -ChildPath "common.ps1")
     }
 
+    Context "Help and Version" {
+        It "Prints usage with -Help" {
+            $scheduleScript = Join-Path -Path $winScriptDir -ChildPath "millennium-schedule.ps1"
+            $out = (& $scheduleScript -Help *>&1) | Out-String
+            $out | Should -BeLike "*Usage:*"
+            $out | Should -BeLike "*enable*"
+            $out | Should -BeLike "*setup*"
+        }
+
+        It "Prints version with -Version" {
+            $scheduleScript = Join-Path -Path $winScriptDir -ChildPath "millennium-schedule.ps1"
+            $out = (& $scheduleScript -Version *>&1) | Out-String
+            $out | Should -BeLike "*millennium-schedule*"
+        }
+    }
+
     Context "Wizard setup" {
         BeforeAll {
             Mock Get-ItemProperty { return [pscustomobject]@{ SteamPath = "C:\MockedSteam" } }

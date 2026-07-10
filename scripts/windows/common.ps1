@@ -5,14 +5,64 @@ set-strictmode -version Latest
 [System.Threading.Thread]::CurrentThread.CurrentCulture = [System.Globalization.CultureInfo]::InvariantCulture
 [System.Threading.Thread]::CurrentThread.CurrentUICulture = [System.Globalization.CultureInfo]::InvariantCulture
 
-# Text formatting colors
-$RED = "`e[0;31m"
-$GREEN = "`e[0;32m"
-$YELLOW = "`e[0;33m"
-$BLUE = "`e[0;34m"
-$NC = "`e[0m" # No Color
+# Text formatting colors (honors NO_COLOR)
+if ($env:NO_COLOR) {
+    $RED = ""
+    $GREEN = ""
+    $YELLOW = ""
+    $BLUE = ""
+    $NC = ""
+} else {
+    $RED = "`e[0;31m"
+    $GREEN = "`e[0;32m"
+    $YELLOW = "`e[0;33m"
+    $BLUE = "`e[0;34m"
+    $NC = "`e[0m" # No Color
+}
 
 $global:DryRun = $false
+
+function Write-DebugMsg {
+    param([string]$Msg)
+    $debugEnabled = $env:MILLENNIUM_DEBUG -or ($VerbosePreference -eq 'Continue')
+    if ($debugEnabled) {
+        Write-Host "DEBUG: $Msg"
+    }
+}
+
+function Get-HelpersVersion {
+    $candidates = @()
+    if ($PSScriptRoot) {
+        $candidates += (Join-Path -Path $PSScriptRoot -ChildPath "..\..\VERSION")
+        $candidates += (Join-Path -Path $PSScriptRoot -ChildPath "VERSION")
+    }
+    $candidates += (Join-Path -Path $env:LOCALAPPDATA -ChildPath "millennium-helpers\VERSION")
+
+    foreach ($path in $candidates) {
+        if ($path -and (Test-Path -Path $path -PathType Leaf)) {
+            $ver = (Get-Content -Path $path -Raw -ErrorAction SilentlyContinue).Trim()
+            if ($ver) { return $ver }
+        }
+    }
+
+    $repoRoot = $null
+    if ($PSScriptRoot) {
+        $repoRoot = (Resolve-Path -Path (Join-Path -Path $PSScriptRoot -ChildPath "..\..") -ErrorAction SilentlyContinue)
+    }
+    if ($repoRoot -and (Test-Path -Path (Join-Path -Path $repoRoot -ChildPath ".git"))) {
+        try {
+            $gitVer = (& git -C $repoRoot.Path describe --tags --always --dirty 2>$null)
+            if ($gitVer) { return ($gitVer -replace '^v', '') }
+        } catch {}
+    }
+
+    return "unknown"
+}
+
+function Write-HelpersVersion {
+    param([string]$Name = "millennium-helpers")
+    Write-Output "$Name $(Get-HelpersVersion)"
+}
 
 if (!$env:LOCALAPPDATA) {
     $env:LOCALAPPDATA = Join-Path -Path $env:HOME -ChildPath ".config"
@@ -79,19 +129,19 @@ function Write-ContentFile {
 
 function Resolve-SteamPath {
     $regHKCU = Get-ItemProperty -Path "HKCU:\Software\Valve\Steam" -ErrorAction SilentlyContinue
-    Write-Host "DEBUG: regHKCU is: '$regHKCU'"
+    Write-DebugMsg "regHKCU is: '$regHKCU'"
     if ($regHKCU) {
-        Write-Host "DEBUG: SteamPath is: '$($regHKCU.SteamPath)'"
+        Write-DebugMsg "SteamPath is: '$($regHKCU.SteamPath)'"
     }
     if ($regHKCU -and $regHKCU.SteamPath) {
         $steamPath = $regHKCU.SteamPath
         $testRes = Test-Path -Path $steamPath
-        Write-Host "DEBUG: Test-Path result: $testRes"
+        Write-DebugMsg "Test-Path result: $testRes"
         if ($testRes) { return $steamPath }
     }
 
     # Check Local Machine registry (32-bit redirect)
-    Write-Host "DEBUG: Reached HKLM32"
+    Write-DebugMsg "Reached HKLM32"
     $regHKLM32 = Get-ItemProperty -Path "HKLM:\SOFTWARE\WOW6432Node\Valve\Steam" -ErrorAction SilentlyContinue
     if ($regHKLM32 -and $regHKLM32.InstallPath) {
         $steamPath = $regHKLM32.InstallPath
@@ -99,7 +149,7 @@ function Resolve-SteamPath {
     }
 
     # Check Local Machine registry (64-bit native)
-    Write-Host "DEBUG: Reached HKLM64"
+    Write-DebugMsg "Reached HKLM64"
     $regHKLM64 = Get-ItemProperty -Path "HKLM:\SOFTWARE\Valve\Steam" -ErrorAction SilentlyContinue
     if ($regHKLM64 -and $regHKLM64.InstallPath) {
         $steamPath = $regHKLM64.InstallPath
@@ -107,14 +157,14 @@ function Resolve-SteamPath {
     }
 
     # Fallback default locations
-    Write-Host "DEBUG: Reached fallback paths"
+    Write-DebugMsg "Reached fallback paths"
     $fallbackPaths = @(
         "$env:ProgramFiles` (x86)`\Steam",
         "$env:ProgramFiles`\Steam",
         "C:\Steam"
     )
     foreach ($path in $fallbackPaths) {
-        Write-Host "DEBUG: Test-Path checking fallback path: '$path'"
+        Write-DebugMsg "Test-Path checking fallback path: '$path'"
         if (Test-Path -Path $path) {
             return $path
         }

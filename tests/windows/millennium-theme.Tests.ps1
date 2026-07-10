@@ -19,6 +19,22 @@ Describe "Theme CLI Manager" {
         . (Join-Path -Path $winScriptDir -ChildPath "common.ps1")
     }
 
+    Context "Help and Version" {
+        It "Prints usage with -Help" {
+            $themeScript = Join-Path -Path $winScriptDir -ChildPath "millennium-theme.ps1"
+            $out = (& $themeScript -Help *>&1) | Out-String
+            $out | Should -BeLike "*Usage:*"
+            $out | Should -BeLike "*list*"
+            $out | Should -BeLike "*install*"
+        }
+
+        It "Prints version with -Version" {
+            $themeScript = Join-Path -Path $winScriptDir -ChildPath "millennium-theme.ps1"
+            $out = (& $themeScript -Version *>&1) | Out-String
+            $out | Should -BeLike "*millennium-theme*"
+        }
+    }
+
     Context "Traversal and formatting validation" {
         BeforeAll {
             Mock Get-ItemProperty { return [pscustomobject]@{ SteamPath = "C:\MockedSteam" } }

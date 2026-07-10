@@ -43,6 +43,10 @@ run_mcp() {
 # /usr/local/bin and /usr/bin over $PATH -- on a machine that already has
 # millennium-helpers installed system-wide, a PATH-only mock would silently
 # be shadowed by the real installed script.
+#
+# Under TEST_SUITE_RUN, millennium-mcp.py still logs that production command
+# line but executes the MOCK_BIN stub (or skips) so sudo/Steam are never
+# touched on the developer host.
 run_mcp_stderr() {
   { printf '%s\n' "$@" | python3 "$MCP_PY" >/dev/null; } 2>&1
 }
@@ -127,6 +131,27 @@ assert_contains "$log" "millennium-upgrade --channel stable --rollback list" "mi
 resp=$(run_mcp '{"jsonrpc":"2.0","id":82,"method":"tools/call","params":{"name":"millennium_upgrade","arguments":{"channel":"stable","rollback":"../invalid"}}}')
 assert_contains "$resp" '"isError": true' "millennium_upgrade with invalid rollback pattern returns error"
 
+# --- tools/call: millennium_purge confirms non-interactively ---
+
+log=$(run_mcp_stderr '{"jsonrpc":"2.0","id":83,"method":"tools/call","params":{"name":"millennium_purge","arguments":{}}}')
+assert_contains "$log" "millennium-purge --yes" "millennium_purge invokes millennium-purge --yes"
+assert_contains "$log" "sudo -n" "millennium_purge escalates via sudo -n"
+
+# --- tools/call under TEST_SUITE_RUN must not exec system helpers ---
+# find_executable prefers /usr/bin; without this guard, sudo -n would run the
+# real millennium-* scripts and close/relaunch the host Steam client.
+for tool_case in \
+  'millennium_repair|millennium-repair|{"jsonrpc":"2.0","id":84,"method":"tools/call","params":{"name":"millennium_repair","arguments":{}}}' \
+  'millennium_upgrade|millennium-upgrade|{"jsonrpc":"2.0","id":85,"method":"tools/call","params":{"name":"millennium_upgrade","arguments":{"channel":"stable"}}}' \
+  'millennium_purge|millennium-purge|{"jsonrpc":"2.0","id":86,"method":"tools/call","params":{"name":"millennium_purge","arguments":{}}}'; do
+  IFS='|' read -r tool_name bin_name request <<< "$tool_case"
+  rm -f "${MOCK_BIN}/${bin_name}"
+  log=$(run_mcp_stderr "$request")
+  assert_contains "$log" "sudo -n" "${tool_name} still logs the production sudo command line under TEST_SUITE_RUN"
+  assert_contains "$log" "Skipping host execution" "${tool_name} skips host execution when no MOCK_BIN stub exists"
+  mock_cmd "$bin_name" "exit 0"
+done
+
 # --- tools/call: unknown tool name ---
 
 resp=$(run_mcp '{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"not_a_real_tool","arguments":{}}}')
@@ -162,6 +187,7 @@ rm -f "${MOCK_BIN}/mcp-hang-test"
 FAKE_HOME_MCP=$(mktemp -d)
 mkdir -p "${FAKE_HOME_MCP}/.config/Claude"
 mkdir -p "${FAKE_HOME_MCP}/.codeium/windsurf"
+mkdir -p "${FAKE_HOME_MCP}/.cursor"
 
 # Write an empty config file to Claude
 echo "{}" > "${FAKE_HOME_MCP}/.config/Claude/claude_desktop_config.json"
@@ -171,6 +197,7 @@ rc=$?
 assert_success "$rc" "millennium-mcp --register exits 0 when config directories exist"
 assert_contains "$out" "Registering" "millennium-mcp --register output contains registration message"
 assert_contains "$out" "Successfully registered in Claude Desktop" "millennium-mcp --register output confirms Claude Desktop registration"
+assert_contains "$out" "Successfully registered in Cursor" "millennium-mcp --register output confirms Cursor registration"
 
 # Verify config contents
 assert_file_exists "${FAKE_HOME_MCP}/.config/Claude/claude_desktop_config.json" "claude_desktop_config.json exists"
@@ -178,13 +205,43 @@ config_contents=$(cat "${FAKE_HOME_MCP}/.config/Claude/claude_desktop_config.jso
 assert_contains "$config_contents" "millennium-helpers" "claude_desktop_config.json contains the millennium-helpers key"
 assert_contains "$config_contents" "millennium-mcp" "claude_desktop_config.json contains the millennium-mcp command"
 
+assert_file_exists "${FAKE_HOME_MCP}/.cursor/mcp.json" "Cursor mcp.json exists after --register"
+cursor_contents=$(cat "${FAKE_HOME_MCP}/.cursor/mcp.json")
+assert_contains "$cursor_contents" "millennium-helpers" "Cursor mcp.json contains the millennium-helpers key"
+
 rm -rf "$FAKE_HOME_MCP"
 
-# --- --help and invalid options ---
+# --- --help / --version and invalid options ---
 out=$(python3 "$MCP_PY" --help 2>&1)
 rc=$?
 assert_success "$rc" "millennium-mcp --help exits 0"
 assert_contains "$out" "usage:" "millennium-mcp --help prints usage help"
+
+out=$(python3 "$MCP_PY" --version 2>&1)
+rc=$?
+assert_success "$rc" "millennium-mcp --version exits 0"
+assert_contains "$out" "millennium-mcp" "millennium-mcp --version prints command name"
+assert_contains "$out" "2.2.0" "millennium-mcp --version prints VERSION file value"
+
+# TypedDict arg shapes used by tool handlers must import cleanly
+out=$(python3 -c "
+import importlib.util
+spec = importlib.util.spec_from_file_location('millennium_mcp', '${MCP_PY}')
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+assert hasattr(mod, 'DiagArgs')
+assert hasattr(mod, 'ThemeArgs')
+assert hasattr(mod, 'UpgradeArgs')
+assert hasattr(mod, 'ScheduleArgs')
+diag = mod.DiagArgs(doctor=True)
+assert diag['doctor'] is True
+theme = mod.ThemeArgs(action='list')
+assert theme['action'] == 'list'
+print('typeddicts-ok')
+" 2>&1)
+rc=$?
+assert_success "$rc" "millennium-mcp TypedDict helpers import and construct"
+assert_contains "$out" "typeddicts-ok" "millennium-mcp TypedDict smoke check prints ok"
 
 out=$(python3 "$MCP_PY" --invalid-flag 2>&1)
 rc=$?
