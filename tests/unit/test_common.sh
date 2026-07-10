@@ -87,6 +87,21 @@ rm -f "${MOCK_BIN}/millennium-diag-test-mock"
 resolved=$(resolve_helper_path "millennium-totally-nonexistent-tool")
 assert_equals "/usr/local/bin/millennium-totally-nonexistent-tool" "$resolved" "resolve_helper_path falls back to /usr/local/bin when not found on PATH"
 
+# --- portable_realpath_m() ---
+
+test_dir_temp=$(mktemp -d)
+resolved_dir=$(portable_realpath_m "$test_dir_temp")
+expected_dir=$(cd "$test_dir_temp" && pwd -P)
+assert_equals "$expected_dir" "$resolved_dir" "portable_realpath_m resolves existing directory correctly"
+
+resolved_nonexistent=$(portable_realpath_m "${test_dir_temp}/nonexistent_file")
+assert_equals "${expected_dir}/nonexistent_file" "$resolved_nonexistent" "portable_realpath_m resolves non-existent file path correctly"
+
+resolved_parent_traversal=$(portable_realpath_m "${test_dir_temp}/subfolder/../another_file")
+assert_equals "${expected_dir}/another_file" "$resolved_parent_traversal" "portable_realpath_m resolves path containing parent traversal components correctly"
+
+rm -rf "$test_dir_temp"
+
 # --- fetch_github_commit() ---
 
 # jq path: mock curl + jq to return a fixed sha
