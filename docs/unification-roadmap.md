@@ -22,7 +22,7 @@ and test parity** on Linux, macOS, and Windows.
 | **3 — Mutating core** | Done | Upgrade/repair/purge/diag (incl. follow) native |
 | **4 — Schedule + installers** | Done | Schedule + installers Go-first; legacy dual-scope systemd cleanup (4m) |
 | **5 — MCP + cleanup** | Done | Native Go MCP + `--register` + PATH twin; Python escape hatch remains |
-| **6 — Graduation** | In progress | 6a: dual-OS Go gate + meta surface graduated; dual libs still present |
+| **6 — Graduation** | In progress | 6a–6b: meta + schedule config graduated (dual-OS Go CI); dual libs still present |
 
 Force any native path back to shell/PS: `MILLENNIUM_LEGACY=1`.
 
@@ -60,7 +60,8 @@ Work through this queue; check items off as PRs land and update this list.
 5. [x] **Native Go MCP server (5c.1)** — `millennium mcp` owns stdio JSON-RPC; Python prefer-exec + `--register`
 6. [x] **Go MCP `--register` + packaging entry** — Phase 5c; PATH `millennium-mcp` = Go argv0 twin; Python lib escape hatch
 7. [x] **Phase 6a dual-OS graduation gate** — `check-all` → `test-go`; `go.yml` Windows+Linux dispatcher smokes; meta surface graduated
-8. [ ] **Graduate remaining commands** — dual-OS Go coverage + delete dual libs per [graduation rule](#command-graduation-rule), command-by-command
+8. [x] **Phase 6b schedule config graduated** — dual-OS `go.yml` set/get/list smoke; dual libs kept until peel
+9. [ ] **Graduate remaining commands** — dual-OS Go coverage + delete dual libs per [graduation rule](#command-graduation-rule), command-by-command
 
 ---
 
@@ -77,7 +78,7 @@ Work through this queue; check items off as PRs land and update this list.
 
 | Surface | Status | Notes |
 | --- | --- | --- |
-| `config get\|set\|list` | Done | `internal/config` |
+| `config get\|set\|list` | Graduated | `internal/config`; dual-OS `go.yml` smoke; Bash/PS dual libs retained until peel |
 | `status` | Done | Reports system and user scopes |
 | `enable\|disable --dry-run` | Done | Shows chosen scope |
 | `enable\|disable` live (Linux systemd) | Done | Prefers **system**; `--system` / `--user`; migrates other scope — see [policy](#systemd-system-vs-user) |
@@ -210,6 +211,8 @@ Shipped behavior:
 ### Phase 6 — Graduation — In progress
 
 - [x] **Phase 6a:** `make check-all` → `lint` + `test-go` + `test`; `go.yml` dual-OS dispatcher smokes (version/help/suggest); Linux-only legacy help smoke retained; CONTRIBUTING parity gate documents Go CI for graduated surfaces
+- [x] **Phase 6b:** `schedule config` get/set/list dual-OS Go smoke + graduated mark; `schedule_config.sh` / `ScheduleConfig.ps1` kept for long-name helpers until peel
+- [ ] Peel schedule-config dual libs (thin-wrap long-name `config` → Go; then delete libs)
 - [ ] Graduate remaining commands command-by-command (dual-OS Go coverage, then peel dual libs)
 - [ ] Every contract feature implemented **once** in Go
 - [ ] Every [parity matrix](unification-audit.md#parity-matrix) row green / graduated

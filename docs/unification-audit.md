@@ -100,7 +100,7 @@ Tests: Bash behavioral/unit under `tests/` · Pester under `tests/windows/`.
 
 | `schedule pre/post-update` | Y | — | **Native** (Unix/macOS; Windows N/A) | `test_schedule` + Go | — | Scheduler gate + Steam/diag |
 | `schedule setup` wizard | Y | Y | **Native** (config + optional enable) | Y + Go | Y + Go | `FORCE_WIZARD`; scope flags on enable |
-| `schedule config get/set/list` | Y | Y | **Native Go (Phase 2)** | Y + Go | Y + Go | Config path graduated |
+| `schedule config get/set/list` | Y | Y | **Graduated** (Phase 6b) | Go `TestNativeConfig` + `go.yml` dual-OS | Go + `go.yml` | Dual libs still sourced by long-name helpers until peel |
 | `schedule --cron` | Y | — | Linux/macOS only | Y | — | Contract OS-only |
 | `theme` list/install/update/remove | Y | Y | **Native Go (list + mutate)** | `test_theme` + Go | `millennium-theme` + Go | zip-slip safe extract; `--yes` on remove |
 | `theme --json` | Y | Y | **Native (Phase 2 list)** | Y + Go | Y + Go | — |

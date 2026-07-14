@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Phase 5c.1 native Go MCP:** `millennium mcp` serves stdio JSON-RPC + tools; Python `millennium-mcp` prefer-execs Go (keeps `--register`); `MILLENNIUM_MCP_PYTHON=1` forces Python; `test_mcp` covers `MCP_IMPL=python|go|both`
 - **Phase 5c Go MCP register + PATH entry:** native `--register`; install/packaging ship Go (or shim) as `millennium-mcp` argv0 twin; Python moves to lib escape hatch; Windows `millennium-mcp.cmd` → `millennium.exe mcp`
 - **Phase 6a graduation gate:** `make check-all` includes `test-go`; `go.yml` dual-OS dispatcher smokes for version/help/suggest; meta surface marked graduated (no dual-lib deletion)
+- **Phase 6b schedule config graduated:** dual-OS `go.yml` smoke for `millennium schedule config` set/get/list; Bash/PS config dual libs retained until peel
 - **Phase 3c diag:** native `--json`, `logs` (non-follow), richer report probes, `doctor --dry-run` plan; live doctor / `--share` / `--follow` still legacy
 - **Phase 3d diag share:** native `--share` (home/user/token redaction + paste.rs upload); `--follow` and live doctor still legacy
 - **Phase 3e upgrade install:** native tar/zip extract + atomic install when writable (root / `MILLENNIUM_LIB_DIR` / Windows Steam); non-root Linux system path and rollback apply still legacy
