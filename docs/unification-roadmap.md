@@ -22,14 +22,15 @@ and test parity** on Linux, macOS, and Windows.
 | **3 — Mutating core** | Done | Upgrade/repair/purge/diag (incl. follow) native |
 | **4 — Schedule + installers** | Done | Schedule + installers Go-first; legacy dual-scope systemd cleanup (4m) |
 | **5 — MCP + cleanup** | Done | Native Go MCP + `--register` + PATH twin; Python escape hatch remains |
-| **6 — Graduation** | In progress | Through **6ad**: meta/schedule/theme/purge/diag/repair peeled; upgrade long-name thin-wrap (dual libs for install handoff); MCP graduated; **Endgame A–C** next |
+| **6 — Graduation** | In progress | Through **Endgame A**: installers hard-require Go; repair/meta/schedule/theme/purge/diag peeled; upgrade long-name thin-wrap; MCP graduated; **Endgame B–C** next |
 
 Force any native path back to shell/PS: `MILLENNIUM_LEGACY=1`.
 
 `make build` → `bin/millennium`. Unix `install.sh` and Windows `install.ps1`
-prefer that Go binary for PATH `millennium` / `millennium.exe` (shell/PS
-fallback). Release CD embeds per-OS/arch Go binaries and versioned archives;
-builds wait on a green required-CI gate before packaging assets.
+require that Go binary for PATH `millennium` / `millennium.exe` (explicit
+`MILLENNIUM_INSTALL_DISPATCHER=shell` escape only until Endgame B). Release CD
+embeds per-OS/arch Go binaries and versioned archives; builds wait on a green
+required-CI gate before packaging assets.
 
 ---
 
@@ -87,7 +88,7 @@ Work through this queue; check items off as PRs land and update this list.
 32. [x] **Phase 6z diag peel** — long-name → Go; delete `diag_*` / `Diag*` feature libs
 33. [x] **Phase 6aa MCP stdio graduated** — dual-OS `initialize` smoke; Python hatch retained until explicit retirement
 34. [x] **Phase 6ab–6ad repair** — native hooks/force-upgrade + Steam life + themes; dual-OS graduate; peel `repair_ops` / RepairOps
-35. [ ] **Endgame A** — installer hard-require Go (no silent shell/PS PATH fallback)
+35. [x] **Endgame A** — installer hard-require Go (no silent shell/PS PATH fallback)
 36. [ ] **Endgame B** — delete `dispatcher.sh` / `Dispatcher.ps1` + shell `millennium` entrypoints
 37. [ ] **Endgame C** — suite retirement command-by-command
 38. [ ] **Parallel** — collapse upgrade `NeedsLegacy` install handoff; MCP Python hatch retirement
@@ -160,7 +161,7 @@ Work through this queue; check items off as PRs land and update this list.
 | Surface | Status | Notes |
 | --- | --- | --- |
 | MCP server | Graduated | dual-OS `initialize` smoke (Phase 6aa); Python hatch (`MILLENNIUM_MCP_PYTHON=1`) retained until explicit retirement |
-| Installers ship Go binary first | Done | Unix `install.sh` + Windows `install.ps1`; shell/PS fallback remains (**Endgame A**) |
+| Installers ship Go binary first | Done | Unix `install.sh` + Windows `install.ps1` hard-require Go (**Endgame A**); `MILLENNIUM_INSTALL_DISPATCHER=shell` escape until Endgame B |
 | Dual `.sh` / `.ps1` libs removed | Partial | Schedule + theme + purge + diag + repair feature libs deleted; upgrade/shared + dispatcher remain until install handoff / Endgame B |
 
 ---
@@ -205,8 +206,8 @@ with `MILLENNIUM_LEGACY=1` only as escape hatch.
 - [x] Windows schedule enable/disable live (Task Scheduler)
 - [x] `pre-update` / `post-update` (Unix/macOS; Steam capture/close/relaunch + diag)
 - [x] `schedule setup` wizard → native enable (honors `--system` / `--user` / `--cron`)
-- [x] Unix `install.sh` Go-first PATH `millennium` (`make build` / prebuilt; shell fallback)
-- [x] Windows `install.ps1` prefers `millennium.exe`; release CD embeds Go in versioned OS/arch archives
+- [x] Unix `install.sh` Go PATH `millennium` (`make build` / prebuilt; hard-require as of Endgame A)
+- [x] Windows `install.ps1` requires `millennium.exe` (hard-require as of Endgame A); release CD embeds Go in versioned OS/arch archives
 - [x] Packaging matrix: from-source / `-bin` / `-git` (+ deb/rpm/Chocolatey recipes)
 - [x] **Phase 4m:** Doctor / purge / uninstall clean **both** systemd scopes on legacy Bash paths (`disable_timer`, `install.sh` uninstall without `runuser` privilege drop, purge prefers `millennium schedule disable`); diag detects system timers
 
@@ -267,7 +268,7 @@ Shipped behavior:
 - [x] **Phase 6ab:** Repair Partial → Done — native Unix hooks, Windows force-upgrade, Steam lifecycle, sudo chown, theme refresh
 - [x] **Phase 6ac:** `repair --dry-run` (+ Linux mock live hooks) dual-OS Go smoke + graduated mark
 - [x] **Phase 6ad:** Peel repair — long-name → Go; delete `repair_ops.sh` / `RepairOps.ps1`
-- [ ] **Endgame A:** installer hard-require Go (drop silent shell/PS PATH fallback)
+- [x] **Endgame A:** installer hard-require Go (drop silent shell/PS PATH fallback)
 - [ ] **Endgame B:** delete `dispatcher.sh` / `Dispatcher.ps1` + shell `millennium` entrypoints
 - [ ] **Endgame C:** suite retirement command-by-command
 - [ ] Collapse upgrade `NeedsLegacy` install handoff; MCP Python hatch retirement (parallel)
