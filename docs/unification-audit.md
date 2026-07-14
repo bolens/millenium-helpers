@@ -96,10 +96,9 @@ Tests: Bash behavioral/unit under `tests/` · Pester under `tests/windows/`.
 | `repair` | Y | Y | **Dry-run + live user-path native** | `test_repair` + Go | `millennium-repair` + Go | Hook reinstall still legacy as needed |
 | `purge` (+ `--yes` / dry-run) | Y | Y | **Dry-run + live Unix/Windows native** | `test_purge` + Go | `millennium-purge` | — |
 | `upgrade --all-users` | Y | — | Linux/macOS only | P | — | Keep contract-marked |
-| `schedule enable/disable/status` | Y | Y | **Status peeled (6i)**; **enable/disable dry-run graduated (6j)** | `TestNativeSchedule*` + `go.yml`; Bash/Pester via thin-wrap for status | Go + `go.yml`; enable/disable dual libs remain | Bash enable still writes user units; enable/disable peel next |
-
-| `schedule pre/post-update` | Y | — | **Native** (Unix/macOS; Windows N/A) | `test_schedule` + Go | — | Scheduler gate + Steam/diag |
-| `schedule setup` wizard | Y | Y | **Native** (config + optional enable) | Y + Go | Y + Go | `FORCE_WIZARD`; scope flags on enable |
+| `schedule enable/disable/status` | Y | Y | **Graduated/peeled** (status 6i; enable/disable 6k) | `TestNativeSchedule*` + `go.yml`; Bash/Pester via thin-wrap | Go + `go.yml` | Enable dual libs removed; wizard enable → Go |
+| `schedule pre/post-update` | Y | — | **Graduated** (Phase 6m); Unix/macOS; Windows N/A | `TestNativeScheduleHooksGate` + Linux `go.yml`; Bash via hooks lib | — | Scheduler gate + Steam/diag; peel next |
+| `schedule setup` wizard | Y | Y | **Graduated** (Phase 6l) | `TestNativeScheduleSetupWizard` + dual-OS `go.yml` | Go + `go.yml` | `FORCE_WIZARD`; wizard dual libs until peel |
 | `schedule config get/set/list` | Y | Y | **Graduated** (Phase 6c peel) | Go `TestNativeConfig` + `go.yml` dual-OS; Bash/Pester via thin-wrap | Go + `go.yml` | Dual libs removed; long-name `config` execs Go |
 | `schedule --cron` | Y | — | Linux/macOS only | Y | — | Contract OS-only |
 | `theme` list/install/update/remove | Y | Y | **Graduated** (Phase 6g peel) | `TestNativeTheme*` + `go.yml`; Bash/Pester via thin-wrap | Go + `go.yml` | Dual libs removed; long-name theme execs Go |

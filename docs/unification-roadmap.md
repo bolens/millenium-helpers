@@ -69,7 +69,10 @@ Work through this queue; check items off as PRs land and update this list.
 14. [x] **Phase 6h schedule status graduated** — dual-OS `go.yml` disabled-status smoke; status dual libs kept until peel
 15. [x] **Phase 6i schedule status peel** — long-name `status` thin-wraps to Go; `schedule_status` / ScheduleStatus removed (`rotate_logs` → hooks)
 16. [x] **Phase 6j schedule enable/disable dry-run graduated** — dual-OS `go.yml` dry-run smoke; enable/disable dual libs kept until peel
-17. [ ] **Graduate remaining commands** — dual-OS Go coverage + delete dual libs per [graduation rule](#command-graduation-rule), command-by-command
+17. [x] **Phase 6k schedule enable/disable peel** — long-name enable/disable → Go; timer/cron/Enable/Disable libs removed; wizard optional-enable via non-exec Go
+18. [x] **Phase 6l schedule setup graduated** — dual-OS `go.yml` `FORCE_WIZARD` dry-run smoke; wizard dual libs kept until peel
+19. [x] **Phase 6m schedule pre/post-update graduated** — Linux `go.yml` scheduler-gate smoke; hooks dual lib kept until peel
+20. [ ] **Graduate remaining commands** — dual-OS Go coverage + delete dual libs per [graduation rule](#command-graduation-rule), command-by-command
 
 ---
 
@@ -88,12 +91,9 @@ Work through this queue; check items off as PRs land and update this list.
 | --- | --- | --- |
 | `config get\|set\|list` | Graduated | `internal/config`; dual-OS `go.yml` smoke; long-name helpers thin-wrap to Go (Phase 6c peel) |
 | `status` | Graduated | dual-OS `go.yml` smoke; long-name thin-wrap to Go (Phase 6i peel) |
-| `enable\|disable --dry-run` | Graduated | dual-OS `go.yml` smoke; dual libs retained until peel |
-| `enable\|disable` live (Linux systemd) | Done | Prefers **system**; `--system` / `--user`; migrates other scope — see [policy](#systemd-system-vs-user) |
-| `enable\|disable` live (macOS / cron) | Done | launchd / crontab |
-| `enable\|disable` live (Windows) | Done | Admin Task Scheduler via PowerShell register/unregister |
-| `setup` | Done | Interactive wizard; writes config; optional native enable (`--system`/`--user`/`--cron`) |
-| `pre-update` / `post-update` | Done | Unix/macOS only; `MILLENNIUM_SCHEDULER=1` gate; Steam close/relaunch + diag verify |
+| `enable\|disable` (dry-run + live) | Graduated | dual-OS dry-run smoke; long-name thin-wrap to Go (Phase 6k peel); dual enable libs removed |
+| `setup` | Graduated | dual-OS `FORCE_WIZARD` dry-run smoke (Phase 6l); long-name still uses `schedule_wizard` / ScheduleWizard until peel |
+| `pre-update` / `post-update` | Graduated | Linux gate smoke (Phase 6m); Unix/macOS only; long-name still uses `schedule_hooks.sh` until peel |
 
 ### `theme`
 
@@ -228,7 +228,10 @@ Shipped behavior:
 - [x] **Phase 6h:** `schedule status` dual-OS Go smoke + graduated mark; `schedule_status` dual libs kept until peel
 - [x] **Phase 6i:** Peel schedule status — long-name `status` → Go (`MILLENNIUM_LEGACY=0`); delete status dual libs; `rotate_logs` lives in `schedule_hooks.sh`
 - [x] **Phase 6j:** `schedule enable|disable --dry-run` dual-OS Go smoke + graduated mark; enable/disable dual libs kept until peel
-- [ ] Peel schedule enable/disable (thin-wrap dry-run+live → Go; delete timer/cron/enable/disable dual libs)
+- [x] **Phase 6k:** Peel schedule enable/disable — long-name → Go (`MILLENNIUM_LEGACY=0`); delete `schedule_timer`/`schedule_cron`/`ScheduleEnable`/`ScheduleDisable`; wizard optional-enable invokes Go without exec/exit
+- [x] **Phase 6l:** `schedule setup` dual-OS Go smoke (`FORCE_WIZARD` + dry-run) + graduated mark; wizard dual libs kept until peel
+- [x] **Phase 6m:** `schedule pre-update`/`post-update` Linux Go smoke (`MILLENNIUM_SCHEDULER=1`) + graduated mark; hooks dual lib kept until peel
+- [ ] Peel schedule setup / hooks (thin-wrap → Go; delete wizard/hooks dual libs)
 - [ ] Graduate remaining commands command-by-command (dual-OS Go coverage, then peel dual libs)
 - [ ] Every contract feature implemented **once** in Go
 - [ ] Every [parity matrix](unification-audit.md#parity-matrix) row green / graduated

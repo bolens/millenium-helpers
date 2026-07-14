@@ -41,6 +41,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Phase 6h schedule status graduated:** dual-OS `go.yml` smoke for disabled `millennium schedule status`; status dual libs retained until peel
 - **Phase 6i schedule status peel:** long-name `status` thin-wraps to Go; removed `schedule_status.sh` / `ScheduleStatus.ps1`; `rotate_logs` moved into `schedule_hooks.sh`
 - **Phase 6j schedule enable/disable dry-run graduated:** dual-OS `go.yml` smoke for `enable`/`disable --dry-run`; enable/disable dual libs retained until peel
+- **Phase 6k schedule enable/disable peel:** long-name `enable`/`disable` thin-wrap to Go; removed `schedule_timer.sh` / `schedule_cron.sh` / `ScheduleEnable.ps1` / `ScheduleDisable.ps1`; setup wizard optional-enable invokes Go without exec/exit
+- **Phase 6l schedule setup graduated:** dual-OS `go.yml` smoke for `schedule setup --dry-run` under `FORCE_WIZARD`; wizard dual libs retained until peel
+- **Phase 6m schedule hooks graduated:** Linux `go.yml` smoke for `pre-update`/`post-update` (`MILLENNIUM_SCHEDULER=1`); hooks dual lib retained until peel
 - **Phase 3c diag:** native `--json`, `logs` (non-follow), richer report probes, `doctor --dry-run` plan; live doctor / `--share` / `--follow` still legacy
 - **Phase 3d diag share:** native `--share` (home/user/token redaction + paste.rs upload); `--follow` and live doctor still legacy
 - **Phase 3e upgrade install:** native tar/zip extract + atomic install when writable (root / `MILLENNIUM_LIB_DIR` / Windows Steam); non-root Linux system path and rollback apply still legacy
