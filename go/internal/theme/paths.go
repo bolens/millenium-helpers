@@ -45,8 +45,9 @@ func ResolveThemeDir(skins, component string) (string, error) {
 	return resolved, nil
 }
 
-// ParseOwnerRepo splits owner/repo.
+// ParseOwnerRepo splits owner/repo (Windows backslashes normalized to /).
 func ParseOwnerRepo(arg string) (owner, repo string, err error) {
+	arg = strings.ReplaceAll(arg, `\`, "/")
 	parts := strings.Split(arg, "/")
 	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
 		return "", "", fmt.Errorf("Error: Theme must be in 'owner/repo' format.")

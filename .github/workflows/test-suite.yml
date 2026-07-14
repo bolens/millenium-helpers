@@ -121,7 +121,6 @@ jobs:
           - tests/unit/test_mocks.sh
           - tests/unit/test_completions.sh
           - tests/unit/test_install_track.sh
-          - tests/unit/test_theme_ops.sh
           - tests/unit/test_dispatcher.sh
           - tests/behavioral/test_install.sh
           - tests/behavioral/test_theme.sh
@@ -290,7 +289,6 @@ jobs:
           - tests/unit/test_mocks.sh
           - tests/unit/test_completions.sh
           - tests/unit/test_install_track.sh
-          - tests/unit/test_theme_ops.sh
           - tests/unit/test_dispatcher.sh
           - tests/behavioral/test_install.sh
           - tests/behavioral/test_theme.sh

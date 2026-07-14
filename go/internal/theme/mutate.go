@@ -18,6 +18,18 @@ var (
 	downloadURL  = githubapi.Download
 )
 
+// themeLatestCommit honors MILLENNIUM_THEME_MOCK_COMMIT for offline behavioral
+// tests ("fail" forces an error); otherwise uses the latestCommit seam.
+func themeLatestCommit(owner, repo string) (string, error) {
+	if mock := strings.TrimSpace(os.Getenv("MILLENNIUM_THEME_MOCK_COMMIT")); mock != "" {
+		if mock == "fail" {
+			return "", fmt.Errorf("mock GitHub API failure")
+		}
+		return mock, nil
+	}
+	return latestCommit(owner, repo)
+}
+
 type metadata struct {
 	Commit string `json:"commit"`
 	Owner  string `json:"owner"`
@@ -120,8 +132,15 @@ func Install(ownerRepo string, dryRun bool) error {
 	if err != nil {
 		return err
 	}
+	target, err := ResolveThemeDir(skins, repo)
+	if err != nil {
+		return err
+	}
+	if st, err := os.Stat(target); err == nil && st.IsDir() {
+		return fmt.Errorf("Warning: Theme directory '%s' already exists. Use update instead.", repo)
+	}
 	fmt.Printf("Resolving repository: %s/%s...\n", owner, repo)
-	commit, err := latestCommit(owner, repo)
+	commit, err := themeLatestCommit(owner, repo)
 	if err != nil || commit == "" {
 		msg := fmt.Sprintf("Error: Could not retrieve latest commit info for %s/%s. Check repository name, network, or GitHub rate limits.", owner, repo)
 		msg += "\nTip: set a PAT via millennium schedule config set github_token <token>."
@@ -129,13 +148,6 @@ func Install(ownerRepo string, dryRun bool) error {
 			msg += fmt.Sprintf("\n(%v)", err)
 		}
 		return fmt.Errorf("%s", msg)
-	}
-	target, err := ResolveThemeDir(skins, repo)
-	if err != nil {
-		return err
-	}
-	if st, err := os.Stat(target); err == nil && st.IsDir() {
-		return fmt.Errorf("Warning: Theme directory '%s' already exists. Use update instead.", repo)
 	}
 	if dryRun {
 		fmt.Printf("[DRY RUN] Would install %s/%s to %s\n", owner, repo, target)
@@ -188,7 +200,7 @@ func UpdateOne(themeName string, dryRun bool) error {
 		return err
 	}
 	fmt.Printf("Checking updates for theme '%s' (%s/%s)...\n", themeName, meta.Owner, meta.Repo)
-	commit, err := latestCommit(meta.Owner, meta.Repo)
+	commit, err := themeLatestCommit(meta.Owner, meta.Repo)
 	if err != nil || commit == "" {
 		return fmt.Errorf("Error: Could not retrieve latest commit info from GitHub.")
 	}

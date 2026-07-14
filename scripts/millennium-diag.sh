@@ -312,7 +312,6 @@ SHARED_MODULES=(
   "lib/schedule_timer.sh:scripts/lib/schedule_timer.sh"
   "lib/schedule_wizard.sh:scripts/lib/schedule_wizard.sh"
   "lib/steam.sh:scripts/lib/steam.sh"
-  "lib/theme_ops.sh:scripts/lib/theme_ops.sh"
   "lib/upgrade_failure.sh:scripts/lib/upgrade_failure.sh"
   "lib/upgrade_network.sh:scripts/lib/upgrade_network.sh"
   "lib/version.sh:scripts/lib/version.sh"

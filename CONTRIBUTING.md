@@ -92,10 +92,10 @@ Guide index: **[docs/README.md](docs/README.md)**. When adding or renaming a gui
 | `install.sh` | Linux/macOS installer / uninstall |
 | `scripts/*.sh` | Linux/macOS user-facing command entrypoints |
 | `scripts/common.sh` | Shared Bash entry (locale + sources `scripts/lib/*`) |
-| `scripts/lib/` | Shared + feature libraries (`logging`, `steam`, `diag_*`, `schedule_*`, `theme_ops`, `upgrade_*`, `repair_ops`, `purge_ops`, `dispatcher`, …) |
+| `scripts/lib/` | Shared + feature libraries (`logging`, `steam`, `diag_*`, `schedule_*`, `upgrade_*`, `repair_ops`, `purge_ops`, `dispatcher`, …) |
 | `scripts/windows/*.ps1` | Windows PowerShell command entrypoints |
 | `scripts/windows/common.ps1` | Shared PowerShell entry (culture/colors + sources `scripts/windows/lib/*`) |
-| `scripts/windows/lib/` | Shared + feature libraries (`Logging`, `Steam`, `Diag*`, `Schedule*`, `ThemeOps`, `PurgeOps`, `Dispatcher`, …) |
+| `scripts/windows/lib/` | Shared + feature libraries (`Logging`, `Steam`, `Diag*`, `Schedule*`, `PurgeOps`, `Dispatcher`, …) |
 | `scripts/millennium-mcp.py` | MCP server for AI assistants |
 | `spec/cli-contract.yaml` | **Source of truth** for commands / flags / platforms (Go + shells) |
 | `go/` | Go strangler module (`cmd/millennium`); native version/help; other cmds exec legacy |
@@ -128,7 +128,7 @@ Full feature and test parity is the end-state of the Go unification — see
 [docs/unification-roadmap.md](docs/unification-roadmap.md) (graduation rule + definition of done)
 and the matrix in [docs/unification-audit.md](docs/unification-audit.md).
 
-**Go-native / graduated surfaces** (e.g. dispatcher `version` / help / suggestions, `schedule config`, `theme list`/`install`/`update`/`remove`):
+**Go-native / graduated surfaces** (e.g. dispatcher meta, `schedule config`/`status`, full `theme`):
 
 - [ ] Contract + completions/man/MCP stay aligned (`make check-cli-contract`)
 - [ ] Covered by `make test-go` and the dual-OS job in [`.github/workflows/go.yml`](.github/workflows/go.yml)

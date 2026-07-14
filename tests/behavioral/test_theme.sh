@@ -130,45 +130,37 @@ assert_contains "$out" "owner/repo" "millennium-theme install explains the requi
 
 # --- install: already-existing theme directory ---
 
-mock_cmd "jq" 'read -r _; echo "abcdef0123456789abcdef0123456789abcdef01"'
-mock_cmd "curl" 'echo "{}"'
 out=$(run_theme install "someowner/GithubTheme" 2>&1)
 rc=$?
 assert_failure "$rc" "millennium-theme install refuses to overwrite an existing theme directory"
 assert_contains "$out" "already exists" "millennium-theme install explains that the theme directory already exists"
-rm -f "${MOCK_BIN}/curl" "${MOCK_BIN}/jq"
 
-# --- install: dry-run against a new theme (mocked GitHub API) ---
+# --- install: dry-run against a new theme (mocked GitHub API via Go seam) ---
 
-mock_cmd "jq" 'read -r _; echo "abcdef0123456789abcdef0123456789abcdef01"'
-mock_cmd "curl" 'echo "{}"'
+export MILLENNIUM_THEME_MOCK_COMMIT="abcdef0123456789abcdef0123456789abcdef01"
 out=$(run_theme install "someowner/NewTheme" --dry-run 2>&1)
 rc=$?
 assert_success "$rc" "millennium-theme install --dry-run succeeds for a new theme with mocked GitHub API"
 assert_contains "$out" "DRY RUN" "millennium-theme install --dry-run announces dry-run mode"
 assert_contains "$out" "someowner/NewTheme" "millennium-theme install --dry-run mentions the owner/repo being installed"
 assert_file_not_exists "${FAKE_HOME}/.local/share/Steam/steamui/skins/NewTheme" "millennium-theme install --dry-run does not actually create the theme directory"
-rm -f "${MOCK_BIN}/curl" "${MOCK_BIN}/jq"
 
 # --- install: GitHub API failure surfaces a clear error ---
 
-mock_cmd "curl" 'exit 1'
+export MILLENNIUM_THEME_MOCK_COMMIT=fail
 out=$(run_theme install "someowner/Unreachable" --dry-run 2>&1)
 rc=$?
 assert_failure "$rc" "millennium-theme install fails cleanly when the GitHub API is unreachable"
 assert_contains "$out" "Error" "millennium-theme install reports an error when it cannot resolve the latest commit"
-rm -f "${MOCK_BIN}/curl" "${MOCK_BIN}/jq"
+unset MILLENNIUM_THEME_MOCK_COMMIT
 
 # --- install: path traversal in the repo component is rejected ---
 
-mock_cmd "jq" 'read -r _; echo "abcdef0123456789abcdef0123456789abcdef01"'
-mock_cmd "curl" 'echo "{}"'
-out=$(run_theme install "someowner/../../../../tmp/evil-theme" --dry-run 2>&1)
+out=$(run_theme install "someowner/.." --dry-run 2>&1)
 rc=$?
 assert_failure "$rc" "millennium-theme install rejects a repo component containing path traversal"
 assert_contains "$out" "Invalid" "millennium-theme install explains the repo component is invalid"
 assert_file_not_exists "/tmp/evil-theme" "millennium-theme install does not create a directory outside SKINS_DIR"
-rm -f "${MOCK_BIN}/curl" "${MOCK_BIN}/jq"
 
 # --- remove: nonexistent theme ---
 
@@ -220,27 +212,21 @@ assert_contains "$out" "does not have GitHub metadata" "millennium-theme update 
 
 # --- update: already up-to-date theme (mocked GitHub API returns the same commit) ---
 
-mock_cmd "curl" 'cat << '"'"'JSONEOF'"'"'
-[{"sha": "1234567890abcdef1234567890abcdef12345678"}]
-JSONEOF'
+export MILLENNIUM_THEME_MOCK_COMMIT="1234567890abcdef1234567890abcdef12345678"
 out=$(run_theme update "GithubTheme" 2>&1)
 rc=$?
 assert_success "$rc" "millennium-theme update exits 0 when the theme is already up to date"
 assert_contains "$out" "already up to date" "millennium-theme update reports the theme is already current"
-rm -f "${MOCK_BIN}/curl"
 
 # --- update (no argument): updates all installed themes ---
 
-mock_cmd "curl" 'cat << '"'"'JSONEOF'"'"'
-[{"sha": "1234567890abcdef1234567890abcdef12345678"}]
-JSONEOF'
 out=$(run_theme update 2>&1)
 rc=$?
 assert_success "$rc" "millennium-theme update (no arg) exits 0 across a mix of theme types"
 assert_contains "$out" "Updating All Installed Themes" "millennium-theme update (no arg) announces the bulk operation"
 assert_contains "$out" "already up to date" "millennium-theme update (no arg) reports the up-to-date GithubTheme"
 assert_contains "$out" "does not have GitHub metadata" "millennium-theme update (no arg) reports the metadata-less NoMetaTheme"
-rm -f "${MOCK_BIN}/curl"
+unset MILLENNIUM_THEME_MOCK_COMMIT
 
 # --- Regression: `update --all` and `update -a` must be reachable ---
 # The argument parser used to only capture ARG when it didn't start with '-',
