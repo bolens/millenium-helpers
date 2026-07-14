@@ -284,7 +284,7 @@ assert_file_exists "$expected_state_file" "capture_steam_env creates state file 
 capture_contents2=$(cat "$expected_state_file")
 assert_contains "$capture_contents2" "WAS_FLATPAK='false'" "capture_steam_env still records WAS_FLATPAK correctly when Steam is running"
 assert_contains "$capture_contents2" "STEAM_ARGS=" "capture_steam_env records a STEAM_ARGS line when a Steam pid is found"
-assert_contains "$capture_contents2" "DISPLAY=':99'" "capture_steam_env reads DISPLAY from MOCK_PROC, not host /proc"
+assert_contains "$capture_contents2" "DISPLAY=:99" "capture_steam_env reads DISPLAY from MOCK_PROC, not host /proc"
 rm -f "$expected_state_file"
 rm -rf "$MOCK_PROC"
 export MOCK_PROC="/nonexistent_mock_proc"

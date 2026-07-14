@@ -147,16 +147,22 @@ assert_not_contains "$out" "Unknown option" "millennium-schedule accepts --quiet
 # --- pre-update: Steam not running ---
 
 mock_cmd "pgrep" 'exit 1'
-out=$(run_schedule pre-update 2>&1)
+out=$(MILLENNIUM_SCHEDULER=1 run_schedule pre-update 2>&1)
 rc=$?
 assert_success "$rc" "millennium-schedule pre-update exits 0 when Steam isn't running"
 assert_contains "$out" "not running" "millennium-schedule pre-update reports that Steam is not running"
 mock_cmd "pgrep" 'exit 1'
 
+# --- pre-update: requires scheduler gate ---
+out=$(run_schedule pre-update 2>&1)
+rc=$?
+assert_failure "$rc" "millennium-schedule pre-update refuses manual invocation"
+assert_contains "$out" "only for the scheduler" "millennium-schedule pre-update explains scheduler-only gate"
+
 # --- post-update: no saved relaunch state ---
 
 rm -f "$EXPECTED_STATE_FILE"
-out=$(run_schedule post-update 2>&1)
+out=$(MILLENNIUM_SCHEDULER=1 run_schedule post-update 2>&1)
 rc=$?
 assert_success "$rc" "millennium-schedule post-update exits 0 with no saved relaunch state (diag mocked to pass)"
 assert_contains "$out" "No saved relaunch state" "millennium-schedule post-update reports no relaunch state was found"
@@ -164,7 +170,7 @@ assert_contains "$out" "No saved relaunch state" "millennium-schedule post-updat
 # --- post-update: diagnostics failure aborts relaunch ---
 
 mock_cmd "millennium-diag" 'exit 1'
-out=$(run_schedule post-update 2>&1)
+out=$(MILLENNIUM_SCHEDULER=1 run_schedule post-update 2>&1)
 rc=$?
 assert_failure "$rc" "millennium-schedule post-update exits non-zero when diagnostics fail"
 assert_contains "$out" "failed verification" "millennium-schedule post-update explains the verification failure"
@@ -184,7 +190,7 @@ export WAS_FLATPAK='false'
 EOF
 mock_cmd "steam" 'echo "REAL_STEAM_INVOKED" >> "'"${MOCK_BIN}"'/steam.calls"; exit 0'
 rm -f "${MOCK_BIN}/steam.calls"
-out=$(run_schedule post-update 2>&1)
+out=$(MILLENNIUM_SCHEDULER=1 run_schedule post-update 2>&1)
 rc=$?
 assert_success "$rc" "millennium-schedule post-update exits 0 when relaunch state exists under TEST_SUITE_RUN"
 assert_contains "$out" "[TEST] Bypassing real Steam relaunch" "millennium-schedule post-update bypasses Steam relaunch under TEST_SUITE_RUN"
