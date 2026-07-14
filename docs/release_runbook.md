@@ -34,10 +34,13 @@ make setup
 # ShellCheck + ruff + VERSION/man/completions gates
 make lint
 
-# Full local unit + behavioral suite
+# Go strangler unit tests + dispatcher smokes (also in check-all)
+make test-go
+
+# Full local Bash unit + behavioral suite
 make test
 
-# Windows Pester (requires pwsh + Pester module)
+# Windows Pester (requires pwsh + Pester module; not part of check-all)
 make test-windows
 
 # Optional but recommended before a major/minor release:
@@ -45,7 +48,7 @@ make test-windows
 make test-all-distros
 ```
 
-`make check-all` is shorthand for `make lint` + `make test`. Prefer running `make test-windows` as well before tagging. If `pwsh` or Docker is missing, install them (or use the Dev Container) rather than skipping those gates for a release.
+`make check-all` is shorthand for `make lint` + `make test-go` + `make test`. Prefer running `make test-windows` as well before tagging. If `pwsh` or Docker is missing, install them (or use the Dev Container) rather than skipping those gates for a release.
 
 Extra packaging gates (also covered by some CI workflows):
 

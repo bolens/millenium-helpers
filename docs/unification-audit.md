@@ -85,8 +85,8 @@ Tests: Bash behavioral/unit under `tests/` · Pester under `tests/windows/`.
 
 | Capability | Linux | Windows | Go end-state | Bash tests | Pester | Gap |
 | --- | --- | --- | --- | --- | --- | --- |
-| Dispatcher `millennium <cmd>` + suggestions | Y | Y | Native (Phase 1) | `test_millennium_dispatcher`, `test_dispatcher` | `millennium`, `Dispatcher` | Port suggest + dispatch |
-| `version` / `-V` | Y | Y | Native (Phase 1) | various | various | Go embed/`VERSION` |
+| Dispatcher `millennium <cmd>` + suggestions | Y | Y | **Graduated** (Phase 6a) | Go `main_test` + `go.yml` dual-OS | Go `main_test` + `go.yml` | Bash/Pester dispatcher suites remain until peel-off |
+| `version` / `-V` / root help | Y | Y | **Graduated** (Phase 6a) | Go + `go.yml` dual-OS | Go + `go.yml` | No dual libs to delete for meta |
 | `diag` (health report) | Y | Y | **Native report** | `test_diag` + Go | `millennium-diag` + Go | — |
 | `diag doctor` / `--fix` | Y | Y | **Dry-run + live native** | `test_diag` + Go | `millennium-diag` | Completions/package cleanup still advisory |
 | `diag --json` / `--share` / `--follow` | Y | Y | **Native** (json/share/follow) | Go | Go | Redact + paste.rs; filter-tail |

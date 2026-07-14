@@ -115,4 +115,4 @@ lint:
 format:
 	ruff format scripts/millennium-mcp.py scripts/ci/check-cli-contract.py
 
-check-all: lint test
+check-all: lint test-go test

@@ -70,12 +70,27 @@ jobs:
             -o ../bin/millennium ./cmd/millennium
           ../bin/millennium version
 
-      - name: Smoke version + legacy help (Linux)
-        if: runner.os == 'Linux'
+      - name: Smoke dispatcher meta (dual-OS)
         shell: bash
         run: |
           set -euo pipefail
           bin/millennium version | grep -F 'millennium version'
+          bin/millennium -V | grep -F 'millennium version'
+          bin/millennium --help | grep -E 'Available Commands|schedule|mcp'
+          bin/millennium help | grep -E 'Available Commands|schedule|mcp'
+          set +e
+          suggest_out="$(bin/millennium upgrad 2>&1)"
+          suggest_rc=$?
+          set -e
+          test "$suggest_rc" -ne 0
+          echo "$suggest_out" | grep -F "Did you mean 'upgrade'"
+
+      - name: Smoke legacy help delegate (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          MILLENNIUM_SCRIPTS_DIR="$PWD/scripts" bin/millennium upgrade --help | grep -F 'Usage:'
           MILLENNIUM_SCRIPTS_DIR="$PWD/scripts" bin/millennium diag --help | grep -F 'Usage:'
 
   contract:

@@ -8,7 +8,7 @@ Thanks for contributing. This repo provides cross-platform CLI helpers for [Mill
 git clone https://github.com/bolens/millenium-helpers.git
 cd millenium-helpers
 make setup      # installs shellcheck + ruff via your package manager
-make check-all  # shellcheck + ruff + full test suite
+make check-all  # lint + Go tests + Bash test suite
 ```
 
 Alternatives:
@@ -28,6 +28,7 @@ Tools fall into three tiers. Install what matches the work you are doing.
 | `make` | Local targets | Usually via build-essential / Xcode CLT |
 | `git` | Clone, hooks, PKGBUILD pkgver | System package |
 | Python 3 | MCP server, packaging YAML checks, some tests | `python3` + PyYAML for `make check-winget` |
+| **Go 1.22+** | `make test-go` (included in `check-all`) / `make build` | [Install Go](https://go.dev/dl/); CI uses `CGO_ENABLED=0` |
 | [ShellCheck](https://www.shellcheck.net/) | `make lint` | `make setup`, or brew/pacman/apt/dnf |
 | [Ruff](https://docs.astral.sh/ruff/) | Lint/format `millennium-mcp.py` | `make setup`, or brew/pacman/apt/dnf |
 | `jq`, `curl`, `unzip` | Script runtime + tests | System packages |
@@ -40,7 +41,7 @@ Tools fall into three tiers. Install what matches the work you are doing.
 | --- | --- | --- |
 | **PowerShell 7+ (`pwsh`)** | `make test-windows`, Windows script work | [Install PowerShell](https://learn.microsoft.com/powershell/scripting/install/installing-powershell); Dev Container feature includes it |
 | **Pester** | Windows unit tests | `Install-Module Pester -Scope CurrentUser` (Dev Container post-create does this) |
-| **Go 1.22+** | `make build` / `make test-go` (strangler CLI under `go/`) | [Install Go](https://go.dev/dl/); CI uses `CGO_ENABLED=0` |
+| **Go 1.22+** | Also listed under Core; needed anytime you touch `go/` beyond `check-all` | Same install notes as Core |
 | **PyYAML** | `make check-cli-contract` / `make check-winget` | `pip install pyyaml` |
 | **zsh**, **fish**, **Nushell (≥ 0.114)** | Completion syntax/runtime smokes in `make check-completions` / CI completions workflow | Distro packages or [Nushell releases](https://www.nushell.sh/); missing shells are skipped with a warning, not a hard fail |
 | `gh` | Release runbook / inspecting Actions | [GitHub CLI](https://cli.github.com/) |
@@ -63,7 +64,7 @@ Tools fall into three tiers. Install what matches the work you are doing.
 | **Dev Container** (`.devcontainer/`) | Yes | Yes | Yes (DinD) | Yes (Go feature) | Yes |
 | **`nix develop`** | Yes (shellcheck/ruff + Go) | No | No | Yes | No |
 
-Before a release, follow [docs/release_runbook.md](docs/release_runbook.md): at minimum `make lint`, `make test`, and `make test-windows`; use `make test-all-distros` when Docker is available.
+Before a release, follow [docs/release_runbook.md](docs/release_runbook.md): at minimum `make check-all` (lint + test-go + test) and `make test-windows`; use `make test-all-distros` when Docker is available.
 
 ## Security
 
@@ -127,12 +128,18 @@ Full feature and test parity is the end-state of the Go unification — see
 [docs/unification-roadmap.md](docs/unification-roadmap.md) (graduation rule + definition of done)
 and the matrix in [docs/unification-audit.md](docs/unification-audit.md).
 
-When adding a feature **today** (still dual-shell):
+**Go-native / graduated surfaces** (e.g. dispatcher `version` / help / suggestions):
+
+- [ ] Contract + completions/man/MCP stay aligned (`make check-cli-contract`)
+- [ ] Covered by `make test-go` and the dual-OS job in [`.github/workflows/go.yml`](.github/workflows/go.yml)
+- [ ] Audit matrix row marked graduated when the graduation rule is satisfied
+
+**Still dual-shell / not yet graduated:**
 
 - [ ] Flag / subcommand exists on both OSes (**or** marked `os_only` in `spec/cli-contract.yaml`)
 - [ ] Dry-run behavior matches
 - [ ] Help text documents the same options
-- [ ] Tests cover the new path on both platforms when practical
+- [ ] Tests cover the new path on both platforms when practical (Bash + Pester)
 - [ ] Contract + completions/man/MCP stay aligned (`make check-cli-contract`)
 
 Do **not** delete a legacy `.sh` / `.ps1` implementation for a command until the
@@ -145,9 +152,9 @@ See [Development requirements](#development-requirements) for tools each target 
 ```bash
 make test              # local Bash unit + behavioral suite
 make lint              # shellcheck + ruff (+ version/man/docs/completions/cli-contract gates)
-make check-all         # lint + test
-make test-windows      # Pester under tests/windows/ (requires pwsh)
-make test-go           # Go unit tests + dispatcher smokes (requires Go)
+make check-all         # lint + test-go + test
+make test-windows      # Pester under tests/windows/ (requires pwsh; not part of check-all)
+make test-go           # Go unit tests + dispatcher smokes (requires Go; part of check-all)
 make build             # bin/millennium Go strangler CLI
 make test-all-distros  # local + Debian/Ubuntu/Fedora via Docker (requires Docker)
 ```

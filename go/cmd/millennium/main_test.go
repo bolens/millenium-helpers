@@ -10,12 +10,37 @@ import (
 
 func TestVersionSmoke(t *testing.T) {
 	exe := buildMillennium(t)
-	out, err := exec.Command(exe, "version").CombinedOutput()
-	if err != nil {
-		t.Fatalf("version: %v\n%s", err, out)
+	for _, args := range [][]string{
+		{"version"},
+		{"-V"},
+		{"--version"},
+	} {
+		out, err := exec.Command(exe, args...).CombinedOutput()
+		if err != nil {
+			t.Fatalf("%v: %v\n%s", args, err, out)
+		}
+		if !strings.Contains(string(out), "millennium version") {
+			t.Fatalf("%v unexpected output: %s", args, out)
+		}
 	}
-	if !strings.Contains(string(out), "millennium version") {
-		t.Fatalf("unexpected output: %s", out)
+}
+
+func TestRootHelpSmoke(t *testing.T) {
+	exe := buildMillennium(t)
+	for _, args := range [][]string{
+		{"--help"},
+		{"help"},
+	} {
+		out, err := exec.Command(exe, args...).CombinedOutput()
+		if err != nil {
+			t.Fatalf("%v: %v\n%s", args, err, out)
+		}
+		text := string(out)
+		for _, want := range []string{"Available Commands", "schedule", "mcp"} {
+			if !strings.Contains(text, want) {
+				t.Fatalf("%v missing %q in help:\n%s", args, want, text)
+			}
+		}
 	}
 }
 
@@ -26,9 +51,8 @@ func TestSuggestOnUnknown(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected non-zero exit, got: %s", out)
 	}
-	if !strings.Contains(string(out), "Did you mean 'upgrade'") && !strings.Contains(string(out), "upgrade") {
-		// Closest may print Did you mean
-		t.Logf("output: %s", out)
+	if !strings.Contains(string(out), "Did you mean 'upgrade'") {
+		t.Fatalf("expected Did you mean 'upgrade', got:\n%s", out)
 	}
 }
 
