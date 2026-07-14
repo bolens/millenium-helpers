@@ -159,6 +159,21 @@ resolve_helper_path() {
   fi
 }
 
+# Prefer installed system binaries for persisted scheduled jobs (units/cron).
+# Avoid embedding a writable git checkout path into systemd/cron/LaunchAgent.
+resolve_packaged_helper_path() {
+  local name="$1"
+  local candidate
+  for candidate in "/usr/local/bin/${name}" "/usr/bin/${name}"; do
+    if [[ -x "$candidate" ]]; then
+      echo "$candidate"
+      return
+    fi
+  done
+  # Fallback: whatever resolve_helper_path would use (dev / dry-run).
+  resolve_helper_path "$name"
+}
+
 download_file() {
   local url="$1"
   local dest="$2"
@@ -169,24 +184,33 @@ download_file() {
     return 0
   fi
 
-  local headers=()
+  local auth_cfg=""
+  local curl_cfg_args=()
   if [[ -n "${GITHUB_TOKEN:-}" && "$url" == *"github.com"* ]]; then
-    headers+=("-H" "Authorization: token $GITHUB_TOKEN")
+    if declare -F _github_curl_auth_config >/dev/null 2>&1; then
+      auth_cfg="$(_github_curl_auth_config)"
+      curl_cfg_args+=(--config "$auth_cfg")
+    fi
   fi
 
   local tmp_log
   tmp_log=$(mktemp 2>/dev/null || mktemp -t tmp.XXXXXX)
 
+  local cleanup_auth
+  cleanup_auth() {
+    rm -f "$tmp_log" ${auth_cfg:+"$auth_cfg"}
+  }
+
   if [[ ! -t 1 ]] || is_quiet; then
     printf "%s... " "$msg"
-    if curl -fsSL --retry 3 --retry-delay 2 ${headers[@]+"${headers[@]}"} "$url" -o "$dest" >"$tmp_log" 2>&1; then
+    if curl -fsSL --retry 3 --retry-delay 2 ${curl_cfg_args[@]+"${curl_cfg_args[@]}"} "$url" -o "$dest" >"$tmp_log" 2>&1; then
       echo -e "${GREEN}OK${NC}"
-      rm -f "$tmp_log"
+      cleanup_auth
       return 0
     else
       echo -e "${RED}FAIL${NC}"
       cat "$tmp_log" >&2
-      rm -f "$tmp_log"
+      cleanup_auth
       return 1
     fi
   fi
@@ -195,17 +219,19 @@ download_file() {
   # Progress goes to stderr; leave it on the TTY (do not redirect).
   printf "%s...\n" "$msg"
   local rc=0
-  if ! curl -fL --progress-bar --retry 3 --retry-delay 2 ${headers[@]+"${headers[@]}"} "$url" -o "$dest"; then
+  if ! curl -fL --progress-bar --retry 3 --retry-delay 2 ${curl_cfg_args[@]+"${curl_cfg_args[@]}"} "$url" -o "$dest"; then
     rc=$?
   fi
 
   if [[ $rc -eq 0 ]]; then
     echo -e "${GREEN}OK${NC}"
+    cleanup_auth
+    return 0
   else
     echo -e "${RED}FAIL${NC}"
+    cleanup_auth
+    return "$rc"
   fi
-  rm -f "$tmp_log"
-  return $rc
 }
 
 # Printed after upgrade failures so users know how to recover.

@@ -191,11 +191,12 @@ capture_steam_env() {
     local steam_env
     steam_env=$(tr '\0' '\n' < "${proc_dir}/${steam_pid}/environ" 2>/dev/null || true)
 
-    local val
+    local val escaped_val
     for var in DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS WAYLAND_DISPLAY XDG_RUNTIME_DIR XDG_SESSION_TYPE XDG_CURRENT_DESKTOP; do
       val=$(echo "$steam_env" | grep "^${var}=" | cut -d= -f2- | head -n 1 || true)
       if [[ -n "$val" ]]; then
-        echo "export ${var}='${val}'" >> "$tmp_file"
+        printf -v escaped_val '%q' "$val"
+        echo "export ${var}=${escaped_val}" >> "$tmp_file"
       fi
     done
 
