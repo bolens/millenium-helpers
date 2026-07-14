@@ -58,7 +58,7 @@ Tools fall into three tiers. Install what matches the work you are doing.
 
 ### What each environment provides
 
-| Environment | Core lint/test | `pwsh` + Pester | Docker distro matrix | Go strangler | Extra shells (zsh/fish/nu) |
+| Environment | Core lint/test | `pwsh` + Pester | Docker distro matrix | Go CLI | Extra shells (zsh/fish/nu) |
 | --- | --- | --- | --- | --- | --- |
 | Host + `make setup` | Yes (after deps) | Manual | Manual | Manual (`go`) | Manual |
 | **Dev Container** (`.devcontainer/`) | Yes | Yes | Yes (DinD) | Yes (Go feature) | Yes |
@@ -78,7 +78,7 @@ Guide index: **[docs/README.md](docs/README.md)**. When adding or renaming a gui
 | --- | --- |
 | [docs/release_runbook.md](docs/release_runbook.md) | Cutting a release |
 | [docs/unification-audit.md](docs/unification-audit.md) | Bash/PS → Go inventory + parity matrix |
-| [docs/unification-roadmap.md](docs/unification-roadmap.md) | Migration phases, graduation rule, definition of done |
+| [docs/unification-roadmap.md](docs/unification-roadmap.md) | Go unification notes + definition of done |
 | [docs/licensing.md](docs/licensing.md) | Attribution / Millennium client MIT |
 | [docs/mcp.md](docs/mcp.md) | MCP tool surface |
 | [docs/security_troubleshooting.md](docs/security_troubleshooting.md) | Sudoers / scheduler / doctor FAQs |
@@ -92,13 +92,13 @@ Guide index: **[docs/README.md](docs/README.md)**. When adding or renaming a gui
 | `install.sh` | Linux/macOS installer / uninstall |
 | `scripts/*.sh` | Linux/macOS user-facing command entrypoints |
 | `scripts/common.sh` | Shared Bash entry (locale + sources `scripts/lib/*`) |
-| `scripts/lib/` | Shared + remaining feature libraries (`logging`, `steam`, `upgrade_*`, …); schedule/theme/purge/diag/repair/dispatcher feature libs peeled |
-| `scripts/windows/*.ps1` | Windows PowerShell long-name command entrypoints |
-| `scripts/windows/common.ps1` | Shared PowerShell entry (culture/colors + sources `scripts/windows/lib/*`) |
-| `scripts/windows/lib/` | Shared libraries (`Logging`, `Steam`, …); feature dual libs peeled (schedule/theme/purge/diag/repair/upgrade/dispatcher) |
+| `scripts/lib/` | Install/shared Bash helpers (`logging`, `archive`, …); Steam lifecycle is Go |
+| `scripts/windows/*.ps1` | Windows PowerShell long-name command entrypoints (thin-wrap → Go) |
+| `scripts/windows/common.ps1` | Shared PowerShell entry for install/tests (culture/colors + lib modules) |
+| `scripts/windows/lib/` | Install/shared PS helpers (`Logging`, `Args`, …); Steam lifecycle is Go |
 | `go/` + PATH `millennium-mcp` | Native MCP stdio server (`millennium mcp`) |
 | `spec/cli-contract.yaml` | **Source of truth** for commands / flags / platforms (Go + shells) |
-| `go/` | Go strangler module (`cmd/millennium`); native version/help; other cmds exec legacy |
+| `go/` | Go CLI (`cmd/millennium`); feature implementations under `go/internal/` |
 | `man/` | Manual pages (`millennium-*.1`) for every user-facing command |
 | `docs/` | User/maintainer guides (index: [`docs/README.md`](docs/README.md)) |
 | `Formula/` | Homebrew formulas (`millennium-helpers.rb` from-source + `head`; `millennium-helpers-bin.rb`) |
@@ -112,38 +112,36 @@ Guide index: **[docs/README.md](docs/README.md)**. When adding or renaming a gui
 ## Adding or changing a command
 
 1. Update [`spec/cli-contract.yaml`](spec/cli-contract.yaml) first (flags, platforms, MCP properties).
-2. Implement the change in the Linux/macOS script under `scripts/` (and the Windows `.ps1` when applicable). Until a command **graduates** to Go, touch **both** legacy surfaces for shared features.
-3. If the Go dispatcher help/registration needs the new subcommand name, update `go/` accordingly (still optional while cmds only delegate).
+2. Implement in Go under `go/`. Long-name `.sh` / `.ps1` helpers thin-wrap to Go (no `common` sourcing).
+3. Update dispatcher help/registration in `go/cmd/millennium` when adding commands.
 4. Keep `--help` / `-h` accurate and exit `0` on help.
 5. On unknown options, print usage and exit non-zero.
 6. Update matching files under `completions/` so flags stay in sync.
 7. Keep `man/millennium-<name>.1` in sync (`.TH` date like `"July 9, 2026"`; `make check-man` / CI mandoc lint).
-8. Add or extend behavioral tests under `tests/behavioral/` (and Pester under `tests/windows/` for PowerShell).
+8. Add or extend Go tests / `go.yml` smokes; keep thin-wrap behavioral or Pester only for unique seams.
 9. Prefer `--dry-run` for destructive paths; require confirmation (or `-y`/`--yes`) for irreversible actions like purge.
 10. Run `make check-cli-contract` (also part of `make lint`).
 
 ## Linux / Windows parity
 
-Full feature and test parity is the end-state of the Go unification — see
-[docs/unification-roadmap.md](docs/unification-roadmap.md) (graduation rule + definition of done)
+Prefer one Go implementation. See [docs/unification-roadmap.md](docs/unification-roadmap.md)
 and the matrix in [docs/unification-audit.md](docs/unification-audit.md).
 
-**Go-native / graduated surfaces** (e.g. dispatcher meta, `schedule config`/`status`/`enable|disable --dry-run`, full `theme`):
+**Go surfaces:**
 
 - [ ] Contract + completions/man/MCP stay aligned (`make check-cli-contract`)
 - [ ] Covered by `make test-go` and the dual-OS job in [`.github/workflows/go.yml`](.github/workflows/go.yml)
-- [ ] Audit matrix row marked graduated when the graduation rule is satisfied
 
-**Still dual-shell / not yet graduated:**
+**Cross-OS / thin-wrap residuals:**
 
 - [ ] Flag / subcommand exists on both OSes (**or** marked `os_only` in `spec/cli-contract.yaml`)
 - [ ] Dry-run behavior matches
 - [ ] Help text documents the same options
-- [ ] Tests cover the new path on both platforms when practical (Bash + Pester)
+- [ ] Tests cover unique seams (Bash and/or Pester) when Go dual-OS smoke does not
 - [ ] Contract + completions/man/MCP stay aligned (`make check-cli-contract`)
 
-Do **not** delete a legacy `.sh` / `.ps1` implementation for a command until the
-roadmap graduation rule is satisfied (Go + dual-OS CI tests).
+Do **not** delete a long-name entrypoint until consumers that still name it
+(timers, sudoers, docs) are migrated.
 
 ## Testing
 
@@ -155,7 +153,7 @@ make lint              # shellcheck + ruff (+ version/man/docs/completions/cli-c
 make check-all         # lint + test-go + test
 make test-windows      # Pester under tests/windows/ (requires pwsh; not part of check-all)
 make test-go           # Go unit tests + dispatcher smokes (requires Go; part of check-all)
-make build             # bin/millennium Go strangler CLI
+make build             # bin/millennium Go CLI
 make test-all-distros  # local + Debian/Ubuntu/Fedora via Docker (requires Docker)
 ```
 

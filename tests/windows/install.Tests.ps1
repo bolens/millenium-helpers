@@ -5,7 +5,7 @@ Describe "Windows Installer" {
         $global:DryRun = $true
         $env:PSTESTS = "true"
 
-        # Endgame A: installer requires millennium.exe (stub or build for the suite).
+        # Installer requires millennium.exe (stub or build for the suite).
         $binDir = Join-Path -Path $repoRoot -ChildPath "bin"
         if (!(Test-Path -LiteralPath $binDir)) {
             New-Item -ItemType Directory -Force -Path $binDir | Out-Null
@@ -80,7 +80,7 @@ Describe "Windows Installer" {
             Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium-mcp.py") | Should -Be $false
             Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium-helpers.completion.ps1") | Should -Be $true
 
-            # Shared Windows libs remain for Steam/logging/etc. (upgrade feature libs peeled).
+            # Shared Windows libs remain for install/test helpers (Logging, Args, …).
             $expectedLibDir = Join-Path -Path $expectedBinDir -ChildPath "lib"
             Test-Path -Path $expectedLibDir | Should -Be $true
             Test-Path -Path (Join-Path -Path $expectedLibDir -ChildPath "UpgradeRollback.ps1") | Should -Be $false

@@ -1,4 +1,4 @@
-# Millennium MCP server wrapper — Go-only (Parallel hatch retirement).
+# Millennium MCP server wrapper — Go-only thin wrap to millennium.exe mcp.
 param(
     [Alias("r")]
     [switch]$Register = $false,

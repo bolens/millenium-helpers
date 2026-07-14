@@ -203,7 +203,7 @@ func VerifyFileSHA256(path, expectedHex string) error {
 }
 
 // NeedsLegacy reports whether this invocation must run the shell/PS upgrade path.
-// Always false after Parallel peel — install/rollback are fully native (+ sudo handoff).
+// Always false — install/rollback are native (+ Linux sudo handoff).
 func NeedsLegacy(o Options) bool {
 	return false
 }

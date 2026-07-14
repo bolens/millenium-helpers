@@ -1,4 +1,4 @@
-# Millennium upgrade — thin-wrap to Go (Parallel peel).
+# Millennium upgrade — thin-wrap to Go.
 param(
     [ValidateSet("stable", "beta", "main")]
     [string]$Channel = "stable",
@@ -20,13 +20,6 @@ param(
 set-strictmode -version Latest
 
 $ScriptDir = $PSScriptRoot
-$CommonPs1 = Join-Path -Path $ScriptDir -ChildPath "common.ps1"
-if (Test-Path -Path $CommonPs1) {
-    . $CommonPs1
-} else {
-    Write-Error "Shared helper library not found at $CommonPs1"
-    exit 1
-}
 
 if ($Help) {
     Write-Host @"
@@ -37,11 +30,6 @@ Install official Millennium releases (via Go).
 
 GNU-style flags (--channel, --force, --file, --rollback, --dry-run, --yes) are also accepted.
 "@
-    exit 0
-}
-
-if ($Version) {
-    Write-HelpersVersion -Name "millennium-upgrade"
     exit 0
 }
 
@@ -64,6 +52,20 @@ function Resolve-MillenniumGo {
 }
 
 $goBin = Resolve-MillenniumGo
+if ($Version) {
+    if ($goBin) {
+        & $goBin -V
+        exit $LASTEXITCODE
+    }
+    $verFile = Join-Path $ScriptDir '..\..\VERSION'
+    if (Test-Path -LiteralPath $verFile) {
+        Write-Host ("millennium-upgrade " + ((Get-Content -LiteralPath $verFile -Raw).Trim()))
+        exit 0
+    }
+    Write-Error "millennium not found (and no VERSION file)."
+    exit 1
+}
+
 if (-not $goBin) {
     Write-Error "upgrade requires the Go millennium dispatcher (not found). Install millennium-helpers or run 'make build'."
     exit 1

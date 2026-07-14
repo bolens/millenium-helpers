@@ -5,16 +5,15 @@ package upgrade
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 
+	"github.com/bolens/millenium-helpers/internal/steam"
 	"github.com/bolens/millenium-helpers/internal/theme"
 )
 
 func rollbackPlatform(backupName string, o Options) error {
-	steam := theme.FindSteamDir()
-	if steam == "" {
+	steamDir := theme.FindSteamDir()
+	if steamDir == "" {
 		return fmt.Errorf("Error: Steam directory not found.")
 	}
 	bakRoot := EffectiveBackupDir()
@@ -23,23 +22,19 @@ func rollbackPlatform(backupName string, o Options) error {
 		return fmt.Errorf("Error: Backup '%s' not found.", backupName)
 	}
 
-	if isWindowsGameRunning() {
-		return fmt.Errorf("Error: A Steam game is currently running. Rollback aborted.\nClose the running game, then re-run. Use -Yes to skip the Steam close prompt.")
-	}
-	steamRunning := isWindowsSteamRunning()
-	if steamRunning && !o.Yes {
-		return fmt.Errorf("Error: Steam is running. Close Steam, or re-run with -Yes / --yes to stop Steam and continue.")
-	}
+	steamRunning := steam.IsSteamRunning()
 	if steamRunning {
-		_ = exec.Command("taskkill", "/F", "/IM", "steam.exe").Run()
+		if err := steam.ConfirmClose(o.Yes); err != nil {
+			return err
+		}
 	}
 
 	millSrc, wsockSrc, err := resolveWindowsBackupContents(targetBackup)
 	if err != nil {
 		return err
 	}
-	millDest := filepath.Join(steam, "millennium")
-	wsockDest := filepath.Join(steam, "wsock32.dll")
+	millDest := filepath.Join(steamDir, "millennium")
+	wsockDest := filepath.Join(steamDir, "wsock32.dll")
 
 	if !o.Quiet {
 		fmt.Printf("Rolling back Millennium installation to %s...\n", backupName)
@@ -59,8 +54,7 @@ func rollbackPlatform(backupName string, o Options) error {
 		fmt.Println("Rollback completed successfully.")
 	}
 	if steamRunning {
-		steamExe := filepath.Join(steam, "steam.exe")
-		_ = exec.Command(steamExe).Start()
+		steam.RelaunchBestEffort()
 		if !o.Quiet {
 			fmt.Println("Steam relaunched.")
 		}
@@ -85,29 +79,4 @@ func resolveWindowsBackupContents(bak string) (millSrc, wsockSrc string, err err
 		return bak, "", nil
 	}
 	return "", "", fmt.Errorf("Error: Backup '%s' does not contain a Millennium install.", filepath.Base(bak))
-}
-
-func isWindowsSteamRunning() bool {
-	out, err := exec.Command("tasklist", "/FI", "IMAGENAME eq steam.exe").CombinedOutput()
-	if err != nil {
-		return false
-	}
-	return strings.Contains(strings.ToLower(string(out)), "steam.exe")
-}
-
-func isWindowsGameRunning() bool {
-	// Heuristic used by Steam.ps1: steamwebhelper alone is client; games typically show as separate *.exe under Steam.
-	// Port the PS Is-GameRunning check when available via PowerShell one-liner fallback.
-	ps := `
-$ErrorActionPreference='SilentlyContinue'
-$steam = Get-Process steam -ErrorAction SilentlyContinue
-if (-not $steam) { exit 1 }
-$games = Get-CimInstance Win32_Process | Where-Object {
-  $_.Name -ne 'steam.exe' -and $_.Name -ne 'steamwebhelper.exe' -and $_.Name -ne 'steamservice.exe' -and
-  $_.ExecutablePath -and $_.ExecutablePath -like '*steamapps*'
-}
-if ($games) { exit 0 } else { exit 1 }
-`
-	cmd := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", ps)
-	return cmd.Run() == nil
 }

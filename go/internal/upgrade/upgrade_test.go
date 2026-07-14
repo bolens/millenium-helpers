@@ -75,7 +75,7 @@ func TestNeedsLegacyAlwaysFalse(t *testing.T) {
 	}
 	for _, o := range cases {
 		if NeedsLegacy(o) {
-			t.Fatalf("NeedsLegacy(%+v) = true after Parallel peel", o)
+			t.Fatalf("NeedsLegacy(%+v) = true; expected false", o)
 		}
 	}
 }
@@ -252,7 +252,7 @@ func TestNeedsLegacyRollback(t *testing.T) {
 	t.Setenv("MOCK_LIB_DIR", lib)
 	t.Setenv("MILLENNIUM_LIB_DIR", lib)
 	if NeedsLegacy(Options{Rollback: true, RollbackTarget: "1"}) {
-		t.Fatal("NeedsLegacy must stay false after Parallel peel")
+		t.Fatal("NeedsLegacy must stay false")
 	}
 }
 

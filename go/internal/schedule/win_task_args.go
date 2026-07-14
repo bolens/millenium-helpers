@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// psSingle quotes a PowerShell single-quoted string (escape ' as '').
+// psSingle quotes a PowerShell single-quoted string (escape ' as ”).
 func psSingle(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
 }

@@ -1,28 +1,8 @@
 #!/usr/bin/env bash
-# Diagnostics for Millennium helpers — thin-wrap to Go (Phase 6z).
+# Diagnostics for Millennium helpers — thin-wrap to Go.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-COMMON_SH=""
-for _common_candidate in \
-  "${SCRIPT_DIR}/common.sh" \
-  "$(cd "${SCRIPT_DIR}/.." && pwd)/lib/millennium-helpers/common.sh" \
-  "/usr/local/lib/millennium-helpers/common.sh" \
-  "/usr/lib/millennium-helpers/common.sh"
-do
-  if [[ -f "$_common_candidate" ]]; then
-    COMMON_SH="$_common_candidate"
-    break
-  fi
-done
-unset _common_candidate
-if [[ -f "$COMMON_SH" ]]; then
-  # shellcheck disable=SC1090
-  source "$COMMON_SH"
-else
-  echo -e "${RED:-}Error: Shared helper library not found." >&2
-  exit 1
-fi
 
 show_help() {
   cat << EOF
@@ -47,18 +27,6 @@ Options:
 EOF
 }
 
-# Local help/version for offline suites; everything else goes to Go.
-case "${1:-}" in
-  -h|--help)
-    show_help
-    exit 0
-    ;;
-  -V|--version)
-    print_helpers_version
-    exit 0
-    ;;
-esac
-
 resolve_millennium_go() {
   local cand
   for cand in \
@@ -74,8 +42,26 @@ resolve_millennium_go() {
   return 1
 }
 
+case "${1:-}" in
+  -h|--help)
+    show_help
+    exit 0
+    ;;
+  -V|--version)
+    if go_bin="$(resolve_millennium_go)"; then
+      exec "$go_bin" -V
+    fi
+    if [[ -f "${SCRIPT_DIR}/../VERSION" ]]; then
+      echo "millennium-diag $(tr -d '[:space:]' < "${SCRIPT_DIR}/../VERSION")"
+      exit 0
+    fi
+    echo "Error: millennium not found (and no VERSION file)." >&2
+    exit 1
+    ;;
+esac
+
 if ! go_bin="$(resolve_millennium_go)"; then
-  echo -e "${RED}Error: diag requires the Go millennium dispatcher (not found).${NC}" >&2
+  echo "Error: diag requires the Go millennium dispatcher (not found)." >&2
   echo "Install millennium-helpers or run 'make build' from a checkout." >&2
   exit 1
 fi

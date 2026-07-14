@@ -101,7 +101,7 @@ func ParseArgs(args []string) (Options, error) {
 	return o, nil
 }
 
-// NeedsLegacy is reserved for remaining legacy-only surfaces (none for diag today).
+// NeedsLegacy is reserved for remaining shell/PS-only diag surfaces (none today).
 func NeedsLegacy(args []string) bool {
 	_, err := ParseArgs(args)
 	return err != nil

@@ -1,4 +1,4 @@
-# Diagnostics for Millennium helpers — thin-wrap to Go (Phase 6z).
+# Diagnostics for Millennium helpers — thin-wrap to Go.
 param(
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$RemainingArgs = @(),
@@ -10,13 +10,25 @@ param(
 set-strictmode -version Latest
 
 $ScriptDir = $PSScriptRoot
-$CommonPs1 = Join-Path -Path $ScriptDir -ChildPath "common.ps1"
-if (Test-Path -Path $CommonPs1) {
-    . $CommonPs1
-} else {
-    Write-Error "Shared helper library not found at $CommonPs1"
-    exit 1
+
+function Resolve-MillenniumGo {
+    $candidates = @(
+        (Join-Path -Path $ScriptDir -ChildPath 'millennium.exe'),
+        (Join-Path -Path $ScriptDir -ChildPath '..\..\bin\millennium.exe'),
+        (Join-Path -Path $ScriptDir -ChildPath '..\millennium.exe')
+    )
+    foreach ($cand in $candidates) {
+        if (Test-Path -LiteralPath $cand -PathType Leaf) {
+            return (Resolve-Path -LiteralPath $cand).Path
+        }
+    }
+    foreach ($name in @('millennium.exe', 'millennium')) {
+        $cmd = Get-Command -Name $name -ErrorAction SilentlyContinue
+        if ($cmd) { return $cmd.Source }
+    }
+    return $null
 }
+
 
 if ($Help) {
     Write-Host @"
@@ -41,26 +53,16 @@ Options:
 }
 
 if ($Version) {
-    Write-HelpersVersion -Name "millennium-diag"
-    exit 0
-}
+    $goBin = Resolve-MillenniumGo
+    if ($goBin) { & $goBin -V; exit $LASTEXITCODE }
+    $verFile = Join-Path $ScriptDir '..\..\VERSION'
+    if (Test-Path -LiteralPath $verFile) {
+        Write-Host ("{0} {1}" -f ($MyInvocation.MyCommand.Name -replace '\.ps1$',''), ((Get-Content -LiteralPath $verFile -Raw).Trim()))
+        exit 0
+    }
+    Write-Error "millennium not found (and no VERSION file)."
+    exit 1
 
-function Resolve-MillenniumGo {
-    $candidates = @(
-        (Join-Path -Path $ScriptDir -ChildPath 'millennium.exe'),
-        (Join-Path -Path $ScriptDir -ChildPath '..\..\bin\millennium.exe'),
-        (Join-Path -Path $ScriptDir -ChildPath '..\millennium.exe')
-    )
-    foreach ($cand in $candidates) {
-        if (Test-Path -LiteralPath $cand -PathType Leaf) {
-            return (Resolve-Path -LiteralPath $cand).Path
-        }
-    }
-    foreach ($name in @('millennium.exe', 'millennium')) {
-        $cmd = Get-Command -Name $name -ErrorAction SilentlyContinue
-        if ($cmd) { return $cmd.Source }
-    }
-    return $null
 }
 
 $goBin = Resolve-MillenniumGo

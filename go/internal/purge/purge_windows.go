@@ -11,6 +11,7 @@ import (
 
 	"github.com/bolens/millenium-helpers/internal/config"
 	"github.com/bolens/millenium-helpers/internal/schedule"
+	"github.com/bolens/millenium-helpers/internal/steam"
 	"github.com/bolens/millenium-helpers/internal/theme"
 )
 
@@ -70,48 +71,17 @@ if ($null -ne $t) { Unregister-ScheduledTask -TaskName %s -Confirm:$false }
 }
 
 func ensureSteamClosedForPurge(yes bool) (relaunch bool, err error) {
-	if !isSteamRunning() {
+	if !steam.IsSteamRunning() {
 		return false, nil
 	}
-	if isGameRunning() {
-		return false, fmt.Errorf("Error: A Steam game is currently running. Purge aborted.\nClose the running game, then re-run.")
+	if err := steam.ConfirmClose(yes); err != nil {
+		return false, err
 	}
-	if !yes {
-		return false, fmt.Errorf("Error: Steam is running. Close Steam, or re-run with -Yes / --yes to stop Steam and continue.")
-	}
-	_ = exec.Command("taskkill", "/F", "/IM", "steam.exe").Run()
 	return true, nil
 }
 
 func relaunchSteamBestEffort() {
-	steam := theme.FindSteamDir()
-	if steam == "" {
-		return
-	}
-	exe := filepath.Join(steam, "steam.exe")
-	_ = exec.Command(exe).Start()
-}
-
-func isSteamRunning() bool {
-	out, err := exec.Command("tasklist", "/FI", "IMAGENAME eq steam.exe").CombinedOutput()
-	if err != nil {
-		return false
-	}
-	return strings.Contains(strings.ToLower(string(out)), "steam.exe")
-}
-
-func isGameRunning() bool {
-	ps := `
-$ErrorActionPreference='SilentlyContinue'
-$steam = Get-Process steam -ErrorAction SilentlyContinue
-if (-not $steam) { exit 1 }
-$games = Get-CimInstance Win32_Process | Where-Object {
-  $_.Name -ne 'steam.exe' -and $_.Name -ne 'steamwebhelper.exe' -and $_.Name -ne 'steamservice.exe' -and
-  $_.ExecutablePath -and $_.ExecutablePath -like '*steamapps*'
-}
-if ($games) { exit 0 } else { exit 1 }
-`
-	return exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", ps).Run() == nil
+	steam.RelaunchBestEffort()
 }
 
 func windowsTaskPresent() bool {

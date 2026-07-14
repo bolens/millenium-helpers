@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/bolens/millenium-helpers/internal/config"
+	"github.com/bolens/millenium-helpers/internal/suggest"
 )
 
 // Options holds parsed schedule argv (excluding schedule config — handled separately).
@@ -79,7 +80,14 @@ func ParseArgs(args []string) (Options, error) {
 				o.Channel = a
 				continue
 			}
-			return o, fmt.Errorf("Error: unknown schedule argument %s", a)
+			if o.Action == "enable" && o.Channel == "" {
+				return o, fmt.Errorf("Error: Unknown channel '%s'. Use stable, beta, or main.", a)
+			}
+			cmds := []string{"enable", "disable", "status", "setup", "pre-update", "post-update", "config"}
+			if s := suggest.Closest(a, cmds); s != "" {
+				return o, fmt.Errorf("Error: Unknown command '%s'.\nDid you mean '%s'?", a, s)
+			}
+			return o, fmt.Errorf("Error: Unknown command '%s'.", a)
 		}
 	}
 	return o, nil
@@ -109,13 +117,13 @@ func ResolveChannel(explicit string) string {
 	return "stable"
 }
 
-// NeedsLegacy reports actions that still require shell/PS (none — all peeled).
+// NeedsLegacy reports actions that still require shell/PS (none — all native).
 func NeedsLegacy(o Options) bool {
 	_ = o
 	return false
 }
 
-// RunCLI runs native schedule actions. Caller must skip when NeedsLegacy.
+// RunCLI runs native schedule actions.
 func RunCLI(o Options) int {
 	if o.Help || o.Action == "" {
 		fmt.Print(helpText())

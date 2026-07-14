@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Behavioral tests for scripts/millennium-diag.sh (thin-wrap → Go).
-# Dual-OS graduation smokes live in .github/workflows/go.yml.
+# Dual-OS smokes live in .github/workflows/go.yml.
 set -uo pipefail
 
 TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

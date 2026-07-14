@@ -49,9 +49,6 @@ func ensureSteamClosedForRepair(yes bool) (relaunch bool, err error) {
 	if os.Getenv("MOCK_LIB_DIR") != "" {
 		return false, nil
 	}
-	if steam.IsGameRunning() {
-		return false, fmt.Errorf("Error: A Steam game is currently running. Repair aborted.\nClose the running game, then re-run.")
-	}
 	if !steam.IsSteamRunning() {
 		return false, nil
 	}
@@ -59,10 +56,7 @@ func ensureSteamClosedForRepair(yes bool) (relaunch bool, err error) {
 	if err := steam.CaptureEnv(username, home); err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: could not capture Steam environment: %v\n", err)
 	}
-	if !yes {
-		return false, fmt.Errorf("Error: Steam is running. Close Steam, or re-run with --yes (-y) to stop Steam and continue.")
-	}
-	if err := steam.CloseGracefully(username, home); err != nil {
+	if err := steam.ConfirmClose(yes); err != nil {
 		return false, err
 	}
 	return true, nil

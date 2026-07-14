@@ -18,7 +18,6 @@ Describe "Repair Script" {
                 Pop-Location
             }
         }
-        . (Join-Path -Path $winScriptDir -ChildPath "common.ps1")
     }
 
     Context "Help and Version" {

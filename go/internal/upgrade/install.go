@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/bolens/millenium-helpers/internal/config"
+	"github.com/bolens/millenium-helpers/internal/logging"
 	"github.com/bolens/millenium-helpers/internal/theme"
 )
 
@@ -141,6 +142,7 @@ func TryNativeInstall(o Options, archivePath, version string) (handled bool, cod
 	if err := installPlatform(archivePath, version, o); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: native install failed: %v\n", err)
 		fmt.Fprintln(os.Stderr, "Hint: ensure the install root is writable, or re-run with sudo on Linux.")
+		logging.PrintUpgradeFailureTips(err.Error())
 		return true, 1
 	}
 	if !o.Quiet {

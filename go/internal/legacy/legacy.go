@@ -202,8 +202,8 @@ func resolveWindows(target, shortName, scriptDir string, args []string) (*exec.C
 }
 
 // RunLegacy executes a long-name helper and returns its exit code.
-// Sets MILLENNIUM_LEGACY=1 for any remaining shell/PS bodies (feature peels
-// ignore that env and re-enter Go).
+// Sets MILLENNIUM_LEGACY=1 for any remaining shell/PS bodies (Go entrypoints
+// ignore that env and stay native).
 func RunLegacy(shortName string, args []string) int {
 	cmd, err := ResolveCommand(shortName, args)
 	if err != nil {

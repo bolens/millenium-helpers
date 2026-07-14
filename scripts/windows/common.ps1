@@ -41,7 +41,7 @@ if (!$env:LOCALAPPDATA) {
     $env:LOCALAPPDATA = Join-Path -Path $env:HOME -ChildPath ".config"
 }
 
-# Source shared modules (order: logging before license; argv/steam after logging)
+# Source shared modules (order: logging before license; argv after logging)
 # Capture install root at load time: $PSScriptRoot at call-time may be the caller
 # (e.g. Pester), not scripts/windows.
 $script:MillenniumHelpersWinDir = $PSScriptRoot
@@ -50,7 +50,6 @@ foreach ($_mod in @(
         'Logging.ps1',
         'Args.ps1',
         'Version.ps1',
-        'Steam.ps1',
         'Config.ps1',
         'License.ps1',
         'InstallTrack.ps1'

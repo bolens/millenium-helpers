@@ -50,11 +50,6 @@ if [[ -f "${_COMMON_LIB_DIR}/github.sh" ]]; then
   source "${_COMMON_LIB_DIR}/github.sh"
 fi
 
-if [[ -f "${_COMMON_LIB_DIR}/steam.sh" ]]; then
-  # shellcheck source=lib/steam.sh
-  source "${_COMMON_LIB_DIR}/steam.sh"
-fi
-
 if [[ -f "${_COMMON_LIB_DIR}/backup.sh" ]]; then
   # shellcheck source=lib/backup.sh
   source "${_COMMON_LIB_DIR}/backup.sh"

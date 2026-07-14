@@ -6,7 +6,7 @@ Describe "Theme CLI Manager" {
             New-PSDrive -Name HKCU -PSProvider FileSystem -Root ([System.IO.Path]::GetTempPath()) -ErrorAction SilentlyContinue | Out-Null
             New-PSDrive -Name C -PSProvider FileSystem -Root ([System.IO.Path]::GetTempPath()) -ErrorAction SilentlyContinue | Out-Null
         }
-        # Phase 6e: list thin-wraps to Go millennium.exe.
+        # Theme list thin-wraps to Go millennium.exe.
         $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
         $binDir = Join-Path $repoRoot "bin"
         New-Item -ItemType Directory -Force -Path $binDir | Out-Null
@@ -36,7 +36,6 @@ Describe "Theme CLI Manager" {
             }
             return "3.0.0"
         }
-        . (Join-Path -Path $winScriptDir -ChildPath "common.ps1")
     }
 
     Context "Help and Version" {

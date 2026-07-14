@@ -43,16 +43,14 @@ func isMcpArgv0(arg0 string) bool {
 func run(args []string) int {
 	root := &cobra.Command{
 		Use:   "millennium",
-		Short: "Millennium helpers dispatcher (Go strangler)",
-		Long: `Millennium helpers — unified dispatcher.
+		Short: "Millennium helpers dispatcher",
+		Long: `Millennium helpers — unified Go dispatcher.
 
-Native: version/help, schedule (config/status/enable/disable/setup/pre/post),
-theme mutate, diag report/--json/--share/logs(--follow)/doctor, upgrade
-download+SHA+install (+ sudo handoff on Linux) and --rollback when writable,
-purge (Unix+Windows), repair user-path, mcp JSON-RPC server
-(see docs/unification-roadmap.md).
+Implements schedule, theme, diag (report/json/share/logs/doctor), upgrade
+(download/SHA/install/rollback + Linux sudo handoff), purge, repair, and
+mcp JSON-RPC (see docs/unification-roadmap.md).
 
-MILLENNIUM_LEGACY=1 is obsolete for peeled commands (they stay native).`,
+MILLENNIUM_LEGACY=1 is obsolete for Go-owned commands (they stay native).`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Args:          cobra.ArbitraryArgs,
@@ -123,7 +121,7 @@ func newScheduleCmd() *cobra.Command {
 		Short:              "Scheduler (config/status/enable/disable/setup/pre/post native)",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
-			// Graduated peel: always native — ignore MILLENNIUM_LEGACY.
+			// Always native — ignore MILLENNIUM_LEGACY.
 			if rest, ok := takeConfigArgs(a); ok {
 				os.Exit(config.RunCLI(rest))
 				return nil
@@ -187,7 +185,7 @@ func newThemeCmd() *cobra.Command {
 		Short:              "Themes (list/install/update/remove native Go)",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
-			// Graduated (Phase 6g): theme always stays native — ignore MILLENNIUM_LEGACY.
+			// Always native — ignore MILLENNIUM_LEGACY.
 			opts, err := theme.ParseArgs(a)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err.Error())
@@ -211,7 +209,7 @@ func newDiagCmd() *cobra.Command {
 		Short:              "Diagnostics (report/json/share/logs/doctor native, including --follow)",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
-			// Graduated peel (Phase 6z): always native — ignore MILLENNIUM_LEGACY.
+			// Always native — ignore MILLENNIUM_LEGACY.
 			opts, err := diag.ParseArgs(a)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err.Error())
@@ -235,7 +233,7 @@ func newUpgradeCmd() *cobra.Command {
 		Short:              "Upgrade Millennium (download+SHA+install+rollback; Linux sudo handoff)",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
-			// Graduated peel (Parallel): always native — ignore MILLENNIUM_LEGACY.
+			// Always native — ignore MILLENNIUM_LEGACY.
 			opts, err := upgrade.ParseArgs(a)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err.Error())
@@ -318,7 +316,7 @@ func newPurgeCmd() *cobra.Command {
 		Short:              "Purge Millennium (native dry-run + live Unix/Windows)",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
-			// Graduated peel (Phase 6r): always native — ignore MILLENNIUM_LEGACY.
+			// Always native — ignore MILLENNIUM_LEGACY.
 			dry, yes, quiet, help, err := purge.ParseFlags(a)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err.Error())
@@ -342,7 +340,7 @@ func newRepairCmd() *cobra.Command {
 		Short:              "Repair Millennium (hooks/force-upgrade, ownership, htmlcache, themes)",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
-			// Graduated peel (Phase 6ad): always native — ignore MILLENNIUM_LEGACY.
+			// Always native — ignore MILLENNIUM_LEGACY.
 			dry, yes, quiet, skip, help, err := repair.ParseFlags(a)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err.Error())
@@ -366,7 +364,7 @@ func newMcpCmd() *cobra.Command {
 		Short:              "MCP JSON-RPC server (stdio + --register)",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
-			// Graduated peel (Parallel): always native Go — ignore MILLENNIUM_LEGACY / Python hatch.
+			// Always native Go MCP — ignore MILLENNIUM_LEGACY.
 			opts, err := mcp.ParseArgs(a)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err.Error())

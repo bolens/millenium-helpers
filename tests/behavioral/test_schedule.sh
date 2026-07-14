@@ -14,7 +14,7 @@ source "${TEST_DIR}/../lib/mocks.sh"
 SCHEDULE_SH="${REPO_ROOT}/scripts/millennium-schedule.sh"
 GO_BIN="${REPO_ROOT}/bin/millennium"
 
-# Phase 6c: long-name config thin-wraps to Go — ensure a dispatcher exists.
+# Long-name config thin-wraps to Go — ensure a dispatcher exists.
 if [[ ! -x "$GO_BIN" ]]; then
   make -C "$REPO_ROOT" build
 fi

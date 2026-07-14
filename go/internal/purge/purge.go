@@ -72,7 +72,7 @@ func discoverSteamDirs() []string {
 	for _, c := range theme.SteamCandidates() {
 		add(c)
 	}
-	// Extra homes (uid>=1000) skipped in Phase 3 native plan — current user + candidates enough for dry-run.
+	// Extra homes (uid>=1000) not scanned — current user + candidates cover dry-run.
 	_ = home
 	return out
 }

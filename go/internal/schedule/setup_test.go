@@ -15,7 +15,7 @@ func TestNeedsLegacySetupNative(t *testing.T) {
 		t.Fatal("setup should be native")
 	}
 	if NeedsLegacy(Options{Action: "config"}) {
-		t.Fatal("config should be native (peeled via takeConfigArgs)")
+		t.Fatal("config should be native")
 	}
 }
 

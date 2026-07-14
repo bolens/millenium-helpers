@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/bolens/millenium-helpers/internal/steam"
 )
 
 // Info describes one installed theme.
@@ -21,43 +23,12 @@ type Info struct {
 
 // SteamCandidates returns likely Steam roots for this OS.
 func SteamCandidates() []string {
-	home, _ := os.UserHomeDir()
-	if runtime.GOOS == "windows" {
-		var out []string
-		for _, env := range []string{"STEAM", "STEAM_PATH"} {
-			if v := os.Getenv(env); v != "" {
-				out = append(out, v)
-			}
-		}
-		if pf := os.Getenv("ProgramFiles(x86)"); pf != "" {
-			out = append(out, filepath.Join(pf, "Steam"))
-		}
-		if pf := os.Getenv("ProgramFiles"); pf != "" {
-			out = append(out, filepath.Join(pf, "Steam"))
-		}
-		return out
-	}
-	return []string{
-		filepath.Join(home, ".local/share/Steam"),
-		filepath.Join(home, ".steam/steam"),
-		filepath.Join(home, ".steam/root"),
-		filepath.Join(home, ".var/app/com.valvesoftware.Steam/.local/share/Steam"),
-		filepath.Join(home, "Library/Application Support/Steam"),
-		os.Getenv("STEAM"),
-	}
+	return steam.DirCandidates()
 }
 
 // FindSteamDir returns the first existing Steam root.
 func FindSteamDir() string {
-	for _, c := range SteamCandidates() {
-		if c == "" {
-			continue
-		}
-		if st, err := os.Stat(c); err == nil && st.IsDir() {
-			return c
-		}
-	}
-	return ""
+	return steam.FindDir()
 }
 
 // SkinsDir returns steamui/skins under Steam, or override via MILLENNIUM_SKINS_DIR.
