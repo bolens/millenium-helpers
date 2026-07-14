@@ -9,6 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Pre-parse track/tag for piped mode (before common.sh is available).
 _PIPE_TRACK="${MILLENNIUM_HELPERS_TRACK:-release}"
 _PIPE_TAG="${MILLENNIUM_HELPERS_TAG:-}"
+_PIPE_ALLOW_UNSIGNED_MAIN=false
 _pre_args=("$@")
 while [[ ${#_pre_args[@]} -gt 0 ]]; do
   case "${_pre_args[0]}" in
@@ -28,6 +29,10 @@ while [[ ${#_pre_args[@]} -gt 0 ]]; do
     --tag=*)
       _PIPE_TAG="${_pre_args[0]#*=}"
       _PIPE_TRACK="tag"
+      _pre_args=("${_pre_args[@]:1}")
+      ;;
+    --allow-unsigned-main)
+      _PIPE_ALLOW_UNSIGNED_MAIN=true
       _pre_args=("${_pre_args[@]:1}")
       ;;
     *)
@@ -52,12 +57,20 @@ if [[ ! -f "${SCRIPT_DIR}/scripts/common.sh" ]]; then
   HELPERS_REPO="${HELPERS_GITHUB_REPO:-bolens/millenium-helpers}"
   IS_SOURCE=0
   if [[ -n "${MILLENNIUM_HELPERS_RELEASE_URL:-}" ]]; then
+    echo "Warning: MILLENNIUM_HELPERS_RELEASE_URL overrides the download source (and matching SHA if provided)." >&2
     RELEASE_URL="$MILLENNIUM_HELPERS_RELEASE_URL"
     SHA_URL="${MILLENNIUM_HELPERS_RELEASE_SHA_URL:-${RELEASE_URL}.sha256}"
     NEEDS_SHA=1
   else
     case "$_PIPE_TRACK" in
       main)
+        if [[ "$_PIPE_ALLOW_UNSIGNED_MAIN" != "true" && "${MILLENNIUM_HELPERS_ALLOW_UNSIGNED_MAIN:-}" != "1" ]]; then
+          echo "Error: --track main installs an unsigned tip-of-main archive." >&2
+          echo "Pass --allow-unsigned-main (or set MILLENNIUM_HELPERS_ALLOW_UNSIGNED_MAIN=1) to continue." >&2
+          echo "Prefer a tagged release: --track release or --tag vX.Y.Z" >&2
+          exit 1
+        fi
+        echo "Warning: tip-of-main install has no SHA256 sidecar (unsigned)." >&2
         RELEASE_URL="https://github.com/${HELPERS_REPO}/archive/refs/heads/main.tar.gz"
         SHA_URL=""
         NEEDS_SHA=0
@@ -201,12 +214,18 @@ Options:
   -p, --purge        During uninstall, also purge all Millennium client files/hooks
       --track TRACK  Helpers install track: release (default), main (tip-of-main)
       --tag vX.Y.Z   Install a specific release tag (implies track=tag)
+      --allow-unsigned-main
+                     Required with --track main (no SHA256 sidecar)
   -V, --version      Show version information
   -h, --help         Show this help message
 
 Environment:
   MILLENNIUM_HELPERS_TRACK / MILLENNIUM_HELPERS_TAG
   MILLENNIUM_HELPERS_RELEASE_URL / MILLENNIUM_HELPERS_RELEASE_SHA_URL
+  MILLENNIUM_HELPERS_ALLOW_UNSIGNED_MAIN=1
+
+Note: Release checksums are same-origin GitHub TOFU (archive + .sha256 from the
+same release), not independent signing. Prefer package managers when available.
 
 Note: Millennium client update channel (stable|beta|main) is separate; configure
 via 'millennium schedule' / 'millennium upgrade --channel'.
@@ -287,6 +306,10 @@ while [[ $# -gt 0 ]]; do
     --tag=*)
       INSTALL_TAG="${1#*=}"
       INSTALL_TRACK="tag"
+      shift
+      ;;
+    --allow-unsigned-main)
+      export MILLENNIUM_HELPERS_ALLOW_UNSIGNED_MAIN=1
       shift
       ;;
     -V|--version)

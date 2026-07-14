@@ -7,22 +7,27 @@ param (
     [switch]$DryRun,
     [ValidateSet('release', 'main', 'tag', '')]
     [string]$Track = '',
-    [string]$Tag = ''
+    [string]$Tag = '',
+    [switch]$AllowUnsignedMain
 )
 
 $ErrorActionPreference = "Stop"
 
 if ($Help) {
     Write-Host @"
-Usage: install.ps1 [-Uninstall] [-Track release|main] [-Tag vX.Y.Z] [-DryRun] [-Force] [-Version] [-Help]
+Usage: install.ps1 [-Uninstall] [-Track release|main] [-Tag vX.Y.Z] [-AllowUnsignedMain] [-DryRun] [-Force] [-Version] [-Help]
 
   -Track   Helpers install track: release (default), main (tip-of-main)
   -Tag     Install a specific release tag (implies -Track tag)
+  -AllowUnsignedMain  Required with -Track main (no SHA256 sidecar)
   -Force   Reinstall over an existing installation
   -DryRun  Show actions without writing files
 
 Environment: MILLENNIUM_HELPERS_TRACK, MILLENNIUM_HELPERS_TAG,
-  MILLENNIUM_HELPERS_RELEASE_URL, MILLENNIUM_HELPERS_RELEASE_SHA_URL
+  MILLENNIUM_HELPERS_RELEASE_URL, MILLENNIUM_HELPERS_RELEASE_SHA_URL,
+  MILLENNIUM_HELPERS_ALLOW_UNSIGNED_MAIN=1
+
+Release checksums are same-origin GitHub TOFU, not independent signing.
 
 Millennium client update channel (stable|beta|main) is separate — use
 millennium-schedule / millennium-upgrade -Channel.
@@ -85,11 +90,17 @@ if ($isStandalone) {
     $needsSha = $true
     $isSource = $false
     if ($env:MILLENNIUM_HELPERS_RELEASE_URL) {
+        Write-Host "Warning: MILLENNIUM_HELPERS_RELEASE_URL overrides the download source (and matching SHA if provided)."
         $url = $env:MILLENNIUM_HELPERS_RELEASE_URL
         $shaUrl = if ($env:MILLENNIUM_HELPERS_RELEASE_SHA_URL) { $env:MILLENNIUM_HELPERS_RELEASE_SHA_URL } else { "$url.sha256" }
     } else {
         switch ($Track) {
             'main' {
+                $allowMain = $AllowUnsignedMain -or ($env:MILLENNIUM_HELPERS_ALLOW_UNSIGNED_MAIN -eq '1')
+                if (-not $allowMain) {
+                    throw "Track main installs an unsigned tip-of-main archive. Pass -AllowUnsignedMain (or set MILLENNIUM_HELPERS_ALLOW_UNSIGNED_MAIN=1). Prefer -Track release or -Tag vX.Y.Z."
+                }
+                Write-Host "Warning: tip-of-main install has no SHA256 sidecar (unsigned)."
                 $url = "https://github.com/$repo/archive/refs/heads/main.zip"
                 $shaUrl = ''
                 $needsSha = $false
