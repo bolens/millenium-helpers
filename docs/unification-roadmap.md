@@ -61,7 +61,8 @@ Work through this queue; check items off as PRs land and update this list.
 6. [x] **Go MCP `--register` + packaging entry** — Phase 5c; PATH `millennium-mcp` = Go argv0 twin; Python lib escape hatch
 7. [x] **Phase 6a dual-OS graduation gate** — `check-all` → `test-go`; `go.yml` Windows+Linux dispatcher smokes; meta surface graduated
 8. [x] **Phase 6b schedule config graduated** — dual-OS `go.yml` set/get/list smoke; dual libs kept until peel
-9. [ ] **Graduate remaining commands** — dual-OS Go coverage + delete dual libs per [graduation rule](#command-graduation-rule), command-by-command
+9. [x] **Phase 6c schedule config peel** — long-name `config` thin-wraps to Go; `schedule_config.sh` / `ScheduleConfig.ps1` removed
+10. [ ] **Graduate remaining commands** — dual-OS Go coverage + delete dual libs per [graduation rule](#command-graduation-rule), command-by-command
 
 ---
 
@@ -78,7 +79,7 @@ Work through this queue; check items off as PRs land and update this list.
 
 | Surface | Status | Notes |
 | --- | --- | --- |
-| `config get\|set\|list` | Graduated | `internal/config`; dual-OS `go.yml` smoke; Bash/PS dual libs retained until peel |
+| `config get\|set\|list` | Graduated | `internal/config`; dual-OS `go.yml` smoke; long-name helpers thin-wrap to Go (Phase 6c peel) |
 | `status` | Done | Reports system and user scopes |
 | `enable\|disable --dry-run` | Done | Shows chosen scope |
 | `enable\|disable` live (Linux systemd) | Done | Prefers **system**; `--system` / `--user`; migrates other scope — see [policy](#systemd-system-vs-user) |
@@ -212,7 +213,7 @@ Shipped behavior:
 
 - [x] **Phase 6a:** `make check-all` → `lint` + `test-go` + `test`; `go.yml` dual-OS dispatcher smokes (version/help/suggest); Linux-only legacy help smoke retained; CONTRIBUTING parity gate documents Go CI for graduated surfaces
 - [x] **Phase 6b:** `schedule config` get/set/list dual-OS Go smoke + graduated mark; `schedule_config.sh` / `ScheduleConfig.ps1` kept for long-name helpers until peel
-- [ ] Peel schedule-config dual libs (thin-wrap long-name `config` → Go; then delete libs)
+- [x] **Phase 6c:** Peel schedule-config dual libs — long-name `config` → `millennium schedule config` (`MILLENNIUM_LEGACY=0`); delete Bash/PS config libs; CI builds Go for schedule/MCP suites
 - [ ] Graduate remaining commands command-by-command (dual-OS Go coverage, then peel dual libs)
 - [ ] Every contract feature implemented **once** in Go
 - [ ] Every [parity matrix](unification-audit.md#parity-matrix) row green / graduated
