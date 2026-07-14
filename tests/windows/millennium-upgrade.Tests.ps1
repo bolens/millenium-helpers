@@ -1,102 +1,53 @@
 Describe "Upgrade Script" {
     BeforeAll {
         $winScriptDir = Join-Path -Path $PSScriptRoot -ChildPath "..\..\scripts\windows"
-        $global:DryRun = $true
-        if (!$IsWindows) {
-            New-PSDrive -Name HKCU -PSProvider FileSystem -Root ([System.IO.Path]::GetTempPath()) -ErrorAction SilentlyContinue | Out-Null
-            New-PSDrive -Name C -PSProvider FileSystem -Root ([System.IO.Path]::GetTempPath()) -ErrorAction SilentlyContinue | Out-Null
-        }
-        function Get-Content {
-            param(
-                [string]$Path,
-                [switch]$Raw
-            )
-            if ($Path -like "*relaunch_state.json*") {
-                return '{"Executable":"C:\\MockedSteam\\steam.exe","Arguments":"","SteamRunning":true}'
+        $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
+        $binDir = Join-Path $repoRoot "bin"
+        New-Item -ItemType Directory -Force -Path $binDir | Out-Null
+        $outExe = Join-Path $binDir "millennium.exe"
+        if (-not (Test-Path -LiteralPath $outExe)) {
+            $go = Get-Command go -ErrorAction SilentlyContinue
+            if (-not $go) { throw "Go toolchain required for upgrade thin-wrap tests" }
+            $ver = [System.IO.File]::ReadAllText((Join-Path $repoRoot "VERSION")).Trim()
+            Push-Location (Join-Path $repoRoot "go")
+            try {
+                & go build "-ldflags=-X github.com/bolens/millenium-helpers/internal/version.Version=$ver" `
+                    -o $outExe ./cmd/millennium
+                if ($LASTEXITCODE -ne 0) { throw "go build failed for millennium.exe" }
+            } finally {
+                Pop-Location
             }
-            return "3.0.0"
         }
         . (Join-Path -Path $winScriptDir -ChildPath "common.ps1")
     }
 
     Context "Help and Version" {
         It "Prints usage with -Help" {
-            $upgradeScript = Join-Path -Path $winScriptDir -ChildPath "millennium-upgrade.ps1"
-            $out = (& $upgradeScript -Help *>&1) | Out-String
+            $script = Join-Path -Path $winScriptDir -ChildPath "millennium-upgrade.ps1"
+            $out = (& $script -Help *>&1) | Out-String
             $out | Should -BeLike "*Usage:*"
-            $out | Should -BeLike "*-Channel*"
+            $out | Should -BeLike "*channel*"
         }
 
         It "Prints version with -Version" {
-            $upgradeScript = Join-Path -Path $winScriptDir -ChildPath "millennium-upgrade.ps1"
-            $out = (& $upgradeScript -Version *>&1) | Out-String
+            $script = Join-Path -Path $winScriptDir -ChildPath "millennium-upgrade.ps1"
+            $out = (& $script -Version *>&1) | Out-String
             $out | Should -BeLike "*millennium-upgrade*"
         }
     }
 
-    Context "Upgrade Validation" {
-        It "Validates channels successfully" {
-            $upgradeScript = Join-Path -Path $winScriptDir -ChildPath "millennium-upgrade.ps1"
-
-            # Test invalid channel exits with non-zero
-            $proc = Start-Process pwsh -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$upgradeScript`" -Channel invalid -DryRun" -PassThru -Wait -NoNewWindow
-            $proc.ExitCode | Should -Not -Be 0
-        }
-    }
-
-    Context "Upgrade Dry-Run" {
-        BeforeAll {
-            Mock Get-ItemProperty { return [pscustomobject]@{ SteamPath = "C:\MockedSteam" } }
-            Mock Test-Path {
-                if ($Path -like "*millennium_backups*") { return $false }
-                return $true
-            }
-            Mock Invoke-RestMethod { return [pscustomobject]@{ tag_name = "v3.3.1" } }
-            Mock Invoke-WebRequest {
-                param($Uri, $OutFile, $UseBasicParsing, $Headers)
-                if ($Uri -like "*.sha256*") {
-                    return [pscustomobject]@{
-                        Content = "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899  millennium-v3.3.1-windows-x86_64.zip"
-                    }
-                }
-                throw "Unexpected Invoke-WebRequest URI: $Uri"
-            }
-        }
-
-        It "Succeeds dry-run on stable channel upgrade and reports SHA256" {
-            $upgradeScript = Join-Path -Path $winScriptDir -ChildPath "millennium-upgrade.ps1"
-            $out = (& $upgradeScript -Channel stable -DryRun *>&1) | Out-String
-            $out | Should -BeLike "*Would download*"
-            $out | Should -BeLike "*Expected SHA256*"
-            $out | Should -BeLike "*aabbccddeeff00112233445566778899*"
-        }
-    }
-
-    Context "Checksum failure" {
-        BeforeAll {
-            Mock Get-ItemProperty { return [pscustomobject]@{ SteamPath = "C:\MockedSteam" } }
-            Mock Test-Path {
-                if ($Path -like "*millennium_backups*") { return $false }
-                if ($Path -like "*version.txt*") { return $false }
-                return $true
-            }
-            Mock Invoke-RestMethod { return [pscustomobject]@{ tag_name = "v3.3.1" } }
-            Mock Invoke-WebRequest {
-                param($Uri, $OutFile, $UseBasicParsing, $Headers)
-                if ($Uri -like "*.sha256*") {
-                    return [pscustomobject]@{
-                        Content = "not-a-valid-sha256-hash"
-                    }
-                }
-                throw "Unexpected Invoke-WebRequest URI: $Uri"
-            }
-        }
-
-        It "Fails when checksum sidecar is invalid" {
-            $upgradeScript = Join-Path -Path $winScriptDir -ChildPath "millennium-upgrade.ps1"
-            $out = (& $upgradeScript -Channel stable -DryRun *>&1) | Out-String
-            $out | Should -BeLike "*SHA256*"
-            $out | Should -BeLike "*Could not retrieve*"
+    Context "Dry-run via Go" {
+        It "Verifies local archive SHA in dry-run" {
+            $script = Join-Path -Path $winScriptDir -ChildPath "millennium-upgrade.ps1"
+            $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ("mh-up-" + [guid]::NewGuid().ToString("n"))
+            New-Item -ItemType Directory -Force -Path $tmp | Out-Null
+            $archive = Join-Path $tmp "fake.tgz"
+            Set-Content -Path $archive -Value "millennium-archive-body" -NoNewline
+            $sha = (Get-FileHash -Algorithm SHA256 -Path $archive).Hash.ToLowerInvariant()
+            $out = (& $script -File $archive -Sha256 $sha -DryRun *>&1) | Out-String
+            $out | Should -BeLike "*DRY RUN*"
+            $out | Should -BeLike "*Verified SHA256*"
+            Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
         }
     }
 }

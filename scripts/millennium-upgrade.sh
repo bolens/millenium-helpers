@@ -25,6 +25,36 @@ else
   exit 1
 fi
 
+# Thin-wrap to Go unless legacy.RunLegacy re-entered us (MILLENNIUM_LEGACY=1).
+# Graduated actions run natively; install handoff still uses this script body.
+_legacy_forced=0
+case "${MILLENNIUM_LEGACY:-}" in
+  1|true|yes|TRUE|YES) _legacy_forced=1 ;;
+esac
+if [[ "$_legacy_forced" -eq 0 ]]; then
+  resolve_millennium_go() {
+    local cand
+    for cand in \
+      "${SCRIPT_DIR}/../bin/millennium" \
+      "${SCRIPT_DIR}/millennium" \
+      "$(command -v millennium 2>/dev/null || true)"
+    do
+      if [[ -n "$cand" && -x "$cand" ]]; then
+        printf '%s\n' "$cand"
+        return 0
+      fi
+    done
+    return 1
+  }
+  if go_bin="$(resolve_millennium_go)"; then
+    MILLENNIUM_LEGACY=0 exec "$go_bin" upgrade "$@"
+  fi
+  echo -e "${RED}Error: upgrade requires the Go millennium dispatcher (not found).${NC}" >&2
+  echo "Install millennium-helpers or run 'make build' from a checkout." >&2
+  exit 1
+fi
+unset _legacy_forced
+
 # Check dependencies
 for cmd in curl tar awk sha256sum; do
   if ! command -v "$cmd" &>/dev/null; then

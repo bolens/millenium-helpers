@@ -217,6 +217,8 @@ func resolveWindows(target, shortName, scriptDir string, args []string) (*exec.C
 }
 
 // RunLegacy executes the legacy helper and returns its exit code.
+// Sets MILLENNIUM_LEGACY=1 so thin-wrapped long-name entrypoints keep their
+// shell/PS install bodies instead of re-entering the Go dispatcher.
 func RunLegacy(shortName string, args []string) int {
 	cmd, err := ResolveCommand(shortName, args)
 	if err != nil {
@@ -226,6 +228,7 @@ func RunLegacy(shortName string, args []string) int {
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	cmd.Env = append(os.Environ(), "MILLENNIUM_LEGACY=1")
 	if err := cmd.Run(); err != nil {
 		if ee, ok := err.(*exec.ExitError); ok {
 			return ee.ExitCode()

@@ -29,6 +29,70 @@ if (Test-Path -Path $CommonPs1) {
     exit 1
 }
 
+function Test-MillenniumLegacyForced {
+    $v = "$env:MILLENNIUM_LEGACY"
+    return ($v -eq '1' -or $v -eq 'true' -or $v -eq 'yes' -or $v -eq 'TRUE' -or $v -eq 'YES')
+}
+
+function Resolve-MillenniumGo {
+    $candidates = @(
+        (Join-Path -Path $ScriptDir -ChildPath 'millennium.exe'),
+        (Join-Path -Path $ScriptDir -ChildPath '..\..\bin\millennium.exe'),
+        (Join-Path -Path $ScriptDir -ChildPath '..\millennium.exe')
+    )
+    foreach ($cand in $candidates) {
+        if (Test-Path -LiteralPath $cand -PathType Leaf) {
+            return (Resolve-Path -LiteralPath $cand).Path
+        }
+    }
+    foreach ($name in @('millennium.exe', 'millennium')) {
+        $cmd = Get-Command -Name $name -ErrorAction SilentlyContinue
+        if ($cmd) { return $cmd.Source }
+    }
+    return $null
+}
+
+# Thin-wrap to Go unless legacy.RunLegacy re-entered us (MILLENNIUM_LEGACY=1).
+if (-not (Test-MillenniumLegacyForced)) {
+    $goBin = Resolve-MillenniumGo
+    if (-not $goBin) {
+        Write-Error "upgrade requires the Go millennium dispatcher (not found). Install millennium-helpers or run 'make build'."
+        exit 1
+    }
+    $goArgs = [System.Collections.Generic.List[string]]::new()
+    [void]$goArgs.Add('upgrade')
+    if ($MyInvocation.BoundParameters.ContainsKey('Channel')) {
+        [void]$goArgs.Add('--channel'); [void]$goArgs.Add($Channel)
+    }
+    if ($Force) { [void]$goArgs.Add('--force') }
+    if ($File) { [void]$goArgs.Add('--file'); [void]$goArgs.Add($File) }
+    if ($Sha256) { [void]$goArgs.Add('--sha256'); [void]$goArgs.Add($Sha256) }
+    if ($InsecureSkipVerify) { [void]$goArgs.Add('--insecure-skip-verify') }
+    if ($null -ne $Rollback -and "$Rollback" -ne '') {
+        [void]$goArgs.Add('--rollback'); [void]$goArgs.Add([string]$Rollback)
+    }
+    if ($DryRun) { [void]$goArgs.Add('--dry-run') }
+    if ($Yes) { [void]$goArgs.Add('--yes') }
+    if ($Quiet) { [void]$goArgs.Add('--quiet') }
+    if ($Help) { [void]$goArgs.Add('--help') }
+    if ($Version) { [void]$goArgs.Add('--version') }
+    if ($args.Count -gt 0) {
+        foreach ($a in $args) { [void]$goArgs.Add([string]$a) }
+    }
+    $prevLegacy = $env:MILLENNIUM_LEGACY
+    $env:MILLENNIUM_LEGACY = '0'
+    try {
+        & $goBin @($goArgs.ToArray())
+        exit $LASTEXITCODE
+    } finally {
+        if ($null -eq $prevLegacy) {
+            Remove-Item Env:MILLENNIUM_LEGACY -ErrorAction SilentlyContinue
+        } else {
+            $env:MILLENNIUM_LEGACY = $prevLegacy
+        }
+    }
+}
+
 # GNU-style flags (--main, --channel, --force, …) from unbound args
 $channelExplicit = $MyInvocation.BoundParameters.ContainsKey('Channel')
 if ($args.Count -gt 0) {

