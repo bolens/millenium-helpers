@@ -128,7 +128,7 @@ Full feature and test parity is the end-state of the Go unification — see
 [docs/unification-roadmap.md](docs/unification-roadmap.md) (graduation rule + definition of done)
 and the matrix in [docs/unification-audit.md](docs/unification-audit.md).
 
-**Go-native / graduated surfaces** (e.g. dispatcher meta, `schedule config`/`status`, full `theme`):
+**Go-native / graduated surfaces** (e.g. dispatcher meta, `schedule config`/`status`/`enable|disable --dry-run`, full `theme`):
 
 - [ ] Contract + completions/man/MCP stay aligned (`make check-cli-contract`)
 - [ ] Covered by `make test-go` and the dual-OS job in [`.github/workflows/go.yml`](.github/workflows/go.yml)

@@ -96,7 +96,7 @@ Tests: Bash behavioral/unit under `tests/` · Pester under `tests/windows/`.
 | `repair` | Y | Y | **Dry-run + live user-path native** | `test_repair` + Go | `millennium-repair` + Go | Hook reinstall still legacy as needed |
 | `purge` (+ `--yes` / dry-run) | Y | Y | **Dry-run + live Unix/Windows native** | `test_purge` + Go | `millennium-purge` | — |
 | `upgrade --all-users` | Y | — | Linux/macOS only | P | — | Keep contract-marked |
-| `schedule enable/disable/status` | Y | Y | **Status graduated (6h)**; enable/disable native | `TestNativeScheduleStatus` + `go.yml`; `test_schedule` | Go + `go.yml`; enable/disable still long-name dual libs | Bash enable still writes user units; status peel next |
+| `schedule enable/disable/status` | Y | Y | **Status peeled (6i)**; **enable/disable dry-run graduated (6j)** | `TestNativeSchedule*` + `go.yml`; Bash/Pester via thin-wrap for status | Go + `go.yml`; enable/disable dual libs remain | Bash enable still writes user units; enable/disable peel next |
 
 | `schedule pre/post-update` | Y | — | **Native** (Unix/macOS; Windows N/A) | `test_schedule` + Go | — | Scheduler gate + Steam/diag |
 | `schedule setup` wizard | Y | Y | **Native** (config + optional enable) | Y + Go | Y + Go | `FORCE_WIZARD`; scope flags on enable |

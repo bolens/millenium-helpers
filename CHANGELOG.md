@@ -39,6 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Phase 6f theme mutate graduated:** dual-OS offline `go.yml` smoke for `theme install`/`update`/`remove` validation paths; Bash/PS theme dual libs retained until peel
 - **Phase 6g theme peel:** long-name `millennium-theme` thin-wraps all commands to Go; removed `theme_ops.sh` / `ThemeOps.ps1`; offline seam `MILLENNIUM_THEME_MOCK_COMMIT` for behavioral tests
 - **Phase 6h schedule status graduated:** dual-OS `go.yml` smoke for disabled `millennium schedule status`; status dual libs retained until peel
+- **Phase 6i schedule status peel:** long-name `status` thin-wraps to Go; removed `schedule_status.sh` / `ScheduleStatus.ps1`; `rotate_logs` moved into `schedule_hooks.sh`
+- **Phase 6j schedule enable/disable dry-run graduated:** dual-OS `go.yml` smoke for `enable`/`disable --dry-run`; enable/disable dual libs retained until peel
 - **Phase 3c diag:** native `--json`, `logs` (non-follow), richer report probes, `doctor --dry-run` plan; live doctor / `--share` / `--follow` still legacy
 - **Phase 3d diag share:** native `--share` (home/user/token redaction + paste.rs upload); `--follow` and live doctor still legacy
 - **Phase 3e upgrade install:** native tar/zip extract + atomic install when writable (root / `MILLENNIUM_LIB_DIR` / Windows Steam); non-root Linux system path and rollback apply still legacy

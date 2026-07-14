@@ -67,7 +67,9 @@ Work through this queue; check items off as PRs land and update this list.
 12. [x] **Phase 6f theme mutate graduated** — dual-OS offline `go.yml` install/update/remove smoke; dual libs kept until peel
 13. [x] **Phase 6g theme mutate peel** — long-name theme thin-wraps to Go; `theme_ops` / ThemeOps removed
 14. [x] **Phase 6h schedule status graduated** — dual-OS `go.yml` disabled-status smoke; status dual libs kept until peel
-15. [ ] **Graduate remaining commands** — dual-OS Go coverage + delete dual libs per [graduation rule](#command-graduation-rule), command-by-command
+15. [x] **Phase 6i schedule status peel** — long-name `status` thin-wraps to Go; `schedule_status` / ScheduleStatus removed (`rotate_logs` → hooks)
+16. [x] **Phase 6j schedule enable/disable dry-run graduated** — dual-OS `go.yml` dry-run smoke; enable/disable dual libs kept until peel
+17. [ ] **Graduate remaining commands** — dual-OS Go coverage + delete dual libs per [graduation rule](#command-graduation-rule), command-by-command
 
 ---
 
@@ -85,8 +87,8 @@ Work through this queue; check items off as PRs land and update this list.
 | Surface | Status | Notes |
 | --- | --- | --- |
 | `config get\|set\|list` | Graduated | `internal/config`; dual-OS `go.yml` smoke; long-name helpers thin-wrap to Go (Phase 6c peel) |
-| `status` | Graduated | dual-OS `go.yml` smoke; `schedule_status` dual libs retained until peel |
-| `enable\|disable --dry-run` | Done | Shows chosen scope |
+| `status` | Graduated | dual-OS `go.yml` smoke; long-name thin-wrap to Go (Phase 6i peel) |
+| `enable\|disable --dry-run` | Graduated | dual-OS `go.yml` smoke; dual libs retained until peel |
 | `enable\|disable` live (Linux systemd) | Done | Prefers **system**; `--system` / `--user`; migrates other scope — see [policy](#systemd-system-vs-user) |
 | `enable\|disable` live (macOS / cron) | Done | launchd / crontab |
 | `enable\|disable` live (Windows) | Done | Admin Task Scheduler via PowerShell register/unregister |
@@ -224,7 +226,9 @@ Shipped behavior:
 - [x] **Phase 6f:** `theme install` / `update` / `remove` dual-OS offline Go smoke + graduated mark; dual libs kept until peel
 - [x] **Phase 6g:** Peel theme mutate — entire long-name theme → Go (`MILLENNIUM_LEGACY=0`); delete `theme_ops.sh` / `ThemeOps.ps1`
 - [x] **Phase 6h:** `schedule status` dual-OS Go smoke + graduated mark; `schedule_status` dual libs kept until peel
-- [ ] Peel schedule status (thin-wrap long-name `status` → Go; then delete status dual libs)
+- [x] **Phase 6i:** Peel schedule status — long-name `status` → Go (`MILLENNIUM_LEGACY=0`); delete status dual libs; `rotate_logs` lives in `schedule_hooks.sh`
+- [x] **Phase 6j:** `schedule enable|disable --dry-run` dual-OS Go smoke + graduated mark; enable/disable dual libs kept until peel
+- [ ] Peel schedule enable/disable (thin-wrap dry-run+live → Go; delete timer/cron/enable/disable dual libs)
 - [ ] Graduate remaining commands command-by-command (dual-OS Go coverage, then peel dual libs)
 - [ ] Every contract feature implemented **once** in Go
 - [ ] Every [parity matrix](unification-audit.md#parity-matrix) row green / graduated
