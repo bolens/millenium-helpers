@@ -263,7 +263,6 @@ jobs:
           - tests/windows/install.Tests.ps1
           - tests/windows/InstallTrack.Tests.ps1
           - tests/windows/completions.Tests.ps1
-          - tests/windows/millennium-mcp.Tests.ps1
           - tests/windows/millennium-repair.Tests.ps1
           - tests/windows/millennium-purge.Tests.ps1
     steps:

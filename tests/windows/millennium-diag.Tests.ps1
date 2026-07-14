@@ -1,5 +1,5 @@
 Describe "Diag Script" {
-    # Thin-wrap residual; dual-OS graduation smokes live in go.yml (Endgame C).
+    # Thin-wrap residual; dual-OS graduation smokes live in go.yml.
     BeforeAll {
         $winScriptDir = Join-Path -Path $PSScriptRoot -ChildPath "..\..\scripts\windows"
         $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
@@ -34,18 +34,6 @@ Describe "Diag Script" {
             $script = Join-Path -Path $winScriptDir -ChildPath "millennium-diag.ps1"
             $out = (& $script -Version *>&1) | Out-String
             $out | Should -BeLike "*millennium-diag*"
-        }
-    }
-
-    Context "Report via Go" {
-        It "Emits diagnostics report and JSON fields" {
-            $script = Join-Path -Path $winScriptDir -ChildPath "millennium-diag.ps1"
-            $out = (& $script *>&1) | Out-String
-            $out | Should -BeLike "*Millennium Diagnostics Report*"
-            $json = (& $script --json *>&1) | Out-String
-            $json | Should -BeLike "*steam_running*"
-            $doctor = (& $script doctor --dry-run *>&1) | Out-String
-            $doctor | Should -BeLike "*DRY RUN*"
         }
     }
 }

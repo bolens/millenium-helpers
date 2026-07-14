@@ -35,19 +35,4 @@ Describe "Upgrade Script" {
             $out | Should -BeLike "*millennium-upgrade*"
         }
     }
-
-    Context "Dry-run via Go" {
-        It "Verifies local archive SHA in dry-run" {
-            $script = Join-Path -Path $winScriptDir -ChildPath "millennium-upgrade.ps1"
-            $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ("mh-up-" + [guid]::NewGuid().ToString("n"))
-            New-Item -ItemType Directory -Force -Path $tmp | Out-Null
-            $archive = Join-Path $tmp "fake.tgz"
-            Set-Content -Path $archive -Value "millennium-archive-body" -NoNewline
-            $sha = (Get-FileHash -Algorithm SHA256 -Path $archive).Hash.ToLowerInvariant()
-            $out = (& $script -File $archive -Sha256 $sha -DryRun *>&1) | Out-String
-            $out | Should -BeLike "*DRY RUN*"
-            $out | Should -BeLike "*Verified SHA256*"
-            Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
-        }
-    }
 }

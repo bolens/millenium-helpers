@@ -35,14 +35,4 @@ Describe "Repair Script" {
             $out | Should -BeLike "*millennium-repair*"
         }
     }
-
-    Context "Dry-run via Go" {
-        It "Announces dry-run and skip-theme" {
-            $script = Join-Path -Path $winScriptDir -ChildPath "millennium-repair.ps1"
-            $out = (& $script -DryRun -SkipTheme *>&1) | Out-String
-            $out | Should -BeLike "*DRY RUN*"
-            $out | Should -BeLike "*Skipping theme*"
-            $out | Should -BeLike "*upgrade --force*"
-        }
-    }
 }

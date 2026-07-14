@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Behavioral tests for scripts/millennium-repair.sh (thin-wrap → Go, Phase 6ad)
+# Behavioral tests for scripts/millennium-repair.sh (thin-wrap → Go).
+# Dual-OS graduation smokes live in .github/workflows/go.yml.
 set -uo pipefail
 
 TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -44,33 +45,5 @@ out=$(bash "$REPAIR_SH" --bogus 2>&1)
 rc=$?
 assert_failure "$rc" "millennium-repair exits non-zero on an unknown option"
 assert_contains "$out" "Unknown option" "millennium-repair reports the unrecognized option"
-
-FAKE_HOME=$(mktemp -d)
-export HOME="$FAKE_HOME"
-export MOCK_LIB_DIR="$FAKE_HOME/lib"
-export STEAM="$FAKE_HOME/.local/share/Steam"
-mkdir -p "$STEAM/ubuntu12_32" "$STEAM/ubuntu12_64" "$STEAM/config/htmlcache" \
-  "$MOCK_LIB_DIR/millennium" "$FAKE_HOME/.local/share/millennium"
-printf 'stub\n' >"$MOCK_LIB_DIR/millennium/libmillennium_bootstrap_x86.so"
-printf 'stub\n' >"$MOCK_LIB_DIR/millennium/libmillennium_bootstrap_hhx64.so"
-printf 'x\n' >"$STEAM/config/htmlcache/blob"
-
-out=$(bash "$REPAIR_SH" --dry-run --skip-theme 2>&1)
-rc=$?
-assert_success "$rc" "millennium-repair --dry-run exits 0"
-assert_contains "$out" "DRY RUN" "millennium-repair --dry-run announces mode"
-assert_contains "$out" "Would link hook" "millennium-repair --dry-run plans hooks"
-assert_contains "$out" "Skipping theme" "millennium-repair --dry-run honors --skip-theme"
-assert_file_exists "$STEAM/config/htmlcache/blob" "dry-run does not clear htmlcache"
-
-out=$(bash "$REPAIR_SH" --yes --skip-theme 2>&1)
-rc=$?
-assert_success "$rc" "millennium-repair --yes --skip-theme exits 0"
-assert_contains "$out" "Fixed hook" "millennium-repair live restores hooks"
-assert_symlink_exists "$STEAM/ubuntu12_32/libXtst.so.6" "millennium-repair creates 32-bit hook symlink"
-assert_contains "$out" "Repair completed successfully" "millennium-repair reports success"
-
-rm -rf "$FAKE_HOME"
-unset HOME MOCK_LIB_DIR STEAM
 
 print_summary
