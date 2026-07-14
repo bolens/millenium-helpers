@@ -86,7 +86,7 @@ Tests: Bash behavioral/unit under `tests/` · Pester under `tests/windows/`.
 | `version` / `-V` | Y | Y | Native (Phase 1) | various | various | Go embed/`VERSION` |
 | `diag` (health report) | Y | Y | **Native report** | `test_diag` + Go | `millennium-diag` + Go | --share/follow and live doctor → legacy |
 | `diag doctor` / `--fix` | Y | Y | **`--dry-run` native**; live legacy | `test_diag` + Go | `millennium-diag` | Elevation / upgrade adapters |
-| `diag --json` / `--share` / `--follow` | Y | Y | **`--json` native**; share/follow legacy | Go + partial | Go + partial | Match fields |
+| `diag --json` / `--share` / `--follow` | Y | Y | **`--json` + `--share` native**; `--follow` legacy | Go + partial | Go + partial | Redact + paste.rs |
 | `upgrade` download/verify/install | Y | Y | **Download+SHA native**; extract/install legacy | `test_upgrade` + Go | `millennium-upgrade` | Handoff via `--file` after verify |
 | `upgrade --rollback` / `list` | Y | Y | **`list` native**; apply legacy | `test_upgrade` + Go | `millennium-upgrade` | Apply still legacy |
 | `upgrade --file` / `--sha256` | Y | Y | **Verify native**; install legacy | Y + Go | Y | Fail-closed SHA before legacy |
