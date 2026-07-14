@@ -1,21 +1,191 @@
 # Unification roadmap (Bash / PowerShell → Go)
 
-Phased plan to replace dual-shell maintenance with one **Go** CLI while
-keeping **full feature and test parity** on Linux, macOS, and Windows.
+Replace dual-shell maintenance with one **Go** CLI while keeping **full feature
+and test parity** on Linux, macOS, and Windows.
 
-Baseline inventory: [unification-audit.md](unification-audit.md).
-Machine-readable CLI: [`spec/cli-contract.yaml`](../spec/cli-contract.yaml).
-Project: [README](../README.md). Index: [README.md](README.md).
+| Doc | Role |
+| --- | --- |
+| [unification-audit.md](unification-audit.md) | Inventory + detailed parity matrix |
+| [`spec/cli-contract.yaml`](../spec/cli-contract.yaml) | Machine-readable commands / flags |
+| [CHANGELOG.md](../CHANGELOG.md) | Shipped slice notes |
+| [CONTRIBUTING.md](../CONTRIBUTING.md) | Dev setup (`make build`, `make test-go`) |
 
 ---
 
-## Parity policy
+## Status at a glance
 
-- User-facing features match across supported OSes.
-- OS-shaped *implementations* (systemd vs Task Scheduler, sudoers vs UAC) are
-  adapters, not product forks.
-- Silent gaps are forbidden. Contract-marked **OS-only** knobs (e.g.
-  `schedule --cron`) are the only exceptions — see the audit.
+| Phase | Status | Notes |
+| --- | --- | --- |
+| **0 — Spec + gate** | Done | Contract + `make check-cli-contract` in lint |
+| **1 — MVP strangler** | Done | `go/` Cobra dispatcher + legacy exec |
+| **2 — Config + read-mostly** | Done | `schedule config`, `theme list`, bare diag |
+| **3 — Mutating core** | In progress | Most mutate paths native; gaps below |
+| **4 — Schedule + installers** | In progress | Unix + Windows enable/disable native; setup + installers pending |
+| **5 — MCP + cleanup** | Not started | MCP still Python; dual libs still required |
+
+Force any native path back to shell/PS: `MILLENNIUM_LEGACY=1`.
+
+Experimental: `make build` → `bin/millennium`. Packaging still installs shell
+dispatchers by default.
+
+---
+
+## How to read progress
+
+| Mark | Meaning |
+| --- | --- |
+| Done | Native Go path for this surface (may still fall back to legacy on some OS/euid cases) |
+| Partial | Native for dry-run / some OS / some flags; live or other OS still legacy |
+| Legacy | Still Bash / PowerShell / Python |
+| Blocked | Waiting on another slice (elevation, packaging, or dual-OS CI) |
+
+**Graduation** (delete legacy for command *C*) is stricter than “native exists” —
+see [Command graduation rule](#command-graduation-rule). Rows marked Done here
+are strangler progress, not automatic permission to delete `.sh` / `.ps1`.
+
+---
+
+## Next up (recommended order)
+
+Work through this queue; check items off as PRs land and update this list.
+
+1. [ ] **`upgrade --rollback <id>` apply** — restore from `millennium.bak_*` / Windows backups
+2. [ ] **Non-root Linux upgrade install** — elevate or document `sudo` handoff when `/usr/lib` needs root
+3. [ ] **`purge` Windows live** — multi-path + Task Scheduler cleanup
+4. [ ] **`diag doctor` live** — elevated repairs; dry-run already native
+5. [ ] **`diag logs --follow`** — long-running tail
+6. [ ] **`schedule setup` + pre/post-update** — wizard + scheduler job body
+7. [ ] **Installers → Go binary** — `install.sh` / Windows / packaging ship `millennium` first
+8. [ ] **MCP → Go CLI** — Phase 5; retire Python dispatcher
+9. [ ] **Graduate commands** — dual-OS CI + delete dual libs per [graduation rule](#command-graduation-rule)
+
+---
+
+## Progress by command
+
+### Dispatcher / meta
+
+| Surface | Status | Package / notes |
+| --- | --- | --- |
+| `version` / `-V` / help / suggestions | Done | `internal/version`, `internal/suggest` |
+| Unknown command suggest | Done | — |
+
+### `schedule`
+
+| Surface | Status | Notes |
+| --- | --- | --- |
+| `config get\|set\|list` | Done | `internal/config` |
+| `status` | Done | `internal/schedule` |
+| `enable\|disable --dry-run` | Done | All OSes |
+| `enable\|disable` live (Unix) | Done | systemd / launchd / cron |
+| `enable\|disable` live (Windows) | Done | Admin Task Scheduler via PowerShell register/unregister |
+| `setup` | Legacy | Interactive wizard |
+| `pre-update` / `post-update` | Legacy | Scheduler job hooks |
+
+### `theme`
+
+| Surface | Status | Notes |
+| --- | --- | --- |
+| `list` [`--json`] | Done | `internal/theme` |
+| `install` / `update` / `remove` | Done | Zip-slip safe; `--dry-run` / `--yes` |
+
+### `diag`
+
+| Surface | Status | Notes |
+| --- | --- | --- |
+| Default report | Done | `internal/diag` |
+| `--json` | Done | Contract-shaped fields |
+| `--share` | Done | Redact + paste.rs |
+| `logs` (no follow) | Done | Updater + Steam WebHelper |
+| `doctor --dry-run` | Done | Plan only |
+| `doctor` / `--fix` live | Legacy | Elevation / package repairs |
+| `logs --follow` | Legacy | Long-running |
+
+### `upgrade`
+
+| Surface | Status | Notes |
+| --- | --- | --- |
+| `--rollback list` | Done | `internal/upgrade` |
+| `--dry-run` (local + remote resolve) | Done | — |
+| Remote download + SHA | Done | `internal/githubapi` |
+| Extract/install when writable | Partial | Root / `MILLENNIUM_LIB_DIR` / Windows Steam; else legacy |
+| `--file` SHA gate | Done | Fail-closed before install |
+| `--rollback <id>` apply | Legacy | — |
+| Non-root Linux → `/usr/lib` | Legacy | Needs sudo / elevation story |
+
+### `purge` / `repair`
+
+| Surface | Status | Notes |
+| --- | --- | --- |
+| `purge --dry-run` | Done | `internal/purge` |
+| `purge` live Unix | Done | Confirm / `--yes` |
+| `purge` live Windows | Legacy | — |
+| `repair --dry-run` | Done | `internal/repair` |
+| `repair` live (user paths) | Partial | chown/htmlcache native; hook/binary reinstall may still need legacy |
+
+### MCP / packaging
+
+| Surface | Status | Notes |
+| --- | --- | --- |
+| MCP server | Legacy | `scripts/millennium-mcp.py` |
+| Installers ship Go binary first | Legacy | Still shell/PS dispatchers |
+| Dual `.sh` / `.ps1` libs removed | Not started | Only after graduation |
+
+---
+
+## Phases (detail)
+
+### Phase 0 — Spec + gate — Done
+
+- [x] [`spec/cli-contract.yaml`](../spec/cli-contract.yaml)
+- [x] [`scripts/ci/check-cli-contract.py`](../scripts/ci/check-cli-contract.py)
+- [x] Wired into `make lint`
+
+### Phase 1 — MVP strangler — Done
+
+- [x] Go module under [`go/`](../go/)
+- [x] Native version / help / suggestions
+- [x] Other commands exec legacy (`internal/legacy`)
+- [x] `make build` / `make test-go` / CI workflow
+
+### Phase 2 — Config + read-mostly — Done
+
+- [x] `schedule config` get/set/list
+- [x] `theme list` (+ `--json`)
+- [x] Bare / quiet `diag` summary
+
+### Phase 3 — Mutating core — In progress
+
+Exit when upgrade / repair / purge / doctor are natively usable on both OSes
+with `MILLENNIUM_LEGACY=1` only as escape hatch.
+
+- [x] Upgrade: rollback list, dry-run, download+SHA, install when writable
+- [ ] Upgrade: rollback apply + non-root Linux system install path
+- [x] Purge: dry-run + Unix live
+- [ ] Purge: Windows live
+- [x] Repair: dry-run + user-path live
+- [x] Diag: `--json`, `--share`, `logs`, doctor dry-run
+- [ ] Diag: live doctor + `--follow`
+
+### Phase 4 — Schedule + installers — In progress
+
+- [x] Schedule status + Unix enable/disable (+ dry-run everywhere)
+- [x] Theme install/update/remove (companion slice)
+- [x] Windows schedule enable/disable live (Task Scheduler)
+- [ ] `schedule setup` / pre-post update
+- [ ] Go-first install/uninstall packaging smokes (both OSes)
+
+### Phase 5 — MCP + cleanup — Not started
+
+**Definition of done:**
+
+- [ ] Every contract feature implemented **once** in Go
+- [ ] Every [parity matrix](unification-audit.md#parity-matrix) row green
+- [ ] Bash / Pester suites retired only after Go dual-OS suite supersedes them
+- [ ] CONTRIBUTING “Linux / Windows parity” checklist → contract + Go CI
+- [ ] `make check-all` includes contract check, `go test ./...`, and dual-OS
+      behavioral jobs against the Go binary
+- [ ] MCP invokes Go CLI (or Go-native tools); dual libs removable
 
 ---
 
@@ -39,76 +209,20 @@ Keep Bash + Pester green for unmigrated commands. Supersede suites
 - [ ] Contract updated first (if flags/subcommands change)
 - [ ] Go implementation + dual-OS tests
 - [ ] Legacy scripts still present until graduation (or still tested)
+- [ ] This roadmap progress tables updated
 - [ ] Parity matrix row updated in [unification-audit.md](unification-audit.md)
 - [ ] Completions / man / MCP updated if the user surface changed
+- [ ] CHANGELOG note for the slice
 
 ---
 
-## Phases
+## Parity policy
 
-| Phase | Goal | Exit criteria |
-| --- | --- | --- |
-| **0 — Spec + gate** | CLI contract + CI drift check | `make check-cli-contract` in `make lint` |
-| **1 — MVP strangler** | Go `millennium`: native `version` / `help` / suggestions; other cmds exec legacy | Linux + Windows build + smoke; PATH still works; matrix published |
-| **2 — Config + read-mostly** | Native config get/set/list, `theme list`, read-only diag | Graduation rule for those paths |
-| **3 — Mutating core** | Native upgrade / repair / purge / doctor | Graduation rule; optional `MILLENNIUM_LEGACY=1` fallback |
-| **4 — Schedule + installers** | Native timers/tasks + Go install/uninstall | Feature-equal schedule + install smokes both OSes |
-| **5 — MCP + cleanup** | MCP → Go CLI; delete dual libs | **Definition of done** below |
-
-### Definition of done (Phase 5)
-
-- Every contract feature implemented **once** in Go.
-- Every parity-matrix row green.
-- Bash / Pester suites retired only after the Go dual-OS suite supersedes them.
-- CONTRIBUTING “Linux / Windows parity” checklist replaced by contract + Go CI.
-- `make check-all` includes contract check, `go test ./...`, and dual-OS
-  behavioral jobs against the Go binary.
-
----
-
-## MVP + Phase 2 shipped in-tree
-
-| Artifact | Role |
-| --- | --- |
-| [`spec/cli-contract.yaml`](../spec/cli-contract.yaml) | Source of truth for commands / flags / platforms |
-| [`scripts/ci/check-cli-contract.py`](../scripts/ci/check-cli-contract.py) | Drift gate (MCP, man, completions) |
-| [`go/`](../go/) | Go module: `cmd/millennium` strangler |
-| `make build` / `make test-go` / `make check-cli-contract` | Local DX |
-
-### Native vs legacy (current)
-
-| Path | Implementation |
-| --- | --- |
-| `millennium version` / help / suggestions | Native |
-| `millennium schedule config …` | Native (`internal/config`) |
-| `millennium schedule status` | Native (`internal/schedule`) |
-| `millennium schedule enable\|disable --dry-run` | Native |
-| `millennium schedule enable\|disable` (Unix) | Native user systemd / launchd / cron |
-| `millennium schedule enable\|disable` (Windows live) | Legacy (admin Task Scheduler) |
-| `millennium schedule setup` / pre\|post-update | Legacy |
-| `millennium theme list` [`--json`] | Native (`internal/theme`) |
-| `millennium theme install\|update\|remove` | Native (`internal/theme`) |
-| `millennium diag` (bare / quiet) | Native report (`internal/diag`) |
-| `millennium diag --json` | Native |
-| `millennium diag --share` | Native (redact + paste.rs) |
-| `millennium diag logs` (no `--follow`) | Native |
-| `millennium diag doctor --dry-run` | Native plan |
-| `millennium diag doctor\|--fix` (live) / `--follow` | Legacy |
-| `millennium upgrade --rollback list` | Native (`internal/upgrade`) |
-| `millennium upgrade --file … --dry-run` (+ SHA verify) | Native verify / announce |
-| `millennium upgrade` (remote) | Native download+SHA; native extract/install when writable (root / `MILLENNIUM_LIB_DIR` / Windows Steam); else legacy |
-| `millennium upgrade --file` (live) | Native install when writable; else legacy |
-| `millennium upgrade --rollback <id>` | Legacy apply |
-| `millennium purge --dry-run` | Native plan (`internal/purge`) |
-| `millennium purge` (live, Unix) | Native (confirm / `--yes`); Windows → legacy |
-| `millennium repair --dry-run` | Native plan (`internal/repair`) |
-| `millennium repair` (live) | Native user-path chown/htmlcache (theme/hooks → legacy as needed) |
-| MCP | Legacy |
-
-Force legacy for a native path: `MILLENNIUM_LEGACY=1`.
-
-Experimental: run the Go binary directly; installers still deploy shell
-dispatchers by default.
+- User-facing features match across supported OSes.
+- OS-shaped *implementations* (systemd vs Task Scheduler, sudoers vs UAC) are
+  adapters, not product forks.
+- Silent gaps are forbidden. Contract-marked **OS-only** knobs (e.g.
+  `schedule --cron`) are the only exceptions — see the audit.
 
 ---
 
@@ -121,6 +235,17 @@ dispatchers by default.
 | Behavioral | Help / dry-run / happy / failure per command on **linux** and **windows** CI |
 | Packaging | Install smokes stay green for Go-first assets on both platforms |
 | Coverage gate | Before deleting legacy tests for *C*, Go coverage for *C* must replace them |
+
+---
+
+## Key artifacts
+
+| Artifact | Role |
+| --- | --- |
+| [`spec/cli-contract.yaml`](../spec/cli-contract.yaml) | Source of truth for commands / flags / platforms |
+| [`scripts/ci/check-cli-contract.py`](../scripts/ci/check-cli-contract.py) | Drift gate |
+| [`go/`](../go/) | Strangler CLI (`cmd/millennium` + `internal/*`) |
+| `make build` / `make test-go` / `make check-cli-contract` | Local DX |
 
 ---
 
