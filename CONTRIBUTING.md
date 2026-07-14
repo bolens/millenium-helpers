@@ -40,6 +40,8 @@ Tools fall into three tiers. Install what matches the work you are doing.
 | --- | --- | --- |
 | **PowerShell 7+ (`pwsh`)** | `make test-windows`, Windows script work | [Install PowerShell](https://learn.microsoft.com/powershell/scripting/install/installing-powershell); Dev Container feature includes it |
 | **Pester** | Windows unit tests | `Install-Module Pester -Scope CurrentUser` (Dev Container post-create does this) |
+| **Go 1.22+** | `make build` / `make test-go` (strangler CLI under `go/`) | [Install Go](https://go.dev/dl/); CI uses `CGO_ENABLED=0` |
+| **PyYAML** | `make check-cli-contract` / `make check-winget` | `pip install pyyaml` |
 | **zsh**, **fish**, **Nushell (≥ 0.114)** | Completion syntax/runtime smokes in `make check-completions` / CI completions workflow | Distro packages or [Nushell releases](https://www.nushell.sh/); missing shells are skipped with a warning, not a hard fail |
 | `gh` | Release runbook / inspecting Actions | [GitHub CLI](https://cli.github.com/) |
 | `pre-commit` | Optional git hooks | `pip install pre-commit && pre-commit install && pre-commit install --hook-type pre-push` |
@@ -55,11 +57,11 @@ Tools fall into three tiers. Install what matches the work you are doing.
 
 ### What each environment provides
 
-| Environment | Core lint/test | `pwsh` + Pester | Docker distro matrix | Extra shells (zsh/fish/nu) |
-| --- | --- | --- | --- | --- |
-| Host + `make setup` | Yes (after deps) | Manual | Manual | Manual |
-| **Dev Container** (`.devcontainer/`) | Yes | Yes | Yes (DinD) | Yes |
-| **`nix develop`** | Yes (shellcheck/ruff) | No | No | No |
+| Environment | Core lint/test | `pwsh` + Pester | Docker distro matrix | Go strangler | Extra shells (zsh/fish/nu) |
+| --- | --- | --- | --- | --- | --- |
+| Host + `make setup` | Yes (after deps) | Manual | Manual | Manual (`go`) | Manual |
+| **Dev Container** (`.devcontainer/`) | Yes | Yes | Yes (DinD) | Yes (Go feature) | Yes |
+| **`nix develop`** | Yes (shellcheck/ruff + Go) | No | No | Yes | No |
 
 Before a release, follow [docs/release_runbook.md](docs/release_runbook.md): at minimum `make lint`, `make test`, and `make test-windows`; use `make test-all-distros` when Docker is available.
 
@@ -74,6 +76,8 @@ Guide index: **[docs/README.md](docs/README.md)**. When adding or renaming a gui
 | Doc | When to read |
 | --- | --- |
 | [docs/release_runbook.md](docs/release_runbook.md) | Cutting a release |
+| [docs/unification-audit.md](docs/unification-audit.md) | Bash/PS → Go inventory + parity matrix |
+| [docs/unification-roadmap.md](docs/unification-roadmap.md) | Migration phases, graduation rule, definition of done |
 | [docs/licensing.md](docs/licensing.md) | Attribution / Millennium client MIT |
 | [docs/mcp.md](docs/mcp.md) | MCP tool surface |
 | [docs/security_troubleshooting.md](docs/security_troubleshooting.md) | Sudoers / scheduler / doctor FAQs |
@@ -92,6 +96,8 @@ Guide index: **[docs/README.md](docs/README.md)**. When adding or renaming a gui
 | `scripts/windows/common.ps1` | Shared PowerShell entry (culture/colors + sources `scripts/windows/lib/*`) |
 | `scripts/windows/lib/` | Shared + feature libraries (`Logging`, `Steam`, `Diag*`, `Schedule*`, `ThemeOps`, `PurgeOps`, `Dispatcher`, …) |
 | `scripts/millennium-mcp.py` | MCP server for AI assistants |
+| `spec/cli-contract.yaml` | **Source of truth** for commands / flags / platforms (Go + shells) |
+| `go/` | Go strangler module (`cmd/millennium`); native version/help; other cmds exec legacy |
 | `man/` | Manual pages (`millennium-*.1`) for every user-facing command |
 | `docs/` | User/maintainer guides (index: [`docs/README.md`](docs/README.md)) |
 | `Formula/` | Homebrew formula (`millennium-helpers.rb`) |
@@ -103,22 +109,33 @@ Guide index: **[docs/README.md](docs/README.md)**. When adding or renaming a gui
 
 ## Adding or changing a command
 
-1. Implement the change in the Linux/macOS script under `scripts/` (and the Windows `.ps1` when applicable).
-2. Keep `--help` / `-h` accurate and exit `0` on help.
-3. On unknown options, print usage and exit non-zero.
-4. Update matching files under `completions/` so flags stay in sync.
-5. Keep `man/millennium-<name>.1` in sync (`.TH` date like `"July 9, 2026"`; `make check-man` / CI mandoc lint).
-6. Add or extend behavioral tests under `tests/behavioral/` (and Pester under `tests/windows/` for PowerShell).
-7. Prefer `--dry-run` for destructive paths; require confirmation (or `-y`/`--yes`) for irreversible actions like purge.
+1. Update [`spec/cli-contract.yaml`](spec/cli-contract.yaml) first (flags, platforms, MCP properties).
+2. Implement the change in the Linux/macOS script under `scripts/` (and the Windows `.ps1` when applicable). Until a command **graduates** to Go, touch **both** legacy surfaces for shared features.
+3. If the Go dispatcher help/registration needs the new subcommand name, update `go/` accordingly (still optional while cmds only delegate).
+4. Keep `--help` / `-h` accurate and exit `0` on help.
+5. On unknown options, print usage and exit non-zero.
+6. Update matching files under `completions/` so flags stay in sync.
+7. Keep `man/millennium-<name>.1` in sync (`.TH` date like `"July 9, 2026"`; `make check-man` / CI mandoc lint).
+8. Add or extend behavioral tests under `tests/behavioral/` (and Pester under `tests/windows/` for PowerShell).
+9. Prefer `--dry-run` for destructive paths; require confirmation (or `-y`/`--yes`) for irreversible actions like purge.
+10. Run `make check-cli-contract` (also part of `make lint`).
 
 ## Linux / Windows parity
 
-When adding a feature, check both platforms. Document intentional gaps in the PR. Rough checklist:
+Full feature and test parity is the end-state of the Go unification — see
+[docs/unification-roadmap.md](docs/unification-roadmap.md) (graduation rule + definition of done)
+and the matrix in [docs/unification-audit.md](docs/unification-audit.md).
 
-- [ ] Flag / subcommand exists on both OSes (or noted as Linux-only / Windows-only)
+When adding a feature **today** (still dual-shell):
+
+- [ ] Flag / subcommand exists on both OSes (**or** marked `os_only` in `spec/cli-contract.yaml`)
 - [ ] Dry-run behavior matches
 - [ ] Help text documents the same options
-- [ ] Tests cover the new path on at least one platform; prefer both when practical
+- [ ] Tests cover the new path on both platforms when practical
+- [ ] Contract + completions/man/MCP stay aligned (`make check-cli-contract`)
+
+Do **not** delete a legacy `.sh` / `.ps1` implementation for a command until the
+roadmap graduation rule is satisfied (Go + dual-OS CI tests).
 
 ## Testing
 
@@ -126,9 +143,11 @@ See [Development requirements](#development-requirements) for tools each target 
 
 ```bash
 make test              # local Bash unit + behavioral suite
-make lint              # shellcheck + ruff (+ version/man/docs/completions gates)
+make lint              # shellcheck + ruff (+ version/man/docs/completions/cli-contract gates)
 make check-all         # lint + test
 make test-windows      # Pester under tests/windows/ (requires pwsh)
+make test-go           # Go unit tests + dispatcher smokes (requires Go)
+make build             # bin/millennium Go strangler CLI
 make test-all-distros  # local + Debian/Ubuntu/Fedora via Docker (requires Docker)
 ```
 
