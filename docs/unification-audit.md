@@ -87,10 +87,10 @@ Tests: Bash behavioral/unit under `tests/` · Pester under `tests/windows/`.
 | Dispatcher `millennium <cmd>` + suggestions | Y | Y | **Graduated/peeled** (Phase 6a + Endgame B) | Go `main_test` + `go.yml` dual-OS | Go `main_test` + `go.yml` | Shell/PS entrypoints + dispatcher dual libs removed |
 | `version` / `-V` / root help | Y | Y | **Graduated** (Phase 6a) | Go + `go.yml` dual-OS | Go + `go.yml` | No dual libs to delete for meta |
 | `diag` (health report) | Y | Y | **Graduated** (6w smoke + 6z peel) | `test_diag` + Go thin-wrap | Go thin-wrap | Dual libs removed |
-| `diag doctor` / `--fix` | Y | Y | **Dry-run Graduated (6x)**; live Done | `test_diag` + Go | Go thin-wrap | Completions/package cleanup still advisory |
-| `diag --json` / `--share` / `--follow` | Y | Y | **`--json` Graduated (6w)**; share/follow Done | Go | Go | Redact + paste.rs; filter-tail |
+| `diag doctor` / `--fix` | Y | Y | **Graduated** (6x dry-run + Endgame C live healthy) | `test_diag` + Go | Go thin-wrap | Completions/package cleanup still advisory |
+| `diag --json` / `--share` / `--follow` | Y | Y | **Graduated** (6w JSON; Endgame C share/follow) | Go | Go | Redact + paste stub; capped follow |
 | `diag logs` | Y | Y | **Graduated** (6y) | Go + thin-wrap | Go | No-logs path OK |
-| `upgrade` download/verify/install | Y | Y | **Native when writable**; long-name thin-wrap (6v); Linux non-root → `sudo` | `test_upgrade` + Go | Go thin-wrap | Dual libs for `MILLENNIUM_LEGACY=1` install handoff |
+| `upgrade` download/verify/install | Y | Y | **Graduated** when writable (Endgame C); Linux non-root → `sudo` hint Graduated | `test_upgrade` + Go | Go thin-wrap | Dual libs for `MILLENNIUM_LEGACY=1` install handoff |
 | `upgrade --rollback` apply | Y | Y | **Graduated** when writable (6u); list Graduated 6q | `test_upgrade` + Go | Go | Sudo handoff when unwritable |
 | `upgrade --file` / `--sha256` | Y | Y | **Graduated** verify (6t) + dry-run (6s) | Y + Go | Y | Fail-closed SHA before install |
 | `repair` | Y | Y | **Graduated/peeled** (6ab–6ad) | `test_repair` + Go thin-wrap | Go thin-wrap | Dual libs removed |

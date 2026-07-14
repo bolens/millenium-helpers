@@ -1,4 +1,5 @@
 Describe "Diag Script" {
+    # Thin-wrap residual; dual-OS graduation smokes live in go.yml (Endgame C).
     BeforeAll {
         $winScriptDir = Join-Path -Path $PSScriptRoot -ChildPath "..\..\scripts\windows"
         $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")

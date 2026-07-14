@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Behavioral tests for scripts/millennium-upgrade.sh (thin-wrap → Go, Phase 6v)
+# Behavioral tests for scripts/millennium-upgrade.sh (thin-wrap → Go, Phase 6v).
+# Dual-OS graduation smokes live in .github/workflows/go.yml (Endgame C).
 set -uo pipefail
 
 TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
