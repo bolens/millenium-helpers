@@ -28,11 +28,10 @@ func run(args []string) int {
 		Short: "Millennium helpers dispatcher (Go strangler)",
 		Long: `Millennium helpers — unified dispatcher.
 
-Native: version/help, schedule config/status/enable/disable + pre/post-update
-(Unix), theme mutate, diag report/--json/--share/logs(--follow)/doctor,
-upgrade download+SHA+install (+ sudo handoff on Linux) and --rollback when
-writable, purge (Unix+Windows), repair user-path. Schedule setup still legacy
-(see docs/unification-roadmap.md).
+Native: version/help, schedule (config/status/enable/disable/setup/pre/post),
+theme mutate, diag report/--json/--share/logs(--follow)/doctor, upgrade
+download+SHA+install (+ sudo handoff on Linux) and --rollback when writable,
+purge (Unix+Windows), repair user-path (see docs/unification-roadmap.md).
 
 Force legacy for a native path: MILLENNIUM_LEGACY=1`,
 		SilenceUsage:  true,
@@ -109,7 +108,7 @@ func useLegacy() bool {
 func newScheduleCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:                "schedule",
-		Short:              "Scheduler (config/status/enable/disable/pre/post native; setup legacy)",
+		Short:              "Scheduler (config/status/enable/disable/setup/pre/post native)",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
 			if useLegacy() {

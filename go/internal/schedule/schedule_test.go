@@ -67,8 +67,8 @@ func TestFormatStatusConfigured(t *testing.T) {
 }
 
 func TestNeedsLegacy(t *testing.T) {
-	if !NeedsLegacy(Options{Action: "setup"}) {
-		t.Fatal("setup should be legacy")
+	if NeedsLegacy(Options{Action: "setup"}) {
+		t.Fatal("setup should be native")
 	}
 	if NeedsLegacy(Options{Action: "status"}) {
 		t.Fatal("status should be native")

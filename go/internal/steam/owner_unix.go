@@ -38,4 +38,7 @@ func chownUser(path, username string) {
 	_ = os.Chown(path, uid, gid)
 }
 
+// ChownUser sets ownership when elevated (no-op if lookup fails).
+func ChownUser(path, username string) { chownUser(path, username) }
+
 func effectiveUID() int { return os.Geteuid() }

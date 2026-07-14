@@ -111,11 +111,7 @@ func ResolveChannel(explicit string) string {
 
 // NeedsLegacy reports actions that still require shell/PS.
 func NeedsLegacy(o Options) bool {
-	switch o.Action {
-	case "setup", "config":
-		return true
-	}
-	return false
+	return o.Action == "config"
 }
 
 // RunCLI runs native schedule actions. Caller must skip when NeedsLegacy.
@@ -124,7 +120,7 @@ func RunCLI(o Options) int {
 		fmt.Print(helpText())
 		return 0
 	}
-	if o.DryRun && o.Action != "pre-update" && o.Action != "post-update" {
+	if o.DryRun && o.Action != "pre-update" && o.Action != "post-update" && o.Action != "setup" {
 		fmt.Println("=== DRY RUN MODE: No changes will be made ===")
 	}
 	switch o.Action {
@@ -135,6 +131,8 @@ func RunCLI(o Options) int {
 		return runEnable(ResolveChannel(o.Channel), o.Cron, o.DryRun, o.Quiet, o.SystemdScope)
 	case "disable":
 		return runDisable(o.DryRun, o.Quiet)
+	case "setup":
+		return runSetup(o)
 	case "pre-update":
 		return runPreUpdate()
 	case "post-update":
@@ -148,10 +146,10 @@ func RunCLI(o Options) int {
 func helpText() string {
 	return `Usage: millennium schedule <enable|disable|status|setup|config> [OPTIONS]
 
-Native: status, enable/disable (Unix timers + Windows Task Scheduler),
-pre-update/post-update (Unix/macOS scheduler hooks), --dry-run.
-Linux systemd prefers system units when privileged; otherwise user units.
-setup remains legacy.
+Native: status, enable/disable, setup wizard, pre/post-update (Unix/macOS),
+--dry-run. Linux systemd prefers system units when privileged; otherwise user.
+setup accepts --system / --user / --cron for the optional enable step.
+config remains native via schedule config (dispatched separately).
 
 Options:
   -c, --cron     Linux/macOS: force crontab (auto when systemd unavailable)

@@ -15,8 +15,8 @@ func TestNeedsLegacyHooksNative(t *testing.T) {
 	if NeedsLegacy(Options{Action: "post-update"}) {
 		t.Fatal("post-update should be native")
 	}
-	if !NeedsLegacy(Options{Action: "setup"}) {
-		t.Fatal("setup should remain legacy")
+	if NeedsLegacy(Options{Action: "setup"}) {
+		t.Fatal("setup should be native")
 	}
 }
 
