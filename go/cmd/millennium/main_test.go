@@ -93,6 +93,16 @@ func TestNativeConfig(t *testing.T) {
 	if got := strings.TrimSpace(string(out)); got != "beta" {
 		t.Fatalf("got %q", got)
 	}
+	list := exec.Command(exe, "schedule", "config", "list")
+	list.Env = env
+	listOut, err := list.CombinedOutput()
+	if err != nil {
+		t.Fatalf("config list: %v\n%s", err, listOut)
+	}
+	text := string(listOut)
+	if !strings.Contains(text, "update_channel") || !strings.Contains(text, "beta") {
+		t.Fatalf("config list missing channel:\n%s", text)
+	}
 }
 
 func TestNativeUpgradeRollbackList(t *testing.T) {

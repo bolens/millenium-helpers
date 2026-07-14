@@ -85,6 +85,19 @@ jobs:
           test "$suggest_rc" -ne 0
           echo "$suggest_out" | grep -F "Did you mean 'upgrade'"
 
+      - name: Smoke schedule config (dual-OS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cfg_dir="$(mktemp -d)"
+          export MILLENNIUM_CONFIG_DIR="$cfg_dir"
+          export MILLENNIUM_CONFIG_FILE="$cfg_dir/config.json"
+          bin/millennium schedule config set update_channel beta
+          test "$(bin/millennium schedule config get update_channel | tr -d '[:space:]')" = "beta"
+          bin/millennium schedule config list | grep -F 'update_channel'
+          bin/millennium schedule config list | grep -F 'beta'
+          rm -rf "$cfg_dir"
+
       - name: Smoke legacy help delegate (Linux)
         if: runner.os == 'Linux'
         shell: bash
