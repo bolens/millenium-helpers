@@ -2,7 +2,10 @@
 
 The Millennium Helper suite includes a built-in Model Context Protocol (MCP) server that exposes the entire command suite as native AI tools to coding assistants (such as Claude Desktop, Cursor, Windsurf, or Antigravity).
 
-For general usage instructions, see the main [README.md](../README.md). For troubleshooting and security details, see [security_troubleshooting.md](security_troubleshooting.md).
+For general usage instructions, see the main [README.md](../README.md). Full
+docs index: [README.md](README.md). For troubleshooting and security details,
+see [security_troubleshooting.md](security_troubleshooting.md). Licensing:
+[licensing.md](licensing.md).
 
 ---
 
@@ -72,3 +75,9 @@ Go to Settings -> Features -> MCP, click **+ Add New MCP Server**, and configure
 - **Name**: `millennium-helpers`
 - **Type**: `command`
 - **Command**: `millennium-mcp`
+
+## Related
+
+- **Docs index:** [README.md](README.md)
+- **Project:** [README.md](../README.md) · [CONTRIBUTING.md](../CONTRIBUTING.md) · [SECURITY.md](../SECURITY.md)
+- **Guides:** [licensing.md](licensing.md) · [security_troubleshooting.md](security_troubleshooting.md) · [uninstall_dryrun.md](uninstall_dryrun.md) · [steam_deck.md](steam_deck.md)

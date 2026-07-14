@@ -2,7 +2,9 @@
 
 This document outlines the security architecture and troubleshooting steps for the Millennium Helper utility suite.
 
-For general usage instructions, see the main [README.md](../README.md). For MCP server setup details, see [mcp.md](mcp.md).
+For general usage instructions, see the main [README.md](../README.md). Full
+docs index: [README.md](README.md). For MCP server setup details, see
+[mcp.md](mcp.md). Licensing: [licensing.md](licensing.md).
 
 ---
 
@@ -42,3 +44,9 @@ millennium-repair
 
 ### Steam Deck or Flatpak Steam issues
 Hooks, sandbox overrides, Desktop Mode install, and post-SteamOS-update recovery are covered in the [Steam Deck & Flatpak Troubleshooting](steam_deck.md) guide.
+
+## Related
+
+- **Docs index:** [README.md](README.md)
+- **Project:** [README.md](../README.md) · [SECURITY.md](../SECURITY.md) · [CONTRIBUTING.md](../CONTRIBUTING.md)
+- **Guides:** [mcp.md](mcp.md) · [steam_deck.md](steam_deck.md) · [uninstall_dryrun.md](uninstall_dryrun.md) · [licensing.md](licensing.md)

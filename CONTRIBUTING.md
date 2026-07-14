@@ -65,7 +65,20 @@ Before a release, follow [docs/release_runbook.md](docs/release_runbook.md): at 
 
 ## Security
 
-See [SECURITY.md](SECURITY.md) for vulnerability reporting and [docs/security_troubleshooting.md](docs/security_troubleshooting.md) for design notes.
+See [SECURITY.md](SECURITY.md) for vulnerability reporting and [docs/security_troubleshooting.md](docs/security_troubleshooting.md) for design notes. Full docs index: [docs/README.md](docs/README.md).
+
+## Documentation
+
+Guide index: **[docs/README.md](docs/README.md)**. When adding or renaming a guide, update that index, [README § Further reading](README.md#further-reading), topical **Related** footers, and run `make check-docs`.
+
+| Doc | When to read |
+| --- | --- |
+| [docs/release_runbook.md](docs/release_runbook.md) | Cutting a release |
+| [docs/licensing.md](docs/licensing.md) | Attribution / Millennium client MIT |
+| [docs/mcp.md](docs/mcp.md) | MCP tool surface |
+| [docs/security_troubleshooting.md](docs/security_troubleshooting.md) | Sudoers / scheduler / doctor FAQs |
+| [docs/steam_deck.md](docs/steam_deck.md) | Deck / Flatpak |
+| [docs/uninstall_dryrun.md](docs/uninstall_dryrun.md) | Dry-run and manual uninstall |
 
 ## Project layout
 
@@ -77,6 +90,7 @@ See [SECURITY.md](SECURITY.md) for vulnerability reporting and [docs/security_tr
 | `scripts/windows/*.ps1` | Windows PowerShell counterparts |
 | `scripts/millennium-mcp.py` | MCP server for AI assistants |
 | `man/` | Manual pages (`millennium-*.1`) for every user-facing command |
+| `docs/` | User/maintainer guides (index: [`docs/README.md`](docs/README.md)) |
 | `Formula/` | Homebrew formula (`millennium-helpers.rb`) |
 | `completions/` | Bash / Zsh / Fish / Nushell / PowerShell completions |
 | `tests/` | Unit + behavioral suites (`tests/run_tests.sh`) |
@@ -107,7 +121,7 @@ See [Development requirements](#development-requirements) for tools each target 
 
 ```bash
 make test              # local Bash unit + behavioral suite
-make lint              # shellcheck + ruff (+ version/man/completions gates)
+make lint              # shellcheck + ruff (+ version/man/docs/completions gates)
 make check-all         # lint + test
 make test-windows      # Pester under tests/windows/ (requires pwsh)
 make test-all-distros  # local + Debian/Ubuntu/Fedora via Docker (requires Docker)
@@ -204,6 +218,8 @@ make bump-version VERSION=X.Y.Z   # pre-tag bump (then edit CHANGELOG)
 make sync-stable-srcinfo   # regenerate versioned Arch .SRCINFO only
 make sync-git-srcinfo      # regenerate -git .SRCINFO after recipe edits
 make check-man             # every command has a man page
+make check-docs            # docs index / Related footers / man / licensing cross-links
+make check-licensing       # alias for check-docs
 make check-winget          # Winget manifest structure (docs-only; no winget validate)
 ```
 
@@ -215,7 +231,7 @@ pre-commit install
 pre-commit install --hook-type pre-push
 ```
 
-**pre-commit** runs: remote [pre-commit-hooks](https://github.com/pre-commit/pre-commit-hooks) sanity checks (private keys, merge conflicts, large files, symlinks, trailing whitespace, EOF newlines, LF line endings), plus local shellcheck, ruff check + format `--check`, VERSION presence, versioned Arch `.SRCINFO` sync, Arch `-git` `.SRCINFO` sync when that recipe changes, packaging version sync, winget manifests, completions tests (when `completions/` changes), man-page coverage, actionlint (workflows; skipped if not installed), and gitleaks on staged changes (skipped if not installed).
+**pre-commit** runs: remote [pre-commit-hooks](https://github.com/pre-commit/pre-commit-hooks) sanity checks (private keys, merge conflicts, large files, symlinks, trailing whitespace, EOF newlines, LF line endings), plus local shellcheck, ruff check + format `--check`, VERSION presence, versioned Arch `.SRCINFO` sync, Arch `-git` `.SRCINFO` sync when that recipe changes, packaging version sync, winget manifests, completions tests (when `completions/` changes), man-page coverage, docs cross-links (guides + licensing), actionlint (workflows; skipped if not installed), and gitleaks on staged changes (skipped if not installed).
 
 **pre-push** runs: `make lint`, and `make test-windows` when the push range touches `scripts/windows/`, `tests/windows/`, or `completions/powershell/` (skipped if `pwsh` is missing).
 
@@ -244,6 +260,18 @@ pre-commit install --hook-type pre-push
 - `scripts/ci/update-packaging-versions.sh` — post-tag: Formula / Scoop release / Winget / versioned Arch / Nix release-info from a release tag + asset hashes (release CD).
 - Versioned Arch (`packaging/millennium-helpers`) is bumped with Formula / Scoop / Winget on release (Linux tarball URL + sha256). Arch `-git` stays tip-of-main and is outside that bump; do not commit mere `-git` `pkgver` bumps.
 - Man-page CI (`scripts/ci/check-man-pages.sh`) fails on mandoc `ERROR`/`FATAL` only; `WARNING`/`STYLE` are printed as notes.
+- Docs CI (`scripts/ci/check-docs-crosslinks.sh`) — docs index, Related footers, man→guide links, and licensing attribution; prefer `make check-docs` (`make check-licensing` is an alias).
+- Release Linux/Windows assets **must** include `third_party/MILLENNIUM-LICENSE.md` (see [docs/licensing.md](docs/licensing.md) and `make check-docs`).
+
+## Licensing
+
+Helpers are MIT ([`LICENSE`](LICENSE)). The Millennium **client** is a separate MIT project — see **[docs/licensing.md](docs/licensing.md)** (canonical), [`third_party/MILLENNIUM-LICENSE.md`](third_party/MILLENNIUM-LICENSE.md), and [upstream `LICENSE.md`](https://github.com/SteamClientHomebrew/Millennium/blob/main/LICENSE.md).
+
+When changing attribution, the vendored notice, upgrade license installation, man-page `LICENSE` sections, Winget descriptions, or release payload contents:
+
+1. Update [docs/licensing.md](docs/licensing.md) and [README § License](README.md#license).
+2. Keep `third_party/README.md` and man-page `LICENSE` sections pointing at the hub.
+3. Run `make check-docs` (included in `make lint` / `make check-all`).
 
 ## Pull requests
 

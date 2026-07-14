@@ -11,7 +11,7 @@ CLI helpers for [Millennium](https://github.com/SteamClientHomebrew/Millennium) 
 [Installation](#installation) ·
 [Commands](#commands) ·
 [Configuration](#configuration) ·
-[Docs](#further-reading)
+[Docs](docs/README.md)
 
 ---
 
@@ -269,12 +269,15 @@ Manage with `millennium-schedule config list|get|set`. File mode is set to `600`
 
 | Topic | Doc |
 | --- | --- |
+| Documentation index | [docs/README.md](docs/README.md) |
+| Licensing (helpers + Millennium) | [docs/licensing.md](docs/licensing.md) |
 | Dry-run & manual uninstall | [docs/uninstall_dryrun.md](docs/uninstall_dryrun.md) |
 | Release runbook | [docs/release_runbook.md](docs/release_runbook.md) |
 | MCP server setup & tools | [docs/mcp.md](docs/mcp.md) |
 | Security policy | [SECURITY.md](SECURITY.md) |
 | Security & troubleshooting | [docs/security_troubleshooting.md](docs/security_troubleshooting.md) |
 | Steam Deck & Flatpak | [docs/steam_deck.md](docs/steam_deck.md) |
+| Contributing | [CONTRIBUTING.md](CONTRIBUTING.md) |
 
 Manual pages ship with the helpers (`man millennium-diag`, `man millennium-upgrade`, …) via `install.sh`, Homebrew, and packaging recipes.
 
@@ -299,4 +302,10 @@ Helpers report version via `--version` / `-V` (from the repo `VERSION` file). A 
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+**Millennium Helpers** is licensed under the [MIT License](LICENSE) (Copyright © 2026 bolens).
+
+These helpers install and manage **[Millennium](https://github.com/SteamClientHomebrew/Millennium)**, a separate project by Project Millennium / [SteamClientHomebrew](https://github.com/SteamClientHomebrew). Millennium is also MIT-licensed — see [their LICENSE.md](https://github.com/SteamClientHomebrew/Millennium/blob/main/LICENSE.md) (a local copy is in [`third_party/MILLENNIUM-LICENSE.md`](third_party/MILLENNIUM-LICENSE.md)). Installing or upgrading the Millennium client via these tools is subject to Millennium’s license terms; `millennium-upgrade` places a copy of that notice next to the installed client files.
+
+This project is not affiliated with or endorsed by SteamClientHomebrew, Project Millennium, or Valve Corporation. Steam® is a trademark of Valve Corporation.
+
+Full details, packaging notes, and maintainer sync checklist: **[docs/licensing.md](docs/licensing.md)**.

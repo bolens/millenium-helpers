@@ -2,7 +2,9 @@
 
 This guide provides deep-dive instructions for manually cleaning up / uninstalling Millennium helper scripts across different platforms and using Dry-Run mode to safely audit actions.
 
-For general usage instructions, see the main [README.md](../README.md).
+For general usage instructions, see the main [README.md](../README.md). Full
+docs index: [README.md](README.md). Licensing: [licensing.md](licensing.md).
+Steam Deck / Flatpak: [steam_deck.md](steam_deck.md).
 
 ---
 
@@ -297,3 +299,9 @@ winget uninstall bolens.millenniumhelpers
 winget install --manifest packaging/winget-git/
 winget uninstall bolens.millenniumhelpers.git
 ```
+
+## Related
+
+- **Docs index:** [README.md](README.md)
+- **Project:** [README.md](../README.md) · [CONTRIBUTING.md](../CONTRIBUTING.md) · [SECURITY.md](../SECURITY.md)
+- **Guides:** [security_troubleshooting.md](security_troubleshooting.md) · [steam_deck.md](steam_deck.md) · [licensing.md](licensing.md) · [mcp.md](mcp.md)

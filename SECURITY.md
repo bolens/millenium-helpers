@@ -27,6 +27,9 @@ Millennium Helpers manages Steam Client homebrew installs and may elevate privil
 - **MCP server**: tools that escalate or mutate the system require explicit confirmation / allow-lists (see `docs/mcp.md`)
 
 For troubleshooting and deeper design notes, see [docs/security_troubleshooting.md](docs/security_troubleshooting.md).
+MCP tool confirmations: [docs/mcp.md](docs/mcp.md).
+Licensing and third-party attribution: [docs/licensing.md](docs/licensing.md).
+Full docs index: [docs/README.md](docs/README.md).
 
 ## Supported Versions
 
