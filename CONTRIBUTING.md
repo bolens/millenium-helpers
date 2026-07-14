@@ -92,10 +92,10 @@ Guide index: **[docs/README.md](docs/README.md)**. When adding or renaming a gui
 | `install.sh` | Linux/macOS installer / uninstall |
 | `scripts/*.sh` | Linux/macOS user-facing command entrypoints |
 | `scripts/common.sh` | Shared Bash entry (locale + sources `scripts/lib/*`) |
-| `scripts/lib/` | Shared + feature libraries (`logging`, `steam`, `diag_*`, `schedule_*`, `upgrade_*`, `repair_ops`, `purge_ops`, `dispatcher`, …) |
+| `scripts/lib/` | Shared + remaining feature libraries (`logging`, `steam`, `upgrade_*`, `repair_ops`, `dispatcher`, …); schedule/theme/purge/diag feature libs peeled |
 | `scripts/windows/*.ps1` | Windows PowerShell command entrypoints |
 | `scripts/windows/common.ps1` | Shared PowerShell entry (culture/colors + sources `scripts/windows/lib/*`) |
-| `scripts/windows/lib/` | Shared + feature libraries (`Logging`, `Steam`, `Diag*`, `Schedule*`, `PurgeOps`, `Dispatcher`, …) |
+| `scripts/windows/lib/` | Shared + remaining feature libraries (`Logging`, `Steam`, `UpgradeRollback`, `RepairOps`, `Dispatcher`, …); schedule/theme/purge/diag feature libs peeled |
 | `scripts/millennium-mcp.py` | MCP server for AI assistants |
 | `spec/cli-contract.yaml` | **Source of truth** for commands / flags / platforms (Go + shells) |
 | `go/` | Go strangler module (`cmd/millennium`); native version/help; other cmds exec legacy |

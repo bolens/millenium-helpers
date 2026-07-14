@@ -48,6 +48,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Phase 6o schedule hooks peel:** long-name `pre-update`/`post-update` thin-wraps to Go; removed `schedule_hooks.sh` (schedule feature dual libs fully peeled)
 - **Phase 6p purge dry-run graduated:** dual-OS `go.yml` smoke for `millennium purge --dry-run`; purge dual libs retained until peel
 - **Phase 6q upgrade rollback list graduated:** dual-OS `go.yml` smoke for `millennium upgrade --rollback list`; upgrade dual libs retained until peel
+- **Roadmap hygiene:** glance/Next-up renamed through 6aa+endgame; audit matrix collapsed; `schedule.NeedsLegacy` always false after peel
+- **Phase 6r purge peel:** long-name `millennium-purge` thin-wraps to Go; removed `purge_ops.sh` / `PurgeOps.ps1`; TTY confirm uses `term.IsTerminal`
+- **Phase 6s–6u upgrade graduate:** dual-OS `go.yml` smokes for `--file`+SHA dry-run, SHA fail-closed/pass, writable rollback-apply
+- **Phase 6v upgrade thin-wrap:** long-name prefers Go; `legacy.RunLegacy` sets `MILLENNIUM_LEGACY=1` so upgrade dual libs remain for install handoff
+- **Phase 6w–6z diag graduate + peel:** dual-OS report/`--json`/doctor dry-run/logs smokes; long-name thin-wrap; removed `diag_*.sh` / `Diag*.ps1`
+- **Phase 6aa MCP stdio graduated:** dual-OS `initialize` smoke; Python hatch retained
 - **Phase 3c diag:** native `--json`, `logs` (non-follow), richer report probes, `doctor --dry-run` plan; live doctor / `--share` / `--follow` still legacy
 - **Phase 3d diag share:** native `--share` (home/user/token redaction + paste.rs upload); `--follow` and live doctor still legacy
 - **Phase 3e upgrade install:** native tar/zip extract + atomic install when writable (root / `MILLENNIUM_LIB_DIR` / Windows Steam); non-root Linux system path and rollback apply still legacy

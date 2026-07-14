@@ -19,8 +19,9 @@ Project: [README](../README.md). Index: [README.md](README.md).
 | Man pages | [`man/`](../man/) | mandoc |
 | Packaging | Formula, Nix, Arch, Scoop/Winget, deb/rpm/Chocolatey | various |
 
-Rough size: ~30 Bash lib modules, ~30 PowerShell lib modules, ~725 LOC MCP,
-8 man pages, 12 completion files. CLI surface is gated by
+Rough size: ~13 Bash lib modules, ~12 PowerShell lib modules (schedule/theme/purge/diag
+feature libs peeled; upgrade/repair/shared remain); Go owns MCP stdio (~Python escape hatch), 8 man pages, 12
+completion files. CLI surface is gated by
 [`spec/cli-contract.yaml`](../spec/cli-contract.yaml); remaining dual-shell
 parity gaps are tracked in the matrix below
 ([CONTRIBUTING](../CONTRIBUTING.md#linux--windows-parity)).
@@ -87,25 +88,22 @@ Tests: Bash behavioral/unit under `tests/` · Pester under `tests/windows/`.
 | --- | --- | --- | --- | --- | --- | --- |
 | Dispatcher `millennium <cmd>` + suggestions | Y | Y | **Graduated** (Phase 6a) | Go `main_test` + `go.yml` dual-OS | Go `main_test` + `go.yml` | Bash/Pester dispatcher suites remain until peel-off |
 | `version` / `-V` / root help | Y | Y | **Graduated** (Phase 6a) | Go + `go.yml` dual-OS | Go + `go.yml` | No dual libs to delete for meta |
-| `diag` (health report) | Y | Y | **Native report** | `test_diag` + Go | `millennium-diag` + Go | — |
-| `diag doctor` / `--fix` | Y | Y | **Dry-run + live native** | `test_diag` + Go | `millennium-diag` | Completions/package cleanup still advisory |
-| `diag --json` / `--share` / `--follow` | Y | Y | **Native** (json/share/follow) | Go | Go | Redact + paste.rs; filter-tail |
-| `upgrade` download/verify/install | Y | Y | **Native when writable**; Linux non-root → `sudo` re-exec | `test_upgrade` + Go | `millennium-upgrade` | Custom unwritable `MILLENNIUM_LIB_DIR` fails clearly (no sudo) |
-| `upgrade --rollback` / `list` | Y | Y | **list + apply native when writable**; else Linux `sudo` | `test_upgrade` + Go | `millennium-upgrade` | — |
-| `upgrade --file` / `--sha256` | Y | Y | **Verify native**; install legacy | Y + Go | Y | Fail-closed SHA before legacy |
-| `repair` | Y | Y | **Dry-run + live user-path native** | `test_repair` + Go | `millennium-repair` + Go | Hook reinstall still legacy as needed |
-| `purge` (+ `--yes` / dry-run) | Y | Y | **Dry-run + live Unix/Windows native** | `test_purge` + Go | `millennium-purge` | — |
+| `diag` (health report) | Y | Y | **Graduated** (6w smoke + 6z peel) | `test_diag` + Go thin-wrap | Go thin-wrap | Dual libs removed |
+| `diag doctor` / `--fix` | Y | Y | **Dry-run Graduated (6x)**; live Done | `test_diag` + Go | Go thin-wrap | Completions/package cleanup still advisory |
+| `diag --json` / `--share` / `--follow` | Y | Y | **`--json` Graduated (6w)**; share/follow Done | Go | Go | Redact + paste.rs; filter-tail |
+| `diag logs` | Y | Y | **Graduated** (6y) | Go + thin-wrap | Go | No-logs path OK |
+| `upgrade` download/verify/install | Y | Y | **Native when writable**; long-name thin-wrap (6v); Linux non-root → `sudo` | `test_upgrade` + Go | Go thin-wrap | Dual libs for `MILLENNIUM_LEGACY=1` install handoff |
+| `upgrade --rollback` apply | Y | Y | **Graduated** when writable (6u); list Graduated 6q | `test_upgrade` + Go | Go | Sudo handoff when unwritable |
+| `upgrade --file` / `--sha256` | Y | Y | **Graduated** verify (6t) + dry-run (6s) | Y + Go | Y | Fail-closed SHA before install |
+| `repair` | Y | Y | **Partial** — user-path live; hook/binary reinstall legacy | `test_repair` + Go | `millennium-repair` + Go | **Blocked:** make hooks native before peel |
+| `purge` | Y | Y | **Graduated/peeled** (6p smoke + 6r peel) | `test_purge` + Go thin-wrap | Go thin-wrap | Dual libs removed |
 | `upgrade --all-users` | Y | — | Linux/macOS only | P | — | Keep contract-marked |
-| `schedule enable/disable/status` | Y | Y | **Graduated/peeled** (status 6i; enable/disable 6k) | `TestNativeSchedule*` + `go.yml`; Bash/Pester via thin-wrap | Go + `go.yml` | Enable dual libs removed |
-| `schedule pre/post-update` | Y | — | **Graduated/peeled** (Phase 6o); Unix/macOS; Windows N/A | `TestNativeScheduleHooksGate` + Linux `go.yml`; Bash thin-wrap | — | Hooks dual lib removed |
-| `schedule setup` wizard | Y | Y | **Graduated/peeled** (Phase 6n) | `TestNativeScheduleSetupWizard` + dual-OS `go.yml`; Bash/Pester thin-wrap | Go + `go.yml` | Wizard dual libs removed |
-| `schedule config get/set/list` | Y | Y | **Graduated** (Phase 6c peel) | Go `TestNativeConfig` + `go.yml` dual-OS; Bash/Pester via thin-wrap | Go + `go.yml` | Dual libs removed; long-name `config` execs Go |
+| `schedule` (all commands) | Y | Y* | **Graduated/peeled** (6c–6o) | Go + thin-wrap | Go + thin-wrap | *hooks Unix-only |
 | `schedule --cron` | Y | — | Linux/macOS only | Y | — | Contract OS-only |
-| `theme` list/install/update/remove | Y | Y | **Graduated** (Phase 6g peel) | `TestNativeTheme*` + `go.yml`; Bash/Pester via thin-wrap | Go + `go.yml` | Dual libs removed; long-name theme execs Go |
+| `theme` list/install/update/remove | Y | Y | **Graduated** (Phase 6g peel) | `TestNativeTheme*` + `go.yml`; Bash/Pester via thin-wrap | Go + `go.yml` | Dual libs removed |
 | `theme list --json` | Y | Y | **Graduated** (Phase 6g peel) | Go + `go.yml` dual-OS; Bash/Pester via thin-wrap | Go + `go.yml` | Long-name theme thin-wrap |
-| `purge --dry-run` | Y | Y | **Graduated** (Phase 6p) | `TestNativePurgeDryRun` + dual-OS `go.yml` | Go + `go.yml` | Dual libs until peel |
-| `upgrade --rollback list` | Y | Y | **Graduated** (Phase 6q) | `TestNativeUpgradeRollbackList` + dual-OS `go.yml` | Go + `go.yml` | Dual libs until peel |
-| `mcp` tools surface | Y | Y | **Done:** Go owns stdio + `--register`; PATH twin; Python opt-in escape | `test_mcp` (`MCP_IMPL`) | `millennium` / `millennium-mcp` | Python suite retained until graduation |
+| `upgrade --rollback list` | Y | Y | **Graduated** (Phase 6q) | `TestNativeUpgradeRollbackList` + dual-OS `go.yml` | Go + `go.yml` | Dual libs retained for install handoff |
+| `mcp` tools surface | Y | Y | **Graduated** (6aa `initialize` smoke); Python hatch retained | `test_mcp` | `millennium` / `millennium-mcp` | Hatch until explicit retirement |
 | Install / uninstall helpers | Y | Y | **Go-first** PATH `millennium` / `.exe`; versioned OS/arch release archives | `test_install` | `install` | Long-name helpers + shell/PS fallback remain; uninstall clears both systemd scopes |
 | Install track / doctor sync | Y | Y | Native | `test_install_track` | `InstallTrack` | Shared meta JSON |
 | Completions | Y | Y | Generated from contract | `test_completions` | `completions` | Codegen later |

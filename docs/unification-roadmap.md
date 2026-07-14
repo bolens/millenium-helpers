@@ -22,7 +22,7 @@ and test parity** on Linux, macOS, and Windows.
 | **3 — Mutating core** | Done | Upgrade/repair/purge/diag (incl. follow) native |
 | **4 — Schedule + installers** | Done | Schedule + installers Go-first; legacy dual-scope systemd cleanup (4m) |
 | **5 — MCP + cleanup** | Done | Native Go MCP + `--register` + PATH twin; Python escape hatch remains |
-| **6 — Graduation** | In progress | 6a–6b: meta + schedule config graduated (dual-OS Go CI); dual libs still present |
+| **6 — Graduation** | In progress | Through **6z**/6aa: meta/schedule/theme/purge/diag peeled; upgrade long-name thin-wrap (dual libs for install handoff); MCP stdio graduated; repair still Partial |
 
 Force any native path back to shell/PS: `MILLENNIUM_LEGACY=1`.
 
@@ -76,7 +76,18 @@ Work through this queue; check items off as PRs land and update this list.
 21. [x] **Phase 6o schedule hooks peel** — long-name `pre-update`/`post-update` → Go; `schedule_hooks.sh` removed (schedule fully peeled)
 22. [x] **Phase 6p purge dry-run graduated** — dual-OS `go.yml` smoke; purge dual libs kept until peel
 23. [x] **Phase 6q upgrade rollback list graduated** — dual-OS `go.yml` smoke; upgrade dual libs kept until peel
-24. [ ] **Graduate remaining commands** — dual-OS Go coverage + delete dual libs per [graduation rule](#command-graduation-rule), command-by-command
+24. [x] **Phase 6r purge peel** — long-name → Go; delete `purge_ops` / PurgeOps
+25. [x] **Phase 6s upgrade `--dry-run` graduated** — dual-OS offline `--file`+SHA dry-run smoke
+26. [x] **Phase 6t upgrade SHA/`--file` verify graduated** — dual-OS fail-closed + pass smoke
+27. [x] **Phase 6u upgrade writable rollback-apply graduated** — dual-OS/`MOCK_LIB_DIR` smoke
+28. [x] **Phase 6v upgrade long-name thin-wrap** — exec Go; retain upgrade dual libs for `NeedsLegacy` install handoff
+29. [x] **Phase 6w diag report/`--json` graduated** — dual-OS smoke
+30. [x] **Phase 6x diag `doctor --dry-run` graduated** — dual-OS smoke
+31. [x] **Phase 6y diag `logs` graduated** — dual-OS smoke (no-logs path OK)
+32. [x] **Phase 6z diag peel** — long-name → Go; delete `diag_*` / `Diag*` feature libs
+33. [x] **Phase 6aa MCP stdio graduated** — dual-OS `initialize` smoke; Python hatch retained until explicit retirement
+34. [ ] **Repair Partial → Done** — native hook/binary reinstall (blocked until then; no peel)
+35. [ ] **Endgame** — retire shell dispatcher fallback + `dispatcher.sh` / `Dispatcher.ps1`; suite retirement per command
 
 ---
 
@@ -110,11 +121,11 @@ Work through this queue; check items off as PRs land and update this list.
 
 | Surface | Status | Notes |
 | --- | --- | --- |
-| Default report | Done | `internal/diag` |
-| `--json` | Done | Contract-shaped fields |
+| Default report | Graduated | dual-OS `go.yml` smoke (Phase 6w); long-name thin-wrap (6z) |
+| `--json` | Graduated | dual-OS smoke with report (Phase 6w) |
 | `--share` | Done | Redact + paste.rs |
-| `logs` (no follow) | Done | Updater + Steam WebHelper |
-| `doctor --dry-run` | Done | Plan only |
+| `logs` (no follow) | Graduated | dual-OS smoke / no-logs path (Phase 6y) |
+| `doctor --dry-run` | Graduated | dual-OS smoke (Phase 6x) |
 | `doctor` / `--fix` live | Done | Upgrade/hooks/flatpak/schedule/skins/linger/permissions; package sync still advisory |
 | `logs --follow` | Done | Filter-tail newest Steam log (+ updater headline) |
 
@@ -122,31 +133,32 @@ Work through this queue; check items off as PRs land and update this list.
 
 | Surface | Status | Notes |
 | --- | --- | --- |
-| `--rollback list` | Graduated | dual-OS `go.yml` smoke (Phase 6q); upgrade dual libs retained until peel |
-| `--dry-run` (local + remote resolve) | Done | — |
+| `--rollback list` | Graduated | dual-OS `go.yml` smoke (Phase 6q) |
+| `--dry-run` (local + remote resolve) | Graduated | dual-OS offline `--file`+SHA smoke (Phase 6s) |
 | Remote download + SHA | Done | `internal/githubapi` |
 | Extract/install when writable | Done | Writable lib / Windows Steam; else Linux `sudo` re-exec |
-| `--file` SHA gate | Done | Fail-closed before install |
-| `--rollback <id>` apply | Done | Unix swap + Windows restore when writable; else Linux `sudo` |
+| `--file` SHA gate | Graduated | dual-OS fail-closed + pass (Phase 6t) |
+| `--rollback <id>` apply | Graduated | dual-OS writable smoke (Phase 6u); else Linux `sudo` |
 | Non-root Linux → `/usr/lib` | Done | Download/verify as user, then `sudo` handoff (native under root) |
+| Long-name entrypoint | Thin-wrap | Phase 6v: prefers Go; `MILLENNIUM_LEGACY=1` keeps upgrade dual libs for install handoff |
 
 ### `purge` / `repair`
 
 | Surface | Status | Notes |
 | --- | --- | --- |
-| `purge --dry-run` | Graduated | dual-OS `go.yml` smoke (Phase 6p); purge dual libs retained until peel |
-| `purge` live Unix | Done | Confirm / `--yes` |
-| `purge` live Windows | Done | millennium/wsock/backups/config + Task Scheduler; Steam/-Yes |
+| `purge --dry-run` | Graduated | dual-OS `go.yml` smoke (Phase 6p); dual libs removed (6r) |
+| `purge` live Unix | Graduated | Confirm / `--yes`; long-name thin-wrap (6r) |
+| `purge` live Windows | Graduated | millennium/wsock/backups/config + Task Scheduler; Steam/-Yes |
 | `repair --dry-run` | Done | `internal/repair` |
-| `repair` live (user paths) | Partial | chown/htmlcache native; hook/binary reinstall may still need legacy |
+| `repair` live (user paths) | Partial | chown/htmlcache native; hook/binary reinstall may still need legacy — **blocked: no peel until Partial → Done** |
 
 ### MCP / packaging
 
 | Surface | Status | Notes |
 | --- | --- | --- |
-| MCP server | Done (escape hatch remains) | Go `millennium mcp` / PATH `millennium-mcp`; `--register` native; Python opt-in |
-| Installers ship Go binary first | Done | Unix `install.sh` + Windows `install.ps1`; release embeds `millennium` / `millennium.exe` in versioned OS/arch archives; shell/PS fallback remains |
-| Dual `.sh` / `.ps1` libs removed | Not started | Only after graduation |
+| MCP server | Graduated | dual-OS `initialize` smoke (Phase 6aa); Python hatch (`MILLENNIUM_MCP_PYTHON=1`) retained until explicit retirement |
+| Installers ship Go binary first | Done | Unix `install.sh` + Windows `install.ps1`; release embeds `millennium` / `millennium.exe` in versioned OS/arch archives; shell/PS fallback remains (**endgame**) |
+| Dual `.sh` / `.ps1` libs removed | Partial | Schedule + theme + purge + diag feature libs deleted; upgrade/repair/shared remain until install handoff / repair Done / endgame |
 
 ---
 
@@ -210,7 +222,7 @@ Shipped behavior:
 2. **Units:** `millennium-update.service` / `.timer`; system scope sets `User=` / `Group=` / `HOME=` from `SUDO_USER` (or current user).
 3. **Status / disable (Go):** probe and clear both scopes (system skip if unprivileged).
 4. **Enable (Go):** removes the other scope when possible before writing.
-5. **Legacy Bash:** `disable` / enable-migration / uninstall clear both scopes; Bash enable still writes user units until graduated.
+5. **Legacy Bash (long-name):** enable/disable/status/setup/hooks thin-wrap to Go (Phase 6k–6o). Feature schedule dual libs removed.
 6. **macOS / Windows / cron:** unchanged.
 
 ### Phase 5 — MCP + cleanup — Done
@@ -239,8 +251,18 @@ Shipped behavior:
 - [x] **Phase 6o:** Peel schedule hooks — long-name → Go; delete `schedule_hooks.sh` (schedule feature dual libs gone)
 - [x] **Phase 6p:** `purge --dry-run` dual-OS Go smoke + graduated mark; purge dual libs kept until peel
 - [x] **Phase 6q:** `upgrade --rollback list` dual-OS Go smoke + graduated mark; upgrade dual libs kept until peel
-- [ ] Peel purge / upgrade (thin-wrap → Go; delete dual libs) after remaining upgrade/purge slices graduate
-- [ ] Graduate remaining commands command-by-command (dual-OS Go coverage, then peel dual libs)
+- [x] **Phase 6r:** Peel purge — long-name → Go; delete `purge_ops.sh` / `PurgeOps.ps1`
+- [x] **Phase 6s:** `upgrade --file`+SHA `--dry-run` dual-OS Go smoke + graduated mark
+- [x] **Phase 6t:** upgrade SHA/`--file` verify fail-closed + pass dual-OS smoke + graduated mark
+- [x] **Phase 6u:** writable rollback-apply dual-OS Go smoke + graduated mark
+- [x] **Phase 6v:** long-name upgrade thin-wrap → Go; `legacy.RunLegacy` sets `MILLENNIUM_LEGACY=1` so upgrade dual libs remain for install handoff
+- [x] **Phase 6w:** `diag` report/`--json` dual-OS Go smoke + graduated mark
+- [x] **Phase 6x:** `diag doctor --dry-run` dual-OS Go smoke + graduated mark
+- [x] **Phase 6y:** `diag logs` dual-OS Go smoke + graduated mark
+- [x] **Phase 6z:** Peel diag — long-name → Go; delete `diag_*.sh` / `Diag*.ps1`
+- [x] **Phase 6aa:** MCP `initialize` dual-OS smoke + graduated mark; Python hatch retained
+- [ ] **Repair:** hook/binary reinstall native (Partial → Done) before repair peel — **blocked**
+- [ ] **Endgame:** dispatcher dual-lib retirement + shell/PS installer fallback removal
 - [ ] Every contract feature implemented **once** in Go
 - [ ] Every [parity matrix](unification-audit.md#parity-matrix) row green / graduated
 - [ ] Bash / Pester suites retired only after Go dual-OS suite supersedes them
