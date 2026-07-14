@@ -12,6 +12,7 @@ import (
 	"github.com/bolens/millenium-helpers/internal/legacy"
 	"github.com/bolens/millenium-helpers/internal/purge"
 	"github.com/bolens/millenium-helpers/internal/repair"
+	"github.com/bolens/millenium-helpers/internal/schedule"
 	"github.com/bolens/millenium-helpers/internal/suggest"
 	"github.com/bolens/millenium-helpers/internal/theme"
 	"github.com/bolens/millenium-helpers/internal/upgrade"
@@ -29,10 +30,11 @@ func run(args []string) int {
 		Short: "Millennium helpers dispatcher (Go strangler)",
 		Long: `Millennium helpers — unified dispatcher.
 
-Native: version/help, schedule config, theme list, read-only diag,
-upgrade rollback-list / dry-run / download+SHA, purge (Unix live) + dry-run,
-repair user-path chown/htmlcache. Install/rollback extract still legacy
-(see docs/unification-roadmap.md).
+Native: version/help, schedule config/status + Unix enable/disable,
+theme list, read-only diag, upgrade rollback-list / dry-run / download+SHA,
+purge (Unix live) + dry-run, repair user-path chown/htmlcache.
+Install/rollback extract, Windows live schedule enable/disable, and setup
+still legacy (see docs/unification-roadmap.md).
 
 Force legacy for a native path: MILLENNIUM_LEGACY=1`,
 		SilenceUsage:  true,
@@ -109,16 +111,33 @@ func useLegacy() bool {
 func newScheduleCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:                "schedule",
-		Short:              "Scheduler / config (config is native Go; other actions legacy)",
+		Short:              "Scheduler (config/status/Unix timer native; Windows live + setup legacy)",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
-			if !useLegacy() {
-				if rest, ok := takeConfigArgs(a); ok {
-					os.Exit(config.RunCLI(rest))
-					return nil
-				}
+			if useLegacy() {
+				os.Exit(legacy.RunLegacy("schedule", a))
+				return nil
 			}
-			os.Exit(legacy.RunLegacy("schedule", a))
+			if rest, ok := takeConfigArgs(a); ok {
+				os.Exit(config.RunCLI(rest))
+				return nil
+			}
+			opts, err := schedule.ParseArgs(a)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err.Error())
+				os.Exit(1)
+				return nil
+			}
+			if opts.Version {
+				version.Print("millennium-schedule")
+				os.Exit(0)
+				return nil
+			}
+			if schedule.NeedsLegacy(opts) {
+				os.Exit(legacy.RunLegacy("schedule", a))
+				return nil
+			}
+			os.Exit(schedule.RunCLI(opts))
 			return nil
 		},
 	}
