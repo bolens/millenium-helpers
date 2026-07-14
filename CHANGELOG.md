@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Phase 4l Unix install Go-first:** `install.sh` installs `bin/millennium` (build via `make build` when needed) as PATH `millennium`; long-name helpers unchanged; Bash dispatcher fallback; `MILLENNIUM_INSTALL_DISPATCHER=shell` escape
 - **Phase 4m dual systemd scopes (legacy):** Bash `schedule disable` / enable migration, purge, doctor, and `install.sh` uninstall clear **system and user** `millennium-update` units (no `runuser` drop before disable); diag detects system timers
 - **Phase 5a MCP → Go (non-elevate):** `millennium-mcp` prefers `millennium diag|theme|schedule …` when the Go dispatcher is available; doctor/upgrade/repair/purge stay on long-name helpers for sudoers; `MILLENNIUM_MCP_LONGNAMES=1` forces the old path
+- **Phase 5b MCP elevate + sudoers:** installer/Arch allowlist Go `millennium {upgrade,diag,repair,purge}`; MCP elevates via Go dispatcher (Windows RunAs for `.exe`); long-name helpers remain for timers / legacy
 - **Phase 3c diag:** native `--json`, `logs` (non-follow), richer report probes, `doctor --dry-run` plan; live doctor / `--share` / `--follow` still legacy
 - **Phase 3d diag share:** native `--share` (home/user/token redaction + paste.rs upload); `--follow` and live doctor still legacy
 - **Phase 3e upgrade install:** native tar/zip extract + atomic install when writable (root / `MILLENNIUM_LIB_DIR` / Windows Steam); non-root Linux system path and rollback apply still legacy

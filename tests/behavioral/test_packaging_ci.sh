@@ -583,6 +583,14 @@ assert_not_contains "$pre_commit" "sync-pkgver" "pre-commit no longer always-syn
 assert_not_contains "$pre_commit" "update-pkgbuild-pkgver" "pre-commit no longer runs update-pkgbuild-pkgver"
 assert_contains "$pre_commit" "packaging/millennium-helpers" "pre-commit version-sync watches Arch packaging"
 assert_file_exists "${REPO_ROOT}/scripts/ci/sync-git-srcinfo.sh" "sync-git-srcinfo.sh exists"
+for sudoers_pkg in millennium-helpers millennium-helpers-bin millennium-helpers-git; do
+  sudoers_body=$(cat "${REPO_ROOT}/packaging/${sudoers_pkg}/millennium-helpers.sudoers")
+  assert_contains "$sudoers_body" "/usr/bin/millennium upgrade" \
+    "${sudoers_pkg} sudoers allowlists Go millennium upgrade"
+  assert_contains "$sudoers_body" "/usr/bin/millennium-upgrade" \
+    "${sudoers_pkg} sudoers keeps long-name millennium-upgrade"
+done
+
 assert_file_exists "${REPO_ROOT}/scripts/ci/check-packaging-manifests.sh" "check-packaging-manifests.sh exists"
 assert_contains "$(cat "${REPO_ROOT}/Makefile")" "sync-git-srcinfo" "Makefile exposes sync-git-srcinfo target"
 assert_contains "$(cat "${REPO_ROOT}/Makefile")" "check-packaging" "Makefile exposes check-packaging target"

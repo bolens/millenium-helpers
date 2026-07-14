@@ -345,6 +345,12 @@ assert_file_exists "${PREFIX_ZSH}/_millennium-helpers" "isolated install install
 assert_file_exists "${PREFIX_NU}/millennium-helpers.nu" "isolated install installs nushell completions"
 if [[ "$(uname)" != "Darwin" ]]; then
   assert_file_exists "$PREFIX_SUDOERS" "isolated install writes sudoers file"
+  sudoers_body=$(cat "$PREFIX_SUDOERS")
+  assert_contains "$sudoers_body" "millennium upgrade" "sudoers allowlists Go millennium upgrade"
+  assert_contains "$sudoers_body" "millennium diag" "sudoers allowlists Go millennium diag"
+  assert_contains "$sudoers_body" "millennium repair" "sudoers allowlists Go millennium repair"
+  assert_contains "$sudoers_body" "millennium purge" "sudoers allowlists Go millennium purge"
+  assert_contains "$sudoers_body" "millennium-upgrade" "sudoers keeps long-name millennium-upgrade"
 else
   assert_file_not_exists "$PREFIX_SUDOERS" "isolated install skips sudoers on macOS"
 fi

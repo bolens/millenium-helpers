@@ -85,8 +85,9 @@ assert_not_contains "$log" "millennium-diag" "millennium_diag (doctor:false) doe
 assert_not_contains "$log" "sudo -n" "millennium_diag (doctor:false) does not escalate to sudo"
 
 log=$(run_mcp_stderr '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"millennium_diag","arguments":{"doctor":true}}}')
-assert_contains "$log" "millennium-diag doctor" "millennium_diag (doctor:true) stays on long-name for elevate/sudoers"
+assert_contains "$log" "millennium diag doctor" "millennium_diag (doctor:true) prefers Go: millennium diag doctor"
 assert_contains "$log" "sudo -n" "millennium_diag (doctor:true) escalates via sudo -n"
+assert_not_contains "$log" "millennium-diag" "millennium_diag (doctor:true) does not use long-name when Go is present"
 
 # Escape hatch: force long-name even when Go dispatcher is on PATH
 log=$(
@@ -94,6 +95,13 @@ log=$(
     '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"millennium_diag","arguments":{"doctor":false}}}'
 )
 assert_contains "$log" "millennium-diag --json" "MILLENNIUM_MCP_LONGNAMES=1 forces millennium-diag --json"
+
+log=$(
+  MILLENNIUM_MCP_LONGNAMES=1 run_mcp_stderr \
+    '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"millennium_diag","arguments":{"doctor":true}}}'
+)
+assert_contains "$log" "millennium-diag doctor" "MILLENNIUM_MCP_LONGNAMES=1 forces long-name doctor elevate"
+assert_contains "$log" "sudo -n" "MILLENNIUM_MCP_LONGNAMES=1 doctor still escalates via sudo -n"
 
 # --- tools/call: millennium_theme with a valid action builds the expected command line ---
 
@@ -138,16 +146,23 @@ assert_contains "$resp" '"isError": true' "millennium_upgrade rejects a channel 
 assert_contains "$resp" "invalid channel" "millennium_upgrade's rejection message explains the invalid channel"
 
 log=$(run_mcp_stderr '{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"millennium_upgrade","arguments":{"channel":"beta"}}}')
-assert_contains "$log" "millennium-upgrade --channel beta" "millennium_upgrade (channel:beta) invokes millennium-upgrade --channel beta"
+assert_contains "$log" "millennium upgrade --channel beta" "millennium_upgrade (channel:beta) prefers Go dispatcher"
+assert_contains "$log" "sudo -n" "millennium_upgrade escalates via sudo -n"
 
 log=$(run_mcp_stderr '{"jsonrpc":"2.0","id":83,"method":"tools/call","params":{"name":"millennium_upgrade","arguments":{"channel":"main"}}}')
-assert_contains "$log" "millennium-upgrade --channel main" "millennium_upgrade (channel:main) invokes millennium-upgrade --channel main"
+assert_contains "$log" "millennium upgrade --channel main" "millennium_upgrade (channel:main) prefers Go dispatcher"
 
 log=$(run_mcp_stderr '{"jsonrpc":"2.0","id":80,"method":"tools/call","params":{"name":"millennium_upgrade","arguments":{"channel":"beta","force":true}}}')
-assert_contains "$log" "millennium-upgrade --channel beta --force" "millennium_upgrade (force:true) passes --force flag"
+assert_contains "$log" "millennium upgrade --channel beta --force" "millennium_upgrade (force:true) passes --force flag"
 
 log=$(run_mcp_stderr '{"jsonrpc":"2.0","id":81,"method":"tools/call","params":{"name":"millennium_upgrade","arguments":{"channel":"stable","rollback":"list"}}}')
-assert_contains "$log" "millennium-upgrade --channel stable --rollback list" "millennium_upgrade (rollback:list) passes --rollback list"
+assert_contains "$log" "millennium upgrade --channel stable --rollback list" "millennium_upgrade (rollback:list) passes --rollback list"
+
+log=$(
+  MILLENNIUM_MCP_LONGNAMES=1 run_mcp_stderr \
+    '{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"millennium_upgrade","arguments":{"channel":"beta"}}}'
+)
+assert_contains "$log" "millennium-upgrade --channel beta" "MILLENNIUM_MCP_LONGNAMES=1 forces millennium-upgrade"
 
 resp=$(run_mcp '{"jsonrpc":"2.0","id":82,"method":"tools/call","params":{"name":"millennium_upgrade","arguments":{"channel":"stable","rollback":"../invalid"}}}')
 assert_contains "$resp" '"isError": true' "millennium_upgrade with invalid rollback pattern returns error"
@@ -159,24 +174,25 @@ assert_contains "$resp" '"isError": true' "millennium_purge without confirm retu
 assert_contains "$resp" "confirm=true" "millennium_purge without confirm explains confirm=true is required"
 
 log=$(run_mcp_stderr '{"jsonrpc":"2.0","id":83,"method":"tools/call","params":{"name":"millennium_purge","arguments":{"confirm":true}}}')
-assert_contains "$log" "millennium-purge --yes" "millennium_purge with confirm=true invokes millennium-purge --yes"
+assert_contains "$log" "millennium purge --yes" "millennium_purge with confirm=true prefers Go: millennium purge --yes"
 assert_contains "$log" "sudo -n" "millennium_purge escalates via sudo -n"
 
 log=$(run_mcp_stderr '{"jsonrpc":"2.0","id":87,"method":"tools/call","params":{"name":"millennium_purge","arguments":{"confirm":false,"dry_run":true}}}')
-assert_contains "$log" "millennium-purge --dry-run" "millennium_purge with dry_run=true invokes --dry-run"
+assert_contains "$log" "millennium purge --dry-run" "millennium_purge with dry_run=true prefers Go dispatcher"
 
 # --- tools/call under TEST_SUITE_RUN must not exec system helpers ---
-# find_executable prefers /usr/bin; without this guard, sudo -n would run the
-# real millennium-* scripts and close/relaunch the host Steam client.
+# Without MOCK_BIN stubs, sudo -n could run real helpers and relaunch Steam.
+# Force long-name + clear stubs so the server logs production argv then skips.
 for tool_case in \
   'millennium_repair|millennium-repair|{"jsonrpc":"2.0","id":84,"method":"tools/call","params":{"name":"millennium_repair","arguments":{}}}' \
   'millennium_upgrade|millennium-upgrade|{"jsonrpc":"2.0","id":85,"method":"tools/call","params":{"name":"millennium_upgrade","arguments":{"channel":"stable"}}}' \
   'millennium_purge|millennium-purge|{"jsonrpc":"2.0","id":86,"method":"tools/call","params":{"name":"millennium_purge","arguments":{"confirm":true}}}'; do
   IFS='|' read -r tool_name bin_name request <<< "$tool_case"
-  rm -f "${MOCK_BIN}/${bin_name}"
-  log=$(run_mcp_stderr "$request")
+  rm -f "${MOCK_BIN}/millennium" "${MOCK_BIN}/${bin_name}"
+  log=$(MILLENNIUM_MCP_LONGNAMES=1 run_mcp_stderr "$request")
   assert_contains "$log" "sudo -n" "${tool_name} still logs the production sudo command line under TEST_SUITE_RUN"
   assert_contains "$log" "Skipping host execution" "${tool_name} skips host execution when no MOCK_BIN stub exists"
+  mock_cmd "millennium" "exit 0"
   mock_cmd "$bin_name" "exit 0"
 done
 
@@ -184,10 +200,10 @@ done
 # on developer hosts that do have system installs, so the missing-binary
 # TEST_SUITE_RUN branch stays covered. Clear the MOCK_BIN stub too — otherwise
 # _run_under_test_suite would execute it instead of taking the skip path.
-rm -f "${MOCK_BIN}/millennium-repair"
+rm -f "${MOCK_BIN}/millennium" "${MOCK_BIN}/millennium-repair"
 missing_bin_log=$(
   {
-    python3 - "$MCP_PY" << 'PYEOF' >/dev/null
+    MILLENNIUM_MCP_LONGNAMES=1 python3 - "$MCP_PY" << 'PYEOF' >/dev/null
 import importlib.util
 import sys
 
@@ -203,6 +219,7 @@ PYEOF
 assert_contains "$missing_bin_log" "sudo -n" "missing system binary still logs sudo -n under TEST_SUITE_RUN"
 assert_contains "$missing_bin_log" "Skipping host execution" "missing system binary skips host execution under TEST_SUITE_RUN"
 assert_contains "$missing_bin_log" "millennium-repair" "missing system binary logs the tool name in the command line"
+mock_cmd "millennium" "exit 0"
 mock_cmd "millennium-repair" "exit 0"
 
 # --- tools/call: unknown tool name ---

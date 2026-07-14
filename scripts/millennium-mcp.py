@@ -197,9 +197,9 @@ def force_longnames() -> bool:
 def find_go_dispatcher():
     """Locate the Go `millennium` binary when MCP should prefer it.
 
-    Phase 5a: non-elevating tools invoke `millennium <feature> …`. Elevating
-    tools still use long-name helpers because sudoers NOPASSWD allowlists those
-    paths, not the dispatcher.
+    Phase 5b: prefer `millennium <feature> …` for all tools (including elevate)
+    when the dispatcher is present. Sudoers allowlists Go verbs plus long-name
+    helpers; `MILLENNIUM_MCP_LONGNAMES=1` forces the long-name path.
     """
     if force_longnames():
         return None
@@ -231,11 +231,15 @@ def find_go_dispatcher():
 
 
 def feature_argv(feature: str, *rest: str, elevate: bool = False) -> list[str]:
-    """Build argv for a feature command; prefer Go dispatcher when safe."""
-    if not elevate:
-        go = find_go_dispatcher()
-        if go:
-            return [go, feature, *rest]
+    """Build argv for a feature command; prefer Go dispatcher when available.
+
+    ``elevate`` is retained for call-site clarity; selection uses the same Go
+    preference whether or not the command will be wrapped in sudo/UAC.
+    """
+    del elevate  # selection is identical for elevate vs non-elevate
+    go = find_go_dispatcher()
+    if go:
+        return [go, feature, *rest]
     return [f"millennium-{feature}", *rest]
 
 
@@ -383,6 +387,36 @@ def run_cmd(args, run_as_root=False, timeout=DEFAULT_TIMEOUT_SECONDS):
                     "-EncodedCommand",
                     encoded,
                 ]
+    elif IS_WINDOWS:
+        # Go dispatcher (.exe) or other non-PS1 binaries
+        cmd_args = [executable] + args[1:]
+        if run_as_root:
+            if shutil.which("sudo.exe"):
+                cmd_args = ["sudo.exe"] + cmd_args
+            else:
+                ps_lines = [
+                    "$ErrorActionPreference = 'Stop'",
+                    f"$exe = {json.dumps(executable)}",
+                    "$argList = @(",
+                ]
+                for a in args[1:]:
+                    ps_lines.append(f"  {json.dumps(a)},")
+                ps_lines.append(")")
+                ps_lines.append(
+                    "Start-Process -FilePath $exe -Verb RunAs -Wait -ArgumentList $argList"
+                )
+                script_body = "\n".join(ps_lines) + "\n"
+                encoded = base64.b64encode(script_body.encode("utf-16le")).decode(
+                    "ascii"
+                )
+                cmd_args = [
+                    "powershell.exe",
+                    "-NoProfile",
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-EncodedCommand",
+                    encoded,
+                ]
     else:
         cmd_args = [executable] + args[1:]
         if run_as_root:
@@ -440,7 +474,6 @@ def handle_tool_call(
 ) -> dict:
     if tool_name == "millennium_diag":
         doctor = arguments.get("doctor", False)
-        # Doctor elevates via sudoers allowlisted millennium-diag only.
         if doctor:
             return run_cmd(
                 feature_argv("diag", "doctor", elevate=True), run_as_root=True
@@ -543,7 +576,6 @@ def handle_tool_call(
                 }
             rest += ["--rollback", rollback]
 
-        # Elevate path stays on long-name binary (sudoers allowlist).
         return run_cmd(
             feature_argv("upgrade", *rest, elevate=True),
             run_as_root=True,
