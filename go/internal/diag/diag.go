@@ -105,16 +105,20 @@ func RunCLI(args []string) int {
 	if o.Help {
 		fmt.Print(`Usage: millennium diag [doctor|logs] [OPTIONS]
 
-Native: default report, --json, logs (no --follow), doctor --dry-run.
-Live doctor / --share / --follow still use legacy helpers.
+Native: default report, --json, --share, logs (no --follow), doctor --dry-run.
+Live doctor / --follow still use legacy helpers.
 
   --json          Structured JSON report
+  -s, --share     Upload redacted report to paste.rs
   doctor|--fix   Auto-repair (live → legacy; --dry-run native)
   logs            Recent updater + Steam WebHelper lines
   -d, --dry-run   Simulate doctor plan
   -h, --help
 `)
 		return 0
+	}
+	if o.Share {
+		return ShareReport(o)
 	}
 	if o.Logs {
 		return PrintLogs()

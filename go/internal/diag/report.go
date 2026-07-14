@@ -101,13 +101,13 @@ func ParseArgs(args []string) (Options, error) {
 	return o, nil
 }
 
-// NeedsLegacy is true for share/follow and live (non-dry-run) doctor.
+// NeedsLegacy is true for follow and live (non-dry-run) doctor.
 func NeedsLegacy(args []string) bool {
 	o, err := ParseArgs(args)
 	if err != nil {
 		return true
 	}
-	if o.Share || o.Follow {
+	if o.Follow {
 		return true
 	}
 	if o.Doctor && !o.DryRun {

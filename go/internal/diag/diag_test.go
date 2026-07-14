@@ -2,6 +2,8 @@ package diag
 
 import (
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -29,6 +31,9 @@ func TestNeedsLegacy(t *testing.T) {
 	if NeedsLegacy([]string{"--json"}) {
 		t.Fatal("json should be native")
 	}
+	if NeedsLegacy([]string{"--share"}) {
+		t.Fatal("share should be native")
+	}
 	if NeedsLegacy([]string{"logs"}) {
 		t.Fatal("logs should be native")
 	}
@@ -37,9 +42,6 @@ func TestNeedsLegacy(t *testing.T) {
 	}
 	if !NeedsLegacy([]string{"doctor"}) {
 		t.Fatal("live doctor needs legacy")
-	}
-	if !NeedsLegacy([]string{"--share"}) {
-		t.Fatal("share needs legacy")
 	}
 	if !NeedsLegacy([]string{"logs", "--follow"}) {
 		t.Fatal("follow needs legacy")
@@ -77,8 +79,43 @@ func TestPrintLogsNoSteam(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("STEAM", filepath.Join(t.TempDir(), "nosteam"))
 	t.Setenv("MILLENNIUM_STATE_DIR", t.TempDir())
-	// Should exit 1 when no steam logs — acceptable.
 	_ = PrintLogs()
+}
+
+func TestRedactAndUpload(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USER", "alice")
+	t.Setenv("GITHUB_TOKEN", "ghp_secrettokenvalue1234567890abcd")
+	body := home + "/.config has ghp_secrettokenvalue1234567890abcd for alice"
+	got := RedactReport(body)
+	if strings.Contains(got, home) || strings.Contains(got, "alice") || strings.Contains(got, "ghp_secret") {
+		t.Fatalf("not redacted: %s", got)
+	}
+	if !strings.Contains(got, "[REDACTED]") || !strings.Contains(got, "~") {
+		t.Fatalf("%s", got)
+	}
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Fatalf("method %s", r.Method)
+		}
+		_, _ = w.Write([]byte("https://paste.rs/abc123"))
+	}))
+	t.Cleanup(srv.Close)
+	prev := pasteEndpoint
+	prevDo := httpDo
+	t.Cleanup(func() {
+		pasteEndpoint = prev
+		httpDo = prevDo
+	})
+	pasteEndpoint = srv.URL
+	httpDo = srv.Client().Do
+
+	url, err := UploadPasteRS("hello")
+	if err != nil || url != "https://paste.rs/abc123" {
+		t.Fatalf("%s %v", url, err)
+	}
 }
 
 func TestVerifyChecksums(t *testing.T) {
@@ -87,7 +124,7 @@ func TestVerifyChecksums(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "a.so"), content, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	sum := "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824  a.so\n" // sha256("hello")
+	sum := "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824  a.so\n"
 	sumPath := filepath.Join(dir, "checksums.txt")
 	if err := os.WriteFile(sumPath, []byte(sum), 0o644); err != nil {
 		t.Fatal(err)
