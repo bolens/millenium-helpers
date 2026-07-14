@@ -72,7 +72,11 @@ Work through this queue; check items off as PRs land and update this list.
 17. [x] **Phase 6k schedule enable/disable peel** — long-name enable/disable → Go; timer/cron/Enable/Disable libs removed; wizard optional-enable via non-exec Go
 18. [x] **Phase 6l schedule setup graduated** — dual-OS `go.yml` `FORCE_WIZARD` dry-run smoke; wizard dual libs kept until peel
 19. [x] **Phase 6m schedule pre/post-update graduated** — Linux `go.yml` scheduler-gate smoke; hooks dual lib kept until peel
-20. [ ] **Graduate remaining commands** — dual-OS Go coverage + delete dual libs per [graduation rule](#command-graduation-rule), command-by-command
+20. [x] **Phase 6n schedule setup peel** — long-name `setup` → Go; wizard dual libs removed; install.sh builds/`millennium schedule setup`
+21. [x] **Phase 6o schedule hooks peel** — long-name `pre-update`/`post-update` → Go; `schedule_hooks.sh` removed (schedule fully peeled)
+22. [x] **Phase 6p purge dry-run graduated** — dual-OS `go.yml` smoke; purge dual libs kept until peel
+23. [x] **Phase 6q upgrade rollback list graduated** — dual-OS `go.yml` smoke; upgrade dual libs kept until peel
+24. [ ] **Graduate remaining commands** — dual-OS Go coverage + delete dual libs per [graduation rule](#command-graduation-rule), command-by-command
 
 ---
 
@@ -92,8 +96,8 @@ Work through this queue; check items off as PRs land and update this list.
 | `config get\|set\|list` | Graduated | `internal/config`; dual-OS `go.yml` smoke; long-name helpers thin-wrap to Go (Phase 6c peel) |
 | `status` | Graduated | dual-OS `go.yml` smoke; long-name thin-wrap to Go (Phase 6i peel) |
 | `enable\|disable` (dry-run + live) | Graduated | dual-OS dry-run smoke; long-name thin-wrap to Go (Phase 6k peel); dual enable libs removed |
-| `setup` | Graduated | dual-OS `FORCE_WIZARD` dry-run smoke (Phase 6l); long-name still uses `schedule_wizard` / ScheduleWizard until peel |
-| `pre-update` / `post-update` | Graduated | Linux gate smoke (Phase 6m); Unix/macOS only; long-name still uses `schedule_hooks.sh` until peel |
+| `setup` | Graduated | dual-OS `FORCE_WIZARD` dry-run smoke; long-name thin-wrap to Go (Phase 6n peel); wizard dual libs removed |
+| `pre-update` / `post-update` | Graduated | Linux gate smoke; long-name thin-wrap to Go (Phase 6o peel); hooks dual lib removed |
 
 ### `theme`
 
@@ -118,7 +122,7 @@ Work through this queue; check items off as PRs land and update this list.
 
 | Surface | Status | Notes |
 | --- | --- | --- |
-| `--rollback list` | Done | `internal/upgrade` |
+| `--rollback list` | Graduated | dual-OS `go.yml` smoke (Phase 6q); upgrade dual libs retained until peel |
 | `--dry-run` (local + remote resolve) | Done | — |
 | Remote download + SHA | Done | `internal/githubapi` |
 | Extract/install when writable | Done | Writable lib / Windows Steam; else Linux `sudo` re-exec |
@@ -130,7 +134,7 @@ Work through this queue; check items off as PRs land and update this list.
 
 | Surface | Status | Notes |
 | --- | --- | --- |
-| `purge --dry-run` | Done | `internal/purge` |
+| `purge --dry-run` | Graduated | dual-OS `go.yml` smoke (Phase 6p); purge dual libs retained until peel |
 | `purge` live Unix | Done | Confirm / `--yes` |
 | `purge` live Windows | Done | millennium/wsock/backups/config + Task Scheduler; Steam/-Yes |
 | `repair --dry-run` | Done | `internal/repair` |
@@ -231,7 +235,11 @@ Shipped behavior:
 - [x] **Phase 6k:** Peel schedule enable/disable — long-name → Go (`MILLENNIUM_LEGACY=0`); delete `schedule_timer`/`schedule_cron`/`ScheduleEnable`/`ScheduleDisable`; wizard optional-enable invokes Go without exec/exit
 - [x] **Phase 6l:** `schedule setup` dual-OS Go smoke (`FORCE_WIZARD` + dry-run) + graduated mark; wizard dual libs kept until peel
 - [x] **Phase 6m:** `schedule pre-update`/`post-update` Linux Go smoke (`MILLENNIUM_SCHEDULER=1`) + graduated mark; hooks dual lib kept until peel
-- [ ] Peel schedule setup / hooks (thin-wrap → Go; delete wizard/hooks dual libs)
+- [x] **Phase 6n:** Peel schedule setup — long-name → Go; delete `schedule_wizard.sh` / `ScheduleWizard.ps1`; install wizard uses `bin/millennium schedule setup`
+- [x] **Phase 6o:** Peel schedule hooks — long-name → Go; delete `schedule_hooks.sh` (schedule feature dual libs gone)
+- [x] **Phase 6p:** `purge --dry-run` dual-OS Go smoke + graduated mark; purge dual libs kept until peel
+- [x] **Phase 6q:** `upgrade --rollback list` dual-OS Go smoke + graduated mark; upgrade dual libs kept until peel
+- [ ] Peel purge / upgrade (thin-wrap → Go; delete dual libs) after remaining upgrade/purge slices graduate
 - [ ] Graduate remaining commands command-by-command (dual-OS Go coverage, then peel dual libs)
 - [ ] Every contract feature implemented **once** in Go
 - [ ] Every [parity matrix](unification-audit.md#parity-matrix) row green / graduated
