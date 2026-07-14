@@ -40,11 +40,27 @@ func TestNeedsLegacy(t *testing.T) {
 	if NeedsLegacy([]string{"doctor", "--dry-run"}) {
 		t.Fatal("doctor dry-run should be native")
 	}
-	if !NeedsLegacy([]string{"doctor"}) {
-		t.Fatal("live doctor needs legacy")
+	if NeedsLegacy([]string{"doctor"}) {
+		t.Fatal("live doctor should be native")
 	}
 	if !NeedsLegacy([]string{"logs", "--follow"}) {
 		t.Fatal("follow needs legacy")
+	}
+}
+
+func TestDoctorPlan(t *testing.T) {
+	r := Report{
+		BinariesOK: false, HooksOK: false, SkinsDirOK: false,
+		FlatpakOK: true, TimerActive: true, SudoersOK: true,
+		LingerOK: true, PermissionsOK: true, TaskScheduled: true,
+	}
+	steps := DoctorPlan(r, false)
+	ids := map[string]bool{}
+	for _, s := range steps {
+		ids[s.ID] = true
+	}
+	if !ids["upgrade_force"] || !ids["skins_dir"] {
+		t.Fatalf("%#v", steps)
 	}
 }
 

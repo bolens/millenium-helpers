@@ -101,19 +101,13 @@ func ParseArgs(args []string) (Options, error) {
 	return o, nil
 }
 
-// NeedsLegacy is true for follow and live (non-dry-run) doctor.
+// NeedsLegacy is true for --follow only (live doctor is native).
 func NeedsLegacy(args []string) bool {
 	o, err := ParseArgs(args)
 	if err != nil {
 		return true
 	}
-	if o.Follow {
-		return true
-	}
-	if o.Doctor && !o.DryRun {
-		return true
-	}
-	return false
+	return o.Follow
 }
 
 // Collect builds a full read-only report.
@@ -463,28 +457,15 @@ func FormatDoctorDryRun(r Report, force bool) string {
 	var b strings.Builder
 	b.WriteString("=== DRY RUN MODE: No changes will be made ===\n")
 	b.WriteString("=== Millennium Doctor plan (native) ===\n")
-	issues := 0
-	add := func(cond bool, line string) {
-		if force || cond {
-			issues++
-			b.WriteString("[DRY RUN] Would: " + line + "\n")
-		}
-	}
-	add(!r.BinariesOK, "run millennium upgrade --force (repair binaries)")
-	add(!r.HooksOK, "run millennium repair (restore bootstrap hooks)")
-	if runtime.GOOS != "windows" {
-		add(!r.FlatpakOK, "flatpak override --user --filesystem=/usr/lib/millennium com.valvesoftware.Steam")
-		add(!r.TimerActive, "millennium schedule enable")
-		add(!r.SudoersOK, "re-run installer for passwordless sudoers (manual)")
-	} else {
-		add(!r.TaskScheduled, "millennium schedule enable (may require admin)")
-	}
-	add(!r.SkinsDirOK, "create Steam steamui/skins directory")
-	if issues == 0 {
+	steps := DoctorPlan(r, force)
+	if len(steps) == 0 {
 		b.WriteString("No issues detected. Your Millennium installation looks healthy!\n")
-	} else {
-		b.WriteString(fmt.Sprintf("Dry run completed (%d planned actions). Re-run doctor without --dry-run for live repairs (legacy).\n", issues))
+		return b.String()
 	}
+	for _, s := range steps {
+		b.WriteString("[DRY RUN] Would: " + s.Detail + "\n")
+	}
+	b.WriteString(fmt.Sprintf("Dry run completed (%d planned actions). Re-run doctor without --dry-run for live repairs.\n", len(steps)))
 	return b.String()
 }
 

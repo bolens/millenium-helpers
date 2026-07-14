@@ -29,9 +29,9 @@ func run(args []string) int {
 		Long: `Millennium helpers — unified dispatcher.
 
 Native: version/help, schedule config/status/enable/disable, theme mutate,
-diag report/--json/--share/logs/doctor --dry-run, upgrade download+SHA+install
+diag report/--json/--share/logs/doctor, upgrade download+SHA+install
 (+ sudo handoff on Linux) and --rollback when writable, purge (Unix+Windows),
-repair user-path. Live doctor, schedule setup, --follow still legacy
+repair user-path. Schedule setup and --follow still legacy
 (see docs/unification-roadmap.md).
 
 Force legacy for a native path: MILLENNIUM_LEGACY=1`,
@@ -207,7 +207,7 @@ func newThemeCmd() *cobra.Command {
 func newDiagCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:                "diag",
-		Short:              "Diagnostics (report/json/share/logs/doctor --dry-run native; live doctor/follow legacy)",
+		Short:              "Diagnostics (report/json/share/logs/doctor native; --follow legacy)",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
 			if useLegacy() || diag.NeedsLegacy(a) {
