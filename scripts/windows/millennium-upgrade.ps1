@@ -4,6 +4,8 @@ param(
     [string]$Channel = "stable",
     [switch]$Force = $false,
     [string]$File = $null,
+    [string]$Sha256 = $null,
+    [switch]$InsecureSkipVerify = $false,
     [string]$Rollback = $null,
     [switch]$DryRun = $false,
     [Alias("y")]
@@ -58,7 +60,7 @@ if ($args.Count -gt 0) {
 
 if ($Help) {
     Write-Host @"
-Usage: millennium-upgrade.ps1 [-Channel stable|beta|main] [-Force] [-File PATH] [-Rollback ID|list] [-DryRun] [-Yes] [-Quiet] [-Version] [-Help]
+Usage: millennium-upgrade.ps1 [-Channel stable|beta|main] [-Force] [-File PATH] [-Sha256 HEX] [-InsecureSkipVerify] [-Rollback ID|list] [-DryRun] [-Yes] [-Quiet] [-Version] [-Help]
 
 Install official Millennium (stable, beta, or main) releases over system files.
 
@@ -66,6 +68,8 @@ Options:
   -Channel CHANNEL  Update channel: stable, beta, or main (default: stable)
   -Force            Force reinstall even if already up to date
   -File PATH        Install from a local archive instead of downloading
+  -Sha256 HEX       Expected SHA256 of -File archive (64 hex chars)
+  -InsecureSkipVerify  Allow -File without checksum verification (explicit opt-in)
   -Rollback ID      Roll back to a previous backup (or pass "list" to list backups)
   -DryRun           Simulate operations without modifying files
   -Yes, -y          Skip confirmation when closing Steam
@@ -122,83 +126,32 @@ if (Test-Path -Path $configFile) {
             $BackupMaxAgeDays = [int]$config.backup_max_age_days
         }
         if ($config -and $config.update_channel -and -not $channelExplicit) {
-            $Channel = $config.update_channel
+            $cand = [string]$config.update_channel
+            if (Test-ValidUpdateChannel -Channel $cand) {
+                $Channel = $cand
+            } else {
+                Log-Warn "Ignoring invalid update_channel '$cand' in config (expected stable|beta|main)."
+            }
         }
     } catch {}
 }
 
-if ($Channel -ne "stable" -and $Channel -ne "beta" -and $Channel -ne "main") {
-    Log-Error "Error: Invalid channel '$Channel'. Must be 'stable', 'beta', or 'main'."
+try {
+    $Channel = Require-UpdateChannel -Channel $Channel
+} catch {
+    Log-Error $_.Exception.Message
     exit 1
 }
 
-# --- Rollback logic ---
+# Feature modules (dot-sourced by this entrypoint — no thin aggregator)
+. (Join-Path -Path $ScriptDir -ChildPath 'lib\UpgradeRollback.ps1')
+
+# --- Rollback Execution ---
 if ($Rollback) {
-    if ($Rollback -eq "list") {
-        Log-Info "Available backups for rollback:"
-        if (Test-Path -Path $BackupDir) {
-            $backups = Get-ChildItem -Path $BackupDir -Directory | Sort-Object CreationTime -Descending
-            if ($backups.Count -eq 0) {
-                Write-Host "  No backups found."
-            } else {
-                foreach ($b in $backups) {
-                    Write-Host "  - $($b.Name) (Created: $($b.CreationTime))"
-                }
-            }
-        } else {
-            Write-Host "  No backups directory exists."
-        }
-        Write-Host ""
-        Write-Host "Apply one with: millennium upgrade -Rollback <id>"
-        exit 0
-    }
-
-    # Perform actual rollback
-    $targetBackup = Join-Path -Path $BackupDir -ChildPath $Rollback
-    if (!(Test-Path -Path $targetBackup)) {
-        Log-Error "Error: Backup '$Rollback' not found."
-        exit 1
-    }
-
-    if (Is-GameRunning) {
-        Log-Error "Error: A Steam game is currently running. Rollback aborted."
-        Write-Host "Close the running game, then re-run. Use -Yes to skip the Steam close prompt."
-        exit 1
-    }
-
-    # Gracefully close Steam
-    $steamRunning = $null -ne (Get-Process -Name "steam" -ErrorAction SilentlyContinue)
-    if ($steamRunning) {
-        Capture-SteamEnv
-        if (-not (Confirm-CloseSteam)) {
-            exit 1
-        }
-    }
-
-    Log-Info "Rolling back Millennium installation to $Rollback..."
-    Execute-Cmd -ScriptBlock {
-        # Delete current millennium folder and wsock32.dll
-        if (Test-Path -Path $MillenniumDir) {
-            Remove-Item -Path $MillenniumDir -Recurse -Force
-        }
-        if (Test-Path -Path $WsockDll) {
-            Remove-Item -Path $WsockDll -Force
-        }
-
-        # Restore from backup
-        Copy-Item -Path (Join-Path -Path $targetBackup -ChildPath "millennium") -Destination $MillenniumDir -Recurse -Force
-        Copy-Item -Path (Join-Path -Path $targetBackup -ChildPath "wsock32.dll") -Destination $WsockDll -Force
-
-        # Remove backup directory after successful rollback
-        Remove-Item -Path $targetBackup -Recurse -Force
-    } -Description "Rollback using backup $targetBackup"
-
-    Log-Info "Rollback completed successfully."
-    if ($steamRunning) {
-        Relaunch-Steam
-        Write-Host -ForegroundColor Green "Steam relaunched."
-    }
-    exit 0
+    $rb = Invoke-UpgradeRollback -RollbackTarget $Rollback -BackupDirArg $BackupDir `
+        -MillenniumDirArg $MillenniumDir -WsockDllArg $WsockDll
+    if ($rb -eq 'list' -or $rb -eq 'ok') { exit 0 }
+    exit 1
 }
 
 # --- Version Tag Resolution ---
@@ -351,6 +304,26 @@ if (!$File) {
     }
 } else {
     $localArchive = $File
+    if (-not $InsecureSkipVerify) {
+        if ([string]::IsNullOrWhiteSpace($Sha256)) {
+            Log-Error "Error: -File requires -Sha256 <digest> or explicit -InsecureSkipVerify."
+            exit 1
+        }
+        if ($Sha256 -notmatch '^[0-9a-fA-F]{64}$') {
+            Log-Error "Error: -Sha256 must be a 64-character hex digest."
+            exit 1
+        }
+        $actualSha = (Get-FileHash -Path $localArchive -Algorithm SHA256).Hash
+        if ($actualSha.ToLowerInvariant() -ne $Sha256.ToLowerInvariant()) {
+            Log-Error "Error: SHA256 mismatch for local Millennium archive."
+            Log-Error "Expected: $Sha256"
+            Log-Error "Actual:   $actualSha"
+            exit 1
+        }
+        Log-Info "SHA256 checksum verified for local archive."
+    } else {
+        Log-Warn "Warning: installing local archive without checksum verification (-InsecureSkipVerify)."
+    }
 }
 
 if (Is-GameRunning) {
@@ -420,12 +393,33 @@ Execute-Cmd -ScriptBlock {
         Remove-Item -Path $MillenniumDir -Recurse -Force
     }
 
-    # Extract new zip
-    # Expand-Archive is native to PowerShell 5+
-    Expand-Archive -Path $localArchive -DestinationPath $SteamPath -Force
+    # Stage extract, reject zip-slip, then copy into Steam path.
+    $stageDir = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ("millennium-upgrade-stage-" + [guid]::NewGuid().ToString("n"))
+    New-Item -ItemType Directory -Force -Path $stageDir | Out-Null
+    try {
+        Expand-SafeArchive -Path $localArchive -DestinationPath $stageDir
+        Get-ChildItem -LiteralPath $stageDir -Force | ForEach-Object {
+            $dest = Join-Path -Path $SteamPath -ChildPath $_.Name
+            if ($_.PSIsContainer) {
+                if (Test-Path -LiteralPath $dest) {
+                    Remove-Item -LiteralPath $dest -Recurse -Force
+                }
+                Move-Item -LiteralPath $_.FullName -Destination $dest -Force
+            } else {
+                Copy-Item -LiteralPath $_.FullName -Destination $dest -Force
+            }
+        }
+    } finally {
+        if (Test-Path -LiteralPath $stageDir) {
+            Remove-Item -LiteralPath $stageDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
 
     # Save version info
     $latestVer | Set-Content -Path $installedVerFile -Force
+
+    # MIT requires the copyright/permission notice with redistributed copies
+    Install-MillenniumLicense -DestDir $MillenniumDir
 } -Description "Extract $localArchive to $SteamPath"
 
 # Cleanup downloaded file if not using a custom local file input

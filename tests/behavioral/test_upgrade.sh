@@ -75,7 +75,7 @@ echo "null"
   # --- --file: Offline archive installation ---
   MOCK_FILE=$(mktemp 2>/dev/null || mktemp -t tmp.XXXXXX)
   echo "mock archive content" > "$MOCK_FILE"
-  out=$(run_upgrade "$channel" --file "$MOCK_FILE" --dry-run 2>&1)
+  out=$(run_upgrade "$channel" --file "$MOCK_FILE" --insecure-skip-verify --dry-run 2>&1)
   rc=$?
   assert_success "$rc" "${script_name} with --file and --dry-run exits 0"
   assert_contains "$out" "Would install local archive" "${script_name} --file notices local installation"
@@ -108,7 +108,7 @@ echo "null"
   export CONFIG_BACKUP_LIMIT=2
   MOCK_FILE2=$(mktemp 2>/dev/null || mktemp -t tmp.XXXXXX)
   echo "mock archive" > "$MOCK_FILE2"
-  out=$(run_upgrade "$channel" --file "$MOCK_FILE2" --dry-run 2>&1)
+  out=$(run_upgrade "$channel" --file "$MOCK_FILE2" --insecure-skip-verify --dry-run 2>&1)
   rc=$?
   assert_success "$rc" "${script_name} with custom backup limit exits 0"
   assert_contains "$out" "Would prune backup: ${TEST_LIB_DIR}/millennium.bak_v2.0.0" "${script_name} prunes the oldest backup exceeding the limit"

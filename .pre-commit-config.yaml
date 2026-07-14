@@ -95,6 +95,14 @@ repos:
         files: '^(man/.*|scripts/millennium-.*)$'
         stages: [pre-commit]
 
+      - id: licensing-docs
+        name: docs cross-links (guides + licensing)
+        entry: bash scripts/ci/check-docs-crosslinks.sh
+        language: system
+        pass_filenames: false
+        files: '^(LICENSE|README\.md|CONTRIBUTING\.md|SECURITY\.md|CHANGELOG\.md|docs/.*|man/.*|third_party/.*|scripts/lib/millennium_license\.sh|scripts/windows/common\.ps1|scripts/ci/check-docs-crosslinks\.sh|scripts/ci/check-licensing-docs\.sh|packaging/winget/.*|packaging/winget-git/.*|\.github/workflows/release\.yml)$'
+        stages: [pre-commit]
+
       - id: actionlint
         name: actionlint
         entry: bash scripts/ci/run-actionlint.sh

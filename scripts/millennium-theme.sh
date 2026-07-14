@@ -156,135 +156,23 @@ SKINS_DIR="${STEAM_DIR}/steamui/skins"
 # SKINS_DIR, letting the caller (including the MCP theme tool, which passes
 # this argument through unchecked) write or delete arbitrary files the
 # invoking user can access.
-_sanitize_theme_component() {
-  local value="$1"
-  local label="$2"
-  if [[ -z "$value" || "$value" == "." || "$value" == ".." || "$value" == */* ]]; then
-    echo -e "${RED}Error: Invalid ${label} '${value}'.${NC}" >&2
-    exit 1
-  fi
-}
 
-# Defense-in-depth on top of _sanitize_theme_component: canonicalizes the
 # candidate theme directory and verifies it still resolves inside SKINS_DIR
 # before any mkdir/cp/rm touches it (guards against SKINS_DIR itself
 # containing an unexpected symlink).
-_resolve_theme_dir() {
-  local component="$1"
-  local candidate="${SKINS_DIR}/${component}"
-  local resolved resolved_skins
-  resolved="$(portable_realpath_m "$candidate")"
-  resolved_skins="$(portable_realpath_m "$SKINS_DIR")"
-  if [[ "$resolved" != "$resolved_skins" && "$resolved" != "${resolved_skins}/"* ]]; then
-    echo -e "${RED}Error: Resolved theme path '${resolved}' escapes the skins directory.${NC}" >&2
-    exit 1
-  fi
-  echo "$resolved"
-}
 
 # execute resolved from common.sh
 
-update_single_theme() {
-  local theme_name="$1"
-  _sanitize_theme_component "$theme_name" "theme name"
-  local target_dir
-  target_dir="$(_resolve_theme_dir "$theme_name")"
-  local meta_file="${target_dir}/metadata.json"
 
-  if [[ ! -d "$target_dir" ]]; then
-    echo -e "${RED}Error: Theme '${theme_name}' is not installed.${NC}" >&2
-    return 1
-  fi
 
-  if [[ ! -f "$meta_file" ]]; then
-    echo -e "${YELLOW}Theme '${theme_name}' does not have GitHub metadata. Skipping.${NC}"
-    return 0
-  fi
-
-  local parsed_meta
-  parsed_meta=$(python3 -c "
-import json
-try:
-    with open('$meta_file') as f:
-        d = json.load(f)
-        print(f\"{d.get('owner', '')}:{d.get('repo', '')}:{d.get('commit', '')}\")
-except Exception:
-    print('::')
-" 2>/dev/null || echo "::")
-  local owner="${parsed_meta%%:*}"
-  local rest="${parsed_meta#*:}"
-  local repo="${rest%%:*}"
-  local current_commit="${rest#*:}"
-
-  if [[ -z "$owner" || -z "$repo" ]]; then
-    echo -e "${RED}Error: Invalid metadata format in ${meta_file}.${NC}" >&2
-    return 1
-  fi
-
-  echo -e "Checking updates for theme '${theme_name}' (${owner}/${repo})..."
-
-  local COMMIT=""
-  COMMIT=$(fetch_github_commit "$owner" "$repo")
-
-  if [[ -z "$COMMIT" ]]; then
-    echo -e "${RED}Error: Could not retrieve latest commit info from GitHub.${NC}" >&2
-    return 1
-  fi
-
-  if [[ "$current_commit" == "$COMMIT" ]]; then
-    echo -e "${GREEN}Theme '${theme_name}' is already up to date.${NC}"
-    return 0
-  fi
-
-  echo -e "New commit found: ${COMMIT:0:7}. Updating..."
-  if [[ "$DRY_RUN" == "true" ]]; then
-    echo -e "${YELLOW}[DRY RUN] Would update theme '${theme_name}' to commit ${COMMIT}${NC}"
-  else
-    local TMP
-    TMP="$(mktemp -d)"
-    if [[ -z "$TMP" || ! -d "$TMP" ]]; then
-      echo -e "${RED}Error: Failed to create temporary directory for theme update.${NC}" >&2
-      return 1
-    fi
-    local theme_tmp="${target_dir}.tmp"
-    local theme_bak="${target_dir}.bak"
-
-    rm -rf "$theme_tmp" "$theme_bak"
-
-    if ! download_file "https://github.com/${owner}/${repo}/archive/${COMMIT}.zip" "$TMP/theme.zip" "Downloading theme package"; then
-      rm -rf "$TMP"
-      return 1
-    fi
-
-    unzip -q "$TMP/theme.zip" -d "$TMP" || [[ $? -le 2 ]]
-    if [[ ! -d "$TMP/${repo}-${COMMIT}" ]]; then
-      echo -e "${RED}Error: Failed to extract theme archive.${NC}" >&2
-      rm -rf "$TMP"
-      return 1
-    fi
-
-    mkdir -p "$theme_tmp"
-    cp -a "$TMP/${repo}-${COMMIT}/." "$theme_tmp/"
-
-    cat > "$theme_tmp/metadata.json" <<EOF
-{
-    "commit": "${COMMIT}",
-    "owner": "${owner}",
-    "repo": "${repo}"
-}
-EOF
-
-    chown -R "${RUNNING_USER}:${RUNNING_USER}" "$theme_tmp"
-
-    mv "$target_dir" "$theme_bak"
-    mv "$theme_tmp" "$target_dir"
-    rm -rf "$theme_bak"
-    rm -rf "$TMP"
-
-    echo -e "${GREEN}Successfully updated theme '${theme_name}' to commit ${COMMIT:0:7}!${NC}"
-  fi
-  return 0
-}
+# Feature modules (sourced by this entrypoint — no thin aggregator)
+_feat_lib="${_COMMON_LIB_DIR:-${SCRIPT_DIR}/lib}"
+if [[ ! -f "${_feat_lib}/theme_ops.sh" ]]; then
+  _feat_lib="${SCRIPT_DIR}/lib"
+fi
+# shellcheck source=lib/theme_ops.sh
+source "${_feat_lib}/theme_ops.sh"
+unset _feat_lib
 
 # --- Command Execution ---
 
@@ -460,8 +348,11 @@ if [[ "$COMMAND" == "install" ]]; then
       exit 1
     fi
 
-    # Extract
-    unzip -q "$TMP/theme.zip" -d "$TMP" || [[ $? -le 2 ]]
+    # Extract (reject zip-slip)
+    if ! safe_extract_zip "$TMP/theme.zip" "$TMP"; then
+      echo -e "${RED}Error: Failed to extract theme zip safely.${NC}" >&2
+      exit 1
+    fi
     if [[ ! -d "$TMP/${repo}-${COMMIT}" ]]; then
       echo -e "${RED}Error: Failed to extract theme zip.${NC}" >&2
       exit 1

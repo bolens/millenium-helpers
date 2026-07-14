@@ -6,11 +6,17 @@ Publisher: bolens
 PublisherUrl: https://github.com/bolens
 PackageName: Millennium Helpers (git / tip-of-main)
 License: MIT
+LicenseUrl: https://github.com/bolens/millenium-helpers/blob/main/LICENSE
+Copyright: Copyright (c) 2026 bolens
 ShortDescription: Cross-platform Millennium helpers (development build from main).
 Description: >-
   Installs tip-of-main from the GitHub archive (not a release tag).
   Uninstall the release package first if present:
-  winget uninstall bolens.millenniumhelpers
+  winget uninstall bolens.millenniumhelpers.
+  These helpers manage Millennium (https://github.com/SteamClientHomebrew/Millennium),
+  which is separately MIT-licensed by Project Millennium
+  (https://github.com/SteamClientHomebrew/Millennium/blob/main/LICENSE.md).
+  See also https://github.com/bolens/millenium-helpers/blob/main/docs/licensing.md
 PackageUrl: https://github.com/bolens/millenium-helpers
 ManifestType: defaultLocale
 ManifestVersion: 1.5.0

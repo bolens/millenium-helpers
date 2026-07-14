@@ -6,7 +6,7 @@
 - [ ] `--help` / `-Help` and completions updated if flags changed
 - [ ] Man page updated if a user-facing command changed (`make check-man`)
 - [ ] Tests added or updated (`make check-all` / Pester)
-- [ ] Docs updated if user-facing
+- [ ] Docs updated if user-facing (keep [docs/README.md](docs/README.md) + Related footers in sync; `make check-docs`)
 - [ ] Packaging manifests touched only when intentional (Formula / Scoop / Winget / Nix / PKGBUILD)
 
 ## Intentional platform gaps

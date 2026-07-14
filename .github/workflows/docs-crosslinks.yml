@@ -1,0 +1,59 @@
+name: "CI: Docs Cross-Links"
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'LICENSE'
+      - 'README.md'
+      - 'CONTRIBUTING.md'
+      - 'SECURITY.md'
+      - 'CHANGELOG.md'
+      - 'docs/**'
+      - 'man/**'
+      - 'third_party/**'
+      - 'scripts/lib/millennium_license.sh'
+      - 'scripts/windows/lib/License.ps1'
+      - 'scripts/ci/check-docs-crosslinks.sh'
+      - 'scripts/ci/check-licensing-docs.sh'
+      - 'packaging/winget/**'
+      - 'packaging/winget-git/**'
+      - '.github/workflows/release.yml'
+      - '.github/workflows/docs-crosslinks.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'LICENSE'
+      - 'README.md'
+      - 'CONTRIBUTING.md'
+      - 'SECURITY.md'
+      - 'CHANGELOG.md'
+      - 'docs/**'
+      - 'man/**'
+      - 'third_party/**'
+      - 'scripts/lib/millennium_license.sh'
+      - 'scripts/windows/lib/License.ps1'
+      - 'scripts/ci/check-docs-crosslinks.sh'
+      - 'scripts/ci/check-licensing-docs.sh'
+      - 'packaging/winget/**'
+      - 'packaging/winget-git/**'
+      - '.github/workflows/release.yml'
+      - '.github/workflows/docs-crosslinks.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  docs-crosslinks:
+    name: Documentation cross-links
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Check docs cross-links
+        run: bash scripts/ci/check-docs-crosslinks.sh

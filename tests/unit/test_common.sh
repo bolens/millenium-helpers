@@ -284,7 +284,7 @@ assert_file_exists "$expected_state_file" "capture_steam_env creates state file 
 capture_contents2=$(cat "$expected_state_file")
 assert_contains "$capture_contents2" "WAS_FLATPAK='false'" "capture_steam_env still records WAS_FLATPAK correctly when Steam is running"
 assert_contains "$capture_contents2" "STEAM_ARGS=" "capture_steam_env records a STEAM_ARGS line when a Steam pid is found"
-assert_contains "$capture_contents2" "DISPLAY=':99'" "capture_steam_env reads DISPLAY from MOCK_PROC, not host /proc"
+assert_contains "$capture_contents2" "DISPLAY=:99" "capture_steam_env reads DISPLAY from MOCK_PROC, not host /proc"
 rm -f "$expected_state_file"
 rm -rf "$MOCK_PROC"
 export MOCK_PROC="/nonexistent_mock_proc"
@@ -371,8 +371,10 @@ mock_cmd "steam" 'exit 0'
 
 # --- print_diag_next_steps() ---
 
-# shellcheck source=../../scripts/lib/diag.sh
-source "${REPO_ROOT}/scripts/lib/diag.sh"
+# shellcheck source=../../scripts/lib/diag_ui.sh
+source "${REPO_ROOT}/scripts/lib/diag_ui.sh"
+# shellcheck source=../../scripts/lib/diag_next_steps.sh
+source "${REPO_ROOT}/scripts/lib/diag_next_steps.sh"
 
 # Flags are read as globals inside print_diag_next_steps (not lexical locals).
 next_out=$(
@@ -638,13 +640,13 @@ force_color_out=$(
 )
 assert_not_equals "" "$force_color_out" "FORCE_COLOR enables ANSI color variables in logging.sh"
 
-# --- print_diag_item (diag.sh) ---
+# --- print_diag_item (diag_ui.sh) ---
 
 # shellcheck disable=SC2016
 diag_out=$(
   NO_COLOR=1 bash -c '
     source "'"${REPO_ROOT}"'/scripts/lib/logging.sh"
-    source "'"${REPO_ROOT}"'/scripts/lib/diag.sh"
+    source "'"${REPO_ROOT}"'/scripts/lib/diag_ui.sh"
     print_diag_item "ok" "Steam Client" "Running"
     print_diag_item "warn" "Hooks" "Missing"
     print_diag_item "error" "Binaries" "Corrupted"
@@ -661,7 +663,7 @@ assert_contains "$diag_out" "✘" "print_diag_item error uses the cross mark"
 diag_ascii=$(
   NO_COLOR=1 NO_UNICODE=1 bash -c '
     source "'"${REPO_ROOT}"'/scripts/lib/logging.sh"
-    source "'"${REPO_ROOT}"'/scripts/lib/diag.sh"
+    source "'"${REPO_ROOT}"'/scripts/lib/diag_ui.sh"
     print_diag_item "ok" "Steam Client" "Running"
     print_diag_item "warn" "Hooks" "Missing"
     print_diag_item "error" "Binaries" "Corrupted"
@@ -854,5 +856,28 @@ unmock_cmd "systemctl"
 unmock_cmd "runuser"
 mock_cmd "systemctl" "exit 0"
 mock_cmd "runuser" "exit 0"
+
+# --- install_millennium_license ---
+if declare -F install_millennium_license >/dev/null; then
+  _report true "install_millennium_license is defined"
+else
+  _report false "install_millennium_license is defined"
+fi
+if declare -F find_millennium_license_source >/dev/null; then
+  _report true "find_millennium_license_source is defined"
+else
+  _report false "find_millennium_license_source is defined"
+fi
+
+lic_src="$(find_millennium_license_source)"
+assert_contains "$lic_src" "MILLENNIUM-LICENSE.md" "find_millennium_license_source resolves vendored file"
+assert_file_exists "$lic_src" "vendored Millennium license exists"
+
+lic_dest="$(mktemp -d)"
+install_millennium_license "$lic_dest"
+assert_file_exists "${lic_dest}/LICENSE" "install_millennium_license writes LICENSE"
+assert_contains "$(cat "${lic_dest}/LICENSE")" "Project Millennium" "installed LICENSE names Project Millennium"
+assert_contains "$(cat "${lic_dest}/LICENSE")" "MIT License" "installed LICENSE is MIT"
+rm -rf "$lic_dest"
 
 print_summary

@@ -10,6 +10,7 @@ import subprocess
 import shutil
 import os
 import argparse
+import base64
 from typing import TypedDict
 
 # Hard upper bound on how long any single underlying millennium-* command is
@@ -281,15 +282,31 @@ def run_cmd(args, run_as_root=False, timeout=DEFAULT_TIMEOUT_SECONDS):
             if shutil.which("sudo.exe"):
                 cmd_args = ["sudo.exe"] + cmd_args
             else:
-                # Run elevated via shell Start-Process
-                ps_args = (
-                    f'-NoProfile -ExecutionPolicy Bypass -File "{executable}" '
-                    + " ".join(f'"{a}"' for a in args[1:])
+                # Avoid ArgumentList quote interpolation. Elevate via
+                # -EncodedCommand that builds a -File + argument array.
+                ps_lines = [
+                    "$ErrorActionPreference = 'Stop'",
+                    f"$exe = {json.dumps(executable)}",
+                    "$argList = @(",
+                ]
+                for a in args[1:]:
+                    ps_lines.append(f"  {json.dumps(a)},")
+                ps_lines.append(")")
+                ps_lines.append(
+                    "Start-Process -FilePath powershell.exe -Verb RunAs -Wait "
+                    "-ArgumentList (@('-NoProfile','-ExecutionPolicy','Bypass','-File',$exe) + $argList)"
+                )
+                script_body = "\n".join(ps_lines) + "\n"
+                encoded = base64.b64encode(script_body.encode("utf-16le")).decode(
+                    "ascii"
                 )
                 cmd_args = [
                     "powershell.exe",
-                    "-Command",
-                    f"Start-Process powershell -Verb RunAs -Wait -ArgumentList '{ps_args}'",
+                    "-NoProfile",
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-EncodedCommand",
+                    encoded,
                 ]
     else:
         cmd_args = [executable] + args[1:]

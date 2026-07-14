@@ -148,6 +148,11 @@ function _Invoke-RepairCompletions {
 }
 
 function _Invoke-ManualScriptSync {
+    if (-not $global:AssumeYes -and -not $global:DryRun) {
+        Write-Host "Helper scripts are out of date. Syncing local scripts requires -Yes confirmation."
+        Write-Host "Re-run: millennium doctor -Yes"
+        return
+    }
     if (-not $env:USERPROFILE) {
         Log-Warn 'Cannot sync manual scripts: USERPROFILE environment variable is not set.'
         return
@@ -157,7 +162,7 @@ function _Invoke-ManualScriptSync {
     # Fetch release zip if not already extracted
     if (!$script:DiagReleaseExtract) {
         if (!(Get-ReleaseZipExtract)) {
-            Log-Error "Could not download release zip for script sync. Try again later."
+            Log-Error "Could not download/verify release zip for script sync. Try again later."
             return
         }
     }

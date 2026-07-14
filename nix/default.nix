@@ -82,6 +82,12 @@ stdenv.mkDerivation ({
     # Install VERSION for --version lookups
     install -m644 VERSION $out/lib/millennium-helpers/VERSION
 
+    # Vendored Millennium client MIT license (copied next to client on upgrade).
+    # Optional so packaging still works against older release tarballs without third_party/.
+    if [ -f third_party/MILLENNIUM-LICENSE.md ]; then
+      install -m644 third_party/MILLENNIUM-LICENSE.md $out/lib/millennium-helpers/MILLENNIUM-LICENSE.md
+    fi
+
     # Install license
     mkdir -p $out/share/licenses/${pname}
     install -m644 LICENSE $out/share/licenses/${pname}/LICENSE

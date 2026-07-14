@@ -12,6 +12,10 @@ License: MIT
 LicenseUrl: https://github.com/bolens/millenium-helpers/blob/main/LICENSE
 Copyright: Copyright (c) 2026 bolens
 ShortDescription: Cross-platform utility scripts and Model Context Protocol (MCP) server for managing, upgrading, diagnosing, and controlling Millennium on Windows.
+Description: >-
+  Community CLI helpers (MIT) for installing, repairing, upgrading, and diagnosing Millennium.
+  Millennium itself is a separate MIT-licensed project by Project Millennium
+  (https://github.com/SteamClientHomebrew/Millennium/blob/main/LICENSE.md).
 Tags:
 - steam
 - millennium

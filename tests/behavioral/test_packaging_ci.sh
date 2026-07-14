@@ -335,8 +335,23 @@ assert_contains "$windows_zip_block" "scripts/windows/" "Windows release zip inc
 assert_contains "$windows_zip_block" "millennium-helpers-windows.zip" "release.yml builds trimmed Windows zip"
 
 # Modular Windows diag lives under scripts/windows/lib — ensure the tree is shipped.
-assert_file_exists "${REPO_ROOT}/scripts/windows/lib/Diag.ps1" "scripts/windows/lib/Diag.ps1 exists for release packaging"
+assert_file_exists "${REPO_ROOT}/scripts/windows/lib/DiagReport.ps1" "scripts/windows/lib/DiagReport.ps1 exists for release packaging"
 assert_file_exists "${REPO_ROOT}/scripts/windows/lib/DiagInstall.ps1" "scripts/windows/lib/DiagInstall.ps1 exists for release packaging"
+assert_file_exists "${REPO_ROOT}/scripts/windows/lib/Logging.ps1" "scripts/windows/lib/Logging.ps1 exists for release packaging"
+assert_file_exists "${REPO_ROOT}/scripts/windows/lib/ScheduleEnable.ps1" "scripts/windows/lib/ScheduleEnable.ps1 exists for release packaging"
+assert_file_exists "${REPO_ROOT}/scripts/windows/lib/ThemeOps.ps1" "scripts/windows/lib/ThemeOps.ps1 exists for release packaging"
+assert_file_exists "${REPO_ROOT}/scripts/windows/lib/UpgradeRollback.ps1" "scripts/windows/lib/UpgradeRollback.ps1 exists for release packaging"
+assert_file_exists "${REPO_ROOT}/scripts/windows/lib/RepairOps.ps1" "scripts/windows/lib/RepairOps.ps1 exists for release packaging"
+assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/Diag.ps1" "thin Diag.ps1 loader must not exist"
+assert_file_exists "${REPO_ROOT}/scripts/lib/theme_ops.sh" "scripts/lib/theme_ops.sh exists for release packaging"
+assert_file_exists "${REPO_ROOT}/scripts/lib/schedule_timer.sh" "scripts/lib/schedule_timer.sh exists for release packaging"
+assert_file_exists "${REPO_ROOT}/scripts/lib/repair_ops.sh" "scripts/lib/repair_ops.sh exists for release packaging"
+assert_file_exists "${REPO_ROOT}/scripts/lib/upgrade_failure.sh" "scripts/lib/upgrade_failure.sh exists for release packaging"
+assert_file_not_exists "${REPO_ROOT}/scripts/lib/diag.sh" "thin diag.sh loader must not exist"
+assert_file_exists "${REPO_ROOT}/scripts/lib/purge_ops.sh" "scripts/lib/purge_ops.sh exists for release packaging"
+assert_file_exists "${REPO_ROOT}/scripts/lib/dispatcher.sh" "scripts/lib/dispatcher.sh exists for release packaging"
+assert_file_exists "${REPO_ROOT}/scripts/windows/lib/PurgeOps.ps1" "scripts/windows/lib/PurgeOps.ps1 exists for release packaging"
+assert_file_exists "${REPO_ROOT}/scripts/windows/lib/Dispatcher.ps1" "scripts/windows/lib/Dispatcher.ps1 exists for release packaging"
 assert_file_exists "${REPO_ROOT}/scripts/windows/lib/DiagDoctor.ps1" "scripts/windows/lib/DiagDoctor.ps1 exists for release packaging"
 
 # Release CD gate must wait on ShellCheck + completions, not only the test suite

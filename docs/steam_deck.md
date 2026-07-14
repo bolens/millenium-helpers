@@ -1,8 +1,11 @@
 # Steam Deck & Flatpak Troubleshooting
 
 Guidance for running Millennium Helpers on **Steam Deck** (SteamOS) and with
-**Flatpak Steam** on desktop Linux. For general security and FAQ items, see
-[security_troubleshooting.md](security_troubleshooting.md).
+**Flatpak Steam** on desktop Linux. Full docs index: [README.md](README.md).
+For general security and FAQ items, see
+[security_troubleshooting.md](security_troubleshooting.md). Uninstall /
+dry-run: [uninstall_dryrun.md](uninstall_dryrun.md). Licensing:
+[licensing.md](licensing.md).
 
 ---
 
@@ -150,3 +153,9 @@ Use `--dry-run` first if unsure.
 | `millennium-upgrade` | Install/update Millennium client |
 | `millennium-schedule` | Daily auto-update timer |
 | `man millennium-diag` | Manual page (when man pages are installed) |
+
+## Related
+
+- **Docs index:** [README.md](README.md)
+- **Project:** [README.md](../README.md) · [CONTRIBUTING.md](../CONTRIBUTING.md) · [SECURITY.md](../SECURITY.md)
+- **Guides:** [security_troubleshooting.md](security_troubleshooting.md) · [uninstall_dryrun.md](uninstall_dryrun.md) · [licensing.md](licensing.md) · [mcp.md](mcp.md)

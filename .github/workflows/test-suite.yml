@@ -120,6 +120,9 @@ jobs:
           - tests/unit/test_common.sh
           - tests/unit/test_mocks.sh
           - tests/unit/test_completions.sh
+          - tests/unit/test_install_track.sh
+          - tests/unit/test_theme_ops.sh
+          - tests/unit/test_dispatcher.sh
           - tests/behavioral/test_install.sh
           - tests/behavioral/test_theme.sh
           - tests/behavioral/test_schedule.sh
@@ -130,6 +133,7 @@ jobs:
           - tests/behavioral/test_mcp.sh
           - tests/behavioral/test_millennium_dispatcher.sh
           - tests/behavioral/test_packaging_ci.sh
+          - tests/behavioral/test_security.sh
         include:
           - distro: debian
             image: debian:12
@@ -215,12 +219,15 @@ jobs:
       matrix:
         suite:
           - tests/windows/common.Tests.ps1
+          - tests/windows/Args.Tests.ps1
+          - tests/windows/Dispatcher.Tests.ps1
           - tests/windows/millennium.Tests.ps1
           - tests/windows/millennium-diag.Tests.ps1
           - tests/windows/millennium-upgrade.Tests.ps1
           - tests/windows/millennium-theme.Tests.ps1
           - tests/windows/millennium-schedule.Tests.ps1
           - tests/windows/install.Tests.ps1
+          - tests/windows/InstallTrack.Tests.ps1
           - tests/windows/completions.Tests.ps1
           - tests/windows/millennium-mcp.Tests.ps1
           - tests/windows/millennium-repair.Tests.ps1
@@ -245,6 +252,9 @@ jobs:
           - tests/unit/test_common.sh
           - tests/unit/test_mocks.sh
           - tests/unit/test_completions.sh
+          - tests/unit/test_install_track.sh
+          - tests/unit/test_theme_ops.sh
+          - tests/unit/test_dispatcher.sh
           - tests/behavioral/test_install.sh
           - tests/behavioral/test_theme.sh
           - tests/behavioral/test_schedule.sh
@@ -255,6 +265,7 @@ jobs:
           - tests/behavioral/test_mcp.sh
           - tests/behavioral/test_millennium_dispatcher.sh
           - tests/behavioral/test_packaging_ci.sh
+          - tests/behavioral/test_security.sh
     steps:
       - name: Checkout code
         uses: actions/checkout@v7

@@ -387,6 +387,7 @@ formula=$(cat "${REPO_ROOT}/Formula/millennium-helpers.rb")
 assert_contains "$formula" 'ln_sf "millennium-helpers", bash_completion/cmd' "Formula creates bash completion symlinks"
 assert_contains "$formula" 'ln_sf "_millennium-helpers", zsh_completion/"_#{cmd}"' "Formula creates zsh completion symlinks"
 assert_contains "$formula" 'share/"nushell/completions"' "Formula installs nushell completions"
+assert_contains "$formula" 'MILLENNIUM-LICENSE.md' "Formula installs vendored Millennium LICENSE"
 assert_contains "$formula" 'assert_path_exists bash_completion/"millennium"' "Formula test checks millennium bash completion"
 
 pkgbuild=$(cat "${REPO_ROOT}/packaging/millennium-helpers-git/PKGBUILD")
@@ -408,9 +409,9 @@ assert_contains "$scoop_git" "millenium-helpers-main" "Scoop git manifest sets e
 assert_contains "$scoop_git" "post_install" "Scoop git manifest registers post_install hooks"
 
 # --- Track flags in help / dry-run ---
-out=$(bash "$INSTALL_SH" install --dry-run --track main 2>&1)
+out=$(bash "$INSTALL_SH" install --dry-run --track main --allow-unsigned-main 2>&1)
 rc=$?
-assert_success "$rc" "install.sh install --dry-run --track main exits 0"
+assert_success "$rc" "install.sh install --dry-run --track main --allow-unsigned-main exits 0"
 
 out=$(bash "$INSTALL_SH" install --dry-run --tag v2.5.0 2>&1)
 rc=$?
@@ -459,7 +460,12 @@ cat "'"$MOCK_MAIN_TGZ"'" > "$out"
 
 out=$(TARGET_DIR="$STANDALONE_MAIN" bash "$STANDALONE_MAIN/install.sh" install --track main --dry-run 2>&1)
 rc=$?
-assert_success "$rc" "piped install --track main --dry-run exits 0"
+assert_failure "$rc" "piped install --track main without --allow-unsigned-main fails closed"
+assert_contains "$out" "allow-unsigned-main" "piped --track main explains unsigned gate"
+
+out=$(TARGET_DIR="$STANDALONE_MAIN" bash "$STANDALONE_MAIN/install.sh" install --track main --allow-unsigned-main --dry-run 2>&1)
+rc=$?
+assert_success "$rc" "piped install --track main --allow-unsigned-main --dry-run exits 0"
 assert_contains "$out" "main" "piped --track main mentions main"
 assert_not_contains "$out" "SHA256 checksum verified." "piped --track main skips release SHA verify"
 

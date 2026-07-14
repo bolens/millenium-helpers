@@ -2,7 +2,21 @@
 # GitHub API interaction helpers for Millennium Helpers.
 # Sourced by common.sh
 
+# Write Authorization header into a curl --config file (0600) so the token
+# does not appear on the process argv (/proc/*/cmdline).
+_github_curl_auth_config() {
+  local cfg
+  cfg=$(mktemp 2>/dev/null || mktemp -t mh-gh-curl.XXXXXX)
+  chmod 600 "$cfg"
+  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+    # curl --config: header = "Authorization: token …"
+    printf 'header = "Authorization: token %s"\n' "$GITHUB_TOKEN" > "$cfg"
+  fi
+  printf '%s\n' "$cfg"
+}
+
 _github_curl_headers() {
+  # Deprecated for callers that put headers on argv; kept for compatibility.
   if [[ -n "${GITHUB_TOKEN:-}" ]]; then
     echo "-H" "Authorization: token $GITHUB_TOKEN"
   fi
@@ -55,11 +69,12 @@ _github_explain_http_error() {
 # Compatible with simple curl mocks that print the body to stdout and ignore -o/-w.
 _github_api_get() {
   local url="$1"
-  local headers=()
+  local auth_cfg=""
+  local curl_cfg_args=()
   if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-    headers+=("-H" "Authorization: token $GITHUB_TOKEN")
+    auth_cfg="$(_github_curl_auth_config)"
+    curl_cfg_args+=(--config "$auth_cfg")
   fi
-  headers+=("-H" "User-Agent: millennium-helpers" "-H" "Accept: application/vnd.github+json")
 
   local tmp_body tmp_hdr
   tmp_body=$(mktemp 2>/dev/null || mktemp -t mh-gh-body.XXXXXX)
@@ -68,7 +83,9 @@ _github_api_get() {
   local curl_rc=0
   local http_code
   http_code=$(curl -sL --retry 3 --retry-delay 2 -o "$tmp_body" -D "$tmp_hdr" -w "%{http_code}" \
-    ${headers[@]+"${headers[@]}"} "$url" 2>/dev/null) || curl_rc=$?
+    ${curl_cfg_args[@]+"${curl_cfg_args[@]}"} \
+    -H "User-Agent: millennium-helpers" -H "Accept: application/vnd.github+json" \
+    "$url" 2>/dev/null) || curl_rc=$?
 
   # Test mocks often echo JSON to stdout and ignore -o/-w. Detect that case.
   if [[ ! "$http_code" =~ ^[0-9]{3}$ ]]; then
@@ -93,12 +110,12 @@ _github_api_get() {
 
   if [[ "$http_code" != "200" ]]; then
     _github_explain_http_error "$http_code" "$tmp_hdr"
-    rm -f "$tmp_body" "$tmp_hdr"
+    rm -f "$tmp_body" "$tmp_hdr" ${auth_cfg:+"$auth_cfg"}
     return 1
   fi
 
   cat "$tmp_body"
-  rm -f "$tmp_body" "$tmp_hdr"
+  rm -f "$tmp_body" "$tmp_hdr" ${auth_cfg:+"$auth_cfg"}
   return 0
 }
 

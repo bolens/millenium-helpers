@@ -3,6 +3,9 @@
 Checklist for cutting a `vX.Y.Z` release of Millennium Helpers. Follow in order; do not tag until the preflight gates pass locally.
 
 For packaging/automation background, see [CONTRIBUTING.md](../CONTRIBUTING.md#versioning).
+Full docs index: [README.md](README.md). Licensing / release payload notice:
+[licensing.md](licensing.md) (Linux/Windows assets must include
+`third_party/MILLENNIUM-LICENSE.md`).
 
 ---
 
@@ -49,6 +52,8 @@ Extra packaging gates (also covered by some CI workflows):
 ```bash
 make check-version         # VERSION ↔ Scoop / Winget / Homebrew / Arch / Nix / pyproject / .SRCINFO
 make check-man             # every command has a man page
+make check-docs            # docs index / Related footers / man / licensing cross-links
+make check-licensing       # alias for check-docs
 make check-winget          # Winget manifest structure
 make check-completions
 ```
@@ -227,3 +232,9 @@ done
 git tag -a vX.Y.Z -m vX.Y.Z && git push origin vX.Y.Z
 gh run list --workflow release.yml --limit 3
 ```
+
+## Related
+
+- **Docs index:** [README.md](README.md)
+- **Project:** [README.md](../README.md) · [CONTRIBUTING.md](../CONTRIBUTING.md) · [SECURITY.md](../SECURITY.md) · [CHANGELOG.md](../CHANGELOG.md)
+- **Guides:** [licensing.md](licensing.md) · [mcp.md](mcp.md) · [security_troubleshooting.md](security_troubleshooting.md)

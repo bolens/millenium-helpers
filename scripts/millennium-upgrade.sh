@@ -41,6 +41,9 @@ ASSUME_YES=false
 ROLLBACK=false
 ROLLBACK_TARGET=""
 LOCAL_FILE=""
+LOCAL_SHA=""
+INSECURE_SKIP_VERIFY=false
+ALL_USERS=false
 
 show_help() {
   cat << EOF
@@ -55,6 +58,9 @@ Options:
   --main                 Alias for --channel main
   -r, --rollback [ID]    Roll back to a previous backup (or pass "list" to list backups)
   --file PATH            Install from a local archive instead of downloading
+  --sha256 HEX           Expected SHA256 of --file archive (64 hex chars)
+  --insecure-skip-verify Allow --file without checksum verification (explicit opt-in)
+  --all-users            Link bootstrap hooks for every UID>=1000 Steam tree (default: SUDO_USER only)
   -f, --force            Force reinstall even if already up to date
   -y, --yes              Skip confirmation when closing Steam
   -d, --dry-run          Simulate operations without modifying files
@@ -127,6 +133,24 @@ while [[ $# -gt 0 ]]; do
       fi
       shift
       ;;
+    --sha256)
+      if [[ $# -gt 1 ]]; then
+        LOCAL_SHA="$2"
+        shift
+      else
+        echo "Error: --sha256 requires a hex digest argument." >&2
+        exit 1
+      fi
+      shift
+      ;;
+    --insecure-skip-verify)
+      INSECURE_SKIP_VERIFY=true
+      shift
+      ;;
+    --all-users)
+      ALL_USERS=true
+      shift
+      ;;
     -V|--version)
       print_helpers_version
       exit 0
@@ -143,10 +167,39 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+CHANNEL="$(require_update_channel "${CHANNEL:-stable}")" || exit 1
+
+if [[ -n "$LOCAL_FILE" ]]; then
+  if [[ "$INSECURE_SKIP_VERIFY" != "true" ]]; then
+    if [[ -z "$LOCAL_SHA" ]]; then
+      echo "Error: --file requires --sha256 <digest> or explicit --insecure-skip-verify." >&2
+      exit 1
+    fi
+    if [[ ! "$LOCAL_SHA" =~ ^[0-9a-fA-F]{64}$ ]]; then
+      echo "Error: --sha256 must be a 64-character hex digest." >&2
+      exit 1
+    fi
+  else
+    echo -e "${YELLOW}Warning: installing local archive without checksum verification (--insecure-skip-verify).${NC}" >&2
+  fi
+fi
+
 if [[ "$DRY_RUN" == "false" ]] && [[ "$ROLLBACK_TARGET" != "list" ]] && [[ "$(id -u)" -ne 0 ]] && [[ "$(uname)" != "Darwin" ]]; then
   echo "Run with sudo: sudo $0" >&2
   exit 1
 fi
+
+
+# Feature modules (sourced by this entrypoint — no thin aggregator)
+_feat_lib="${_COMMON_LIB_DIR:-${SCRIPT_DIR}/lib}"
+if [[ ! -f "${_feat_lib}/upgrade_failure.sh" || ! -f "${_feat_lib}/upgrade_network.sh" ]]; then
+  _feat_lib="${SCRIPT_DIR}/lib"
+fi
+# shellcheck source=lib/upgrade_failure.sh
+source "${_feat_lib}/upgrade_failure.sh"
+# shellcheck source=lib/upgrade_network.sh
+source "${_feat_lib}/upgrade_network.sh"
+unset _feat_lib
 
 # --- Rollback Execution ---
 if [[ "$ROLLBACK" == "true" ]]; then
@@ -154,13 +207,6 @@ if [[ "$ROLLBACK" == "true" ]]; then
   exit 0
 fi
 
-failure_handler() {
-  local exit_code=$?
-  if [[ "$DRY_RUN" == "false" ]]; then
-    send_notification "Millennium Update Failed" "An error occurred during the update process (exit code: $exit_code)."
-    print_upgrade_failure_tips "$exit_code"
-  fi
-}
 trap 'failure_handler' ERR
 
 RUNNING_USER="${SUDO_USER:-$(id -un)}"
@@ -198,22 +244,6 @@ if [[ -n "$LOCAL_FILE" ]]; then
   VER=$(tar -xOzf "$LOCAL_FILE" usr/lib/millennium/version.txt 2>/dev/null || echo "local")
   echo "Using local file: ${LOCAL_FILE} (Version: ${VER})"
 else
-  check_network() {
-    local retries=5
-    local wait_sec="${MOCK_NETWORK_WAIT_SEC:-10}"
-    echo "Checking network connectivity..."
-    for ((i=1; i<=retries; i++)); do
-      if curl -sIk "https://github.com" &>/dev/null; then
-        return 0
-      fi
-      echo "Network offline, retrying in ${wait_sec}s ($i/$retries)..." >&2
-      if [[ "$wait_sec" -gt 0 ]]; then
-        sleep "$wait_sec"
-      fi
-    done
-    echo "Error: Network is offline. Aborting." >&2
-    exit 1
-  }
   check_network
 
   if [[ "$CHANNEL" == "beta" ]]; then
@@ -267,6 +297,7 @@ if [[ "$DRY_RUN" == "true" ]]; then
     echo -e "${YELLOW}[DRY RUN] Expected SHA256: ${SHA}${NC}"
   fi
   echo -e "${YELLOW}[DRY RUN] Would clear /usr/lib/millennium/* and install new binaries${NC}"
+  echo -e "${YELLOW}[DRY RUN] Would install Millennium MIT LICENSE into /usr/lib/millennium/${NC}"
   prune_backups
 else
   TMP=$(mktemp -d)
@@ -279,6 +310,9 @@ else
   if [[ -n "$LOCAL_FILE" ]]; then
     cp "$LOCAL_FILE" "$TMP/millennium-local.tar.gz"
     ARCHIVE="millennium-local.tar.gz"
+    if [[ -n "$LOCAL_SHA" ]]; then
+      echo "${LOCAL_SHA}  ${ARCHIVE}" | (cd "$TMP" && sha256sum -c)
+    fi
   else
     if ! download_file "$URL" "$TMP/$ARCHIVE" "Downloading Millennium v${VER}"; then
       exit 1
@@ -313,6 +347,11 @@ else
   echo "${VER}" > "$dest_tmp/version.txt"
   chmod 644 "$dest_tmp/version.txt"
 
+  # MIT requires the copyright/permission notice with redistributed copies.
+  if declare -F install_millennium_license >/dev/null 2>&1; then
+    install_millennium_license "$dest_tmp"
+  fi
+
   (cd "$dest_tmp" && sha256sum libmillennium_bootstrap_x86.so libmillennium_bootstrap_hhx64.so libmillennium_x86.so libmillennium_hhx64.so libmillennium_pvs64 > checksums.txt 2>/dev/null || true)
   chmod 644 "$dest_tmp/checksums.txt" 2>/dev/null || true
 
@@ -338,31 +377,42 @@ else
   fi
 fi
 
-# Re-link bootstrap hooks for all Steam users (same as pacman post_install)
+# Re-link bootstrap hooks for Steam trees (SUDO_USER by default; --all-users for every UID>=1000)
 if [[ "$(uname)" != "Darwin" ]] && command -v getent &>/dev/null; then
-  getent passwd | while IFS=: read -r _ _ uid _ _ home _; do
-    [[ "$uid" -ge 1000 ]] || continue
-
-    # Find steam directory for this user
-    steam_dir=""
+  link_hooks_for_home() {
+    local home="$1"
+    local steam_dir=""
+    local cand
     for cand in "$home/.local/share/Steam" "$home/.steam/steam" "$home/.steam/root" "$home/.var/app/com.valvesoftware.Steam/.local/share/Steam"; do
       if [[ -d "$cand" ]]; then
         steam_dir="$cand"
         break
       fi
     done
-    [[ -n "$steam_dir" ]] || continue
+    [[ -n "$steam_dir" ]] || return 0
 
     execute mkdir -p "$steam_dir/ubuntu12_32" "$steam_dir/ubuntu12_64"
     execute ln -sf /usr/lib/millennium/libmillennium_bootstrap_x86.so   "$steam_dir/ubuntu12_32/libXtst.so.6"
     execute ln -sf /usr/lib/millennium/libmillennium_bootstrap_hhx64.so "$steam_dir/ubuntu12_64/libXtst.so.6"
 
-    # Flatpak Steam warning
     if [[ "$steam_dir" == *"com.valvesoftware.Steam"* ]]; then
       echo "Note: Flatpak Steam detected. To allow Steam to load Millennium, make sure to run:"
       echo "  flatpak override --user --filesystem=/usr/lib/millennium com.valvesoftware.Steam"
     fi
-  done
+  }
+
+  if [[ "$ALL_USERS" == "true" ]]; then
+    getent passwd | while IFS=: read -r _ _ uid _ _ home _; do
+      [[ "$uid" -ge 1000 ]] || continue
+      link_hooks_for_home "$home"
+    done
+  else
+    target_user="${SUDO_USER:-$(id -un)}"
+    target_home="$(get_user_home "$target_user")"
+    if [[ -n "$target_home" ]]; then
+      link_hooks_for_home "$target_home"
+    fi
+  fi
 fi
 
 if [[ "$DRY_RUN" == "true" ]]; then

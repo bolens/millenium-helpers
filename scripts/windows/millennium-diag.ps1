@@ -19,8 +19,6 @@ param(
 Set-StrictMode -Version Latest
 
 # Source shared helpers
-# $DiagScriptRoot is used throughout to avoid conflicts with $script:ScriptDir
-# which Diag.ps1 resets to '' during initialization.
 $DiagScriptRoot = $PSScriptRoot
 $ScriptDir      = $DiagScriptRoot
 $CommonPs1 = Join-Path -Path $DiagScriptRoot -ChildPath 'common.ps1'
@@ -137,21 +135,40 @@ if ($Share) {
     exit 0
 }
 
-# --- Load the diagnostic library ---
-# Must happen before resolving SteamPath: Diag.ps1 initializes $script:SteamPath = ''
-# (StrictMode safety), which would clobber any earlier assignment.
-# Use $DiagScriptRoot (not $ScriptDir/$script:ScriptDir) because Diag.ps1's
-# $script:ScriptDir = '' initialization clobbers the script-level $ScriptDir alias.
+# --- Load diagnostic modules (no thin aggregator) ---
 $script:DiagLibDir = Join-Path -Path $DiagScriptRoot -ChildPath 'lib'
-$DiagPs1           = Join-Path -Path $script:DiagLibDir -ChildPath 'Diag.ps1'
-if (Test-Path -Path $DiagPs1) {
-    . $DiagPs1
-} else {
-    Write-Error "Diagnostic library not found at $DiagPs1"
-    exit 1
+$script:ScriptDir  = $DiagScriptRoot
+$script:Channel    = 'stable'
+$script:VersionStr = 'Not Installed'
+$script:SteamPath  = ''
+$script:MillenniumDir = ''
+$script:WsockDll   = ''
+$script:SkinsDir   = ''
+
+$diagModules = @(
+    'DiagUi.ps1',
+    'DiagSteam.ps1',
+    'DiagEnv.ps1',
+    'DiagCompletions.ps1',
+    'DiagInstall.ps1',
+    'DiagRelease.ps1',
+    'DiagUpdates.ps1',
+    'DiagNextSteps.ps1',
+    'DiagDoctorCleanup.ps1',
+    'DiagDoctorRepair.ps1',
+    'DiagDoctor.ps1',
+    'DiagReport.ps1'
+)
+foreach ($mod in $diagModules) {
+    $modPath = Join-Path -Path $script:DiagLibDir -ChildPath $mod
+    if (-not (Test-Path -Path $modPath)) {
+        Write-Error "Diagnostic library module not found at $modPath"
+        exit 1
+    }
+    . $modPath
 }
 
-# --- Resolve Steam path (after Diag.ps1 so its reset doesn't clobber us) ---
+# --- Resolve Steam path ---
 # $env:DIAG_TEST_STEAM_PATH lets test environments skip registry lookups on Linux CI.
 if ($env:DIAG_TEST_STEAM_PATH) {
     $script:SteamPath = $env:DIAG_TEST_STEAM_PATH
@@ -206,8 +223,7 @@ if ($Command -eq 'logs') {
     exit 0
 }
 
-# --- Initialize shared script state for diag modules ---
-# Use $DiagScriptRoot (captured before Diag.ps1 clobbered $script:ScriptDir).
+# --- Initialize remaining shared script state for diag modules ---
 $script:Channel    = 'stable'
 $script:VersionStr = 'Not Installed'
 $script:ScriptDir  = $DiagScriptRoot

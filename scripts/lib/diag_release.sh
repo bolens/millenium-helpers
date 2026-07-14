@@ -70,16 +70,28 @@ diag_fetch_release_tarball() {
   fi
 
   if [[ "$track" != "main" ]]; then
-    if curl -fsSL --retry 3 --retry-delay 2 "${url}.sha256" -o "$sha_file" 2>/dev/null; then
-      if [[ -s "$sha_file" ]] && command -v sha256sum >/dev/null 2>&1; then
-        (
-          cd "$DIAG_RELEASE_WORKDIR" || exit 1
-          sha256sum -c "$(basename "$sha_file")" >/dev/null 2>&1
-        ) || {
-          _diag_cleanup_release_workdir
-          return 1
-        }
-      fi
+    if ! command -v sha256sum >/dev/null 2>&1; then
+      echo -e "${RED}Error: sha256sum is required to verify the helpers release archive.${NC}" >&2
+      _diag_cleanup_release_workdir
+      return 1
+    fi
+    if ! curl -fsSL --retry 3 --retry-delay 2 "${url}.sha256" -o "$sha_file" 2>/dev/null; then
+      echo -e "${RED}Error: Failed to download SHA256 sidecar for helpers release archive.${NC}" >&2
+      _diag_cleanup_release_workdir
+      return 1
+    fi
+    if [[ ! -s "$sha_file" ]]; then
+      echo -e "${RED}Error: SHA256 sidecar for helpers release archive is empty.${NC}" >&2
+      _diag_cleanup_release_workdir
+      return 1
+    fi
+    if ! (
+      cd "$DIAG_RELEASE_WORKDIR" || exit 1
+      sha256sum -c "$(basename "$sha_file")" >/dev/null 2>&1
+    ); then
+      echo -e "${RED}Error: SHA256 checksum mismatch for helpers release archive.${NC}" >&2
+      _diag_cleanup_release_workdir
+      return 1
     fi
   fi
 

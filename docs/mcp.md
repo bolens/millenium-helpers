@@ -2,7 +2,10 @@
 
 The Millennium Helper suite includes a built-in Model Context Protocol (MCP) server that exposes the entire command suite as native AI tools to coding assistants (such as Claude Desktop, Cursor, Windsurf, or Antigravity).
 
-For general usage instructions, see the main [README.md](../README.md). For troubleshooting and security details, see [security_troubleshooting.md](security_troubleshooting.md).
+For general usage instructions, see the main [README.md](../README.md). Full
+docs index: [README.md](README.md). For troubleshooting and security details,
+see [security_troubleshooting.md](security_troubleshooting.md). Licensing:
+[licensing.md](licensing.md).
 
 ---
 
@@ -18,6 +21,15 @@ For general usage instructions, see the main [README.md](../README.md). For trou
 | `millennium_purge` | Completely uninstalls all Millennium client hooks and files. | `confirm` (boolean, required): must be `true` to purge. <br> `dry_run` (boolean, optional): simulate without deleting. Escalates via `sudo -n` / elevated PowerShell like the other write tools. |
 
 **Helpers track vs client channel:** MCP `channel` arguments always mean the Millennium **client** `update_channel` (`stable` / `beta` / `main`). Helpers install track (`release` / `main` / `tag`) is chosen at install time (`install.sh --track`, `install.ps1 -Track`) and is not an MCP tool parameter.
+
+**Safety gates (server-side):**
+- `action` / `channel` values are allow-listed independently of the JSON schema (clients can send arbitrary strings)
+- `theme` / `rollback` strings are character-class validated; path traversal (`..`) is refused
+- `millennium_purge` requires `confirm=true` (or `dry_run=true`)
+- Elevated Windows runs use Base64 `-EncodedCommand` + `-File` argument arrays (no shell `ArgumentList` string interpolation)
+- Internal schedule hooks `pre-update` / `post-update` are not exposed as MCP actions
+
+Doctor mode (`millennium_diag` with `doctor=true`) escalates and may rewrite helpers; overwriting root-owned scripts still requires the underlying CLI `--yes` confirmation path.
 
 ---
 
@@ -72,3 +84,9 @@ Go to Settings -> Features -> MCP, click **+ Add New MCP Server**, and configure
 - **Name**: `millennium-helpers`
 - **Type**: `command`
 - **Command**: `millennium-mcp`
+
+## Related
+
+- **Docs index:** [README.md](README.md)
+- **Project:** [README.md](../README.md) · [CONTRIBUTING.md](../CONTRIBUTING.md) · [SECURITY.md](../SECURITY.md)
+- **Guides:** [licensing.md](licensing.md) · [security_troubleshooting.md](security_troubleshooting.md) · [uninstall_dryrun.md](uninstall_dryrun.md) · [steam_deck.md](steam_deck.md)

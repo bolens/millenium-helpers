@@ -1,6 +1,6 @@
 # Makefile for Millennium Helpers local development automation
 
-.PHONY: setup test test-windows lint format check-all check-version check-man check-winget check-completions sync-git-srcinfo sync-stable-srcinfo bump-version test-debian test-ubuntu test-fedora test-all-distros
+.PHONY: setup test test-windows lint format check-all check-version check-man check-docs check-licensing check-winget check-completions sync-git-srcinfo sync-stable-srcinfo bump-version test-debian test-ubuntu test-fedora test-all-distros
 
 setup:
 	@echo "Setting up local development dependencies..."
@@ -50,6 +50,12 @@ check-version:
 check-man:
 	bash scripts/ci/check-man-pages.sh
 
+check-docs:
+	bash scripts/ci/check-docs-crosslinks.sh
+
+# Alias — licensing asserts are part of check-docs
+check-licensing: check-docs
+
 check-winget:
 	bash scripts/ci/check-winget-manifests.sh
 
@@ -78,6 +84,7 @@ lint:
 	@test -s VERSION || (echo "VERSION file missing or empty" >&2; exit 1)
 	@$(MAKE) check-version
 	@$(MAKE) check-man
+	@$(MAKE) check-docs
 	@$(MAKE) check-completions
 
 format:

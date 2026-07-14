@@ -265,7 +265,7 @@ out_of_date_completions=()
 broken_symlinks=()
 TMP_SCRIPTS=""
 
-# Used by sourced diag.sh (helper integrity / install checks).
+# Used by sourced diag modules (helper integrity / install checks).
 # shellcheck disable=SC2034
 UTILITIES=(
   "millennium-repair:scripts/millennium-repair.sh"
@@ -283,25 +283,39 @@ UTILITIES=(
 # shellcheck disable=SC2034
 SHARED_MODULES=(
   "common.sh:scripts/common.sh"
+  "lib/archive.sh:scripts/lib/archive.sh"
   "lib/backup.sh:scripts/lib/backup.sh"
-  "lib/diag.sh:scripts/lib/diag.sh"
-  "lib/diag_ui.sh:scripts/lib/diag_ui.sh"
-  "lib/diag_steam.sh:scripts/lib/diag_steam.sh"
+  "lib/diag_completions.sh:scripts/lib/diag_completions.sh"
+  "lib/diag_doctor.sh:scripts/lib/diag_doctor.sh"
+  "lib/diag_doctor_cleanup.sh:scripts/lib/diag_doctor_cleanup.sh"
+  "lib/diag_doctor_completions.sh:scripts/lib/diag_doctor_completions.sh"
+  "lib/diag_doctor_repair.sh:scripts/lib/diag_doctor_repair.sh"
+  "lib/diag_doctor_scripts.sh:scripts/lib/diag_doctor_scripts.sh"
   "lib/diag_env.sh:scripts/lib/diag_env.sh"
   "lib/diag_install.sh:scripts/lib/diag_install.sh"
-  "lib/diag_release.sh:scripts/lib/diag_release.sh"
-  "lib/diag_updates.sh:scripts/lib/diag_updates.sh"
-  "lib/diag_completions.sh:scripts/lib/diag_completions.sh"
-  "lib/diag_package_files.sh:scripts/lib/diag_package_files.sh"
   "lib/diag_next_steps.sh:scripts/lib/diag_next_steps.sh"
-  "lib/diag_doctor_cleanup.sh:scripts/lib/diag_doctor_cleanup.sh"
-  "lib/diag_doctor_scripts.sh:scripts/lib/diag_doctor_scripts.sh"
-  "lib/diag_doctor_repair.sh:scripts/lib/diag_doctor_repair.sh"
-  "lib/diag_doctor_completions.sh:scripts/lib/diag_doctor_completions.sh"
-  "lib/diag_doctor.sh:scripts/lib/diag_doctor.sh"
+  "lib/diag_package_files.sh:scripts/lib/diag_package_files.sh"
+  "lib/diag_release.sh:scripts/lib/diag_release.sh"
+  "lib/diag_steam.sh:scripts/lib/diag_steam.sh"
+  "lib/diag_ui.sh:scripts/lib/diag_ui.sh"
+  "lib/diag_updates.sh:scripts/lib/diag_updates.sh"
+  "lib/dispatcher.sh:scripts/lib/dispatcher.sh"
   "lib/github.sh:scripts/lib/github.sh"
+  "lib/install_track.sh:scripts/lib/install_track.sh"
   "lib/logging.sh:scripts/lib/logging.sh"
+  "lib/millennium_license.sh:scripts/lib/millennium_license.sh"
+  "lib/purge_ops.sh:scripts/lib/purge_ops.sh"
+  "lib/repair_ops.sh:scripts/lib/repair_ops.sh"
+  "lib/schedule_config.sh:scripts/lib/schedule_config.sh"
+  "lib/schedule_cron.sh:scripts/lib/schedule_cron.sh"
+  "lib/schedule_hooks.sh:scripts/lib/schedule_hooks.sh"
+  "lib/schedule_status.sh:scripts/lib/schedule_status.sh"
+  "lib/schedule_timer.sh:scripts/lib/schedule_timer.sh"
+  "lib/schedule_wizard.sh:scripts/lib/schedule_wizard.sh"
   "lib/steam.sh:scripts/lib/steam.sh"
+  "lib/theme_ops.sh:scripts/lib/theme_ops.sh"
+  "lib/upgrade_failure.sh:scripts/lib/upgrade_failure.sh"
+  "lib/upgrade_network.sh:scripts/lib/upgrade_network.sh"
   "lib/version.sh:scripts/lib/version.sh"
   "VERSION:VERSION"
 )
@@ -380,7 +394,7 @@ if [[ "$COMMAND" == "logs" ]]; then
   exit 0
 fi
 
-# Used by sourced diag.sh (scheduler / channel detection).
+# Used by sourced diag modules (scheduler / channel detection).
 # sysctl_user is provided by scripts/lib/logging.sh (via common.sh).
 
 # Find configured update channel
@@ -403,16 +417,60 @@ if [[ "$OUTPUT_JSON" == "true" ]]; then
   exec 1>/dev/null
 fi
 
-# shellcheck source=lib/diag.sh
-if [[ -f "${_COMMON_LIB_DIR}/diag.sh" ]]; then
-  source "${_COMMON_LIB_DIR}/diag.sh"
-elif [[ -f "${SCRIPT_DIR}/lib/diag.sh" ]]; then
-  # shellcheck source=lib/diag.sh
-  source "${SCRIPT_DIR}/lib/diag.sh"
-else
-  echo "Error: Diagnostic library not found." >&2
+# Source diagnostic modules (order matters: dependencies first). No thin aggregator.
+_diag_lib_dir="${_COMMON_LIB_DIR}"
+if [[ ! -f "${_diag_lib_dir}/diag_ui.sh" ]]; then
+  _diag_lib_dir="${SCRIPT_DIR}/lib"
+fi
+if [[ ! -f "${_diag_lib_dir}/diag_ui.sh" ]]; then
+  echo "Error: Diagnostic library not found under ${_COMMON_LIB_DIR} or ${SCRIPT_DIR}/lib." >&2
   exit 1
 fi
+# shellcheck source=lib/diag_ui.sh
+source "${_diag_lib_dir}/diag_ui.sh"
+# shellcheck source=lib/diag_steam.sh
+source "${_diag_lib_dir}/diag_steam.sh"
+# shellcheck source=lib/diag_env.sh
+source "${_diag_lib_dir}/diag_env.sh"
+# shellcheck source=lib/diag_install.sh
+source "${_diag_lib_dir}/diag_install.sh"
+# shellcheck source=lib/diag_release.sh
+source "${_diag_lib_dir}/diag_release.sh"
+# shellcheck source=lib/diag_updates.sh
+source "${_diag_lib_dir}/diag_updates.sh"
+# shellcheck source=lib/diag_completions.sh
+source "${_diag_lib_dir}/diag_completions.sh"
+# shellcheck source=lib/diag_package_files.sh
+source "${_diag_lib_dir}/diag_package_files.sh"
+# shellcheck source=lib/diag_next_steps.sh
+source "${_diag_lib_dir}/diag_next_steps.sh"
+# shellcheck source=lib/diag_doctor_cleanup.sh
+source "${_diag_lib_dir}/diag_doctor_cleanup.sh"
+# shellcheck source=lib/diag_doctor_scripts.sh
+source "${_diag_lib_dir}/diag_doctor_scripts.sh"
+# shellcheck source=lib/diag_doctor_repair.sh
+source "${_diag_lib_dir}/diag_doctor_repair.sh"
+# shellcheck source=lib/diag_doctor_completions.sh
+source "${_diag_lib_dir}/diag_doctor_completions.sh"
+# shellcheck source=lib/diag_doctor.sh
+source "${_diag_lib_dir}/diag_doctor.sh"
+unset _diag_lib_dir
+
+run_diagnostics() {
+  echo -e "${BLUE}=== Millennium Diagnostics Report ===${NC}\n"
+
+  check_steam_status
+  check_binaries_integrity
+  check_bootstrap_hooks
+  check_directory_permissions
+  check_sudoers_authorization
+  check_scheduler_status
+  check_install_method
+  check_helper_updates
+  check_shell_completions
+  check_unmanaged_package_files
+  check_obsolete_files
+}
 
 # --- Execute Diagnostics Report ---
 run_diagnostics

@@ -117,6 +117,8 @@ check_obsolete_files() {
       "/usr/local/share/fish/vendor_completions.d/millennium-upgrade-beta.fish"
       "/usr/lib/millennium-helpers/lib/diag_report.sh"
       "/usr/local/lib/millennium-helpers/lib/diag_report.sh"
+      "/usr/lib/millennium-helpers/lib/diag.sh"
+      "/usr/local/lib/millennium-helpers/lib/diag.sh"
     )
   fi
 
