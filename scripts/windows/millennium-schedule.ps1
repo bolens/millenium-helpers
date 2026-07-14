@@ -152,7 +152,55 @@ $script:ScheduleLibDir = Join-Path -Path $ScriptDir -ChildPath 'lib'
 . (Join-Path -Path $script:ScheduleLibDir -ChildPath 'ScheduleDisable.ps1')
 . (Join-Path -Path $script:ScheduleLibDir -ChildPath 'ScheduleStatus.ps1')
 . (Join-Path -Path $script:ScheduleLibDir -ChildPath 'ScheduleWizard.ps1')
-. (Join-Path -Path $script:ScheduleLibDir -ChildPath 'ScheduleConfig.ps1')
+
+function Resolve-MillenniumGo {
+    $candidates = @(
+        (Join-Path -Path $ScriptDir -ChildPath 'millennium.exe'),
+        (Join-Path -Path $ScriptDir -ChildPath '..\..\bin\millennium.exe'),
+        (Join-Path -Path $ScriptDir -ChildPath '..\millennium.exe')
+    )
+    foreach ($cand in $candidates) {
+        if (Test-Path -LiteralPath $cand -PathType Leaf) {
+            return (Resolve-Path -LiteralPath $cand).Path
+        }
+    }
+    foreach ($name in @('millennium.exe', 'millennium')) {
+        $cmd = Get-Command -Name $name -ErrorAction SilentlyContinue
+        if ($cmd) { return $cmd.Source }
+    }
+    return $null
+}
+
+function Invoke-ScheduleConfigViaGo {
+    $goBin = Resolve-MillenniumGo
+    if (-not $goBin) {
+        Write-Error "schedule config requires the Go millennium dispatcher (not found). Install millennium-helpers or run 'make build'."
+        exit 1
+    }
+    $goArgs = [System.Collections.Generic.List[string]]::new()
+    [void]$goArgs.Add('schedule')
+    [void]$goArgs.Add('config')
+    if ($DryRun -or $global:DryRun) { [void]$goArgs.Add('--dry-run') }
+    if ($Quiet) { [void]$goArgs.Add('--quiet') }
+    foreach ($a in @($script:PositionalArgs)) {
+        if ($null -ne $a -and "$a" -ne '') { [void]$goArgs.Add([string]$a) }
+    }
+    if ($goArgs.Count -eq 2) {
+        [void]$goArgs.Add('list')
+    }
+    $prevLegacy = $env:MILLENNIUM_LEGACY
+    $env:MILLENNIUM_LEGACY = '0'
+    try {
+        & $goBin @($goArgs.ToArray())
+        exit $LASTEXITCODE
+    } finally {
+        if ($null -eq $prevLegacy) {
+            Remove-Item Env:MILLENNIUM_LEGACY -ErrorAction SilentlyContinue
+        } else {
+            $env:MILLENNIUM_LEGACY = $prevLegacy
+        }
+    }
+}
 
 # --- Dispatcher ---
 
@@ -170,7 +218,7 @@ switch ($Command) {
         Run-Setup-Wizard
     }
     "config" {
-        Manage-Config -ConfigArgs ([string[]]@($script:PositionalArgs))
+        Invoke-ScheduleConfigViaGo
     }
     Default {
         if ($Command) {

@@ -123,6 +123,28 @@ Describe "Schedule CLI Manager" {
     }
 
     Context "config get/set/list" {
+        BeforeAll {
+            # Phase 6c: config thin-wraps to Go millennium.exe.
+            $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
+            $binDir = Join-Path $repoRoot "bin"
+            New-Item -ItemType Directory -Force -Path $binDir | Out-Null
+            $outExe = Join-Path $binDir "millennium.exe"
+            if (-not (Test-Path -LiteralPath $outExe)) {
+                $go = Get-Command go -ErrorAction SilentlyContinue
+                if (-not $go) {
+                    throw "Go toolchain required for schedule config thin-wrap tests"
+                }
+                $ver = (Get-Content -LiteralPath (Join-Path $repoRoot "VERSION") -Raw).Trim()
+                Push-Location (Join-Path $repoRoot "go")
+                try {
+                    & go build "-ldflags=-X github.com/bolens/millenium-helpers/internal/version.Version=$ver" `
+                        -o $outExe ./cmd/millennium
+                    if ($LASTEXITCODE -ne 0) { throw "go build failed for millennium.exe" }
+                } finally {
+                    Pop-Location
+                }
+            }
+        }
         BeforeEach {
             $script:tempConfigDir = Join-Path ([System.IO.Path]::GetTempPath()) ("mh_sched_cfg_" + [guid]::NewGuid().ToString("n"))
             $env:LOCALAPPDATA = $script:tempConfigDir

@@ -306,7 +306,6 @@ SHARED_MODULES=(
   "lib/millennium_license.sh:scripts/lib/millennium_license.sh"
   "lib/purge_ops.sh:scripts/lib/purge_ops.sh"
   "lib/repair_ops.sh:scripts/lib/repair_ops.sh"
-  "lib/schedule_config.sh:scripts/lib/schedule_config.sh"
   "lib/schedule_cron.sh:scripts/lib/schedule_cron.sh"
   "lib/schedule_hooks.sh:scripts/lib/schedule_hooks.sh"
   "lib/schedule_status.sh:scripts/lib/schedule_status.sh"

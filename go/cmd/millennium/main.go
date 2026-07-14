@@ -127,12 +127,13 @@ func newScheduleCmd() *cobra.Command {
 		Short:              "Scheduler (config/status/enable/disable/setup/pre/post native)",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
-			if useLegacy() {
-				os.Exit(legacy.RunLegacy("schedule", a))
-				return nil
-			}
+			// Graduated (Phase 6c): config always stays native — ignore MILLENNIUM_LEGACY.
 			if rest, ok := takeConfigArgs(a); ok {
 				os.Exit(config.RunCLI(rest))
+				return nil
+			}
+			if useLegacy() {
+				os.Exit(legacy.RunLegacy("schedule", a))
 				return nil
 			}
 			opts, err := schedule.ParseArgs(a)

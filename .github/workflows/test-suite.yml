@@ -198,17 +198,42 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
 
+      # Phase 6c / MCP: suites that build or invoke bin/millennium (Go 1.22+).
+      - name: Set up Go
+        if: >-
+          matrix.suite == 'tests/behavioral/test_schedule.sh' ||
+          matrix.suite == 'tests/behavioral/test_mcp.sh'
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go/go.mod
+          cache-dependency-path: go/go.sum
+
       - name: Create non-root test user
         run: |
           useradd -m testuser
           chown -R testuser:testuser "$GITHUB_WORKSPACE"
+
+      # Build as root (setup-go cache paths) then hand the binary to testuser.
+      - name: Build Go dispatcher
+        if: >-
+          matrix.suite == 'tests/behavioral/test_schedule.sh' ||
+          matrix.suite == 'tests/behavioral/test_mcp.sh'
+        shell: bash
+        run: |
+          set -euo pipefail
+          ver="$(tr -d '[:space:]' < VERSION)"
+          mkdir -p bin
+          (cd go && CGO_ENABLED=0 go build \
+            -ldflags "-X github.com/bolens/millenium-helpers/internal/version.Version=${ver}" \
+            -o ../bin/millennium ./cmd/millennium)
+          chown testuser:testuser bin/millennium
 
       # Scripts distinguish root vs non-root behavior (e.g. sudo hints,
       # passwordless-sudo setup being skipped). Running as a regular user
       # matches how these scripts are used in the real world and exercises
       # that logic, which running as root (the container default) would skip.
       - name: Run ${{ matrix.suite }}
-        run: su testuser -c "bash '${{ matrix.suite }}'"
+        run: su testuser -c "PATH='$PATH' bash '${{ matrix.suite }}'"
 
   test-windows:
     name: Windows - ${{ matrix.suite }}
@@ -235,6 +260,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+
+      # Phase 6c: schedule config thin-wraps to Go; Pester builds bin/millennium.exe.
+      - name: Set up Go
+        if: matrix.suite == 'tests/windows/millennium-schedule.Tests.ps1'
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go/go.mod
+          cache-dependency-path: go/go.sum
 
       - name: Run Pester tests
         shell: pwsh
@@ -277,6 +310,16 @@ jobs:
           python3 -m venv "$RUNNER_TEMP/mh-pyyaml"
           "$RUNNER_TEMP/mh-pyyaml/bin/pip" install --quiet pyyaml
           echo "$RUNNER_TEMP/mh-pyyaml/bin" >> "$GITHUB_PATH"
+
+      # Phase 6c / MCP: suites that build or invoke bin/millennium.
+      - name: Set up Go
+        if: >-
+          matrix.suite == 'tests/behavioral/test_schedule.sh' ||
+          matrix.suite == 'tests/behavioral/test_mcp.sh'
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go/go.mod
+          cache-dependency-path: go/go.sum
 
       - name: Run ${{ matrix.suite }}
         run: |

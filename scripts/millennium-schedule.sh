@@ -75,11 +75,8 @@ if [[ ! -d /run/systemd/system ]]; then
   USE_CRON=true
 fi
 CHANNEL=""
-# shellcheck disable=SC2034 # consumed by schedule_config.sh
 CONFIG_ACTION=""
-# shellcheck disable=SC2034
 CONFIG_KEY=""
-# shellcheck disable=SC2034
 CONFIG_VALUE=""
 
 while [[ $# -gt 0 ]]; do
@@ -92,20 +89,16 @@ while [[ $# -gt 0 ]]; do
       COMMAND="config"
       shift
       if [[ $# -gt 0 && ! "$1" =~ ^- ]]; then
-        # shellcheck disable=SC2034 # consumed by schedule_config.sh
         CONFIG_ACTION="$1"
         shift
       else
-        # shellcheck disable=SC2034
         CONFIG_ACTION="list"
       fi
       if [[ $# -gt 0 && ! "$1" =~ ^- ]]; then
-        # shellcheck disable=SC2034
         CONFIG_KEY="$1"
         shift
       fi
       if [[ $# -gt 0 && ! "$1" =~ ^- ]]; then
-        # shellcheck disable=SC2034
         CONFIG_VALUE="$1"
         shift
       fi
@@ -181,10 +174,49 @@ source "${_sched_lib}/schedule_status.sh"
 source "${_sched_lib}/schedule_hooks.sh"
 # shellcheck source=lib/schedule_wizard.sh
 source "${_sched_lib}/schedule_wizard.sh"
-# shellcheck source=lib/schedule_config.sh
-source "${_sched_lib}/schedule_config.sh"
 unset _sched_lib
 
+# Phase 6c: config is Go-only (thin-wrap). Prefer checkout/install binary over PATH
+# mocks used by the test suite.
+resolve_millennium_go() {
+  local cand
+  for cand in \
+    "${SCRIPT_DIR}/../bin/millennium" \
+    "${SCRIPT_DIR}/millennium" \
+    "$(command -v millennium 2>/dev/null || true)"
+  do
+    if [[ -n "$cand" && -x "$cand" ]]; then
+      printf '%s\n' "$cand"
+      return 0
+    fi
+  done
+  return 1
+}
+
+run_schedule_config_via_go() {
+  local go_bin
+  if ! go_bin="$(resolve_millennium_go)"; then
+    echo -e "${RED}Error: schedule config requires the Go millennium dispatcher (not found).${NC}" >&2
+    echo "Install millennium-helpers or run 'make build' from a checkout." >&2
+    exit 1
+  fi
+  local -a go_args=(schedule config)
+  if [[ "$DRY_RUN" == "true" ]]; then
+    go_args+=(--dry-run)
+  fi
+  if [[ "${QUIET:-false}" == "true" ]]; then
+    go_args+=(--quiet)
+  fi
+  go_args+=("${CONFIG_ACTION:-list}")
+  if [[ -n "${CONFIG_KEY:-}" ]]; then
+    go_args+=("$CONFIG_KEY")
+  fi
+  if [[ -n "${CONFIG_VALUE:-}" ]]; then
+    go_args+=("$CONFIG_VALUE")
+  fi
+  # Avoid re-entering this long-name helper if MILLENNIUM_LEGACY is set.
+  MILLENNIUM_LEGACY=0 exec "$go_bin" "${go_args[@]}"
+}
 
 case "$COMMAND" in
   enable)
@@ -211,6 +243,6 @@ case "$COMMAND" in
     post_update
     ;;
   config)
-    manage_config
+    run_schedule_config_via_go
     ;;
 esac
