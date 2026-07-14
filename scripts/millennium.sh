@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Thin dispatcher for Millennium Helpers: millennium <command> [args...]
+# Dispatcher for Millennium Helpers: millennium <command> [args...]
 set -euo pipefail
 
 show_help() {
@@ -26,63 +26,30 @@ Examples:
 EOF
 }
 
-# Suggest the closest known command for typos.
-# Scoring mirrors suggest_closest in lib/logging.sh (kept inline because this
-# dispatcher does not source common.sh): 4=prefix, 3=substring, else shared
-# leading chars; subsequence (e.g. lst→list) scores 3−|len gap| (floor 2).
-# Emit only when best_score >= 2.
-suggest_command() {
-  local input="$1"
-  local -a cmds=(diag doctor upgrade schedule theme repair purge mcp help)
-  local c best="" best_score=0
-  local score
-  [[ -z "$input" ]] && return 0
-  for c in "${cmds[@]}"; do
-    score=0
-    if [[ "$c" == "$input" ]]; then
-      echo "$c"
-      return 0
-    fi
-    if [[ "$c" == "$input"* || "$input" == "$c"* ]]; then
-      score=4
-    elif [[ "$c" == *"$input"* || "$input" == *"$c"* ]]; then
-      score=3
-    else
-      # Identical leading characters (e.g. "upg" vs "upgrade" → 3).
-      local i=0
-      while [[ $i -lt ${#c} && $i -lt ${#input} && "${c:$i:1}" == "${input:$i:1}" ]]; do
-        i=$((i + 1))
-      done
-      score=$i
-      # Subsequence with gaps; len>=2 avoids matching every command on one letter.
-      if [[ ${#input} -ge 2 ]]; then
-        local ni=0 hi=0
-        while [[ $ni -lt ${#input} && $hi -lt ${#c} ]]; do
-          if [[ "${input:$ni:1}" == "${c:$hi:1}" ]]; then
-            ni=$((ni + 1))
-          fi
-          hi=$((hi + 1))
-        done
-        if [[ $ni -eq ${#input} ]]; then
-          local len_diff=$(( ${#c} - ${#input} ))
-          [[ $len_diff -lt 0 ]] && len_diff=$(( -len_diff ))
-          local sub_score=$((3 - len_diff))
-          [[ $sub_score -lt 2 ]] && sub_score=2
-          if [[ $sub_score -gt $score ]]; then
-            score=$sub_score
-          fi
-        fi
-      fi
-    fi
-    if [[ $score -gt $best_score ]]; then
-      best_score=$score
-      best=$c
+# Feature modules (sourced by this entrypoint — no thin aggregator).
+# Intentionally does not source common.sh so the dispatcher stays lightweight.
+DISPATCHER_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_disp_lib="${DISPATCHER_SCRIPT_DIR}/lib"
+if [[ ! -f "${_disp_lib}/dispatcher.sh" ]]; then
+  for _cand in \
+    "$(cd "${DISPATCHER_SCRIPT_DIR}/.." && pwd)/lib/millennium-helpers/lib" \
+    "/usr/local/lib/millennium-helpers/lib" \
+    "/usr/lib/millennium-helpers/lib"
+  do
+    if [[ -f "${_cand}/dispatcher.sh" ]]; then
+      _disp_lib="$_cand"
+      break
     fi
   done
-  if [[ $best_score -ge 2 && -n "$best" ]]; then
-    echo "$best"
-  fi
-}
+  unset _cand
+fi
+if [[ ! -f "${_disp_lib}/dispatcher.sh" ]]; then
+  echo "Error: dispatcher library not found." >&2
+  exit 1
+fi
+# shellcheck source=lib/dispatcher.sh
+source "${_disp_lib}/dispatcher.sh"
+unset _disp_lib
 
 cmd="${1:-help}"
 if [[ $# -gt 0 ]]; then
@@ -108,21 +75,7 @@ case "$cmd" in
     exit 0
     ;;
   diag|upgrade|schedule|theme|repair|purge|mcp)
-    target="millennium-${cmd}"
-    if ! command -v "$target" &>/dev/null; then
-      # Prefer sibling script in the same install/checkout directory
-      script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-      if [[ -x "${script_dir}/${target}" ]]; then
-        exec "${script_dir}/${target}" "$@"
-      elif [[ -f "${script_dir}/${target}.sh" ]]; then
-        exec bash "${script_dir}/${target}.sh" "$@"
-      elif [[ -f "${script_dir}/${target}.py" ]]; then
-        exec python3 "${script_dir}/${target}.py" "$@"
-      fi
-      echo "Error: '${target}' not found on PATH." >&2
-      exit 1
-    fi
-    exec "$target" "$@"
+    exec_dispatcher_command "$cmd" "$@" || exit 1
     ;;
   *)
     echo "Unknown command: ${cmd}" >&2

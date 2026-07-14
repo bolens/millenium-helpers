@@ -205,7 +205,7 @@ Also available via the dispatcher: `millennium diag`, `millennium doctor`, `mill
 | [`millennium-purge`](scripts/millennium-purge.sh) | De-register and remove Millennium from Steam |
 | [`millennium-theme`](scripts/millennium-theme.sh) | List, install, update, remove skins |
 | [`millennium-mcp`](scripts/millennium-mcp.py) | MCP server for AI assistants |
-| [`millennium`](scripts/millennium.sh) | Thin dispatcher → the commands above |
+| [`millennium`](scripts/millennium.sh) | Top-level dispatcher (helpers in `scripts/lib/dispatcher.sh`) → the commands above |
 
 Windows counterparts live under [`scripts/windows/`](scripts/windows/).
 
