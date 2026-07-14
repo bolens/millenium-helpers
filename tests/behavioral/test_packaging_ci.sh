@@ -482,9 +482,9 @@ assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/ScheduleWizard.ps1" "Sc
 assert_file_exists "${REPO_ROOT}/scripts/lib/repair_ops.sh" "scripts/lib/repair_ops.sh exists for release packaging"
 assert_file_exists "${REPO_ROOT}/scripts/lib/upgrade_failure.sh" "scripts/lib/upgrade_failure.sh exists for release packaging"
 assert_file_not_exists "${REPO_ROOT}/scripts/lib/diag.sh" "thin diag.sh loader must not exist"
-assert_file_exists "${REPO_ROOT}/scripts/lib/purge_ops.sh" "scripts/lib/purge_ops.sh exists for release packaging"
+assert_file_not_exists "${REPO_ROOT}/scripts/lib/purge_ops.sh" "purge_ops.sh peeled (purge thin-wraps to Go)"
 assert_file_exists "${REPO_ROOT}/scripts/lib/dispatcher.sh" "scripts/lib/dispatcher.sh exists for release packaging"
-assert_file_exists "${REPO_ROOT}/scripts/windows/lib/PurgeOps.ps1" "scripts/windows/lib/PurgeOps.ps1 exists for release packaging"
+assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/PurgeOps.ps1" "PurgeOps.ps1 peeled (purge thin-wraps to Go)"
 assert_file_exists "${REPO_ROOT}/scripts/windows/lib/Dispatcher.ps1" "scripts/windows/lib/Dispatcher.ps1 exists for release packaging"
 assert_file_exists "${REPO_ROOT}/scripts/windows/lib/DiagDoctor.ps1" "scripts/windows/lib/DiagDoctor.ps1 exists for release packaging"
 

@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-# De-register and purge Millennium client from Steam
+# De-register and purge Millennium client from Steam — thin-wrap to Go (Phase 6r).
 set -euo pipefail
 
-# Source shared helpers
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMMON_SH=""
 for _common_candidate in \
@@ -56,7 +55,6 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     -y|--yes)
-      # shellcheck disable=SC2034 # consumed by purge_ops.sh
       ASSUME_YES=true
       shift
       ;;
@@ -76,19 +74,39 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ "$DRY_RUN" == "false" ]] && [[ "$(id -u)" -ne 0 ]]; then
-  echo -e "${RED}Error: This script must be run with sudo to remove system-wide files.${NC}" >&2
-  echo -e "Please run: sudo $0" >&2
-  exit 1
-fi
+resolve_millennium_go() {
+  local cand
+  for cand in \
+    "${SCRIPT_DIR}/../bin/millennium" \
+    "${SCRIPT_DIR}/millennium" \
+    "$(command -v millennium 2>/dev/null || true)"
+  do
+    if [[ -n "$cand" && -x "$cand" ]]; then
+      printf '%s\n' "$cand"
+      return 0
+    fi
+  done
+  return 1
+}
 
-# Feature modules (sourced by this entrypoint — no thin aggregator)
-_feat_lib="${_COMMON_LIB_DIR:-${SCRIPT_DIR}/lib}"
-if [[ ! -f "${_feat_lib}/purge_ops.sh" ]]; then
-  _feat_lib="${SCRIPT_DIR}/lib"
-fi
-# shellcheck source=lib/purge_ops.sh
-source "${_feat_lib}/purge_ops.sh"
-unset _feat_lib
+run_purge_via_go() {
+  local go_bin
+  if ! go_bin="$(resolve_millennium_go)"; then
+    echo -e "${RED}Error: purge requires the Go millennium dispatcher (not found).${NC}" >&2
+    echo "Install millennium-helpers or run 'make build' from a checkout." >&2
+    exit 1
+  fi
+  local -a go_args=(purge)
+  if [[ "$DRY_RUN" == "true" ]]; then
+    go_args+=(--dry-run)
+  fi
+  if [[ "${QUIET:-false}" == "true" ]]; then
+    go_args+=(--quiet)
+  fi
+  if [[ "$ASSUME_YES" == "true" ]]; then
+    go_args+=(--yes)
+  fi
+  MILLENNIUM_LEGACY=0 exec "$go_bin" "${go_args[@]}"
+}
 
-run_purge
+run_purge_via_go

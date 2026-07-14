@@ -202,6 +202,7 @@ jobs:
         if: >-
           matrix.suite == 'tests/behavioral/test_schedule.sh' ||
           matrix.suite == 'tests/behavioral/test_theme.sh' ||
+          matrix.suite == 'tests/behavioral/test_purge.sh' ||
           matrix.suite == 'tests/behavioral/test_mcp.sh' ||
           matrix.suite == 'tests/behavioral/test_install.sh'
         uses: actions/setup-go@v6
@@ -219,6 +220,7 @@ jobs:
         if: >-
           matrix.suite == 'tests/behavioral/test_schedule.sh' ||
           matrix.suite == 'tests/behavioral/test_theme.sh' ||
+          matrix.suite == 'tests/behavioral/test_purge.sh' ||
           matrix.suite == 'tests/behavioral/test_mcp.sh' ||
           matrix.suite == 'tests/behavioral/test_install.sh'
         shell: bash
@@ -268,7 +270,8 @@ jobs:
       - name: Set up Go
         if: >-
           matrix.suite == 'tests/windows/millennium-schedule.Tests.ps1' ||
-          matrix.suite == 'tests/windows/millennium-theme.Tests.ps1'
+          matrix.suite == 'tests/windows/millennium-theme.Tests.ps1' ||
+          matrix.suite == 'tests/windows/millennium-purge.Tests.ps1'
         uses: actions/setup-go@v6
         with:
           go-version-file: go/go.mod
@@ -320,6 +323,7 @@ jobs:
         if: >-
           matrix.suite == 'tests/behavioral/test_schedule.sh' ||
           matrix.suite == 'tests/behavioral/test_theme.sh' ||
+          matrix.suite == 'tests/behavioral/test_purge.sh' ||
           matrix.suite == 'tests/behavioral/test_mcp.sh' ||
           matrix.suite == 'tests/behavioral/test_install.sh'
         uses: actions/setup-go@v6

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/bolens/millenium-helpers/internal/theme"
+	"golang.org/x/term"
 )
 
 // Action is one planned purge step.
@@ -144,8 +145,8 @@ func ConfirmOrRefuse(yes bool, stdin *os.File) error {
 	if stdin == nil {
 		stdin = os.Stdin
 	}
-	fi, err := stdin.Stat()
-	if err != nil || (fi.Mode()&os.ModeCharDevice) == 0 {
+	// ModeCharDevice alone is wrong: /dev/null is a char device but not a TTY.
+	if !term.IsTerminal(int(stdin.Fd())) {
 		return fmt.Errorf("Error: Refusing to purge without confirmation in a non-interactive session.\nRe-run with --yes (or -y) to confirm, or use --dry-run to simulate.")
 	}
 	fmt.Println("This will permanently remove Millennium hooks, binaries, and related Steam files.")
@@ -254,7 +255,7 @@ func successTip() string {
 	if runtime.GOOS == "windows" {
 		return "Tip: remove helper tools with .\\install.ps1 uninstall if you no longer need them.\n     Scheduler tip: millennium schedule status should now report disabled."
 	}
-	return "Tip: remove helper tools with sudo ./install.sh uninstall if you no longer need them."
+	return "Tip: remove helper tools with sudo ./install.sh uninstall if you no longer need them.\n     Scheduler tip: millennium schedule status should now report disabled."
 }
 
 // RunDryRunCLI prints a native purge plan.

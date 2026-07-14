@@ -380,10 +380,7 @@ func newPurgeCmd() *cobra.Command {
 		Short:              "Purge Millennium (native dry-run + live Unix/Windows)",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
-			if useLegacy() {
-				os.Exit(legacy.RunLegacy("purge", a))
-				return nil
-			}
+			// Graduated peel (Phase 6r): always native — ignore MILLENNIUM_LEGACY.
 			dry, yes, quiet, help, err := purge.ParseFlags(a)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err.Error())

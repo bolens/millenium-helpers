@@ -1,8 +1,24 @@
 Describe "Purge Script" {
     BeforeAll {
         $winScriptDir = Join-Path -Path $PSScriptRoot -ChildPath "..\..\scripts\windows"
+        $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
+        $binDir = Join-Path $repoRoot "bin"
+        New-Item -ItemType Directory -Force -Path $binDir | Out-Null
+        $outExe = Join-Path $binDir "millennium.exe"
+        if (-not (Test-Path -LiteralPath $outExe)) {
+            $go = Get-Command go -ErrorAction SilentlyContinue
+            if (-not $go) { throw "Go toolchain required for purge thin-wrap tests" }
+            $ver = [System.IO.File]::ReadAllText((Join-Path $repoRoot "VERSION")).Trim()
+            Push-Location (Join-Path $repoRoot "go")
+            try {
+                & go build "-ldflags=-X github.com/bolens/millenium-helpers/internal/version.Version=$ver" `
+                    -o $outExe ./cmd/millennium
+                if ($LASTEXITCODE -ne 0) { throw "go build failed for millennium.exe" }
+            } finally {
+                Pop-Location
+            }
+        }
         $global:DryRun = $true
-        function Stop-Process { }
         if (!$IsWindows) {
             New-PSDrive -Name HKCU -PSProvider FileSystem -Root ([System.IO.Path]::GetTempPath()) -ErrorAction SilentlyContinue | Out-Null
             New-PSDrive -Name C -PSProvider FileSystem -Root ([System.IO.Path]::GetTempPath()) -ErrorAction SilentlyContinue | Out-Null
@@ -26,36 +42,13 @@ Describe "Purge Script" {
         }
     }
 
-    Context "Confirmation" {
-        BeforeAll {
-            Mock Get-ItemProperty { return [pscustomobject]@{ SteamPath = "C:\MockedSteam" } }
-            Mock Test-Path { return $true }
-            Mock Get-Process { return $null }
-            Mock Test-Admin { return $true }
-        }
-
-        It "Accepts -Yes with -DryRun to skip confirmation" {
+    Context "Dry-run via Go" {
+        It "Announces dry-run and completes" {
             $purgeScript = Join-Path -Path $winScriptDir -ChildPath "millennium-purge.ps1"
             $out = (& $purgeScript -DryRun -Yes *>&1) | Out-String
-            $out | Should -BeLike "*Initiating Millennium Purge*"
+            $out | Should -BeLike "*DRY RUN*"
             $out | Should -BeLike "*completed successfully*"
             $out | Should -Not -BeLike "*Are you sure*"
-        }
-    }
-
-    Context "Purge Execution" {
-        BeforeAll {
-            Mock Get-ItemProperty { return [pscustomobject]@{ SteamPath = "C:\MockedSteam" } }
-            Mock Test-Path { return $true }
-            Mock Get-Process { return $null }
-            Mock Test-Admin { return $true }
-        }
-
-        It "Runs the client purge uninstallation logic without errors" {
-            $purgeScript = Join-Path -Path $winScriptDir -ChildPath "millennium-purge.ps1"
-            $out = (& $purgeScript -DryRun *>&1) | Out-String
-            $out | Should -BeLike "*Initiating Millennium Purge (Uninstall)*"
-            $out | Should -BeLike "*Millennium Purge completed successfully.*"
         }
     }
 }
