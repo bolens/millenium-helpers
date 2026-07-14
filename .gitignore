@@ -30,6 +30,9 @@ Thumbs.db
 /result
 /result-*
 
+# Go build output (make build)
+/bin/
+
 # Local pre-commit cache (only if PRE_COMMIT_HOME is pointed here)
 .pre-commit-home/
 

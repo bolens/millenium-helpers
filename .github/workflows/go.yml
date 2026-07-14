@@ -1,0 +1,90 @@
+name: "CI: Go Strangler CLI"
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+    paths:
+      - 'go/**'
+      - 'VERSION'
+      - 'spec/cli-contract.yaml'
+      - 'scripts/ci/check-cli-contract.py'
+      - '.github/workflows/go.yml'
+      - 'Makefile'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'go/**'
+      - 'VERSION'
+      - 'spec/cli-contract.yaml'
+      - 'scripts/ci/check-cli-contract.py'
+      - '.github/workflows/go.yml'
+      - 'Makefile'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Go test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.x'
+          cache-dependency-path: go/go.sum
+
+      - name: Test
+        shell: bash
+        env:
+          CGO_ENABLED: '0'
+        run: |
+          set -euo pipefail
+          cd go
+          go test ./...
+
+      - name: Build
+        shell: bash
+        env:
+          CGO_ENABLED: '0'
+        run: |
+          set -euo pipefail
+          ver="$(tr -d '\n' < VERSION)"
+          mkdir -p bin
+          cd go
+          go build -ldflags "-X github.com/bolens/millenium-helpers/internal/version.Version=${ver}" \
+            -o ../bin/millennium ./cmd/millennium
+          ../bin/millennium version
+
+      - name: Smoke version + legacy help (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          bin/millennium version | grep -F 'millennium version'
+          MILLENNIUM_SCRIPTS_DIR="$PWD/scripts" bin/millennium diag --help | grep -F 'Usage:'
+
+  contract:
+    name: CLI contract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: check-cli-contract
+        run: make check-cli-contract

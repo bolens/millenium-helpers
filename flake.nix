@@ -52,11 +52,14 @@
           buildInputs = with pkgs; [
             bash
             python3
+            python3Packages.pyyaml
             curl
             unzip
             git
             shellcheck
             ruff
+            go
+            gnumake
           ];
         };
       }

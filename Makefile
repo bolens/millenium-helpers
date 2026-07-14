@@ -1,11 +1,15 @@
 # Makefile for Millennium Helpers local development automation
 
-.PHONY: setup test test-windows lint format check-all check-version check-man check-docs check-licensing check-winget check-completions sync-git-srcinfo sync-stable-srcinfo bump-version test-debian test-ubuntu test-fedora test-all-distros
+.PHONY: setup test test-windows test-go build lint format check-all check-version check-man check-docs check-licensing check-winget check-completions check-cli-contract sync-git-srcinfo sync-stable-srcinfo bump-version test-debian test-ubuntu test-fedora test-all-distros
+
+GO ?= go
+CGO_ENABLED ?= 0
+GO_LDFLAGS := -X github.com/bolens/millenium-helpers/internal/version.Version=$(shell tr -d '\n' < VERSION)
 
 setup:
 	@echo "Setting up local development dependencies..."
 	@echo "Note: make setup only installs shellcheck + ruff."
-	@echo "See CONTRIBUTING.md#development-requirements for pwsh, Docker, zsh/fish/nu, etc."
+	@echo "See CONTRIBUTING.md#development-requirements for pwsh, Docker, Go, zsh/fish/nu, etc."
 	@if command -v brew >/dev/null 2>&1; then \
 		echo "Detected Homebrew. Installing shellcheck and ruff..."; \
 		brew install shellcheck ruff; \
@@ -32,6 +36,16 @@ test-windows:
 		echo "pwsh not found; skip Windows Pester suite (install PowerShell 7+)." >&2; \
 		exit 1; \
 	fi
+
+test-go:
+	@command -v $(GO) >/dev/null 2>&1 || (echo "go not found; install Go 1.22+ (see CONTRIBUTING.md)." >&2; exit 1)
+	cd go && CGO_ENABLED=$(CGO_ENABLED) $(GO) test ./...
+
+build:
+	@command -v $(GO) >/dev/null 2>&1 || (echo "go not found; install Go 1.22+ (see CONTRIBUTING.md)." >&2; exit 1)
+	mkdir -p bin
+	cd go && CGO_ENABLED=$(CGO_ENABLED) $(GO) build -ldflags "$(GO_LDFLAGS)" -o ../bin/millennium ./cmd/millennium
+	@echo "built bin/millennium"
 
 test-debian:
 	docker run --rm -v $$(pwd):/workspace -w /workspace debian:12 bash tests/run_tests.sh
@@ -62,6 +76,9 @@ check-winget:
 check-completions:
 	bash tests/unit/test_completions.sh
 
+check-cli-contract:
+	python3 scripts/ci/check-cli-contract.py
+
 # Regenerate packaging/millennium-helpers-git/.SRCINFO when the -git recipe changes.
 # Does not bump pkgver every commit (AUR VCS policy). See CONTRIBUTING.md § Versioning.
 sync-git-srcinfo:
@@ -80,14 +97,15 @@ bump-version:
 
 lint:
 	shellcheck *.sh scripts/*.sh scripts/lib/*.sh scripts/ci/*.sh tests/*.sh tests/lib/*.sh tests/unit/*.sh tests/behavioral/*.sh
-	ruff check scripts/millennium-mcp.py
+	ruff check scripts/millennium-mcp.py scripts/ci/check-cli-contract.py
 	@test -s VERSION || (echo "VERSION file missing or empty" >&2; exit 1)
 	@$(MAKE) check-version
 	@$(MAKE) check-man
 	@$(MAKE) check-docs
 	@$(MAKE) check-completions
+	@$(MAKE) check-cli-contract
 
 format:
-	ruff format scripts/millennium-mcp.py
+	ruff format scripts/millennium-mcp.py scripts/ci/check-cli-contract.py
 
 check-all: lint test
