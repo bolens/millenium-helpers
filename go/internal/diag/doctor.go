@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -101,7 +100,7 @@ func applyDoctorStep(s DoctorStep, r Report, o Options) error {
 	case "upgrade_force":
 		return runSelf("upgrade", "--channel", r.UpdateChannel, "--force", "--yes")
 	case "repair_hooks":
-		return repairBootstrapHooks()
+		return repair.InstallBootstrapHooks()
 	case "flatpak":
 		cmd := exec.Command("flatpak", "override", "--user", "--filesystem=/usr/lib/millennium", "com.valvesoftware.Steam")
 		out, err := cmd.CombinedOutput()
@@ -160,63 +159,4 @@ func runSelf(args ...string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
-}
-
-func millenniumLibRoot() string {
-	if d := os.Getenv("MOCK_LIB_DIR"); d != "" {
-		return filepath.Join(d, "millennium")
-	}
-	if d := os.Getenv("MILLENNIUM_LIB_DIR"); d != "" {
-		return filepath.Join(d, "millennium")
-	}
-	return "/usr/lib/millennium"
-}
-
-func repairBootstrapHooks() error {
-	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
-		return nil
-	}
-	root := millenniumLibRoot()
-	home, _ := os.UserHomeDir()
-	cands := []string{
-		filepath.Join(home, ".local/share/Steam"),
-		filepath.Join(home, ".steam/steam"),
-		filepath.Join(home, ".steam/root"),
-		filepath.Join(home, ".var/app/com.valvesoftware.Steam/.local/share/Steam"),
-	}
-	if steam := theme.FindSteamDir(); steam != "" {
-		cands = append([]string{steam}, cands...)
-	}
-	seen := map[string]bool{}
-	fixed := 0
-	for _, steam := range cands {
-		if seen[steam] {
-			continue
-		}
-		seen[steam] = true
-		if st, err := os.Stat(steam); err != nil || !st.IsDir() {
-			continue
-		}
-		for _, arch := range []struct{ folder, lib string }{
-			{"ubuntu12_32", "x86"},
-			{"ubuntu12_64", "hhx64"},
-		} {
-			hook := filepath.Join(steam, arch.folder, "libXtst.so.6")
-			target := filepath.Join(root, "libmillennium_bootstrap_"+arch.lib+".so")
-			if _, err := os.Stat(target); err != nil {
-				return fmt.Errorf("bootstrap library missing at %s (run upgrade first)", target)
-			}
-			_ = os.MkdirAll(filepath.Dir(hook), 0o755)
-			_ = os.Remove(hook)
-			if err := os.Symlink(target, hook); err != nil {
-				return fmt.Errorf("link %s: %w", hook, err)
-			}
-			fmt.Printf("Fixed hook: %s -> %s\n", hook, target)
-			fixed++
-		}
-	}
-	if fixed == 0 {
-		return fmt.Errorf("no Steam directories found to install hooks")
-	}
-	return nil
 }

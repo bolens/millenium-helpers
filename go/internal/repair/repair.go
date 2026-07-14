@@ -3,9 +3,12 @@ package repair
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
+	"github.com/bolens/millenium-helpers/internal/config"
 	"github.com/bolens/millenium-helpers/internal/theme"
 )
 
@@ -38,6 +41,11 @@ func Plan() []Target {
 	if steam != "" {
 		candidates = append([]string{filepath.Join(steam, "millennium")}, candidates...)
 	}
+	if runtime.GOOS == "windows" {
+		if local := os.Getenv("LOCALAPPDATA"); local != "" {
+			candidates = append(candidates, filepath.Join(local, "millennium"))
+		}
+	}
 	var out []Target
 	seen := map[string]bool{}
 	for _, p := range candidates {
@@ -63,6 +71,18 @@ func FormatPlan(targets []Target, skipTheme bool) string {
 	var b strings.Builder
 	b.WriteString("=== DRY RUN MODE: No changes will be made ===\n")
 	b.WriteString("[DRY RUN] Would capture Steam's environment and close it if running.\n")
+	if runtime.GOOS == "windows" {
+		b.WriteString(fmt.Sprintf("[DRY RUN] Would run: millennium upgrade --force --channel %s\n", updateChannel()))
+	} else {
+		hooks := PlanHooks()
+		if len(hooks) == 0 {
+			b.WriteString("[DRY RUN] Would restore bootstrap hooks (no Steam tree found yet).\n")
+		} else {
+			for _, h := range hooks {
+				b.WriteString(fmt.Sprintf("[DRY RUN] Would link hook: %s -> %s\n", h.Hook, h.Target))
+			}
+		}
+	}
 	if len(targets) == 0 {
 		b.WriteString("[DRY RUN] No Millennium user/Steam paths found to repair.\n")
 	}
@@ -78,7 +98,7 @@ func FormatPlan(targets []Target, skipTheme bool) string {
 	return b.String()
 }
 
-// Apply performs user-path repairs: clear htmlcache; chown when possible.
+// Apply performs live ownership/cache repairs and theme refresh.
 func Apply(targets []Target, skipTheme bool) error {
 	for _, t := range targets {
 		switch t.Kind {
@@ -102,10 +122,60 @@ func Apply(targets []Target, skipTheme bool) error {
 	}
 	if skipTheme {
 		fmt.Println("Skipping theme refresh (--skip-theme).")
-	} else {
-		fmt.Println("Theme refresh: run 'millennium theme list' / legacy repair for full asset sync.")
+	} else if err := refreshThemes(); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: theme refresh: %v\n", err)
 	}
 	return nil
+}
+
+func refreshThemes() error {
+	name := theme.ActiveThemeName()
+	if name != "" {
+		fmt.Printf("Refreshing theme '%s'...\n", name)
+		if err := theme.UpdateOne(name, false); err != nil {
+			return err
+		}
+		return nil
+	}
+	fmt.Println("No active theme configured; checking for installed themes to update...")
+	if err := theme.UpdateAll(false); err != nil {
+		// Missing Steam/skins is not a hard repair failure.
+		fmt.Fprintf(os.Stderr, "Warning: %v\n", err)
+	}
+	return nil
+}
+
+func updateChannel() string {
+	data, err := config.Load()
+	if err != nil {
+		return "stable"
+	}
+	ch := strings.TrimSpace(config.Get(data, "update_channel"))
+	switch ch {
+	case "stable", "beta", "main":
+		return ch
+	default:
+		return "stable"
+	}
+}
+
+// forceReinstallWindows runs native upgrade --force (Windows binary reinstall).
+func forceReinstallWindows(yes bool) error {
+	ch := updateChannel()
+	exe, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	args := []string{"upgrade", "--channel", ch, "--force"}
+	if yes {
+		args = append(args, "--yes")
+	}
+	fmt.Printf("Force-reinstalling Millennium binaries (channel %s)...\n", ch)
+	cmd := exec.Command(exe, args...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
 
 // ParseFlags parses repair CLI flags.
@@ -132,25 +202,54 @@ func ParseFlags(args []string) (dryRun, yes, quiet, skipTheme, help bool, err er
 	return dryRun, yes, quiet, skipTheme, help, nil
 }
 
-// RunCLI runs dry-run or live native repair for user-owned paths.
-func RunCLI(dryRun, skipTheme, quiet bool) int {
+// RunCLI runs dry-run or live native repair (hooks/binary + ownership/cache/theme).
+func RunCLI(dryRun, skipTheme, quiet, yes bool) int {
 	targets := Plan()
 	if dryRun {
 		fmt.Print(FormatPlan(targets, skipTheme))
 		return 0
 	}
-	fmt.Println("Repairing Millennium paths (native user-path pass)...")
+
+	fmt.Println("=== Initiating Millennium Repair ===")
+	relaunch, err := ensureSteamClosedForRepair(yes)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		return 1
+	}
+
+	if runtime.GOOS == "windows" {
+		if err := forceReinstallWindows(yes); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: force upgrade failed: %v\n", err)
+			return 1
+		}
+	} else {
+		if err := InstallBootstrapHooks(); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: hook reinstall: %v\n", err)
+		}
+	}
+
 	if err := Apply(targets, skipTheme); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return 1
 	}
+
+	if relaunch {
+		fmt.Println("Relaunching Steam...")
+		relaunchSteamAfterRepair()
+	}
+
 	if !quiet {
-		fmt.Println("Repair completed (ownership/cache). Hook/binary reinstall still uses legacy 'millennium repair' via MILLENNIUM_LEGACY=1 when needed.")
+		fmt.Println("Repair completed successfully.")
+		if runtime.GOOS == "windows" {
+			fmt.Println("Tip: millennium schedule status — re-enable the updater task if it was cleared.")
+		} else {
+			fmt.Println("Tip: millennium diag — verify hooks and schedule after repair.")
+		}
 	}
 	return 0
 }
 
 // RunDryRunCLI prints a native repair plan.
 func RunDryRunCLI(skipTheme bool) int {
-	return RunCLI(true, skipTheme, false)
+	return RunCLI(true, skipTheme, false, false)
 }

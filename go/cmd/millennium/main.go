@@ -398,14 +398,11 @@ func newPurgeCmd() *cobra.Command {
 func newRepairCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:                "repair",
-		Short:              "Repair Millennium (native user-path chown/htmlcache; hook reinstall via legacy)",
+		Short:              "Repair Millennium (hooks/force-upgrade, ownership, htmlcache, themes)",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
-			if useLegacy() {
-				os.Exit(legacy.RunLegacy("repair", a))
-				return nil
-			}
-			dry, _, quiet, skip, help, err := repair.ParseFlags(a)
+			// Graduated peel (Phase 6ad): always native — ignore MILLENNIUM_LEGACY.
+			dry, yes, quiet, skip, help, err := repair.ParseFlags(a)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err.Error())
 				os.Exit(1)
@@ -416,7 +413,7 @@ func newRepairCmd() *cobra.Command {
 				os.Exit(0)
 				return nil
 			}
-			os.Exit(repair.RunCLI(dry, skip, quiet))
+			os.Exit(repair.RunCLI(dry, skip, quiet, yes))
 			return nil
 		},
 	}

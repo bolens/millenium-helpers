@@ -32,6 +32,32 @@ func TestPlanAndFormat(t *testing.T) {
 	if !contains(out, "skip-theme") && !contains(out, "Skipping theme") {
 		t.Fatalf("%s", out)
 	}
+	if !contains(out, "DRY RUN") {
+		t.Fatalf("missing dry-run header: %s", out)
+	}
+}
+
+func TestPlanHooksMentionsBootstrap(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	lib := filepath.Join(home, "lib")
+	t.Setenv("MOCK_LIB_DIR", lib)
+	steam := filepath.Join(home, ".local", "share", "Steam")
+	if err := os.MkdirAll(filepath.Join(steam, "ubuntu12_32"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(lib, "millennium"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("STEAM", steam)
+	plans := PlanHooks()
+	out := FormatPlan(nil, true)
+	if len(plans) > 0 && !contains(out, "Would link hook") {
+		t.Fatalf("expected hook dry-run lines: %s", out)
+	}
 }
 
 func TestApplyHtmlcache(t *testing.T) {
