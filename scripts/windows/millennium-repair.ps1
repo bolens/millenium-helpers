@@ -1,4 +1,4 @@
-# Millennium Client Force Reinstall and Repair utility on Windows
+# Millennium repair — thin-wrap to Go (Phase 6ad).
 param(
     [switch]$DryRun = $false,
     [Alias("y")]
@@ -14,7 +14,6 @@ param(
 )
 set-strictmode -version Latest
 
-# Source shared helpers
 $ScriptDir = $PSScriptRoot
 $CommonPs1 = Join-Path -Path $ScriptDir -ChildPath "common.ps1"
 if (Test-Path -Path $CommonPs1) {
@@ -46,8 +45,7 @@ if ($Help) {
     Write-Host @"
 Usage: millennium-repair.ps1 [-DryRun] [-Yes] [-Quiet] [-SkipTheme] [-Version] [-Help]
 
-Force reinstall the Millennium client on Windows (via millennium-upgrade -Force),
-optionally refresh installed themes, and re-register the auto-update task if present.
+Repair Millennium hooks/binaries, ownership, htmlcache, and themes (via Go).
 
 Options:
   -DryRun         Simulate operations without modifying files
@@ -67,22 +65,51 @@ if ($Version) {
     exit 0
 }
 
-if ($Yes) {
-    $global:AssumeYes = $true
-}
-
 if ($Quiet) {
     $global:Quiet = $true
     $env:MILLENNIUM_QUIET = "1"
 }
 
-if ($DryRun) {
-    $global:DryRun = $true
+function Resolve-MillenniumGo {
+    $candidates = @(
+        (Join-Path -Path $ScriptDir -ChildPath 'millennium.exe'),
+        (Join-Path -Path $ScriptDir -ChildPath '..\..\bin\millennium.exe'),
+        (Join-Path -Path $ScriptDir -ChildPath '..\millennium.exe')
+    )
+    foreach ($cand in $candidates) {
+        if (Test-Path -LiteralPath $cand -PathType Leaf) {
+            return (Resolve-Path -LiteralPath $cand).Path
+        }
+    }
+    foreach ($name in @('millennium.exe', 'millennium')) {
+        $cmd = Get-Command -Name $name -ErrorAction SilentlyContinue
+        if ($cmd) { return $cmd.Source }
+    }
+    return $null
 }
 
+$goBin = Resolve-MillenniumGo
+if (-not $goBin) {
+    Write-Error "repair requires the Go millennium dispatcher (not found). Install millennium-helpers or run 'make build'."
+    exit 1
+}
 
-# Feature modules (dot-sourced by this entrypoint — no thin aggregator)
-. (Join-Path -Path $ScriptDir -ChildPath 'lib\RepairOps.ps1')
+$goArgs = [System.Collections.Generic.List[string]]::new()
+[void]$goArgs.Add('repair')
+if ($DryRun) { [void]$goArgs.Add('--dry-run') }
+if ($Yes) { [void]$goArgs.Add('--yes') }
+if ($Quiet) { [void]$goArgs.Add('--quiet') }
+if ($SkipTheme) { [void]$goArgs.Add('--skip-theme') }
 
-Invoke-MillenniumRepair
-exit 0
+$prevLegacy = $env:MILLENNIUM_LEGACY
+$env:MILLENNIUM_LEGACY = '0'
+try {
+    & $goBin @($goArgs.ToArray())
+    exit $LASTEXITCODE
+} finally {
+    if ($null -eq $prevLegacy) {
+        Remove-Item Env:MILLENNIUM_LEGACY -ErrorAction SilentlyContinue
+    } else {
+        $env:MILLENNIUM_LEGACY = $prevLegacy
+    }
+}

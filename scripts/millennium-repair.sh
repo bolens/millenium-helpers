@@ -1,16 +1,7 @@
 #!/usr/bin/env bash
-# Fix Millennium settings panel and ownership. Close Steam first.
+# Fix Millennium settings panel and ownership — thin-wrap to Go (Phase 6ad).
 set -euo pipefail
 
-# Check dependencies
-for cmd in curl unzip; do
-  if ! command -v "$cmd" &>/dev/null; then
-    echo "Error: Required dependency '$cmd' is not installed." >&2
-    exit 1
-  fi
-done
-
-# Source shared helpers
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMMON_SH=""
 for _common_candidate in \
@@ -42,13 +33,13 @@ show_help() {
   cat << EOF
 Usage: $(basename "$0") [OPTIONS]
 
-Fix Millennium settings panel, ownership, and Steam theme hooks. Close Steam first.
+Fix Millennium settings panel, ownership, hooks, and related Steam files.
 
 Options:
-  -s, --skip-theme  Skip theme refresh during repair
-  -y, --yes         Skip confirmation when closing Steam
+  -s, --skip-theme  Skip theme asset refresh
   -d, --dry-run     Simulate operations without modifying files
   -q, --quiet       Suppress informational output
+  -y, --yes         Skip confirmation when closing Steam
   -V, --version     Show version information
   -h, --help        Show this help message
 EOF
@@ -57,13 +48,7 @@ EOF
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -s|--skip-theme)
-      # shellcheck disable=SC2034 # consumed by repair_ops.sh
       SKIP_THEME=true
-      shift
-      ;;
-    -y|--yes)
-      # shellcheck disable=SC2034 # consumed by repair_ops.sh
-      ASSUME_YES=true
       shift
       ;;
     -d|--dry-run)
@@ -73,6 +58,10 @@ while [[ $# -gt 0 ]]; do
     -q|--quiet)
       export QUIET=true
       export MILLENNIUM_QUIET=1
+      shift
+      ;;
+    -y|--yes)
+      ASSUME_YES=true
       shift
       ;;
     -V|--version)
@@ -91,20 +80,38 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ "$DRY_RUN" == "false" ]] && [[ "$(id -u)" -ne 0 ]]; then
-  echo -e "${RED}Error: This script must be run with sudo to fix file ownership and link hooks.${NC}" >&2
-  echo -e "Please run: sudo $0 $*" >&2
+resolve_millennium_go() {
+  local cand
+  for cand in \
+    "${SCRIPT_DIR}/../bin/millennium" \
+    "${SCRIPT_DIR}/millennium" \
+    "$(command -v millennium 2>/dev/null || true)"
+  do
+    if [[ -n "$cand" && -x "$cand" ]]; then
+      printf '%s\n' "$cand"
+      return 0
+    fi
+  done
+  return 1
+}
+
+if ! go_bin="$(resolve_millennium_go)"; then
+  echo -e "${RED}Error: repair requires the Go millennium dispatcher (not found).${NC}" >&2
+  echo "Install millennium-helpers or run 'make build' from a checkout." >&2
   exit 1
 fi
 
-
-# Feature modules (sourced by this entrypoint — no thin aggregator)
-_feat_lib="${_COMMON_LIB_DIR:-${SCRIPT_DIR}/lib}"
-if [[ ! -f "${_feat_lib}/repair_ops.sh" ]]; then
-  _feat_lib="${SCRIPT_DIR}/lib"
+go_args=(repair)
+if [[ "$DRY_RUN" == "true" ]]; then
+  go_args+=(--dry-run)
 fi
-# shellcheck source=lib/repair_ops.sh
-source "${_feat_lib}/repair_ops.sh"
-unset _feat_lib
-
-run_repair
+if [[ "$SKIP_THEME" == "true" ]]; then
+  go_args+=(--skip-theme)
+fi
+if [[ "${QUIET:-false}" == "true" ]]; then
+  go_args+=(--quiet)
+fi
+if [[ "$ASSUME_YES" == "true" ]]; then
+  go_args+=(--yes)
+fi
+MILLENNIUM_LEGACY=0 exec "$go_bin" "${go_args[@]}"

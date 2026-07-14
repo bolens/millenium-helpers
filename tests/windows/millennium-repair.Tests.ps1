@@ -1,52 +1,48 @@
 Describe "Repair Script" {
     BeforeAll {
         $winScriptDir = Join-Path -Path $PSScriptRoot -ChildPath "..\..\scripts\windows"
-        $global:DryRun = $true
-        function Stop-Process { }
-        if (!$IsWindows) {
-            New-PSDrive -Name HKCU -PSProvider FileSystem -Root ([System.IO.Path]::GetTempPath()) -ErrorAction SilentlyContinue | Out-Null
-            New-PSDrive -Name C -PSProvider FileSystem -Root ([System.IO.Path]::GetTempPath()) -ErrorAction SilentlyContinue | Out-Null
-        }
-        function Get-ScheduledTask { }
-        function Get-Content {
-            param(
-                [string]$Path,
-                [switch]$Raw
-            )
-            return '{"update_channel":"beta","github_token":""}'
+        $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
+        $binDir = Join-Path $repoRoot "bin"
+        New-Item -ItemType Directory -Force -Path $binDir | Out-Null
+        $outExe = Join-Path $binDir "millennium.exe"
+        if (-not (Test-Path -LiteralPath $outExe)) {
+            $go = Get-Command go -ErrorAction SilentlyContinue
+            if (-not $go) { throw "Go toolchain required for repair thin-wrap tests" }
+            $ver = [System.IO.File]::ReadAllText((Join-Path $repoRoot "VERSION")).Trim()
+            Push-Location (Join-Path $repoRoot "go")
+            try {
+                & go build "-ldflags=-X github.com/bolens/millenium-helpers/internal/version.Version=$ver" `
+                    -o $outExe ./cmd/millennium
+                if ($LASTEXITCODE -ne 0) { throw "go build failed for millennium.exe" }
+            } finally {
+                Pop-Location
+            }
         }
         . (Join-Path -Path $winScriptDir -ChildPath "common.ps1")
     }
 
     Context "Help and Version" {
         It "Prints usage with -Help" {
-            $repairScript = Join-Path -Path $winScriptDir -ChildPath "millennium-repair.ps1"
-            $out = (& $repairScript -Help *>&1) | Out-String
+            $script = Join-Path -Path $winScriptDir -ChildPath "millennium-repair.ps1"
+            $out = (& $script -Help *>&1) | Out-String
             $out | Should -BeLike "*Usage:*"
-            $out | Should -BeLike "*-DryRun*"
+            $out | Should -BeLike "*SkipTheme*"
         }
 
         It "Prints version with -Version" {
-            $repairScript = Join-Path -Path $winScriptDir -ChildPath "millennium-repair.ps1"
-            $out = (& $repairScript -Version *>&1) | Out-String
+            $script = Join-Path -Path $winScriptDir -ChildPath "millennium-repair.ps1"
+            $out = (& $script -Version *>&1) | Out-String
             $out | Should -BeLike "*millennium-repair*"
         }
     }
 
-    Context "Force Repair Execution" {
-        BeforeAll {
-            Mock Get-ItemProperty { return [pscustomobject]@{ SteamPath = "C:\MockedSteam" } }
-            Mock Test-Path { return $true }
-            Mock Get-Process { return $null }
-            Mock Get-ScheduledTask { return $null }
-            Mock Test-Admin { return $true }
-        }
-
-        It "Runs the repair logic without errors" {
-            $repairScript = Join-Path -Path $winScriptDir -ChildPath "millennium-repair.ps1"
-            $out = (& $repairScript -DryRun *>&1) | Out-String
-            $out | Should -BeLike "*Initiating Millennium Force Repair*"
-            $out | Should -BeLike "*Repair completed successfully.*"
+    Context "Dry-run via Go" {
+        It "Announces dry-run and skip-theme" {
+            $script = Join-Path -Path $winScriptDir -ChildPath "millennium-repair.ps1"
+            $out = (& $script -DryRun -SkipTheme *>&1) | Out-String
+            $out | Should -BeLike "*DRY RUN*"
+            $out | Should -BeLike "*Skipping theme*"
+            $out | Should -BeLike "*upgrade --force*"
         }
     }
 }

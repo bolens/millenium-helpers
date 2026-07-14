@@ -206,6 +206,7 @@ jobs:
           matrix.suite == 'tests/behavioral/test_upgrade.sh' ||
           matrix.suite == 'tests/behavioral/test_diag.sh' ||
           matrix.suite == 'tests/behavioral/test_security.sh' ||
+          matrix.suite == 'tests/behavioral/test_repair.sh' ||
           matrix.suite == 'tests/behavioral/test_mcp.sh' ||
           matrix.suite == 'tests/behavioral/test_install.sh'
         uses: actions/setup-go@v6
@@ -227,6 +228,7 @@ jobs:
           matrix.suite == 'tests/behavioral/test_upgrade.sh' ||
           matrix.suite == 'tests/behavioral/test_diag.sh' ||
           matrix.suite == 'tests/behavioral/test_security.sh' ||
+          matrix.suite == 'tests/behavioral/test_repair.sh' ||
           matrix.suite == 'tests/behavioral/test_mcp.sh' ||
           matrix.suite == 'tests/behavioral/test_install.sh'
         shell: bash
@@ -279,7 +281,8 @@ jobs:
           matrix.suite == 'tests/windows/millennium-theme.Tests.ps1' ||
           matrix.suite == 'tests/windows/millennium-purge.Tests.ps1' ||
           matrix.suite == 'tests/windows/millennium-upgrade.Tests.ps1' ||
-          matrix.suite == 'tests/windows/millennium-diag.Tests.ps1'
+          matrix.suite == 'tests/windows/millennium-diag.Tests.ps1' ||
+          matrix.suite == 'tests/windows/millennium-repair.Tests.ps1'
         uses: actions/setup-go@v6
         with:
           go-version-file: go/go.mod
@@ -335,6 +338,7 @@ jobs:
           matrix.suite == 'tests/behavioral/test_upgrade.sh' ||
           matrix.suite == 'tests/behavioral/test_diag.sh' ||
           matrix.suite == 'tests/behavioral/test_security.sh' ||
+          matrix.suite == 'tests/behavioral/test_repair.sh' ||
           matrix.suite == 'tests/behavioral/test_mcp.sh' ||
           matrix.suite == 'tests/behavioral/test_install.sh'
         uses: actions/setup-go@v6
