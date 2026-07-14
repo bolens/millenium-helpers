@@ -100,6 +100,11 @@ out=$(run_schedule disable --dry-run 2>&1)
 rc=$?
 assert_success "$rc" "millennium-schedule disable --dry-run exits 0"
 assert_contains "$out" "DRY RUN" "millennium-schedule disable --dry-run announces dry-run mode"
+if [[ "$(uname -s)" == "Linux" ]]; then
+  assert_contains "$out" "system and user scopes" "millennium-schedule disable --dry-run mentions both systemd scopes"
+  assert_contains "$out" "system units under" "millennium-schedule disable --dry-run announces system-scope cleanup"
+  assert_contains "$out" "user units under" "millennium-schedule disable --dry-run announces user-scope cleanup"
+fi
 
 # --- status (no timer/service configured) ---
 

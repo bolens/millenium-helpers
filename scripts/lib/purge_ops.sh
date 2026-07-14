@@ -20,15 +20,24 @@ if pgrep -x steam >/dev/null 2>&1; then
 fi
 
 # Disable auto-update scheduler so it cannot reinstall after purge.
-# Prefer PATH, then a sibling wrapper, then the .sh source (dev checkout).
-# sched_bin may be "bash /path/to/….sh" — intentional word-split via SC2086.
-sched_bin="$(command -v millennium-schedule 2>/dev/null || true)"
-if [[ -z "$sched_bin" ]]; then
-  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  if [[ -x "${script_dir}/millennium-schedule" ]]; then
-    sched_bin="${script_dir}/millennium-schedule"
-  elif [[ -f "${script_dir}/millennium-schedule.sh" ]]; then
-    sched_bin="bash ${script_dir}/millennium-schedule.sh"
+# Prefer Go dispatcher (dual systemd scopes), then long-name, then .sh.
+# sched_bin may be multi-word — intentional word-split via SC2086.
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+parent_dir="$(cd "${script_dir}/.." && pwd)"
+sched_bin=""
+mill_go="$(command -v millennium 2>/dev/null || true)"
+if [[ -n "$mill_go" ]]; then
+  sched_bin="${mill_go} schedule"
+elif [[ -x "${parent_dir}/millennium" ]]; then
+  sched_bin="${parent_dir}/millennium schedule"
+else
+  sched_bin="$(command -v millennium-schedule 2>/dev/null || true)"
+  if [[ -z "$sched_bin" ]]; then
+    if [[ -x "${parent_dir}/millennium-schedule" ]]; then
+      sched_bin="${parent_dir}/millennium-schedule"
+    elif [[ -f "${parent_dir}/millennium-schedule.sh" ]]; then
+      sched_bin="bash ${parent_dir}/millennium-schedule.sh"
+    fi
   fi
 fi
 if [[ -n "$sched_bin" ]]; then

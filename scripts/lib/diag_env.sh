@@ -101,25 +101,47 @@ check_scheduler_status() {
     return
   fi
   if [[ "$SYSTEMD_BOOTED" == "true" ]]; then
+    local system_dir="${MILLENNIUM_SYSTEMD_SYSTEM_DIR:-/etc/systemd/system}"
+    local system_timer_path="${system_dir}/millennium-update.timer"
     local timer_path="${USER_CONFIG_DIR}/millennium-update.timer"
-    if [[ -f "$timer_path" ]] && sysctl_user is-enabled millennium-update.timer &>/dev/null; then
+    local scope=""
+
+    # Prefer system scope when present/enabled (matches native schedule status).
+    if [[ -f "$system_timer_path" ]] && systemctl is-enabled millennium-update.timer &>/dev/null; then
+      scope="system"
+      local timer_state
+      timer_state=$(systemctl is-active millennium-update.timer 2>/dev/null || echo "inactive")
+      if [[ "$timer_state" == "active" ]]; then
+        local timer_trigger
+        timer_trigger=$(systemctl list-timers millennium-update.timer --no-legend 2>/dev/null | awk '{print $1, $2, $3}')
+        print_diag_item "ok" "Systemd Auto-Update Timer" "Enabled and Active [system] (Next Run: ${timer_trigger})"
+      else
+        TIMER_ACTIVE=false
+        print_diag_item "warn" "Systemd Auto-Update Timer" "Enabled but Inactive [system] (timer is sleeping)"
+      fi
+      # System timers do not need user lingering.
+      LINGER_OK=true
+    elif [[ -f "$timer_path" ]] && sysctl_user is-enabled millennium-update.timer &>/dev/null; then
+      scope="user"
       local timer_state
       timer_state=$(sysctl_user is-active millennium-update.timer || echo "inactive")
       if [[ "$timer_state" == "active" ]]; then
         local timer_trigger
         timer_trigger=$(sysctl_user list-timers millennium-update.timer --no-legend | awk '{print $1, $2, $3}')
-        print_diag_item "ok" "Systemd Auto-Update Timer" "Enabled and Active (Next Run: ${timer_trigger})"
+        print_diag_item "ok" "Systemd Auto-Update Timer" "Enabled and Active [user] (Next Run: ${timer_trigger})"
       else
         TIMER_ACTIVE=false
-        print_diag_item "warn" "Systemd Auto-Update Timer" "Enabled but Inactive (timer is sleeping)"
+        print_diag_item "warn" "Systemd Auto-Update Timer" "Enabled but Inactive [user] (timer is sleeping)"
       fi
     else
       TIMER_ACTIVE=false
       print_diag_item "error" "Systemd Auto-Update Timer" "Disabled / Not Scheduled"
     fi
 
-    # Check Systemd User Lingering status
-    if [[ -f "/var/lib/systemd/linger/${RUNNING_USER}" ]]; then
+    # Check Systemd User Lingering status (only relevant for user-scope timers)
+    if [[ "$scope" == "system" ]]; then
+      print_diag_item "ok" "Systemd User Lingering" "Not required (system timer)"
+    elif [[ -f "/var/lib/systemd/linger/${RUNNING_USER}" ]]; then
       print_diag_item "ok" "Systemd User Lingering" "Enabled"
     else
       LINGER_OK=false

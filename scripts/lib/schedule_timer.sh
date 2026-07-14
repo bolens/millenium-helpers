@@ -1,6 +1,47 @@
 # shellcheck shell=bash
 # Schedule helpers for millennium-schedule.sh (schedule_timer.sh)
 
+# Overridable for tests (matches Go MILLENNIUM_SYSTEMD_SYSTEM_DIR).
+system_systemd_dir() {
+  echo "${MILLENNIUM_SYSTEMD_SYSTEM_DIR:-/etc/systemd/system}"
+}
+
+can_use_system_systemd() {
+  local dir
+  dir="$(system_systemd_dir)"
+  if [[ -z "${MILLENNIUM_SYSTEMD_SYSTEM_DIR:-}" && ! -d /run/systemd/system ]]; then
+    return 1
+  fi
+  mkdir -p "$dir" 2>/dev/null || true
+  [[ -w "$dir" ]]
+}
+
+# Remove system-scope millennium-update units when permitted.
+remove_system_systemd_units() {
+  local dir timer_file service_file
+  dir="$(system_systemd_dir)"
+  timer_file="${dir}/${TIMER_NAME}"
+  service_file="${dir}/${SERVICE_NAME}"
+
+  if [[ "${DRY_RUN:-false}" == "true" ]]; then
+    echo -e "${YELLOW}[DRY RUN] Would stop/disable/remove system units under ${dir}${NC}"
+    return 0
+  fi
+
+  if ! can_use_system_systemd; then
+    if [[ -f "$timer_file" || -f "$service_file" ]]; then
+      echo -e "${YELLOW}Warning: system units present but not removable without privileges; skipping system scope.${NC}" >&2
+    fi
+    return 1
+  fi
+
+  systemctl disable --now "$TIMER_NAME" 2>/dev/null || true
+  systemctl stop "$SERVICE_NAME" 2>/dev/null || true
+  rm -f "$timer_file" "$service_file"
+  systemctl daemon-reload 2>/dev/null || true
+  return 0
+}
+
 enable_timer() {
   local channel
   channel="$(require_update_channel "${1:-${CONFIG_UPDATE_CHANNEL:-stable}}")" || exit 1
@@ -79,6 +120,13 @@ EOF
     fi
     echo -e "\nYou can check the status with: millennium schedule status"
     return 0
+  fi
+
+  # Legacy Bash enable writes user units; clear system scope when possible so
+  # doctor refresh / enable cannot leave dual timers active.
+  if can_use_system_systemd || [[ -f "$(system_systemd_dir)/${TIMER_NAME}" || -f "$(system_systemd_dir)/${SERVICE_NAME}" ]]; then
+    echo -e "${BLUE}Clearing conflicting systemd system-scope units (if any)...${NC}"
+    remove_system_systemd_units || true
   fi
 
   # Ensure user systemd config directory exists
@@ -166,37 +214,54 @@ disable_timer() {
     return 0
   fi
 
-  echo -e "${BLUE}Disabling and stopping Millennium update user timer and service...${NC}"
+  local sys_dir
+  sys_dir="$(system_systemd_dir)"
+  echo -e "${BLUE}Disabling Millennium update systemd timers (system and user scopes)...${NC}"
 
-  if [[ "$DRY_RUN" == "false" ]]; then
-    if sysctl_user is-active --quiet "$TIMER_NAME" || sysctl_user is-enabled --quiet "$TIMER_NAME" 2>/dev/null; then
-      sysctl_user disable --now "$TIMER_NAME"
-    fi
-
-    if sysctl_user is-active --quiet "$SERVICE_NAME"; then
-      sysctl_user stop "$SERVICE_NAME"
-    fi
-  else
-    echo -e "${YELLOW}[DRY RUN] Would stop and disable timer: ${TIMER_NAME}${NC}"
-    echo -e "${YELLOW}[DRY RUN] Would stop service: ${SERVICE_NAME}${NC}"
+  if [[ "$DRY_RUN" == "true" ]]; then
+    echo -e "${YELLOW}[DRY RUN] Would stop/disable/remove system units under ${sys_dir}${NC}"
+    echo -e "${YELLOW}[DRY RUN] Would stop/disable/remove user units under ${USER_CONFIG_DIR}${NC}"
+    echo -e "${GREEN}Dry run: Timer disablement simulated successfully.${NC}"
+    return 0
   fi
 
-  if [[ -f "$TIMER_PATH" || "$DRY_RUN" == "true" ]]; then
+  local had=false
+  local sys_timer="${sys_dir}/${TIMER_NAME}"
+  local sys_service="${sys_dir}/${SERVICE_NAME}"
+  if can_use_system_systemd || [[ -f "$sys_timer" || -f "$sys_service" ]]; then
+    if remove_system_systemd_units; then
+      had=true
+    fi
+  fi
+
+  if sysctl_user is-active --quiet "$TIMER_NAME" || sysctl_user is-enabled --quiet "$TIMER_NAME" 2>/dev/null; then
+    sysctl_user disable --now "$TIMER_NAME" || true
+    had=true
+  fi
+
+  if sysctl_user is-active --quiet "$SERVICE_NAME"; then
+    sysctl_user stop "$SERVICE_NAME" || true
+    had=true
+  fi
+
+  if [[ -f "$TIMER_PATH" ]]; then
     echo "Removing timer file: $TIMER_PATH"
-    execute rm -f "$TIMER_PATH"
+    rm -f "$TIMER_PATH"
+    had=true
   fi
 
-  if [[ -f "$SERVICE_PATH" || "$DRY_RUN" == "true" ]]; then
+  if [[ -f "$SERVICE_PATH" ]]; then
     echo "Removing service file: $SERVICE_PATH"
-    execute rm -f "$SERVICE_PATH"
+    rm -f "$SERVICE_PATH"
+    had=true
   fi
 
   echo -e "${BLUE}Reloading systemd user daemon...${NC}"
-  execute sysctl_user daemon-reload
+  sysctl_user daemon-reload || true
 
-  if [[ "$DRY_RUN" == "true" ]]; then
-    echo -e "${GREEN}Dry run: Timer disablement simulated successfully.${NC}"
+  if [[ "$had" == "true" ]]; then
+    echo -e "${GREEN}Millennium auto-update systemd timers have been disabled and removed (where permitted).${NC}"
   else
-    echo -e "${GREEN}Millennium auto-update user timer and service have been disabled and removed.${NC}"
+    echo -e "${GREEN}No systemd timer units found to disable.${NC}"
   fi
 }

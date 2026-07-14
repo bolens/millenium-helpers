@@ -1043,25 +1043,26 @@ uninstall_scripts() {
   fi
 
   # Disable scheduler (systemd/LaunchAgent + cron) while binaries still exist.
+  # Run as current euid (typically root under sudo) so system-scope units can
+  # be removed; do not drop to runuser before disable.
   local user_name="${SUDO_USER:-$(id -un)}"
+  local go_mill="${TARGET_DIR}/millennium"
   local schedule_bin="${TARGET_DIR}/millennium-schedule"
   local schedule_src="${SCRIPT_DIR}/scripts/millennium-schedule.sh"
   local schedule_cmd=""
-  if [[ -x "$schedule_bin" ]]; then
+  if [[ -x "$go_mill" ]]; then
+    schedule_cmd="$go_mill schedule"
+  elif [[ -x "$schedule_bin" ]]; then
     schedule_cmd="$schedule_bin"
   elif [[ -f "$schedule_src" ]]; then
     schedule_cmd="bash $schedule_src"
   fi
   if [[ -n "$schedule_cmd" || "$DRY_RUN" == "true" ]]; then
-    echo -e "${BLUE}Disabling update scheduler (systemd/LaunchAgent and cron)...${NC}"
+    echo -e "${BLUE}Disabling update scheduler (systemd system+user / LaunchAgent and cron)...${NC}"
     local dry_flag=""
     [[ "$DRY_RUN" == "true" ]] && dry_flag="--dry-run"
-    if [[ "$user_name" != "root" && "$(id -u)" -eq 0 ]]; then
-      execute runuser -l "$user_name" -c "${schedule_cmd:-bash $schedule_src} disable ${dry_flag}" || true
-    else
-      # shellcheck disable=SC2086
-      execute ${schedule_cmd:-bash "$schedule_src"} disable $dry_flag || true
-    fi
+    # shellcheck disable=SC2086
+    execute ${schedule_cmd:-bash "$schedule_src"} disable $dry_flag || true
   fi
 
   echo -e "${BLUE}Uninstalling Millennium helper scripts from ${TARGET_DIR}...${NC}"
@@ -1111,6 +1112,23 @@ uninstall_scripts() {
   removed_any=true
 
   # Best-effort leftover unit cleanup if schedule disable could not run
+  local system_systemd_dir="${MILLENNIUM_SYSTEMD_SYSTEM_DIR:-/etc/systemd/system}"
+  local sys_timer="${system_systemd_dir}/millennium-update.timer"
+  local sys_service="${system_systemd_dir}/millennium-update.service"
+  if [[ "$DRY_RUN" == "true" ]]; then
+    echo -e "${YELLOW}[DRY RUN] Would remove leftover systemd system units under ${system_systemd_dir} (if present)${NC}"
+    removed_any=true
+  elif [[ -f "$sys_timer" || -f "$sys_service" ]]; then
+    if [[ "$(id -u)" -eq 0 || -w "$system_systemd_dir" ]]; then
+      echo "Removing leftover systemd system update timer/service..."
+      execute systemctl disable --now millennium-update.timer || true
+      execute systemctl stop millennium-update.service || true
+      execute rm -f "$sys_timer" "$sys_service"
+      execute systemctl daemon-reload || true
+      removed_any=true
+    fi
+  fi
+
   if [[ "$user_name" != "root" ]]; then
     local user_home
     user_home="$(get_user_home "$user_name")"

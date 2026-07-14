@@ -58,29 +58,35 @@ if [[ "$SUDOERS_OK" == false ]]; then
   echo -e "  ${YELLOW}sudo ./install.sh${NC} (from your cloned repository)"
 fi
 
-# Issue 6: Ensure daily update timer / cron job is configured and up to date
-sched_path=$(resolve_helper_path "millennium-schedule")
+# Issue 6: Ensure daily update timer / cron job is configured and up to date.
+# Prefer Go dispatcher when present (native enable clears the other systemd scope).
+# Run as current euid so system-scope cleanup works under sudo (no runuser drop).
+sched_path=""
+mill_go="$(command -v millennium 2>/dev/null || true)"
+if [[ -n "$mill_go" ]]; then
+  sched_path="$mill_go"
+  sched_args=(schedule enable "$UPDATE_CHANNEL")
+else
+  sched_path=$(resolve_helper_path "millennium-schedule")
+  sched_args=(enable "$UPDATE_CHANNEL")
+fi
 if [[ -n "$sched_path" ]]; then
   if [[ "$SYSTEMD_BOOTED" == "true" ]]; then
-    echo -e "\n${YELLOW}[DOCTOR] Refreshing daily systemd user timer...${NC}"
-    if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" ]]; then
-      execute runuser -l "$RUNNING_USER" -c "${sched_path} enable $UPDATE_CHANNEL" || true
-    else
-      execute "${sched_path}" enable "$UPDATE_CHANNEL" || true
-    fi
+    echo -e "\n${YELLOW}[DOCTOR] Refreshing daily systemd update timer (clears conflicting scopes)...${NC}"
+    execute "$sched_path" "${sched_args[@]}" || true
   else
     echo -e "\n${YELLOW}[DOCTOR] Refreshing daily cron update job...${NC}"
-    if [[ "$(id -u)" -eq 0 && "$RUNNING_USER" != "root" ]]; then
-      execute runuser -l "$RUNNING_USER" -c "${sched_path} enable $UPDATE_CHANNEL --cron" || true
+    if [[ -n "$mill_go" ]]; then
+      execute "$mill_go" schedule enable "$UPDATE_CHANNEL" --cron || true
     else
-      execute "${sched_path}" enable "$UPDATE_CHANNEL" --cron || true
+      execute "$sched_path" enable "$UPDATE_CHANNEL" --cron || true
     fi
   fi
 else
-  echo -e "\n${YELLOW}[DOCTOR] Skip refreshing daily scheduler (millennium-schedule utility not found)${NC}"
+  echo -e "\n${YELLOW}[DOCTOR] Skip refreshing daily scheduler (millennium / millennium-schedule not found)${NC}"
 fi
 
-# Issue 7: Disabled systemd user lingering (Only on systemd booted)
+# Issue 7: Disabled systemd user lingering (Only on systemd booted; skip for system timers)
 if [[ "$SYSTEMD_BOOTED" == "true" && "$LINGER_OK" == false ]]; then
   echo -e "\n${YELLOW}[DOCTOR] Enabling systemd user lingering to run updates in the background...${NC}"
   execute loginctl enable-linger "${RUNNING_USER}"

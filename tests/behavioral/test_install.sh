@@ -103,6 +103,8 @@ assert_contains "$out" "DRY RUN MODE" "install.sh uninstall --dry-run announces 
 assert_contains "$out" "Uninstalling" "install.sh uninstall --dry-run describes the uninstall action"
 assert_contains "$out" "Uninstalling man pages" "install.sh uninstall --dry-run uninstalls man pages"
 assert_contains "$out" "Disabling update scheduler" "install.sh uninstall --dry-run disables the update scheduler"
+assert_contains "$out" "system+user" "install.sh uninstall --dry-run mentions systemd system+user scopes"
+assert_contains "$out" "leftover systemd system units" "install.sh uninstall --dry-run cleans leftover system units"
 assert_contains "$out" "millennium" "install.sh uninstall --dry-run mentions the millennium dispatcher binary"
 
 out=$(TARGET_DIR=/var/invalid/nonexistent bash "$INSTALL_SH" install 2>&1 < /dev/null || true)

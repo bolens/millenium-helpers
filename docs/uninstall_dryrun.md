@@ -43,8 +43,22 @@ If you installed via the standard installer script:
 * **Option B: Manual Cleanup**:
   Follow these steps to clean up all components manually:
 
-1. **Disable and remove the daily update systemd user timer**:
+1. **Disable and remove the daily update systemd timers** (system and user scopes).
+   Preferred:
    ```bash
+   sudo millennium schedule disable
+   # or: sudo millennium-schedule disable
+   ```
+   Manual equivalent:
+   ```bash
+   # System scope (if present)
+   sudo systemctl disable --now millennium-update.timer
+   sudo systemctl stop millennium-update.service
+   sudo rm -f /etc/systemd/system/millennium-update.timer \
+              /etc/systemd/system/millennium-update.service
+   sudo systemctl daemon-reload
+
+   # User scope
    systemctl --user disable --now millennium-update.timer
    systemctl --user stop millennium-update.service
    rm -f ${XDG_CONFIG_HOME:-~/.config}/systemd/user/millennium-update.timer \
