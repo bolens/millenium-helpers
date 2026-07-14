@@ -103,58 +103,6 @@ assert_equals "${expected_dir}/another_file" "$resolved_parent_traversal" "porta
 
 rm -rf "$test_dir_temp"
 
-# --- fetch_github_commit() ---
-
-# jq path: mock curl + jq to return a fixed sha
-mock_cmd "jq" 'read -r _; echo "abc123def456"'
-mock_cmd_output "curl" '{"sha":"abc123def456"}'
-sha=$(fetch_github_commit "someowner" "somerepo")
-assert_equals "abc123def456" "$sha" "fetch_github_commit (jq path) parses SHA from curl+jq output"
-rm -f "${MOCK_BIN}/jq" "${MOCK_BIN}/curl"
-
-# python3 fallback path: no jq on PATH, curl returns real JSON, python3 is the real interpreter
-mock_cmd "curl" 'cat << '"'"'JSONEOF'"'"'
-[{"sha": "deadbeef00112233"}]
-JSONEOF'
-sha=$(fetch_github_commit "someowner" "somerepo")
-assert_equals "deadbeef00112233" "$sha" "fetch_github_commit (python3 fallback) parses SHA when jq is unavailable"
-rm -f "${MOCK_BIN}/curl"
-
-# Failure path: curl fails / returns garbage -> empty string, no crash
-mock_cmd "curl" 'exit 1'
-sha=$(fetch_github_commit "someowner" "somerepo")
-assert_equals "" "$sha" "fetch_github_commit returns empty string when curl fails"
-rm -f "${MOCK_BIN}/curl"
-
-# --- fetch_github_latest_stable_tag() ---
-
-mock_cmd "curl" 'cat << '"'"'JSONEOF'"'"'
-{"tag_name": "v3.2.0"}
-JSONEOF'
-tag=$(fetch_github_latest_stable_tag "SteamClientHomebrew" "Millennium")
-assert_equals "v3.2.0" "$tag" "fetch_github_latest_stable_tag (python3 fallback) parses tag_name"
-rm -f "${MOCK_BIN}/curl"
-
-mock_cmd "jq" 'read -r _; echo "v3.3.0"'
-mock_cmd "curl" 'echo "{}"'
-tag=$(fetch_github_latest_stable_tag "SteamClientHomebrew" "Millennium")
-assert_equals "v3.3.0" "$tag" "fetch_github_latest_stable_tag (jq path) parses tag_name"
-rm -f "${MOCK_BIN}/jq" "${MOCK_BIN}/curl"
-
-# --- fetch_github_latest_beta_tag() ---
-
-mock_cmd "curl" 'cat << '"'"'JSONEOF'"'"'
-[{"tag_name": "v3.4.0", "prerelease": false}, {"tag_name": "v3.3.0-beta.1", "prerelease": true}]
-JSONEOF'
-tag=$(fetch_github_latest_beta_tag "SteamClientHomebrew" "Millennium")
-assert_equals "v3.3.0-beta.1" "$tag" "fetch_github_latest_beta_tag (python3 fallback) picks first prerelease beta tag, skipping stable"
-rm -f "${MOCK_BIN}/curl"
-
-mock_cmd "jq" 'read -r _; echo "v3.3.0-beta.2"'
-mock_cmd "curl" 'echo "[]"'
-tag=$(fetch_github_latest_beta_tag "SteamClientHomebrew" "Millennium")
-assert_equals "v3.3.0-beta.2" "$tag" "fetch_github_latest_beta_tag (jq path) parses beta tag"
-rm -f "${MOCK_BIN}/jq" "${MOCK_BIN}/curl"
 
 # --- print_upgrade_failure_tips() ---
 fail_tips=$(print_upgrade_failure_tips 42 2>&1)
@@ -188,21 +136,6 @@ game_tip=$(print_game_running_tip "upgrade" 2>&1)
 assert_contains "$game_tip" "Close the running game" "print_game_running_tip tells user to close the game"
 assert_contains "$game_tip" "--yes" "print_game_running_tip mentions --yes"
 
-# --- _github_explain_http_error() ---
-
-err_out=$(_github_explain_http_error "401" 2>&1)
-assert_contains "$err_out" "401" "_github_explain_http_error mentions HTTP 401"
-assert_contains "$err_out" "millennium schedule setup" "_github_explain_http_error 401 tip points at schedule setup"
-
-err_hdr=$(mktemp 2>/dev/null || mktemp -t mh-hdr.XXXXXX)
-printf 'x-ratelimit-remaining: 0\nx-ratelimit-reset: 9999999999\n' > "$err_hdr"
-err_out=$(_github_explain_http_error "403" "$err_hdr" 2>&1)
-assert_contains "$err_out" "rate limit" "_github_explain_http_error 403 with remaining=0 mentions rate limit"
-assert_contains "$err_out" "github_token" "_github_explain_http_error 403 tip mentions github_token"
-rm -f "$err_hdr"
-
-err_out=$(_github_explain_http_error "404" 2>&1)
-assert_contains "$err_out" "404" "_github_explain_http_error mentions HTTP 404"
 
 # --- send_notification() ---
 
@@ -228,49 +161,6 @@ mock_cmd "runuser" 'exit 0'
 mock_cmd "notify-send" 'exit 0'
 unmock_cmd "uname"
 
-# --- load_user_config() ---
-
-# Setup a clean config environment
-TEMP_CONF_DIR=$(mktemp -d)
-OLD_XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-}"
-export XDG_CONFIG_HOME="${TEMP_CONF_DIR}"
-
-# 1. No config file -> nothing exported
-unset GITHUB_TOKEN
-unset CONFIG_UPDATE_CHANNEL
-load_user_config
-assert_equals "" "${GITHUB_TOKEN:-}" "load_user_config does not export GITHUB_TOKEN if no config exists"
-assert_equals "" "${CONFIG_UPDATE_CHANNEL:-}" "load_user_config does not export CONFIG_UPDATE_CHANNEL if no config exists"
-
-# 2. Config file exists -> variables loaded
-mkdir -p "${TEMP_CONF_DIR}/millennium-helpers"
-cat > "${TEMP_CONF_DIR}/millennium-helpers/config.json" << EOF
-{
-  "update_channel": "beta",
-  "github_token": "token123"
-}
-EOF
-
-load_user_config
-assert_equals "token123" "${GITHUB_TOKEN:-}" "load_user_config loads and exports GITHUB_TOKEN from config.json"
-assert_equals "beta" "${CONFIG_UPDATE_CHANNEL:-}" "load_user_config loads and exports CONFIG_UPDATE_CHANNEL from config.json"
-
-# 3. Environment variables should NOT be overwritten if already set
-export GITHUB_TOKEN="env_token"
-export CONFIG_UPDATE_CHANNEL="env_channel"
-load_user_config
-assert_equals "env_token" "${GITHUB_TOKEN}" "load_user_config preserves existing GITHUB_TOKEN environment override"
-assert_equals "env_channel" "${CONFIG_UPDATE_CHANNEL}" "load_user_config preserves existing CONFIG_UPDATE_CHANNEL environment override"
-
-# Cleanup
-unset GITHUB_TOKEN
-unset CONFIG_UPDATE_CHANNEL
-if [[ -n "$OLD_XDG_CONFIG_HOME" ]]; then
-  export XDG_CONFIG_HOME="$OLD_XDG_CONFIG_HOME"
-else
-  unset XDG_CONFIG_HOME
-fi
-rm -rf "$TEMP_CONF_DIR"
 
 # --- download_file() ---
 
@@ -399,31 +289,6 @@ force_color_out=$(
 )
 assert_not_equals "" "$force_color_out" "FORCE_COLOR enables ANSI color variables in logging.sh"
 
-# --- prune_backups age-prunes the last remaining backup without unbound-array abort ---
-# Bash 3.2 (macOS) treats empty "${arr[@]}" as unbound under set -u; pruning the
-# final backup used to reassign sorted_backups from an empty temp array and die.
-
-PRUNE_LIB=$(mktemp -d 2>/dev/null || mktemp -d -t prune.XXXXXX)
-mkdir -p "${PRUNE_LIB}/millennium.bak_v1.0.0"
-# Make the backup look old enough to age out (mtime ~ 10 days ago).
-if touch -d "10 days ago" "${PRUNE_LIB}/millennium.bak_v1.0.0" 2>/dev/null; then
-  :
-elif touch -t "$(date -v-10d +%Y%m%d%H%M.%S)" "${PRUNE_LIB}/millennium.bak_v1.0.0" 2>/dev/null; then
-  :
-else
-  # Last resort: set mtime via python for exotic environments.
-  python3 -c "import os, time; os.utime('${PRUNE_LIB}/millennium.bak_v1.0.0', (time.time()-10*86400, time.time()-10*86400))"
-fi
-export MOCK_LIB_DIR="$PRUNE_LIB"
-export DRY_RUN=false
-out=$(prune_backups 5 1 2>&1)
-rc=$?
-assert_success "$rc" "prune_backups age-prunes the last backup without aborting"
-assert_contains "$out" "Removed old backup" "prune_backups reports removal of the aged-out backup"
-assert_file_not_exists "${PRUNE_LIB}/millennium.bak_v1.0.0" "prune_backups deletes the aged-out backup directory"
-unset MOCK_LIB_DIR
-export DRY_RUN=true
-rm -rf "$PRUNE_LIB"
 
 # --- sysctl_user() ---
 #

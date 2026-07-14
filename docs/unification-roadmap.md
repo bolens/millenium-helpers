@@ -21,6 +21,8 @@ parity** on Linux, macOS, and Windows.
 | Long-name helpers | Thin-wrap to Go (no `common.sh` / `common.ps1` sourcing) |
 | Steam lifecycle | Go (`go/internal/steam`); Windows + Unix |
 | Shared logging | Go (`go/internal/logging`) for CLI; Bash `logging.sh` keeps install-only helpers (`execute`, `write_file`, …) |
+| Zip extract | Go (`go/internal/archive`); theme wraps it |
+| GitHub / config backup | Go (`githubapi`, `config`); dead Bash `github.sh` / `backup.sh` / `archive.sh` removed |
 | MCP | `millennium mcp` / PATH `millennium-mcp` argv0 twin (Go) |
 | Installers | `install.sh` / `install.ps1` require a built Go binary |
 | `MILLENNIUM_LEGACY=1` | Obsolete for Go-owned commands (they stay native) |
@@ -35,6 +37,7 @@ golangci-lint, and govulncheck.
 
 ## Remaining optional work
 
+- Install-time Bash/PS libs still in tree: `logging.sh` / `version.sh` / `install_track.sh` / `release_assets.sh` / `millennium_license.sh`; Windows `Logging` / `Args` / `Version` / `Config` / `License` / `InstallTrack`
 - Further trim long-name Bash/Pester suites where unique seams remain (schedule/theme/purge)
 - Migrate systemd/Task Scheduler units and sudoers fully onto `millennium <cmd>` (drop long-name PATH dependence) — needs installer/consumers
 

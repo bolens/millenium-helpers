@@ -13,17 +13,19 @@ Project: [README](../README.md). Index: [README.md](README.md).
 | --- | --- | --- |
 | PATH CLI | `bin/millennium` (`go/cmd/millennium`) | Go |
 | Long-name helpers | [`scripts/millennium-*.sh`](../scripts/), [`scripts/windows/*.ps1`](../scripts/windows/) | Thin-wrap → Go |
-| Shared libs | [`scripts/lib/`](../scripts/lib/), [`scripts/windows/lib/`](../scripts/windows/lib/) | Bash / PowerShell (install helpers); Steam+CLI logging in Go |
+| Shared libs | [`scripts/lib/`](../scripts/lib/), [`scripts/windows/lib/`](../scripts/windows/lib/) | Bash / PowerShell (install-only); Steam, CLI logging, zip extract, GitHub API in Go |
 | Steam | `go/internal/steam` | Go (Unix + Windows) |
 | CLI logging | `go/internal/logging` | Go |
+| Zip extract | `go/internal/archive` | Go (theme + Windows upgrade install) |
 | MCP | `millennium mcp` / PATH `millennium-mcp` | Go |
 | Completions | [`completions/`](../completions/) | Bash / Zsh / Fish / Nushell / PowerShell |
 | Man pages | [`man/`](../man/) | mandoc |
 | Packaging | Formula, Nix, Arch, Scoop/Winget, deb/rpm/Chocolatey | various |
 
-Rough size: ~8 Bash shared lib modules, ~6 PowerShell shared lib modules; Go owns
-PATH `millennium`, Steam lifecycle, CLI logging, MCP stdio, man pages, and completions wiring. CLI surface is
-gated by [`spec/cli-contract.yaml`](../spec/cli-contract.yaml)
+Rough size: ~5 Bash + ~6 PowerShell install-oriented shared lib modules; Go owns
+PATH `millennium`, Steam, CLI logging, safe zip extract, GitHub/API config paths,
+MCP stdio, man pages, and completions wiring. CLI surface is gated by
+[`spec/cli-contract.yaml`](../spec/cli-contract.yaml)
 ([CONTRIBUTING](../CONTRIBUTING.md#linux--windows-parity)).
 
 ---
@@ -83,7 +85,7 @@ Tests: Bash behavioral/unit under `tests/` · Pester under `tests/windows/`.
 | `purge` | Y | Y | Native | unique refuse/`--yes` seams | unique seams | Dry-run smoked in `go.yml` |
 | `schedule` (all commands) | Y | Y* | Native | unique cron/wizard/Steam seams | thin-wrap help | *hooks Unix-only |
 | `schedule --cron` | Y | — | Linux/macOS only | Y | — | Contract OS-only |
-| `theme` list/install/update/remove | Y | Y | Native | zip-slip + canaries | thin-wrap help | Dual-OS smokes in `go.yml` |
+| `theme` list/install/update/remove | Y | Y | Native | canaries; zip-slip in Go `archive` | thin-wrap help | Dual-OS smokes in `go.yml` |
 | `mcp` tools surface | Y | Y | Native | `test_mcp` | Go wrap | Dual-OS `initialize` smoke |
 | Install / uninstall helpers | Y | Y | Requires Go PATH binary | `test_install` | `install` | Uninstall clears both systemd scopes |
 

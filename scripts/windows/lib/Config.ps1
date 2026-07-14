@@ -44,5 +44,3 @@ function Protect-HelpersConfigFile {
         Log-Warn "Could not restrict ACL on ${Path}: $($_.Exception.Message)"
     }
 }
-
-# Extract a zip into DestinationPath, rejecting absolute paths and '..' (zip-slip).

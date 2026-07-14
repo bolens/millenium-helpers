@@ -53,27 +53,6 @@ func TestSanitizeAndParse(t *testing.T) {
 	}
 }
 
-func TestSafeExtractZipRejectsSlip(t *testing.T) {
-	dir := t.TempDir()
-	zipPath := filepath.Join(dir, "bad.zip")
-	f, err := os.Create(zipPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	zw := zip.NewWriter(f)
-	w, err := zw.Create("../evil.txt")
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, _ = w.Write([]byte("nope"))
-	_ = zw.Close()
-	_ = f.Close()
-	dest := filepath.Join(dir, "out")
-	if err := SafeExtractZip(zipPath, dest); err == nil {
-		t.Fatal("expected zip-slip rejection")
-	}
-}
-
 func TestInstallAndRemove(t *testing.T) {
 	skins := t.TempDir()
 	t.Setenv("MILLENNIUM_SKINS_DIR", skins)

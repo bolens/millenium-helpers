@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Go archive extract:** `go/internal/archive.SafeExtractZip` (zip-slip safe); theme wraps it; removed dead Bash `archive.sh` / `github.sh` / `backup.sh` (runtime uses Go `githubapi` + `config`)
 - **Go Steam + logging:** Windows Steam lifecycle + `ConfirmClose` / `FindDir` in `go/internal/steam`; shared `go/internal/logging` (quiet Info/Warn/Error + upgrade failure tips); deleted `steam.sh` / `Steam.ps1`
 - **Go CI quality gates:** Linux `go vet` / `gofmt`, golangci-lint, govulncheck on `go.yml`; `actions/setup-go@v6` + shared `GO_VERSION`
 - Packaging three-variant matrix (from-source / `-bin` / `-git`) for Arch, Homebrew, Scoop, Nix; plus deb, rpm, and Chocolatey recipes ([packaging/README.md](packaging/README.md))

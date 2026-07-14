@@ -45,21 +45,6 @@ if [[ -f "${_COMMON_LIB_DIR}/install_track.sh" ]]; then
   source "${_COMMON_LIB_DIR}/install_track.sh"
 fi
 
-if [[ -f "${_COMMON_LIB_DIR}/github.sh" ]]; then
-  # shellcheck source=lib/github.sh
-  source "${_COMMON_LIB_DIR}/github.sh"
-fi
-
-if [[ -f "${_COMMON_LIB_DIR}/backup.sh" ]]; then
-  # shellcheck source=lib/backup.sh
-  source "${_COMMON_LIB_DIR}/backup.sh"
-fi
-
-if [[ -f "${_COMMON_LIB_DIR}/archive.sh" ]]; then
-  # shellcheck source=lib/archive.sh
-  source "${_COMMON_LIB_DIR}/archive.sh"
-fi
-
 if [[ -f "${_COMMON_LIB_DIR}/millennium_license.sh" ]]; then
   # shellcheck source=lib/millennium_license.sh
   source "${_COMMON_LIB_DIR}/millennium_license.sh"
