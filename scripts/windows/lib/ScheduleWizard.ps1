@@ -80,9 +80,9 @@ function Run-Setup-Wizard {
     $channelVal = ""
     while ($true) {
         Write-Host "Choose Millennium Update Channel:"
-        Write-Host "  1) Stable   — latest published release"
-        Write-Host "  2) Beta     — beta-tagged prereleases"
-        Write-Host "  3) Main     — tip-of-development prereleases"
+        Write-Host "  1) Stable   - latest published release"
+        Write-Host "  2) Beta     - beta-tagged prereleases"
+        Write-Host "  3) Main     - tip-of-development prereleases"
         [System.Console]::Error.Write("Selection [1-3, default: $defaultChNum ($defaultChDesc)]: ")
         $chSel = Read-Host
         if ([string]::IsNullOrWhiteSpace($chSel)) {

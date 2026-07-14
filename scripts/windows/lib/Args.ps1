@@ -2,7 +2,7 @@
 
 
 # Apply GNU-style flags from unbound $args (e.g. --json, --yes) onto script switches.
-# Target keys may include booleans (Json, Yes, …) and string values (Channel, File, Rollback).
+# Target keys may include booleans (Json, Yes, ...) and string values (Channel, File, Rollback).
 function Apply-GnuStyleArgs {
     param(
         [Parameter(Mandatory = $true)]
