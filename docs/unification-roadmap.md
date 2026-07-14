@@ -24,7 +24,8 @@ and test parity** on Linux, macOS, and Windows.
 | **5 — MCP + cleanup** | Done | Native Go MCP + `--register` + PATH twin; Python hatch retired (Parallel) |
 | **6 — Graduation** | Done | Through **Parallel**: Endgame A–C + upgrade peel + MCP hatch retirement; remaining work is shared-lib hygiene / suite trim |
 
-Force any native path back to shell/PS: `MILLENNIUM_LEGACY=1`.
+Force any native path back to shell/PS: `MILLENNIUM_LEGACY=1` (obsolete for
+peeled commands — they stay native).
 
 `make build` → `bin/millennium`. Unix `install.sh` and Windows `install.ps1`
 require that Go binary for PATH `millennium` / `millennium.exe` (no shell/PS
@@ -272,7 +273,8 @@ Shipped behavior:
 - [x] **Endgame B:** delete `dispatcher.sh` / `Dispatcher.ps1` + shell `millennium` / `millennium.ps1` entrypoints; packaging/install Go-only
 - [x] **Endgame C:** graduate remaining Done surfaces (share/follow/doctor live/writable install/sudo hint); Bash/Pester long-name suites kept as thin-wrap residual
 - [x] **Parallel:** collapse upgrade `NeedsLegacy` install handoff; delete upgrade dual libs; retire MCP Python hatch
-- [ ] Trim remaining long-name Bash/Pester overlap where Go dual-OS suites already supersede
+- [x] Trim long-name Bash/Pester overlap for upgrade/diag/repair/mcp (keep help/version thin-wrap residual)
+- [ ] Optional: further trim schedule/theme/purge long-name suites where unique seams remain
 - [ ] Optional: peel shared Steam/logging libs into Go-only (thin-wraps still source `common.sh` / `common.ps1`)
 
 ---

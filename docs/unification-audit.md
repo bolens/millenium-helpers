@@ -14,13 +14,13 @@ Project: [README](../README.md). Index: [README.md](README.md).
 | --- | --- | --- |
 | Linux/macOS CLI | [`scripts/*.sh`](../scripts/) + [`scripts/lib/`](../scripts/lib/) | Bash |
 | Windows CLI | [`scripts/windows/*.ps1`](../scripts/windows/) + [`lib/`](../scripts/windows/lib/) | PowerShell |
-| MCP | Go `millennium mcp` / PATH `millennium-mcp`; Python escape hatch | Go (+ optional Python 3) |
+| MCP | Go `millennium mcp` / PATH `millennium-mcp` | Go |
 | Completions | [`completions/`](../completions/) | Bash / Zsh / Fish / Nushell / PowerShell |
 | Man pages | [`man/`](../man/) | mandoc |
 | Packaging | Formula, Nix, Arch, Scoop/Winget, deb/rpm/Chocolatey | various |
 
-Rough size: ~11 Bash lib modules, ~10 PowerShell lib modules (schedule/theme/purge/diag/repair/dispatcher
-feature libs peeled; upgrade/shared remain); Go owns PATH `millennium`, MCP stdio (~Python escape hatch), 8 man pages, 12
+Rough size: ~9 Bash shared lib modules, ~7 PowerShell shared lib modules (all feature dual
+libs peeled); Go owns PATH `millennium`, MCP stdio, 8 man pages, 12
 completion files. CLI surface is gated by
 [`spec/cli-contract.yaml`](../spec/cli-contract.yaml); remaining dual-shell
 parity gaps are tracked in the matrix below

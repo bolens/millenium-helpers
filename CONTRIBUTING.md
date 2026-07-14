@@ -27,7 +27,7 @@ Tools fall into three tiers. Install what matches the work you are doing.
 | Bash 4+ (3.2 OK on macOS for scripts under test) | Running scripts and `tests/run_tests.sh` | System shell |
 | `make` | Local targets | Usually via build-essential / Xcode CLT |
 | `git` | Clone, hooks, PKGBUILD pkgver | System package |
-| Python 3 | MCP server, packaging YAML checks, some tests | `python3` + PyYAML for `make check-winget` |
+| Python 3 | Packaging YAML checks, some unit tests | `python3` + PyYAML for `make check-winget` |
 | **Go 1.22+** | `make test-go` (included in `check-all`) / `make build` | [Install Go](https://go.dev/dl/); CI uses `CGO_ENABLED=0` |
 | [ShellCheck](https://www.shellcheck.net/) | `make lint` | `make setup`, or brew/pacman/apt/dnf |
 | [Ruff](https://docs.astral.sh/ruff/) | Lint/format `scripts/ci/*.py` | `make setup`, or brew/pacman/apt/dnf |
