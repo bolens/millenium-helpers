@@ -7,7 +7,6 @@ on:
       - 'packaging/scoop/**'
       - 'packaging/chocolatey/**'
       - 'scripts/windows/**'
-      - 'scripts/millennium-mcp.py'
       - 'completions/powershell/**'
       - 'VERSION'
       - '.github/workflows/package-install-windows.yml'
@@ -17,7 +16,6 @@ on:
       - 'packaging/scoop/**'
       - 'packaging/chocolatey/**'
       - 'scripts/windows/**'
-      - 'scripts/millennium-mcp.py'
       - 'completions/powershell/**'
       - 'VERSION'
       - '.github/workflows/package-install-windows.yml'
@@ -57,7 +55,6 @@ jobs:
 
           # Match release.yml Windows payload layout (MCP + PowerShell completions).
           Copy-Item -Recurse scripts\windows (Join-Path $stage "scripts\windows")
-          Copy-Item scripts\millennium-mcp.py (Join-Path $stage "scripts\millennium-mcp.py")
           Copy-Item -Recurse completions\powershell (Join-Path $stage "completions\powershell")
           Copy-Item VERSION, LICENSE, README.md $stage\
           New-Item -ItemType Directory -Force -Path (Join-Path $stage "third_party") | Out-Null
@@ -96,11 +93,14 @@ jobs:
           $ErrorActionPreference = "Stop"
           $env:PATH += ";$HOME\scoop\shims"
           $prefix = scoop prefix millennium-helpers-bin
-          $upgradeLib = Join-Path $prefix "scripts\windows\lib\UpgradeRollback.ps1"
-          if (-not (Test-Path $upgradeLib)) {
-            throw "Missing upgrade rollback library at $upgradeLib (scripts/windows/lib not packaged)"
+          $loggingLib = Join-Path $prefix "scripts\windows\lib\Logging.ps1"
+          if (-not (Test-Path $loggingLib)) {
+            throw "Missing shared Logging.ps1 at $loggingLib (scripts/windows/lib not packaged)"
           }
-          Write-Host "Upgrade lib OK: $upgradeLib"
+          Write-Host "Shared lib OK: $loggingLib"
+          if (Test-Path (Join-Path $prefix "scripts\windows\lib\UpgradeRollback.ps1")) {
+            throw "UpgradeRollback.ps1 should be peeled from packaging"
+          }
           Get-ChildItem (Join-Path $prefix "scripts\windows\lib\*.ps1") | ForEach-Object {
             $errs = $null
             $null = [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$null, [ref]$errs)

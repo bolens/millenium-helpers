@@ -66,15 +66,16 @@ func TestVerifyFileSHA256(t *testing.T) {
 	}
 }
 
-func TestArgsForLocalFile(t *testing.T) {
-	got := ArgsForLocalFile([]string{"--channel", "beta", "--file", "old.tgz", "--sha256", "abc"}, "/tmp/n.tgz", "deadbeef")
-	wantSuffix := []string{"--file", "/tmp/n.tgz", "--sha256", "deadbeef"}
-	if len(got) < 5 || got[0] != "--channel" || got[1] != "beta" {
-		t.Fatalf("%v", got)
+func TestNeedsLegacyAlwaysFalse(t *testing.T) {
+	cases := []Options{
+		{},
+		{LocalFile: "/tmp/a.tgz"},
+		{Rollback: true, RollbackTarget: "1"},
+		{DryRun: true},
 	}
-	for i, w := range wantSuffix {
-		if got[len(got)-len(wantSuffix)+i] != w {
-			t.Fatalf("suffix: %v", got)
+	for _, o := range cases {
+		if NeedsLegacy(o) {
+			t.Fatalf("NeedsLegacy(%+v) = true after Parallel peel", o)
 		}
 	}
 }
@@ -251,7 +252,7 @@ func TestNeedsLegacyRollback(t *testing.T) {
 	t.Setenv("MOCK_LIB_DIR", lib)
 	t.Setenv("MILLENNIUM_LIB_DIR", lib)
 	if NeedsLegacy(Options{Rollback: true, RollbackTarget: "1"}) {
-		t.Fatal("writable lib should be native rollback")
+		t.Fatal("NeedsLegacy must stay false after Parallel peel")
 	}
 }
 

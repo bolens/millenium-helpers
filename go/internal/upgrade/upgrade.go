@@ -203,24 +203,9 @@ func VerifyFileSHA256(path, expectedHex string) error {
 }
 
 // NeedsLegacy reports whether this invocation must run the shell/PS upgrade path.
+// Always false after Parallel peel — install/rollback are fully native (+ sudo handoff).
 func NeedsLegacy(o Options) bool {
-	if o.Help || o.Version {
-		return false
-	}
-	if o.Rollback && o.RollbackTarget == "list" {
-		return false
-	}
-	if o.Rollback {
-		return !CanNativeRollback()
-	}
-	if o.DryRun {
-		return false // native dry-run (local or remote resolve)
-	}
-	// Local file: verify natively then legacy install
-	if o.LocalFile != "" {
-		return true // after pre-verify in RunNative
-	}
-	return true
+	return false
 }
 
 // RunNative handles help/version/rollback-list/dry-run and pre-verify. Returns handled=true when done.
@@ -244,7 +229,7 @@ Options:
 Native: --rollback list|apply (when writable), --dry-run (resolve/verify/rollback),
 remote download+SHA, --file SHA pre-check, live extract/install when writable
 (root / MILLENNIUM_LIB_DIR / Windows Steam). On Linux, non-root downloads verify
-then re-exec via sudo for install/rollback (MILLENNIUM_LEGACY=1 forces legacy).
+then re-exec via sudo for install/rollback.
 `)
 		return true, 0
 	}
@@ -414,26 +399,6 @@ func FetchRemoteArchive(o Options) (path, sha, tag string, err error) {
 	}
 	fmt.Printf("Verified SHA256 for %s\n", dest)
 	return dest, meta.SHA, meta.Tag, nil
-}
-
-// ArgsForLocalFile rebuilds upgrade argv to install a pre-downloaded archive via legacy.
-func ArgsForLocalFile(orig []string, path, sha string) []string {
-	out := make([]string, 0, len(orig)+4)
-	skipNext := false
-	for i := 0; i < len(orig); i++ {
-		if skipNext {
-			skipNext = false
-			continue
-		}
-		a := orig[i]
-		switch a {
-		case "--file", "-File", "--sha256", "-Sha256":
-			skipNext = true
-			continue
-		}
-		out = append(out, a)
-	}
-	return append(out, "--file", path, "--sha256", sha)
 }
 
 func injectTokenFromConfig() {

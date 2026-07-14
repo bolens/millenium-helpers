@@ -454,7 +454,7 @@ fi
 
 # --- release.yml Go assets + Windows zip payload ---
 assets_block=$(awk '/Build Go dispatchers and versioned archives/,/Calculate Checksums/' "${REPO_ROOT}/.github/workflows/release.yml")
-assert_contains "$assets_block" "scripts/millennium-mcp.py" "Windows release zip includes millennium-mcp.py"
+assert_file_not_exists "${REPO_ROOT}/scripts/millennium-mcp.py" "millennium-mcp.py retired (Go MCP only)"
 assert_contains "$assets_block" "completions/powershell/" "Windows release zip includes PowerShell completions"
 assert_contains "$assets_block" "scripts/windows/" "Windows release zip includes scripts/windows tree (diag lib modules)"
 assert_contains "$assets_block" "windows" "release.yml builds windows helpers zip"
@@ -470,7 +470,9 @@ assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/ScheduleDisable.ps1" "S
 assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/ScheduleStatus.ps1" "ScheduleStatus.ps1 peeled (status thin-wraps to Go)"
 assert_file_not_exists "${REPO_ROOT}/scripts/lib/schedule_status.sh" "schedule_status.sh peeled (status thin-wraps to Go)"
 assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/ThemeOps.ps1" "ThemeOps.ps1 peeled (theme thin-wraps to Go)"
-assert_file_exists "${REPO_ROOT}/scripts/windows/lib/UpgradeRollback.ps1" "scripts/windows/lib/UpgradeRollback.ps1 exists for release packaging"
+assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/UpgradeRollback.ps1" "UpgradeRollback.ps1 peeled (upgrade thin-wraps to Go)"
+assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/Download.ps1" "Download.ps1 peeled (upgrade thin-wraps to Go)"
+assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/Archive.ps1" "Archive.ps1 peeled (upgrade thin-wraps to Go)"
 assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/RepairOps.ps1" "RepairOps.ps1 peeled (repair thin-wraps to Go)"
 assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/Diag.ps1" "thin Diag.ps1 loader must not exist"
 assert_file_not_exists "${REPO_ROOT}/scripts/lib/theme_ops.sh" "theme_ops.sh peeled (theme thin-wraps to Go)"
@@ -480,7 +482,8 @@ assert_file_not_exists "${REPO_ROOT}/scripts/lib/schedule_hooks.sh" "schedule_ho
 assert_file_not_exists "${REPO_ROOT}/scripts/lib/schedule_wizard.sh" "schedule_wizard.sh peeled (setup thin-wraps to Go)"
 assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/ScheduleWizard.ps1" "ScheduleWizard.ps1 peeled (setup thin-wraps to Go)"
 assert_file_not_exists "${REPO_ROOT}/scripts/lib/repair_ops.sh" "repair_ops.sh peeled (repair thin-wraps to Go)"
-assert_file_exists "${REPO_ROOT}/scripts/lib/upgrade_failure.sh" "scripts/lib/upgrade_failure.sh exists for release packaging"
+assert_file_not_exists "${REPO_ROOT}/scripts/lib/upgrade_failure.sh" "upgrade_failure.sh peeled (upgrade thin-wraps to Go)"
+assert_file_not_exists "${REPO_ROOT}/scripts/lib/upgrade_network.sh" "upgrade_network.sh peeled (upgrade thin-wraps to Go)"
 assert_file_not_exists "${REPO_ROOT}/scripts/lib/diag.sh" "thin diag.sh loader must not exist"
 assert_file_not_exists "${REPO_ROOT}/scripts/lib/purge_ops.sh" "purge_ops.sh peeled (purge thin-wraps to Go)"
 assert_file_not_exists "${REPO_ROOT}/scripts/lib/dispatcher.sh" "dispatcher.sh removed (Endgame B)"
@@ -526,7 +529,7 @@ assert_contains "$finalize" "Build Nix Package" "release finalize waits on Nix b
 # --- Workflow path-filter sanity ---
 scoop_ci=$(cat "${REPO_ROOT}/.github/workflows/package-install-windows.yml")
 assert_contains "$scoop_ci" "millennium-helpers-bin.json" "Scoop CI installs from -bin manifest"
-assert_contains "$scoop_ci" "millennium-mcp.py" "Scoop CI stages millennium-mcp.py beside scripts/windows"
+assert_not_contains "$scoop_ci" "millennium-mcp.py" "Scoop CI no longer stages millennium-mcp.py"
 assert_contains "$scoop_ci" "completions\\powershell" "Scoop CI stages PowerShell completions in the trimmed zip"
 assert_contains "$scoop_ci" "Validate Chocolatey install script shape" "Windows packaging CI validates Chocolatey scripts"
 assert_not_contains "$scoop_ci" "- 'README.md'" "Scoop CI path filters do not trigger on README-only docs edits"

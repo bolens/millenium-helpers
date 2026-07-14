@@ -77,13 +77,15 @@ Describe "Windows Installer" {
             (Get-Content -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium.cmd") -Raw) | Should -BeLike "*millennium.exe*"
 
             Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium-mcp.ps1") | Should -Be $true
-            Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium-mcp.py") | Should -Be $true
+            Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium-mcp.py") | Should -Be $false
             Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium-helpers.completion.ps1") | Should -Be $true
 
-            # Shared Windows libs remain for upgrade handoff (schedule/theme/purge/diag/repair peeled).
+            # Shared Windows libs remain for Steam/logging/etc. (upgrade feature libs peeled).
             $expectedLibDir = Join-Path -Path $expectedBinDir -ChildPath "lib"
             Test-Path -Path $expectedLibDir | Should -Be $true
-            Test-Path -Path (Join-Path -Path $expectedLibDir -ChildPath "UpgradeRollback.ps1") | Should -Be $true
+            Test-Path -Path (Join-Path -Path $expectedLibDir -ChildPath "UpgradeRollback.ps1") | Should -Be $false
+            Test-Path -Path (Join-Path -Path $expectedLibDir -ChildPath "Download.ps1") | Should -Be $false
+            Test-Path -Path (Join-Path -Path $expectedLibDir -ChildPath "Archive.ps1") | Should -Be $false
             Test-Path -Path (Join-Path -Path $expectedLibDir -ChildPath "Logging.ps1") | Should -Be $true
             Test-Path -Path (Join-Path -Path $expectedLibDir -ChildPath "DiagReport.ps1") | Should -Be $false
             Test-Path -Path (Join-Path -Path $expectedLibDir -ChildPath "RepairOps.ps1") | Should -Be $false

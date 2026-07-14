@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/bolens/millenium-helpers/internal/config"
@@ -272,10 +273,7 @@ func newUpgradeCmd() *cobra.Command {
 		Short:              "Upgrade Millennium (download+SHA+install+rollback; Linux sudo handoff)",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
-			if useLegacy() {
-				os.Exit(legacy.RunLegacy("upgrade", a))
-				return nil
-			}
+			// Graduated peel (Parallel): always native — ignore MILLENNIUM_LEGACY.
 			opts, err := upgrade.ParseArgs(a)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err.Error())
@@ -297,7 +295,8 @@ func newUpgradeCmd() *cobra.Command {
 					os.Exit(code)
 					return nil
 				}
-				os.Exit(legacy.RunLegacy("upgrade", a))
+				fmt.Fprintln(os.Stderr, "Error: rollback requires a writable install root (or sudo on Linux).")
+				os.Exit(1)
 				return nil
 			}
 			archivePath := opts.LocalFile
@@ -334,41 +333,21 @@ func newUpgradeCmd() *cobra.Command {
 				os.Exit(code)
 				return nil
 			}
-			legacyArgs := a
-			if archivePath != "" && opts.LocalSHA != "" {
-				legacyArgs = upgrade.ArgsForLocalFile(a, archivePath, opts.LocalSHA)
-			} else if archivePath != "" && opts.InsecureSkipVerify {
-				legacyArgs = upgrade.ArgsForLocalFile(a, archivePath, opts.LocalSHA)
-				if opts.LocalSHA == "" {
-					legacyArgs = append(filterFileArgs(a), "--file", archivePath, "--insecure-skip-verify")
-				}
-			}
-			code = legacy.RunLegacy("upgrade", legacyArgs)
 			if removeArchive {
 				_ = os.Remove(archivePath)
 			}
-			os.Exit(code)
+			fmt.Fprintln(os.Stderr, "Error: cannot install Millennium (install root not writable).")
+			if runtime.GOOS == "linux" {
+				fmt.Fprintln(os.Stderr, "Hint: re-run with sudo, or set MILLENNIUM_LIB_DIR to a writable path.")
+			} else if runtime.GOOS == "windows" {
+				fmt.Fprintln(os.Stderr, "Hint: ensure Steam is installed and detectable.")
+			} else {
+				fmt.Fprintln(os.Stderr, "Hint: set MILLENNIUM_LIB_DIR to a writable path, or re-run as root.")
+			}
+			os.Exit(1)
 			return nil
 		},
 	}
-}
-
-func filterFileArgs(orig []string) []string {
-	out := make([]string, 0, len(orig))
-	skip := false
-	for i := 0; i < len(orig); i++ {
-		if skip {
-			skip = false
-			continue
-		}
-		switch orig[i] {
-		case "--file", "-File", "--sha256", "-Sha256":
-			skip = true
-			continue
-		}
-		out = append(out, orig[i])
-	}
-	return out
 }
 
 func newPurgeCmd() *cobra.Command {
@@ -425,11 +404,7 @@ func newMcpCmd() *cobra.Command {
 		Short:              "MCP JSON-RPC server (stdio + --register)",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
-			if useLegacy() {
-				_ = os.Setenv("MILLENNIUM_MCP_PYTHON", "1")
-				os.Exit(legacy.RunLegacy("mcp", a))
-				return nil
-			}
+			// Graduated peel (Parallel): always native Go — ignore MILLENNIUM_LEGACY / Python hatch.
 			opts, err := mcp.ParseArgs(a)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err.Error())

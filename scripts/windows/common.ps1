@@ -51,8 +51,6 @@ foreach ($_mod in @(
         'Args.ps1',
         'Version.ps1',
         'Steam.ps1',
-        'Archive.ps1',
-        'Download.ps1',
         'Config.ps1',
         'License.ps1',
         'InstallTrack.ps1'

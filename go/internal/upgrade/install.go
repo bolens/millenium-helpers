@@ -140,7 +140,7 @@ func TryNativeInstall(o Options, archivePath, version string) (handled bool, cod
 	fmt.Printf("Installing Millennium v%s (native)...\n", version)
 	if err := installPlatform(archivePath, version, o); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: native install failed: %v\n", err)
-		fmt.Fprintln(os.Stderr, "Hint: re-run with MILLENNIUM_LEGACY=1 to use the shell/PS installer.")
+		fmt.Fprintln(os.Stderr, "Hint: ensure the install root is writable, or re-run with sudo on Linux.")
 		return true, 1
 	}
 	if !o.Quiet {

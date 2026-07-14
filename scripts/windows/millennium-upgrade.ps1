@@ -1,4 +1,4 @@
-# PowerShell script to upgrade or reinstall the Millennium client on Windows
+# Millennium upgrade — thin-wrap to Go (Parallel peel).
 param(
     [ValidateSet("stable", "beta", "main")]
     [string]$Channel = "stable",
@@ -19,7 +19,6 @@ param(
 )
 set-strictmode -version Latest
 
-# Source shared helpers
 $ScriptDir = $PSScriptRoot
 $CommonPs1 = Join-Path -Path $ScriptDir -ChildPath "common.ps1"
 if (Test-Path -Path $CommonPs1) {
@@ -29,9 +28,21 @@ if (Test-Path -Path $CommonPs1) {
     exit 1
 }
 
-function Test-MillenniumLegacyForced {
-    $v = "$env:MILLENNIUM_LEGACY"
-    return ($v -eq '1' -or $v -eq 'true' -or $v -eq 'yes' -or $v -eq 'TRUE' -or $v -eq 'YES')
+if ($Help) {
+    Write-Host @"
+Usage: millennium-upgrade.ps1 [-Channel stable|beta|main] [-Force] [-File PATH] [-Sha256 HEX]
+       [-InsecureSkipVerify] [-Rollback ID|list] [-DryRun] [-Yes] [-Quiet] [-Version] [-Help]
+
+Install official Millennium releases (via Go).
+
+GNU-style flags (--channel, --force, --file, --rollback, --dry-run, --yes) are also accepted.
+"@
+    exit 0
+}
+
+if ($Version) {
+    Write-HelpersVersion -Name "millennium-upgrade"
+    exit 0
 }
 
 function Resolve-MillenniumGo {
@@ -52,458 +63,40 @@ function Resolve-MillenniumGo {
     return $null
 }
 
-# Thin-wrap to Go unless legacy.RunLegacy re-entered us (MILLENNIUM_LEGACY=1).
-if (-not (Test-MillenniumLegacyForced)) {
-    $goBin = Resolve-MillenniumGo
-    if (-not $goBin) {
-        Write-Error "upgrade requires the Go millennium dispatcher (not found). Install millennium-helpers or run 'make build'."
-        exit 1
-    }
-    $goArgs = [System.Collections.Generic.List[string]]::new()
-    [void]$goArgs.Add('upgrade')
-    if ($MyInvocation.BoundParameters.ContainsKey('Channel')) {
-        [void]$goArgs.Add('--channel'); [void]$goArgs.Add($Channel)
-    }
-    if ($Force) { [void]$goArgs.Add('--force') }
-    if ($File) { [void]$goArgs.Add('--file'); [void]$goArgs.Add($File) }
-    if ($Sha256) { [void]$goArgs.Add('--sha256'); [void]$goArgs.Add($Sha256) }
-    if ($InsecureSkipVerify) { [void]$goArgs.Add('--insecure-skip-verify') }
-    if ($null -ne $Rollback -and "$Rollback" -ne '') {
-        [void]$goArgs.Add('--rollback'); [void]$goArgs.Add([string]$Rollback)
-    }
-    if ($DryRun) { [void]$goArgs.Add('--dry-run') }
-    if ($Yes) { [void]$goArgs.Add('--yes') }
-    if ($Quiet) { [void]$goArgs.Add('--quiet') }
-    if ($Help) { [void]$goArgs.Add('--help') }
-    if ($Version) { [void]$goArgs.Add('--version') }
-    if ($args.Count -gt 0) {
-        foreach ($a in $args) { [void]$goArgs.Add([string]$a) }
-    }
-    $prevLegacy = $env:MILLENNIUM_LEGACY
-    $env:MILLENNIUM_LEGACY = '0'
-    try {
-        & $goBin @($goArgs.ToArray())
-        exit $LASTEXITCODE
-    } finally {
-        if ($null -eq $prevLegacy) {
-            Remove-Item Env:MILLENNIUM_LEGACY -ErrorAction SilentlyContinue
-        } else {
-            $env:MILLENNIUM_LEGACY = $prevLegacy
-        }
-    }
+$goBin = Resolve-MillenniumGo
+if (-not $goBin) {
+    Write-Error "upgrade requires the Go millennium dispatcher (not found). Install millennium-helpers or run 'make build'."
+    exit 1
 }
 
-# GNU-style flags (--main, --channel, --force, …) from unbound args
-$channelExplicit = $MyInvocation.BoundParameters.ContainsKey('Channel')
+$goArgs = [System.Collections.Generic.List[string]]::new()
+[void]$goArgs.Add('upgrade')
+if ($MyInvocation.BoundParameters.ContainsKey('Channel')) {
+    [void]$goArgs.Add('--channel'); [void]$goArgs.Add($Channel)
+}
+if ($Force) { [void]$goArgs.Add('--force') }
+if ($File) { [void]$goArgs.Add('--file'); [void]$goArgs.Add($File) }
+if ($Sha256) { [void]$goArgs.Add('--sha256'); [void]$goArgs.Add($Sha256) }
+if ($InsecureSkipVerify) { [void]$goArgs.Add('--insecure-skip-verify') }
+if ($null -ne $Rollback -and "$Rollback" -ne '') {
+    [void]$goArgs.Add('--rollback'); [void]$goArgs.Add([string]$Rollback)
+}
+if ($DryRun) { [void]$goArgs.Add('--dry-run') }
+if ($Yes) { [void]$goArgs.Add('--yes') }
+if ($Quiet) { [void]$goArgs.Add('--quiet') }
 if ($args.Count -gt 0) {
-    $gnuFlags = @{
-        Channel  = $null
-        Force    = [bool]$Force
-        File     = $File
-        Rollback = $Rollback
-        DryRun   = [bool]$DryRun
-        Yes      = [bool]$Yes
-        Quiet    = [bool]$Quiet
-        Help     = [bool]$Help
-        Version  = [bool]$Version
-    }
-    [void](Apply-GnuStyleArgs -InputArgs ([string[]]$args) -Target $gnuFlags)
-    if ($null -ne $gnuFlags.Channel -and "$($gnuFlags.Channel)" -ne "") {
-        $Channel = [string]$gnuFlags.Channel
-        $channelExplicit = $true
-    }
-    if ($gnuFlags.Force) { $Force = $true }
-    if ($gnuFlags.File) { $File = [string]$gnuFlags.File }
-    if ($gnuFlags.Rollback) { $Rollback = [string]$gnuFlags.Rollback }
-    if ($gnuFlags.DryRun) { $DryRun = $true }
-    if ($gnuFlags.Yes) { $Yes = $true }
-    if ($gnuFlags.Quiet) { $Quiet = $true; $global:Quiet = $true; $env:MILLENNIUM_QUIET = "1" }
-    if ($gnuFlags.Help) { $Help = $true }
-    if ($gnuFlags.Version) { $Version = $true }
+    foreach ($a in $args) { [void]$goArgs.Add([string]$a) }
 }
 
-if ($Help) {
-    Write-Host @"
-Usage: millennium-upgrade.ps1 [-Channel stable|beta|main] [-Force] [-File PATH] [-Sha256 HEX] [-InsecureSkipVerify] [-Rollback ID|list] [-DryRun] [-Yes] [-Quiet] [-Version] [-Help]
-
-Install official Millennium (stable, beta, or main) releases over system files.
-
-Options:
-  -Channel CHANNEL  Update channel: stable, beta, or main (default: stable)
-  -Force            Force reinstall even if already up to date
-  -File PATH        Install from a local archive instead of downloading
-  -Sha256 HEX       Expected SHA256 of -File archive (64 hex chars)
-  -InsecureSkipVerify  Allow -File without checksum verification (explicit opt-in)
-  -Rollback ID      Roll back to a previous backup (or pass "list" to list backups)
-  -DryRun           Simulate operations without modifying files
-  -Yes, -y          Skip confirmation when closing Steam
-  -Quiet, -q        Suppress informational output
-  -Version, -V      Show version information
-  -Help, -h         Show this help message
-
-GNU-style flags (--channel, --stable, --beta, --main, --force, --file, --rollback, --yes, --quiet) are also accepted.
-"@
-    exit 0
-}
-
-if ($Version) {
-    Write-HelpersVersion -Name "millennium-upgrade"
-    exit 0
-}
-
-if ($Yes) {
-    $global:AssumeYes = $true
-}
-
-if ($Quiet) {
-    $global:Quiet = $true
-    $env:MILLENNIUM_QUIET = "1"
-}
-
-if ($DryRun) {
-    $global:DryRun = $true
-    Log-Warn "=== DRY RUN MODE: No changes will be made ==="
-}
-
-$SteamPath = Resolve-SteamPath
-if (!$SteamPath) {
-    Log-Error "Error: Steam path could not be resolved."
-    exit 1
-}
-
-$MillenniumDir = Join-Path -Path $SteamPath -ChildPath "millennium"
-$WsockDll = Join-Path -Path $SteamPath -ChildPath "wsock32.dll"
-$BackupDir = Join-Path -Path $SteamPath -ChildPath "millennium_backups"
-
-# Parse configuration (backup limit / age + default channel)
-$BackupLimit = 5
-$BackupMaxAgeDays = $null
-$configDir = Join-Path -Path $env:LOCALAPPDATA -ChildPath "millennium-helpers"
-$configFile = Join-Path -Path $configDir -ChildPath "config.json"
-if (Test-Path -Path $configFile) {
-    try {
-        $config = Get-Content -Path $configFile -Raw | ConvertFrom-Json
-        if ($config -and $config.backup_limit) {
-            $BackupLimit = [int]$config.backup_limit
-        }
-        if ($config -and $null -ne $config.backup_max_age_days -and "$($config.backup_max_age_days)" -ne "") {
-            $BackupMaxAgeDays = [int]$config.backup_max_age_days
-        }
-        if ($config -and $config.update_channel -and -not $channelExplicit) {
-            $cand = [string]$config.update_channel
-            if (Test-ValidUpdateChannel -Channel $cand) {
-                $Channel = $cand
-            } else {
-                Log-Warn "Ignoring invalid update_channel '$cand' in config (expected stable|beta|main)."
-            }
-        }
-    } catch {}
-}
-
+$prevLegacy = $env:MILLENNIUM_LEGACY
+$env:MILLENNIUM_LEGACY = '0'
 try {
-    $Channel = Require-UpdateChannel -Channel $Channel
-} catch {
-    Log-Error $_.Exception.Message
-    exit 1
-}
-
-# Feature modules (dot-sourced by this entrypoint — no thin aggregator)
-. (Join-Path -Path $ScriptDir -ChildPath 'lib\UpgradeRollback.ps1')
-
-# --- Rollback Execution ---
-if ($Rollback) {
-    $rb = Invoke-UpgradeRollback -RollbackTarget $Rollback -BackupDirArg $BackupDir `
-        -MillenniumDirArg $MillenniumDir -WsockDllArg $WsockDll
-    if ($rb -eq 'list' -or $rb -eq 'ok') { exit 0 }
-    exit 1
-}
-
-# --- Version Tag Resolution ---
-$latestVer = ""
-$githubToken = $null
-if ($File) {
-    if (!(Test-Path -Path $File)) {
-        Log-Error "Error: Local archive file '$File' not found."
-        exit 1
-    }
-    $latestVer = "local"
-} else {
-    # Resolve version from GitHub
-    $owner = "SteamClientHomebrew"
-    $repo = "Millennium"
-    $headers = @{}
-    $githubToken = $env:GITHUB_TOKEN
-    if (Test-Path -Path $configFile) {
-        try {
-            $config = Get-Content -Path $configFile -Raw | ConvertFrom-Json
-            if ($config -and $config.github_token) {
-                $githubToken = $config.github_token
-            }
-        } catch {}
-    }
-
-    if ($githubToken) {
-        $headers["Authorization"] = "token $githubToken"
-    }
-
-    Log-Info "Resolving latest version on the '$Channel' channel..."
-
-    try {
-        if ($Channel -eq "stable") {
-            # Query latest stable release
-            $url = "https://api.github.com/repos/$owner/$repo/releases/latest"
-            $release = Invoke-RestMethod -Uri $url -Headers $headers -UseBasicParsing -ErrorAction Stop
-            $latestVer = $release.tag_name.TrimStart('v')
-        } elseif ($Channel -eq "main") {
-            # Tip-of-dev: newest non-beta prerelease, else any prerelease
-            $url = "https://api.github.com/repos/$owner/$repo/releases"
-            $releases = Invoke-RestMethod -Uri $url -Headers $headers -UseBasicParsing -ErrorAction Stop
-            foreach ($r in $releases) {
-                if ($r.prerelease -and ($r.tag_name -notlike "*beta*")) {
-                    $latestVer = $r.tag_name.TrimStart('v')
-                    break
-                }
-            }
-            if (!$latestVer) {
-                foreach ($r in $releases) {
-                    if ($r.prerelease) {
-                        $latestVer = $r.tag_name.TrimStart('v')
-                        break
-                    }
-                }
-            }
-            if (!$latestVer -and $releases.Count -gt 0) {
-                $latestVer = $releases[0].tag_name.TrimStart('v')
-            }
-        } else {
-            # Beta: newest prerelease / beta release
-            $url = "https://api.github.com/repos/$owner/$repo/releases"
-            $releases = Invoke-RestMethod -Uri $url -Headers $headers -UseBasicParsing -ErrorAction Stop
-            foreach ($r in $releases) {
-                if ($r.prerelease -or ($r.tag_name -like "*beta*" -or $r.tag_name -like "*alpha*")) {
-                    $latestVer = $r.tag_name.TrimStart('v')
-                    break
-                }
-            }
-            if (!$latestVer -and $releases.Count -gt 0) {
-                $latestVer = $releases[0].tag_name.TrimStart('v')
-            }
-        }
-    } catch {
-        Log-Error "Error: Could not retrieve release details from GitHub API: $_"
-        Log-Error "If you are rate-limited, set a PAT: millennium schedule setup"
-        Log-Error "  or: millennium-schedule config set github_token <token>"
-        exit 1
-    }
-}
-
-if (!$latestVer) {
-    Log-Error "Error: Could not resolve a valid version tag."
-    Log-Error "If you are rate-limited, set a PAT: millennium schedule setup"
-    Log-Error "  or: millennium-schedule config set github_token <token>"
-    exit 1
-}
-
-# Check currently installed version
-$installedVerFile = Join-Path -Path $MillenniumDir -ChildPath "version.txt"
-if (!$Force -and (Test-Path -Path $installedVerFile)) {
-    $installedVer = (Get-Content -Path $installedVerFile -Raw).Trim()
-    if ($installedVer -eq $latestVer) {
-        Log-Info "Millennium is already up to date (v$latestVer). Use -Force to reinstall."
-        exit 0
-    }
-}
-
-# --- Download Archive ---
-$tempDir = [System.IO.Path]::GetTempPath()
-$archiveName = "millennium-v$latestVer-windows-x86_64.zip"
-$localArchive = Join-Path -Path $tempDir -ChildPath $archiveName
-$url = "https://github.com/SteamClientHomebrew/Millennium/releases/download/v$latestVer/$archiveName"
-$shaUrl = "https://github.com/SteamClientHomebrew/Millennium/releases/download/v$latestVer/millennium-v$latestVer-windows-x86_64.sha256"
-$expectedSha = $null
-
-if (!$File) {
-    Log-Info "Fetching SHA256 checksum for Millennium v$latestVer..."
-    try {
-        $shaHeaders = @{}
-        if ($githubToken) {
-            $shaHeaders["Authorization"] = "token $githubToken"
-        }
-        if ($shaHeaders.Count -gt 0) {
-            $shaResp = Invoke-WebRequest -Uri $shaUrl -Headers $shaHeaders -UseBasicParsing -ErrorAction Stop
-        } else {
-            $shaResp = Invoke-WebRequest -Uri $shaUrl -UseBasicParsing -ErrorAction Stop
-        }
-        $expectedSha = (($shaResp.Content -as [string]).Trim() -split '\s+')[0]
-    } catch {
-        Log-Error "Error: Could not retrieve the SHA256 checksum for v$latestVer."
-        Log-Error $_.Exception.Message
-        exit 1
-    }
-    if ([string]::IsNullOrWhiteSpace($expectedSha) -or $expectedSha -notmatch '^[0-9a-fA-F]{64}$') {
-        Log-Error "Error: Could not retrieve the SHA256 checksum for v$latestVer."
-        exit 1
-    }
-
-    if ($global:DryRun) {
-        Log-Warn "[DRY RUN] Would download: $url"
-        Log-Warn "[DRY RUN] Expected SHA256: $expectedSha"
+    & $goBin @($goArgs.ToArray())
+    exit $LASTEXITCODE
+} finally {
+    if ($null -eq $prevLegacy) {
+        Remove-Item Env:MILLENNIUM_LEGACY -ErrorAction SilentlyContinue
     } else {
-        Log-Info "Downloading Millennium v$latestVer archive..."
-        $dlSuccess = Download-File -Url $url -Dest $localArchive -Msg "Fetching Millennium client archive" -GithubToken $githubToken
-        if (!$dlSuccess) {
-            Write-UpgradeFailureTips -Detail "Failed to download Millennium package."
-            exit 1
-        }
-
-        $actualSha = (Get-FileHash -Path $localArchive -Algorithm SHA256).Hash
-        if ($actualSha.ToLowerInvariant() -ne $expectedSha.ToLowerInvariant()) {
-            Log-Error "Error: SHA256 mismatch for downloaded Millennium archive."
-            Log-Error "Expected: $expectedSha"
-            Log-Error "Actual:   $actualSha"
-            Remove-Item -Path $localArchive -Force -ErrorAction SilentlyContinue
-            exit 1
-        }
-        Log-Info "SHA256 checksum verified."
-    }
-} else {
-    $localArchive = $File
-    if (-not $InsecureSkipVerify) {
-        if ([string]::IsNullOrWhiteSpace($Sha256)) {
-            Log-Error "Error: -File requires -Sha256 <digest> or explicit -InsecureSkipVerify."
-            exit 1
-        }
-        if ($Sha256 -notmatch '^[0-9a-fA-F]{64}$') {
-            Log-Error "Error: -Sha256 must be a 64-character hex digest."
-            exit 1
-        }
-        $actualSha = (Get-FileHash -Path $localArchive -Algorithm SHA256).Hash
-        if ($actualSha.ToLowerInvariant() -ne $Sha256.ToLowerInvariant()) {
-            Log-Error "Error: SHA256 mismatch for local Millennium archive."
-            Log-Error "Expected: $Sha256"
-            Log-Error "Actual:   $actualSha"
-            exit 1
-        }
-        Log-Info "SHA256 checksum verified for local archive."
-    } else {
-        Log-Warn "Warning: installing local archive without checksum verification (-InsecureSkipVerify)."
+        $env:MILLENNIUM_LEGACY = $prevLegacy
     }
 }
-
-if (Is-GameRunning) {
-    Log-Error "Error: A Steam game is currently running. Close all games before upgrading."
-    Write-Host "Close the running game, then re-run. Use -Yes to skip the Steam close prompt."
-    exit 1
-}
-
-$steamRunning = $null -ne (Get-Process -Name "steam" -ErrorAction SilentlyContinue)
-if ($steamRunning) {
-    Capture-SteamEnv
-    if (-not (Confirm-CloseSteam)) {
-        exit 1
-    }
-}
-
-# --- Backup current files ---
-if ((Test-Path -Path $MillenniumDir) -or (Test-Path -Path $WsockDll)) {
-    Log-Info "Creating backup of current Millennium installation..."
-    $timestamp = (Get-Date).ToString("yyyyMMdd_HHmmss")
-    # Resolve current version for naming
-    $oldVer = "unknown"
-    if (Test-Path -Path $installedVerFile) {
-        $oldVer = (Get-Content -Path $installedVerFile -Raw).Trim()
-    }
-    $currBackupDir = Join-Path -Path $BackupDir -ChildPath "${oldVer}_${timestamp}"
-
-    Execute-Cmd -ScriptBlock {
-        New-Item -ItemType Directory -Force -Path $currBackupDir | Out-Null
-        if (Test-Path -Path $MillenniumDir) {
-            Copy-Item -Path $MillenniumDir -Destination (Join-Path -Path $currBackupDir -ChildPath "millennium") -Recurse -Force
-        }
-        if (Test-Path -Path $WsockDll) {
-            Copy-Item -Path $WsockDll -Destination (Join-Path -Path $currBackupDir -ChildPath "wsock32.dll") -Force
-        }
-    } -Description "Backup current version to $currBackupDir"
-
-    # Prune older backups (age first, then count — matches Unix prune_backups)
-    if (Test-Path -Path $BackupDir) {
-        if ($null -ne $BackupMaxAgeDays -and $BackupMaxAgeDays -ge 0) {
-            $cutoff = (Get-Date).AddDays(-1 * $BackupMaxAgeDays)
-            $aged = @(Get-ChildItem -Path $BackupDir -Directory | Where-Object { $_.CreationTime -lt $cutoff })
-            foreach ($old in $aged) {
-                Log-Info "Pruning aged backup: $($old.Name) (older than $BackupMaxAgeDays days)"
-                Execute-Cmd -ScriptBlock {
-                    Remove-Item -Path $old.FullName -Recurse -Force
-                } -Description "Remove aged backup $($old.Name)"
-            }
-        }
-        $backups = @(Get-ChildItem -Path $BackupDir -Directory | Sort-Object CreationTime)
-        while ($backups.Count -ge $BackupLimit) {
-            $oldest = $backups[0]
-            Log-Info "Pruning oldest backup: $($oldest.Name)"
-            Execute-Cmd -ScriptBlock {
-                Remove-Item -Path $oldest.FullName -Recurse -Force
-            } -Description "Remove oldest backup $oldest"
-            $backups = @(Get-ChildItem -Path $BackupDir -Directory | Sort-Object CreationTime)
-        }
-    }
-}
-
-# --- Install Binaries ---
-Log-Info "Extracting Millennium v$latestVer to Steam folder..."
-Execute-Cmd -ScriptBlock {
-    # Remove old millennium directory content
-    if (Test-Path -Path $MillenniumDir) {
-        Remove-Item -Path $MillenniumDir -Recurse -Force
-    }
-
-    # Stage extract, reject zip-slip, then copy into Steam path.
-    $stageDir = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ("millennium-upgrade-stage-" + [guid]::NewGuid().ToString("n"))
-    New-Item -ItemType Directory -Force -Path $stageDir | Out-Null
-    try {
-        Expand-SafeArchive -Path $localArchive -DestinationPath $stageDir
-        Get-ChildItem -LiteralPath $stageDir -Force | ForEach-Object {
-            $dest = Join-Path -Path $SteamPath -ChildPath $_.Name
-            if ($_.PSIsContainer) {
-                if (Test-Path -LiteralPath $dest) {
-                    Remove-Item -LiteralPath $dest -Recurse -Force
-                }
-                Move-Item -LiteralPath $_.FullName -Destination $dest -Force
-            } else {
-                Copy-Item -LiteralPath $_.FullName -Destination $dest -Force
-            }
-        }
-    } finally {
-        if (Test-Path -LiteralPath $stageDir) {
-            Remove-Item -LiteralPath $stageDir -Recurse -Force -ErrorAction SilentlyContinue
-        }
-    }
-
-    # Save version info
-    $latestVer | Set-Content -Path $installedVerFile -Force
-
-    # MIT requires the copyright/permission notice with redistributed copies
-    Install-MillenniumLicense -DestDir $MillenniumDir
-} -Description "Extract $localArchive to $SteamPath"
-
-# Cleanup downloaded file if not using a custom local file input
-if (!$File -and !$global:DryRun -and (Test-Path -Path $localArchive)) {
-    Remove-Item -Path $localArchive -Force
-}
-
-if ($global:DryRun) {
-    Write-Host -ForegroundColor Green "Dry run completed successfully!"
-} else {
-    Write-Host -ForegroundColor Green "Done. Installed Millennium v$latestVer ($Channel channel)."
-    if ($steamRunning) {
-        Write-Host "Steam will be relaunched."
-    }
-}
-
-if ($steamRunning) {
-    Relaunch-Steam
-    if (-not $global:DryRun) {
-        Write-Host -ForegroundColor Green "Steam relaunched."
-    }
-}
-exit 0
