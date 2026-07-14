@@ -262,6 +262,121 @@ jobs:
           echo "$out" | grep -F 'smoke'
           rm -rf "$home"
 
+      - name: Smoke upgrade --file dry-run + SHA (dual-OS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$(mktemp -d)"
+          export HOME="$home"
+          export USERPROFILE="$home"
+          export LOCALAPPDATA="$home/LocalAppData"
+          export MOCK_LIB_DIR="$home/lib"
+          mkdir -p "$MOCK_LIB_DIR"
+          archive="$home/fake.tgz"
+          printf 'millennium-archive-body\n' >"$home/payload"
+          if command -v tar >/dev/null 2>&1; then
+            tar -czf "$archive" -C "$home" payload
+          else
+            # Windows runners in bash usually still have tar; fall back to raw bytes.
+            cp "$home/payload" "$archive"
+          fi
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha="$(sha256sum "$archive" | awk '{print $1}')"
+          else
+            sha="$(openssl dgst -sha256 "$archive" | awk '{print $NF}')"
+          fi
+          out="$(bin/millennium upgrade --file "$archive" --sha256 "$sha" --dry-run)"
+          echo "$out" | grep -F 'DRY RUN'
+          echo "$out" | grep -F 'Verified SHA256'
+          echo "$out" | grep -F 'Would install local archive'
+          # Fail-closed: wrong digest must exit non-zero.
+          set +e
+          bad_out="$(bin/millennium upgrade --file "$archive" --sha256 "$(printf 'a%.0s' {1..64})" --dry-run 2>&1)"
+          bad_rc=$?
+          set -e
+          test "$bad_rc" -ne 0
+          echo "$bad_out" | grep -Fi 'SHA256'
+          # Verify-only path (no dry-run) rejects bad digest before install.
+          set +e
+          bad2="$(bin/millennium upgrade --file "$archive" --sha256 "$(printf 'b%.0s' {1..64})" 2>&1)"
+          bad2_rc=$?
+          set -e
+          test "$bad2_rc" -ne 0
+          echo "$bad2" | grep -Fi 'SHA256'
+          rm -rf "$home"
+
+      - name: Smoke upgrade writable rollback apply (dual-OS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$(mktemp -d)"
+          export HOME="$home"
+          export USERPROFILE="$home"
+          export LOCALAPPDATA="$home/LocalAppData"
+          if [[ "${RUNNER_OS:-}" == "Windows" ]] || [[ "$(uname -s)" == MINGW* ]] || [[ "$(uname -s)" == MSYS* ]]; then
+            steam="$home/Steam"
+            mkdir -p "$steam/millennium" "$steam/millennium_backups/smoke_bak/millennium"
+            printf 'active\n' >"$steam/millennium/marker"
+            printf 'bak\n' >"$steam/millennium_backups/smoke_bak/millennium/marker"
+            printf '1.0.0\n' >"$steam/millennium_backups/smoke_bak/millennium/version"
+            export STEAM="$steam"
+            export MILLENNIUM_BACKUP_DIR="$steam/millennium_backups"
+            out="$(bin/millennium upgrade --rollback smoke_bak --yes)"
+            echo "$out" | grep -Ei 'Rollback|completed|successful'
+            test "$(cat "$steam/millennium/marker")" = "bak"
+          else
+            lib="$home/lib"
+            mkdir -p "$lib/millennium" "$lib/millennium.bak_1.0.0"
+            printf '2.0.0\n' >"$lib/millennium/version.txt"
+            printf 'new\n' >"$lib/millennium/marker"
+            printf '1.0.0\n' >"$lib/millennium.bak_1.0.0/version.txt"
+            printf 'old\n' >"$lib/millennium.bak_1.0.0/marker"
+            export MOCK_LIB_DIR="$lib"
+            export MILLENNIUM_LIB_DIR="$lib"
+            out="$(bin/millennium upgrade --rollback 1.0.0)"
+            echo "$out" | grep -F 'Rollback successful'
+            test "$(cat "$lib/millennium/marker")" = "old"
+          fi
+          rm -rf "$home"
+
+      - name: Smoke diag report / JSON / doctor dry-run / logs (dual-OS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$(mktemp -d)"
+          export HOME="$home"
+          export USERPROFILE="$home"
+          export LOCALAPPDATA="$home/LocalAppData"
+          export APPDATA="$home/AppData"
+          mkdir -p "$LOCALAPPDATA" "$APPDATA"
+          out="$(bin/millennium diag)"
+          echo "$out" | grep -F 'Millennium Diagnostics Report'
+          json="$(bin/millennium diag --json)"
+          echo "$json" | grep -F 'steam_running'
+          echo "$json" | grep -F 'helpers_track'
+          doctor="$(bin/millennium diag doctor --dry-run)"
+          echo "$doctor" | grep -F 'DRY RUN'
+          set +e
+          logs_out="$(bin/millennium diag logs 2>&1)"
+          logs_rc=$?
+          set -e
+          # Empty HOME: either no Steam logs (1) or filtered empty (0).
+          if [[ "$logs_rc" -eq 0 ]]; then
+            echo "$logs_out" | grep -E 'Millennium|Steam|No recent'
+          else
+            echo "$logs_out" | grep -F 'No Steam logs found'
+          fi
+          rm -rf "$home"
+
+      - name: Smoke MCP initialize (dual-OS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$(printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' | bin/millennium mcp)"
+          echo "$out" | grep -F 'protocolVersion'
+          echo "$out" | grep -F '2024-11-05'
+          echo "$out" | grep -F 'millennium-helpers-mcp'
+
       - name: Smoke legacy help delegate (Linux)
         if: runner.os == 'Linux'
         shell: bash
