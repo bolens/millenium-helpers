@@ -1,10 +1,14 @@
 package upgrade
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -66,6 +70,78 @@ func TestArgsForLocalFile(t *testing.T) {
 			t.Fatalf("suffix: %v", got)
 		}
 	}
+}
+
+func TestInferVersion(t *testing.T) {
+	if got := InferVersion("/tmp/millennium-v2.30.0-linux-x86_64.tar.gz", ""); got != "2.30.0" {
+		t.Fatalf("%s", got)
+	}
+}
+
+func TestNativeInstallUnix(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("unix install test")
+	}
+	lib := t.TempDir()
+	t.Setenv("MOCK_LIB_DIR", lib)
+	t.Setenv("MILLENNIUM_LIB_DIR", lib)
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	steam := filepath.Join(home, ".local", "share", "Steam")
+	_ = os.MkdirAll(filepath.Join(steam, "ubuntu12_32"), 0o755)
+	_ = os.MkdirAll(filepath.Join(steam, "ubuntu12_64"), 0o755)
+	t.Setenv("STEAM", steam)
+
+	archive := filepath.Join(t.TempDir(), "millennium-v9.9.9-linux-x86_64.tar.gz")
+	if err := writeTestTarGz(archive); err != nil {
+		t.Fatal(err)
+	}
+	o := Options{Channel: "stable", Quiet: true}
+	handled, code := TryNativeInstall(o, archive, "9.9.9")
+	if !handled || code != 0 {
+		t.Fatalf("handled=%v code=%d", handled, code)
+	}
+	ver, err := os.ReadFile(filepath.Join(lib, "millennium", "version.txt"))
+	if err != nil || strings.TrimSpace(string(ver)) != "9.9.9" {
+		t.Fatalf("%s %v", ver, err)
+	}
+	if _, err := os.Stat(filepath.Join(lib, "millennium", "LICENSE")); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func writeTestTarGz(path string) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	gz := gzip.NewWriter(f)
+	tw := tar.NewWriter(gz)
+	add := func(name, body string, mode int64) error {
+		hdr := &tar.Header{Name: name, Mode: mode, Size: int64(len(body))}
+		if err := tw.WriteHeader(hdr); err != nil {
+			return err
+		}
+		_, err := tw.Write([]byte(body))
+		return err
+	}
+	files := []string{
+		"usr/lib/millennium/libmillennium_bootstrap_x86.so",
+		"usr/lib/millennium/libmillennium_bootstrap_hhx64.so",
+		"usr/lib/millennium/libmillennium_x86.so",
+		"usr/lib/millennium/libmillennium_hhx64.so",
+		"usr/lib/millennium/libmillennium_pvs64",
+	}
+	for _, n := range files {
+		if err := add(n, "binary-"+filepath.Base(n), 0o755); err != nil {
+			return err
+		}
+	}
+	if err := tw.Close(); err != nil {
+		return err
+	}
+	return gz.Close()
 }
 
 func TestRunNativeRollbackList(t *testing.T) {

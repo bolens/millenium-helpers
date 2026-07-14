@@ -32,9 +32,9 @@ func run(args []string) int {
 
 Native: version/help, schedule config/status + Unix enable/disable,
 theme list/install/update/remove, diag report/--json/--share/logs/doctor --dry-run,
-upgrade download+SHA, purge (Unix live), repair user-path.
-Install/rollback extract, live doctor, Windows live schedule enable/disable,
-setup, --follow still legacy (see docs/unification-roadmap.md).
+upgrade download+SHA+install when writable, purge (Unix live), repair user-path.
+Rollback apply, non-root Linux system install, live doctor, Windows schedule
+enable, setup, --follow still legacy (see docs/unification-roadmap.md).
 
 Force legacy for a native path: MILLENNIUM_LEGACY=1`,
 		SilenceUsage:  true,
@@ -236,7 +236,7 @@ func newDiagCmd() *cobra.Command {
 func newUpgradeCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:                "upgrade",
-		Short:              "Upgrade Millennium (download+SHA native; install/rollback extract legacy)",
+		Short:              "Upgrade Millennium (download+SHA+install native when writable; rollback apply legacy)",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
 			if useLegacy() {
@@ -259,9 +259,10 @@ func newUpgradeCmd() *cobra.Command {
 				os.Exit(code)
 				return nil
 			}
-			legacyArgs := a
+			archivePath := opts.LocalFile
+			ver := ""
 			if !opts.Rollback && opts.LocalFile == "" {
-				path, sha, _, err := upgrade.FetchRemoteArchive(opts)
+				path, sha, tag, err := upgrade.FetchRemoteArchive(opts)
 				if err != nil {
 					fmt.Fprintln(os.Stderr, err.Error())
 					os.Exit(1)
@@ -272,15 +273,50 @@ func newUpgradeCmd() *cobra.Command {
 					return nil
 				}
 				defer os.Remove(path)
-				legacyArgs = upgrade.ArgsForLocalFile(a, path, sha)
-				if !opts.Quiet {
+				archivePath = path
+				ver = strings.TrimPrefix(tag, "v")
+				opts.LocalFile = path
+				opts.LocalSHA = sha
+				if !opts.Quiet && !upgrade.CanNativeInstall() {
 					fmt.Printf("Downloaded and verified %s; handing off to legacy installer…\n", filepath.Base(path))
+				}
+			}
+			if handled, code := upgrade.TryNativeInstall(opts, archivePath, ver); handled {
+				os.Exit(code)
+				return nil
+			}
+			legacyArgs := a
+			if archivePath != "" && opts.LocalSHA != "" {
+				legacyArgs = upgrade.ArgsForLocalFile(a, archivePath, opts.LocalSHA)
+			} else if archivePath != "" && opts.InsecureSkipVerify {
+				legacyArgs = upgrade.ArgsForLocalFile(a, archivePath, opts.LocalSHA)
+				// ArgsForLocalFile always adds sha — if empty still need insecure
+				if opts.LocalSHA == "" {
+					legacyArgs = append(filterFileArgs(a), "--file", archivePath, "--insecure-skip-verify")
 				}
 			}
 			os.Exit(legacy.RunLegacy("upgrade", legacyArgs))
 			return nil
 		},
 	}
+}
+
+func filterFileArgs(orig []string) []string {
+	out := make([]string, 0, len(orig))
+	skip := false
+	for i := 0; i < len(orig); i++ {
+		if skip {
+			skip = false
+			continue
+		}
+		switch orig[i] {
+		case "--file", "-File", "--sha256", "-Sha256":
+			skip = true
+			continue
+		}
+		out = append(out, orig[i])
+	}
+	return out
 }
 
 func newPurgeCmd() *cobra.Command {

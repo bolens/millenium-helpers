@@ -242,8 +242,9 @@ Options:
   -V, --version  -h, --help
 
 Native: --rollback list, --dry-run (resolve/verify), remote download+SHA,
---file SHA pre-check. Live extract/install/rollback apply use legacy helpers
-(MILLENNIUM_LEGACY=1 forces all legacy, including download).
+--file SHA pre-check, live extract/install when writable (root / MILLENNIUM_LIB_DIR /
+Windows Steam path). Rollback apply and non-root Linux system install use legacy
+(MILLENNIUM_LEGACY=1 forces all legacy).
 `)
 		return true, 0
 	}
