@@ -49,7 +49,7 @@ are strangler progress, not automatic permission to delete `.sh` / `.ps1`.
 
 Work through this queue; check items off as PRs land and update this list.
 
-1. [ ] **`schedule setup` + pre/post-update** — wizard + scheduler job body (honor system-vs-user choice)
+1. [ ] **`schedule setup`** — interactive wizard → native enable (honor system-vs-user / `--cron`)
 2. [ ] **Installers → Go binary** — `install.sh` / Windows / packaging ship `millennium` first
 3. [ ] **MCP → Go CLI** — Phase 5; retire Python dispatcher
 4. [ ] **Graduate commands** — dual-OS CI + delete dual libs per [graduation rule](#command-graduation-rule)
@@ -76,7 +76,7 @@ Work through this queue; check items off as PRs land and update this list.
 | `enable\|disable` live (macOS / cron) | Done | launchd / crontab |
 | `enable\|disable` live (Windows) | Done | Admin Task Scheduler via PowerShell register/unregister |
 | `setup` | Legacy | Interactive wizard; should honor system-vs-user policy |
-| `pre-update` / `post-update` | Legacy | Scheduler job hooks |
+| `pre-update` / `post-update` | Done | Unix/macOS only; `MILLENNIUM_SCHEDULER=1` gate; Steam close/relaunch + diag verify |
 
 ### `theme`
 
@@ -167,7 +167,8 @@ with `MILLENNIUM_LEGACY=1` only as escape hatch.
 - [x] Linux **system** + **user** systemd service/timer (prefer system; `--system` / `--user`; migrate other scope)
 - [x] Theme install/update/remove (companion slice)
 - [x] Windows schedule enable/disable live (Task Scheduler)
-- [ ] `schedule setup` / pre-post update (honor system-vs-user policy)
+- [x] `pre-update` / `post-update` (Unix/macOS; Steam capture/close/relaunch + diag)
+- [ ] `schedule setup` wizard → native enable (honor system-vs-user / `--cron`)
 - [ ] Go-first install/uninstall packaging smokes (both OSes)
 - [ ] Doctor / purge / uninstall: clean both systemd scopes (when still on legacy paths)
 

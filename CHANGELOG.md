@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Phase 4g purge Windows:** native live purge (Steam millennium/wsock/backups, helper config, MillenniumUpdate task; schedule disable; Steam/-Yes)
 - **Phase 4h diag doctor live:** native live repairs (upgrade --force, hooks, flatpak, schedule enable, skins, linger, permissions); `--yes` to stop Steam; package/completions cleanup remains advisory
 - **Phase 4i diag logs --follow:** native filter-tail of newest Steam log (Millennium keywords; Ctrl+C); updater log headline; Phase 3 mutating core complete
+- **Phase 4j schedule hooks:** native `pre-update` / `post-update` (Unix/macOS): `MILLENNIUM_SCHEDULER=1` gate, log rotate, game abort (75), Steam capture/close/relaunch, diag verify; setup wizard still legacy
 - **Phase 3c diag:** native `--json`, `logs` (non-follow), richer report probes, `doctor --dry-run` plan; live doctor / `--share` / `--follow` still legacy
 - **Phase 3d diag share:** native `--share` (home/user/token redaction + paste.rs upload); `--follow` and live doctor still legacy
 - **Phase 3e upgrade install:** native tar/zip extract + atomic install when writable (root / `MILLENNIUM_LIB_DIR` / Windows Steam); non-root Linux system path and rollback apply still legacy
