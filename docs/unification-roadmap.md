@@ -19,7 +19,7 @@ and test parity** on Linux, macOS, and Windows.
 | **0 — Spec + gate** | Done | Contract + `make check-cli-contract` in lint |
 | **1 — MVP strangler** | Done | `go/` Cobra dispatcher + legacy exec |
 | **2 — Config + read-mostly** | Done | `schedule config`, `theme list`, bare diag |
-| **3 — Mutating core** | In progress | Most mutate paths native; gaps below |
+| **3 — Mutating core** | Done | Upgrade/repair/purge/diag (incl. follow) native |
 | **4 — Schedule + installers** | In progress | System+user systemd native; setup + installers pending |
 | **5 — MCP + cleanup** | Not started | MCP still Python; dual libs still required |
 
@@ -49,11 +49,10 @@ are strangler progress, not automatic permission to delete `.sh` / `.ps1`.
 
 Work through this queue; check items off as PRs land and update this list.
 
-1. [ ] **`diag logs --follow`** — long-running tail
-2. [ ] **`schedule setup` + pre/post-update** — wizard + scheduler job body (honor system-vs-user choice)
-3. [ ] **Installers → Go binary** — `install.sh` / Windows / packaging ship `millennium` first
-4. [ ] **MCP → Go CLI** — Phase 5; retire Python dispatcher
-5. [ ] **Graduate commands** — dual-OS CI + delete dual libs per [graduation rule](#command-graduation-rule)
+1. [ ] **`schedule setup` + pre/post-update** — wizard + scheduler job body (honor system-vs-user choice)
+2. [ ] **Installers → Go binary** — `install.sh` / Windows / packaging ship `millennium` first
+3. [ ] **MCP → Go CLI** — Phase 5; retire Python dispatcher
+4. [ ] **Graduate commands** — dual-OS CI + delete dual libs per [graduation rule](#command-graduation-rule)
 
 ---
 
@@ -96,7 +95,7 @@ Work through this queue; check items off as PRs land and update this list.
 | `logs` (no follow) | Done | Updater + Steam WebHelper |
 | `doctor --dry-run` | Done | Plan only |
 | `doctor` / `--fix` live | Done | Upgrade/hooks/flatpak/schedule/skins/linger/permissions; package sync still advisory |
-| `logs --follow` | Legacy | Long-running |
+| `logs --follow` | Done | Filter-tail newest Steam log (+ updater headline) |
 
 ### `upgrade`
 
@@ -151,7 +150,7 @@ Work through this queue; check items off as PRs land and update this list.
 - [x] `theme list` (+ `--json`)
 - [x] Bare / quiet `diag` summary
 
-### Phase 3 — Mutating core — In progress
+### Phase 3 — Mutating core — Done
 
 Exit when upgrade / repair / purge / doctor are natively usable on both OSes
 with `MILLENNIUM_LEGACY=1` only as escape hatch.
@@ -160,8 +159,7 @@ with `MILLENNIUM_LEGACY=1` only as escape hatch.
 - [x] Upgrade: non-root Linux system install / rollback via `sudo` handoff
 - [x] Purge: dry-run + Unix live + Windows live
 - [x] Repair: dry-run + user-path live
-- [x] Diag: `--json`, `--share`, `logs`, doctor dry-run + live
-- [ ] Diag: `--follow`
+- [x] Diag: `--json`, `--share`, `logs`, doctor dry-run + live, `--follow`
 
 ### Phase 4 — Schedule + installers — In progress
 

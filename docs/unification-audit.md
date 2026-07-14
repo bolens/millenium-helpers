@@ -85,9 +85,9 @@ Tests: Bash behavioral/unit under `tests/` · Pester under `tests/windows/`.
 | --- | --- | --- | --- | --- | --- | --- |
 | Dispatcher `millennium <cmd>` + suggestions | Y | Y | Native (Phase 1) | `test_millennium_dispatcher`, `test_dispatcher` | `millennium`, `Dispatcher` | Port suggest + dispatch |
 | `version` / `-V` | Y | Y | Native (Phase 1) | various | various | Go embed/`VERSION` |
-| `diag` (health report) | Y | Y | **Native report** | `test_diag` + Go | `millennium-diag` + Go | --share/follow and live doctor → legacy |
+| `diag` (health report) | Y | Y | **Native report** | `test_diag` + Go | `millennium-diag` + Go | — |
 | `diag doctor` / `--fix` | Y | Y | **Dry-run + live native** | `test_diag` + Go | `millennium-diag` | Completions/package cleanup still advisory |
-| `diag --json` / `--share` / `--follow` | Y | Y | **`--json` + `--share` native**; `--follow` legacy | Go + partial | Go + partial | Redact + paste.rs |
+| `diag --json` / `--share` / `--follow` | Y | Y | **Native** (json/share/follow) | Go | Go | Redact + paste.rs; filter-tail |
 | `upgrade` download/verify/install | Y | Y | **Native when writable**; Linux non-root → `sudo` re-exec | `test_upgrade` + Go | `millennium-upgrade` | Custom unwritable `MILLENNIUM_LIB_DIR` fails clearly (no sudo) |
 | `upgrade --rollback` / `list` | Y | Y | **list + apply native when writable**; else Linux `sudo` | `test_upgrade` + Go | `millennium-upgrade` | — |
 | `upgrade --file` / `--sha256` | Y | Y | **Verify native**; install legacy | Y + Go | Y | Fail-closed SHA before legacy |
