@@ -48,7 +48,8 @@ function Install-MillenniumLicense {
         }
     } catch {}
 
-    $fallback = @"
+    # Literal here-string: expandable @"…"@ breaks on "Software"/"AS IS" under Windows PowerShell 5.1.
+    $fallback = @'
 MIT License
 
 Copyright (c) 2026 Project Millennium
@@ -70,7 +71,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-"@
+'@
     try {
         Set-Content -Path $dest -Value $fallback -Encoding utf8 -Force
     } catch {}
