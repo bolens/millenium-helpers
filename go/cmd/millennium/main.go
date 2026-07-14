@@ -248,10 +248,7 @@ func newDiagCmd() *cobra.Command {
 		Short:              "Diagnostics (report/json/share/logs/doctor native, including --follow)",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
-			if useLegacy() || diag.NeedsLegacy(a) {
-				os.Exit(legacy.RunLegacy("diag", a))
-				return nil
-			}
+			// Graduated peel (Phase 6z): always native — ignore MILLENNIUM_LEGACY.
 			opts, err := diag.ParseArgs(a)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err.Error())

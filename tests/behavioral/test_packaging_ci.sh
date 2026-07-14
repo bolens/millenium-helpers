@@ -462,8 +462,8 @@ assert_contains "$assets_block" "release_asset_go" "release.yml builds versioned
 assert_contains "$assets_block" "bin/millennium" "release.yml embeds bin/millennium for Unix tarballs"
 assert_contains "$assets_block" "release_asset_src" "release.yml builds versioned -src archives"
 
-assert_file_exists "${REPO_ROOT}/scripts/windows/lib/DiagReport.ps1" "scripts/windows/lib/DiagReport.ps1 exists for release packaging"
-assert_file_exists "${REPO_ROOT}/scripts/windows/lib/DiagInstall.ps1" "scripts/windows/lib/DiagInstall.ps1 exists for release packaging"
+assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/DiagReport.ps1" "DiagReport.ps1 peeled (diag thin-wraps to Go)"
+assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/DiagInstall.ps1" "DiagInstall.ps1 peeled (diag thin-wraps to Go)"
 assert_file_exists "${REPO_ROOT}/scripts/windows/lib/Logging.ps1" "scripts/windows/lib/Logging.ps1 exists for release packaging"
 assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/ScheduleEnable.ps1" "ScheduleEnable.ps1 peeled (enable thin-wraps to Go)"
 assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/ScheduleDisable.ps1" "ScheduleDisable.ps1 peeled (disable thin-wraps to Go)"
@@ -486,7 +486,8 @@ assert_file_not_exists "${REPO_ROOT}/scripts/lib/purge_ops.sh" "purge_ops.sh pee
 assert_file_exists "${REPO_ROOT}/scripts/lib/dispatcher.sh" "scripts/lib/dispatcher.sh exists for release packaging"
 assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/PurgeOps.ps1" "PurgeOps.ps1 peeled (purge thin-wraps to Go)"
 assert_file_exists "${REPO_ROOT}/scripts/windows/lib/Dispatcher.ps1" "scripts/windows/lib/Dispatcher.ps1 exists for release packaging"
-assert_file_exists "${REPO_ROOT}/scripts/windows/lib/DiagDoctor.ps1" "scripts/windows/lib/DiagDoctor.ps1 exists for release packaging"
+assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/DiagDoctor.ps1" "DiagDoctor.ps1 peeled (diag thin-wraps to Go)"
+assert_file_not_exists "${REPO_ROOT}/scripts/lib/diag_ui.sh" "diag_ui.sh peeled (diag thin-wraps to Go)"
 
 release_gate=$(awk '/name: Wait for required CI/,/build-release:/' "${REPO_ROOT}/.github/workflows/release.yml")
 assert_contains "$release_gate" "test-suite.yml" "release gate waits on test-suite.yml"

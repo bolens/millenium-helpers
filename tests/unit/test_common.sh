@@ -369,34 +369,6 @@ mock_cmd "runuser" 'exit 0'
 mock_cmd "pgrep" 'exit 1'
 mock_cmd "steam" 'exit 0'
 
-# --- print_diag_next_steps() ---
-
-# shellcheck source=../../scripts/lib/diag_ui.sh
-source "${REPO_ROOT}/scripts/lib/diag_ui.sh"
-# shellcheck source=../../scripts/lib/diag_next_steps.sh
-source "${REPO_ROOT}/scripts/lib/diag_next_steps.sh"
-
-# Flags are read as globals inside print_diag_next_steps (not lexical locals).
-next_out=$(
-  BINARIES_OK=true HOOKS_OK=true FLATPAK_OK=true PERMISSIONS_OK=true SKINS_DIR_OK=true \
-  SUDOERS_OK=true TIMER_ACTIVE=true LINGER_OK=true SCRIPTS_UP_TO_DATE=true \
-  COMPLETIONS_OK=true CLEAN_OF_OBSOLETE=true RUNNING_USER=testuser \
-  print_diag_next_steps 2>&1
-)
-assert_contains "$next_out" "No issues detected" "print_diag_next_steps reports healthy when all flags are ok"
-assert_contains "$next_out" "millennium schedule status" "print_diag_next_steps healthy tip mentions schedule status"
-
-next_out=$(
-  BINARIES_OK=false HOOKS_OK=false FLATPAK_OK=true PERMISSIONS_OK=true SKINS_DIR_OK=true \
-  SUDOERS_OK=true TIMER_ACTIVE=false LINGER_OK=true SCRIPTS_UP_TO_DATE=true \
-  COMPLETIONS_OK=true CLEAN_OF_OBSOLETE=true RUNNING_USER=testuser \
-  print_diag_next_steps 2>&1
-)
-assert_contains "$next_out" "issue(s) detected" "print_diag_next_steps reports issue count when flags fail"
-assert_contains "$next_out" "millennium doctor" "print_diag_next_steps suggests doctor"
-assert_contains "$next_out" "millennium upgrade" "print_diag_next_steps suggests upgrade for bad binaries"
-assert_contains "$next_out" "millennium schedule enable" "print_diag_next_steps suggests enabling the scheduler"
-
 # --- print_upgrade_failure_tips() ---
 fail_tips=$(print_upgrade_failure_tips 42 2>&1)
 assert_contains "$fail_tips" "Upgrade failed" "print_upgrade_failure_tips mentions failure"
@@ -639,39 +611,6 @@ force_color_out=$(
   '
 )
 assert_not_equals "" "$force_color_out" "FORCE_COLOR enables ANSI color variables in logging.sh"
-
-# --- print_diag_item (diag_ui.sh) ---
-
-# shellcheck disable=SC2016
-diag_out=$(
-  NO_COLOR=1 bash -c '
-    source "'"${REPO_ROOT}"'/scripts/lib/logging.sh"
-    source "'"${REPO_ROOT}"'/scripts/lib/diag_ui.sh"
-    print_diag_item "ok" "Steam Client" "Running"
-    print_diag_item "warn" "Hooks" "Missing"
-    print_diag_item "error" "Binaries" "Corrupted"
-  '
-)
-assert_contains "$diag_out" "Steam Client" "print_diag_item ok includes the label"
-assert_contains "$diag_out" "Running" "print_diag_item ok includes the value"
-assert_contains "$diag_out" "Hooks" "print_diag_item warn includes the label"
-assert_contains "$diag_out" "Binaries" "print_diag_item error includes the label"
-assert_contains "$diag_out" "✔" "print_diag_item ok uses the check mark"
-assert_contains "$diag_out" "!" "print_diag_item warn uses the bang marker"
-assert_contains "$diag_out" "✘" "print_diag_item error uses the cross mark"
-
-diag_ascii=$(
-  NO_COLOR=1 NO_UNICODE=1 bash -c '
-    source "'"${REPO_ROOT}"'/scripts/lib/logging.sh"
-    source "'"${REPO_ROOT}"'/scripts/lib/diag_ui.sh"
-    print_diag_item "ok" "Steam Client" "Running"
-    print_diag_item "warn" "Hooks" "Missing"
-    print_diag_item "error" "Binaries" "Corrupted"
-  '
-)
-assert_contains "$diag_ascii" "OK" "print_diag_item ok uses ASCII OK when NO_UNICODE=1"
-assert_contains "$diag_ascii" "WARN" "print_diag_item warn uses ASCII WARN when NO_UNICODE=1"
-assert_contains "$diag_ascii" "FAIL" "print_diag_item error uses ASCII FAIL when NO_UNICODE=1"
 
 # --- prune_backups age-prunes the last remaining backup without unbound-array abort ---
 # Bash 3.2 (macOS) treats empty "${arr[@]}" as unbound under set -u; pruning the

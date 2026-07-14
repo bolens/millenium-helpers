@@ -55,11 +55,12 @@ Describe "Windows Installer" {
             Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium-mcp.py") | Should -Be $true
             Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium-helpers.completion.ps1") | Should -Be $true
 
-            # Verify diagnostic lib modules are installed
+            # Shared Windows libs remain for upgrade/repair handoff (diag peeled).
             $expectedLibDir = Join-Path -Path $expectedBinDir -ChildPath "lib"
             Test-Path -Path $expectedLibDir | Should -Be $true
-            Test-Path -Path (Join-Path -Path $expectedLibDir -ChildPath "DiagReport.ps1") | Should -Be $true
-            Test-Path -Path (Join-Path -Path $expectedLibDir -ChildPath "DiagUi.ps1") | Should -Be $true
+            Test-Path -Path (Join-Path -Path $expectedLibDir -ChildPath "UpgradeRollback.ps1") | Should -Be $true
+            Test-Path -Path (Join-Path -Path $expectedLibDir -ChildPath "Logging.ps1") | Should -Be $true
+            Test-Path -Path (Join-Path -Path $expectedLibDir -ChildPath "DiagReport.ps1") | Should -Be $false
 
             $pwshProfile = Join-Path -Path $tempHome -ChildPath "Documents\PowerShell\Microsoft.PowerShell_profile.ps1"
             $winProfile = Join-Path -Path $tempHome -ChildPath "Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1"

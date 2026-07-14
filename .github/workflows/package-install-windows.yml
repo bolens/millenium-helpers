@@ -96,11 +96,11 @@ jobs:
           $ErrorActionPreference = "Stop"
           $env:PATH += ";$HOME\scoop\shims"
           $prefix = scoop prefix millennium-helpers-bin
-          $diagLib = Join-Path $prefix "scripts\windows\lib\DiagReport.ps1"
-          if (-not (Test-Path $diagLib)) {
-            throw "Missing modular diag report library at $diagLib (scripts/windows/lib not packaged)"
+          $upgradeLib = Join-Path $prefix "scripts\windows\lib\UpgradeRollback.ps1"
+          if (-not (Test-Path $upgradeLib)) {
+            throw "Missing upgrade rollback library at $upgradeLib (scripts/windows/lib not packaged)"
           }
-          Write-Host "Diag lib OK: $diagLib"
+          Write-Host "Upgrade lib OK: $upgradeLib"
           Get-ChildItem (Join-Path $prefix "scripts\windows\lib\*.ps1") | ForEach-Object {
             $errs = $null
             $null = [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$null, [ref]$errs)
