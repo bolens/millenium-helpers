@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Phase 3 hybrid mutate paths:** `upgrade --rollback list` + remote download/SHA + local `--file` verify / dry-run; `purge` Unix live + `--dry-run`; `repair` user-path live + `--dry-run`; extract/install/rollback apply and Windows live purge still legacy
 - **Phase 4a schedule:** `schedule status`, `enable`/`disable --dry-run`, Unix live systemd/launchd/cron enable/disable; Windows live enable/disable and setup still legacy
 - **Phase 4b themes:** native `theme install` / `update` / `remove` (zip-slip safe; `--dry-run` / `--yes`)
+- **Phase 3c diag:** native `--json`, `logs` (non-follow), richer report probes, `doctor --dry-run` plan; live doctor / `--share` / `--follow` still legacy
 - Machine-readable CLI contract [`spec/cli-contract.yaml`](spec/cli-contract.yaml) + `make check-cli-contract` (MCP / man / bash completions drift gate)
 - Unification audit + roadmap docs with feature×OS×test parity matrix and command graduation rule
 

@@ -88,8 +88,11 @@ Keep Bash + Pester green for unmigrated commands. Supersede suites
 | `millennium schedule setup` / pre\|post-update | Legacy |
 | `millennium theme list` [`--json`] | Native (`internal/theme`) |
 | `millennium theme install\|update\|remove` | Native (`internal/theme`) |
-| `millennium diag` (bare / quiet) | Native read-only summary (`internal/diag`) |
-| `millennium diag doctor\|--fix\|--json\|--share\|…` | Legacy |
+| `millennium diag` (bare / quiet) | Native report (`internal/diag`) |
+| `millennium diag --json` | Native |
+| `millennium diag logs` (no `--follow`) | Native |
+| `millennium diag doctor --dry-run` | Native plan |
+| `millennium diag doctor\|--fix` (live) / `--share` / `--follow` | Legacy |
 | `millennium upgrade --rollback list` | Native (`internal/upgrade`) |
 | `millennium upgrade --file … --dry-run` (+ SHA verify) | Native verify / announce |
 | `millennium upgrade` (remote) | Native GitHub resolve + download + SHA; legacy extract/install |

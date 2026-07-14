@@ -84,9 +84,9 @@ Tests: Bash behavioral/unit under `tests/` · Pester under `tests/windows/`.
 | --- | --- | --- | --- | --- | --- | --- |
 | Dispatcher `millennium <cmd>` + suggestions | Y | Y | Native (Phase 1) | `test_millennium_dispatcher`, `test_dispatcher` | `millennium`, `Dispatcher` | Port suggest + dispatch |
 | `version` / `-V` | Y | Y | Native (Phase 1) | various | various | Go embed/`VERSION` |
-| `diag` (health report) | Y | Y | **Native read-only summary**; doctor/json Phase 3+ | `test_diag` + Go | `millennium-diag` + Go | doctor/json/share/follow → legacy; `MILLENNIUM_LEGACY=1` for full report |
-| `diag doctor` / `--fix` | Y | Y | Native (Phase 3) | `test_diag` | `millennium-diag` | Elevation adapters |
-| `diag --json` / `--share` / `--follow` | Y | Y | Native | partial | partial | Match flags |
+| `diag` (health report) | Y | Y | **Native report** | `test_diag` + Go | `millennium-diag` + Go | --share/follow and live doctor → legacy |
+| `diag doctor` / `--fix` | Y | Y | **`--dry-run` native**; live legacy | `test_diag` + Go | `millennium-diag` | Elevation / upgrade adapters |
+| `diag --json` / `--share` / `--follow` | Y | Y | **`--json` native**; share/follow legacy | Go + partial | Go + partial | Match fields |
 | `upgrade` download/verify/install | Y | Y | **Download+SHA native**; extract/install legacy | `test_upgrade` + Go | `millennium-upgrade` | Handoff via `--file` after verify |
 | `upgrade --rollback` / `list` | Y | Y | **`list` native**; apply legacy | `test_upgrade` + Go | `millennium-upgrade` | Apply still legacy |
 | `upgrade --file` / `--sha256` | Y | Y | **Verify native**; install legacy | Y + Go | Y | Fail-closed SHA before legacy |
