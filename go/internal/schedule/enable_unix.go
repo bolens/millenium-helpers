@@ -12,10 +12,10 @@ import (
 )
 
 func runEnable(channel string, useCron, dryRun, quiet bool, forceScope SystemdScope) int {
-	upgrade := ResolvePackagedHelper("millennium-upgrade")
+	mill := ResolvePackagedHelper("millennium")
 	if !dryRun {
-		if _, err := os.Stat(upgrade); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: Installed updater script not found at %s.\n", upgrade)
+		if _, err := os.Stat(mill); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: Installed millennium dispatcher not found at %s.\n", mill)
 			if runtime.GOOS == "darwin" {
 				fmt.Fprintln(os.Stderr, "Please install the helper tools first via Homebrew.")
 			} else {
@@ -24,20 +24,18 @@ func runEnable(channel string, useCron, dryRun, quiet bool, forceScope SystemdSc
 			return 1
 		}
 	}
-	theme := ResolvePackagedHelper("millennium-theme")
-	sched := ResolvePackagedHelper("millennium-schedule")
 
 	if useCron {
 		tu, _ := ResolveTargetUser()
 		state := StateDirForUser(tu)
-		return enableCron(channel, upgrade, theme, sched, state, dryRun, quiet)
+		return enableCron(channel, mill, state, dryRun, quiet)
 	}
 	if runtime.GOOS == "darwin" {
 		tu, _ := ResolveTargetUser()
 		state := StateDirForUser(tu)
-		return enableLaunchd(channel, upgrade, theme, sched, state, dryRun, quiet)
+		return enableLaunchd(channel, mill, state, dryRun, quiet)
 	}
-	return enableSystemd(channel, upgrade, theme, sched, dryRun, quiet, forceScope)
+	return enableSystemd(channel, mill, dryRun, quiet, forceScope)
 }
 
 func runDisable(dryRun, quiet bool) int {
@@ -53,7 +51,7 @@ func runDisable(dryRun, quiet bool) int {
 	return code
 }
 
-func enableSystemd(channel, upgrade, theme, sched string, dryRun, quiet bool, forceScope SystemdScope) int {
+func enableSystemd(channel, mill string, dryRun, quiet bool, forceScope SystemdScope) int {
 	scope, err := ResolveSystemdScope(forceScope)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
@@ -65,7 +63,7 @@ func enableSystemd(channel, upgrade, theme, sched string, dryRun, quiet bool, fo
 		return 1
 	}
 	state := StateDirForUser(tu)
-	svcBody := BuildSystemdServiceUnit(channel, state, sched, upgrade, theme, scope, tu)
+	svcBody := BuildSystemdServiceUnit(channel, state, mill, scope, tu)
 	timBody := BuildSystemdTimerUnit()
 
 	var svcPath, timPath, svcDir string
@@ -229,7 +227,7 @@ func parseUint(s string) int {
 	return n
 }
 
-func enableLaunchd(channel, upgrade, theme, sched, state string, dryRun, quiet bool) int {
+func enableLaunchd(channel, mill, state string, dryRun, quiet bool) int {
 	plist := PlistPath()
 	body := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -241,7 +239,7 @@ func enableLaunchd(channel, upgrade, theme, sched, state string, dryRun, quiet b
     <array>
         <string>/bin/bash</string>
         <string>-c</string>
-        <string>mkdir -p '%s' && { MILLENNIUM_SCHEDULER=1 '%s' pre-update && '%s' --channel '%s' && '%s' update && MILLENNIUM_SCHEDULER=1 '%s' post-update; } >> '%s/updater.log' 2>&1</string>
+        <string>mkdir -p '%s' && { MILLENNIUM_SCHEDULER=1 '%s' schedule pre-update && '%s' upgrade --channel '%s' --quiet && '%s' theme update --quiet && MILLENNIUM_SCHEDULER=1 '%s' schedule post-update; } >> '%s/updater.log' 2>&1</string>
     </array>
     <key>StartCalendarInterval</key>
     <dict>
@@ -252,7 +250,7 @@ func enableLaunchd(channel, upgrade, theme, sched, state string, dryRun, quiet b
     </dict>
 </dict>
 </plist>
-`, PlistLabel, state, sched, upgrade, channel, theme, sched, state)
+`, PlistLabel, state, mill, mill, channel, mill, mill, state)
 
 	if dryRun {
 		fmt.Printf("[DRY RUN] Would write LaunchAgent: %s\n", plist)
@@ -298,10 +296,10 @@ func disableLaunchd(dryRun, quiet bool) int {
 	return 0
 }
 
-func enableCron(channel, upgrade, theme, sched, state string, dryRun, quiet bool) int {
+func enableCron(channel, mill, state string, dryRun, quiet bool) int {
 	cronCmd := fmt.Sprintf(
-		`0 2 * * * sleep $(python3 -c 'import random; print(random.randint(0, 3600))') && mkdir -p %s && { MILLENNIUM_SCHEDULER=1 %s pre-update && /usr/bin/sudo -n %s --channel %s && %s update && MILLENNIUM_SCHEDULER=1 %s post-update; } >> %s/updater.log 2>&1`,
-		shellQuote(state), shellQuote(sched), shellQuote(upgrade), channel, shellQuote(theme), shellQuote(sched), shellQuote(state),
+		`0 2 * * * sleep $(python3 -c 'import random; print(random.randint(0, 3600))') && mkdir -p %s && { MILLENNIUM_SCHEDULER=1 %s schedule pre-update && /usr/bin/sudo -n %s upgrade --channel %s --quiet && %s theme update --quiet && MILLENNIUM_SCHEDULER=1 %s schedule post-update; } >> %s/updater.log 2>&1`,
+		shellQuote(state), shellQuote(mill), shellQuote(mill), channel, shellQuote(mill), shellQuote(mill), shellQuote(state),
 	)
 	fmt.Println("Configuring daily crontab job...")
 	if dryRun {
@@ -318,7 +316,7 @@ func enableCron(channel, upgrade, theme, sched, state string, dryRun, quiet bool
 		if strings.TrimSpace(line) == "" {
 			continue
 		}
-		if strings.Contains(line, "millennium-schedule") {
+		if isSchedulerCronLine(line) {
 			continue
 		}
 		keep = append(keep, line)
@@ -342,7 +340,7 @@ func disableCron(dryRun, quiet bool) int {
 	}
 	fmt.Println("Removing crontab entry...")
 	if dryRun {
-		fmt.Println("[DRY RUN] Would remove millennium-schedule entries from crontab")
+		fmt.Println("[DRY RUN] Would remove millennium schedule entries from crontab")
 		return 0
 	}
 	existing, err := exec.Command("crontab", "-l").CombinedOutput()
@@ -355,7 +353,7 @@ func disableCron(dryRun, quiet bool) int {
 	var keep []string
 	found := false
 	for _, line := range strings.Split(string(existing), "\n") {
-		if strings.Contains(line, "millennium-schedule") {
+		if isSchedulerCronLine(line) {
 			found = true
 			continue
 		}
@@ -399,8 +397,12 @@ func warnSudoers(tu TargetUser) {
 	}
 	out, err := cmd.CombinedOutput()
 	text := string(out)
-	if err != nil || (!strings.Contains(text, "millennium-upgrade") && !strings.Contains(text, "NOPASSWD: ALL") && !strings.Contains(text, "NOPASSWD:ALL")) {
-		fmt.Println("\nWarning: Passwordless sudo for the updater script could not be verified.")
+	ok := err == nil && (strings.Contains(text, "millennium upgrade") ||
+		strings.Contains(text, "millennium-upgrade") ||
+		strings.Contains(text, "NOPASSWD: ALL") ||
+		strings.Contains(text, "NOPASSWD:ALL"))
+	if !ok {
+		fmt.Println("\nWarning: Passwordless sudo for the updater could not be verified.")
 		fmt.Println("Make sure you have run the installer first: sudo ./install.sh")
 		fmt.Println("This configuration is required for the background timer to run successfully.")
 		return

@@ -94,7 +94,7 @@ Tests: Bash behavioral/unit under `tests/` · Pester under `tests/windows/`.
 
 ## Open gaps (non-contract)
 
-1. Timers / sudoers may still name long-name helpers (`millennium-upgrade`); PATH entries are Go twins. Prefer rewriting units to `millennium upgrade` on next enable.
+1. Prefer `millennium <cmd>` in timers/sudoers (long-name PATH twins remain for compatibility).
 2. Completions/man/MCP schema still hand-synced with the contract (CI gates help).
 
 ---

@@ -137,7 +137,7 @@ func collectWindows(st *Status) {
 			strings.HasPrefix(line, "Task Name:") {
 			st.Lines = append(st.Lines, "  "+line)
 		}
-		if m := regexp.MustCompile(`(?i)-Channel\s+(\S+)`).FindStringSubmatch(line); len(m) == 2 {
+		if m := regexp.MustCompile(`(?i)(?:-Channel|--channel)\s+(\S+)`).FindStringSubmatch(line); len(m) == 2 {
 			st.Channel = m[1]
 		}
 	}
@@ -155,7 +155,7 @@ func appendCronStatus(st *Status) {
 	}
 	found := false
 	for _, line := range strings.Split(string(out), "\n") {
-		if strings.Contains(line, "millennium-schedule") {
+		if isSchedulerCronLine(line) {
 			st.Configured = true
 			st.Lines = append(st.Lines, line)
 			found = true

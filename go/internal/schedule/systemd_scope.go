@@ -133,10 +133,11 @@ func TimerPathFor(tu TargetUser) string {
 }
 
 // BuildSystemdServiceUnit renders the oneshot service unit body.
-func BuildSystemdServiceUnit(channel, state, sched, upgrade, theme string, scope SystemdScope, tu TargetUser) string {
+// mill is the PATH `millennium` binary; units invoke dispatcher subcommands.
+func BuildSystemdServiceUnit(channel, state, mill string, scope SystemdScope, tu TargetUser) string {
 	exec := fmt.Sprintf(
-		`/bin/bash -c 'mkdir -p "%s" && { MILLENNIUM_SCHEDULER=1 "%s" pre-update && /usr/bin/sudo -n "%s" --channel "%s" --quiet && "%s" update --quiet && MILLENNIUM_SCHEDULER=1 "%s" post-update; } >> "%s/updater.log" 2>&1'`,
-		state, sched, upgrade, channel, theme, sched, state,
+		`/bin/bash -c 'mkdir -p "%s" && { MILLENNIUM_SCHEDULER=1 "%s" schedule pre-update && /usr/bin/sudo -n "%s" upgrade --channel "%s" --quiet && "%s" theme update --quiet && MILLENNIUM_SCHEDULER=1 "%s" schedule post-update; } >> "%s/updater.log" 2>&1'`,
+		state, mill, mill, channel, mill, mill, state,
 	)
 	var b string
 	b += "[Unit]\n"

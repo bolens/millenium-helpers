@@ -181,8 +181,8 @@ func runSetup(o Options) int {
 	}
 
 	fmt.Println("\nTip: tune backup retention anytime with:")
-	fmt.Println("  millennium-schedule config set backup_limit 5")
-	fmt.Println("  millennium-schedule config set backup_max_age_days 30")
+	fmt.Println("  millennium schedule config set backup_limit 5")
+	fmt.Println("  millennium schedule config set backup_max_age_days 30")
 	return 0
 }
 

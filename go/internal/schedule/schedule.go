@@ -211,6 +211,13 @@ func ResolvePackagedHelper(name string) string {
 	return name
 }
 
+// isSchedulerCronLine matches both legacy long-name jobs and millennium <cmd> jobs.
+func isSchedulerCronLine(line string) bool {
+	return strings.Contains(line, "millennium-schedule") ||
+		strings.Contains(line, "schedule pre-update") ||
+		strings.Contains(line, "MILLENNIUM_SCHEDULER=1")
+}
+
 // UserSystemdDir returns ~/.config/systemd/user (honors XDG_CONFIG_HOME).
 func UserSystemdDir() string {
 	xdg := os.Getenv("XDG_CONFIG_HOME")

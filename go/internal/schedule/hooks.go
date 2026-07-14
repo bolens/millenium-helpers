@@ -13,7 +13,7 @@ import (
 
 const exitGameRunning = 75
 
-// Test seam: override diag verification (defaults to exec millennium-diag).
+// Test seam: override diag verification (defaults to exec millennium diag).
 var verifyDiag = defaultVerifyDiag
 
 func requireSchedulerGate() bool {
@@ -21,7 +21,7 @@ func requireSchedulerGate() bool {
 		return true
 	}
 	fmt.Fprintln(os.Stderr, "Error: pre-update is only for the scheduler. Do not invoke it manually.")
-	fmt.Fprintln(os.Stderr, "Enable or run updates via: millennium-schedule enable | millennium-upgrade")
+	fmt.Fprintln(os.Stderr, "Enable or run updates via: millennium schedule enable | millennium upgrade")
 	return false
 }
 
@@ -30,7 +30,7 @@ func requireSchedulerGatePost() bool {
 		return true
 	}
 	fmt.Fprintln(os.Stderr, "Error: post-update is only for the scheduler. Do not invoke it manually.")
-	fmt.Fprintln(os.Stderr, "Enable or run updates via: millennium-schedule enable | millennium-upgrade")
+	fmt.Fprintln(os.Stderr, "Enable or run updates via: millennium schedule enable | millennium upgrade")
 	return false
 }
 
@@ -59,12 +59,11 @@ func copyFile(src, dst string) error {
 }
 
 func defaultVerifyDiag() error {
-	name := "millennium-diag"
-	path, err := exec.LookPath(name)
+	path, err := exec.LookPath("millennium")
 	if err != nil {
-		path = ResolvePackagedHelper(name)
+		path = ResolvePackagedHelper("millennium")
 	}
-	cmd := exec.Command(path)
+	cmd := exec.Command(path, "diag")
 	cmd.Stdout = nil
 	cmd.Stderr = nil
 	return cmd.Run()

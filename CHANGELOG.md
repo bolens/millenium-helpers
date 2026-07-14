@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Installers hard-require the Go dispatcher for PATH `millennium`; no shell/PowerShell PATH dispatcher fallback
 - Feature long-name entrypoints peel onto Go; checkout Bash/PS scripts remain as development fallbacks (installed PATH uses twins)
-- Windows scheduled updates invoke `millennium.exe upgrade` / `theme update` (no PowerShell feature scripts in the task)
+- Windows scheduled updates invoke `millennium.exe upgrade` / `theme update`; Unix systemd/launchd/cron invoke `millennium schedule|upgrade|theme` (rewritten on next `schedule enable`)
 - Release assets are versioned and OS/arch-split; from-source packaging uses controlled `-src` archives (no GitHub autoarchive URLs)
 - Docs and audit/roadmap describe present-tense Go ownership (phase/graduation jargon removed)
 

@@ -25,6 +25,7 @@ use. Keep **full feature and test parity** on Linux, macOS, and Windows.
 | GitHub / config backup | Go (`githubapi`, `config`); dead Bash `github.sh` / `backup.sh` / `archive.sh` removed |
 | MCP | `millennium mcp` / PATH `millennium-mcp` argv0 twin (Go) |
 | Installers | `install.sh` / `install.ps1` require a built Go binary; install all long names as Go twins |
+| Schedule timers | systemd / launchd / cron / Task Scheduler invoke `millennium <cmd>` (rewrite on next enable) |
 | `MILLENNIUM_LEGACY=1` | Obsolete for Go-owned commands (they stay native) |
 
 `make build` → `bin/millennium`. Release CD embeds per-OS/arch Go binaries and
@@ -38,9 +39,8 @@ golangci-lint, and govulncheck.
 ## Remaining optional work
 
 - Install-time Bash/PS libs still in tree: `logging.sh` / `version.sh` / `install_track.sh` / `release_assets.sh` / `millennium_license.sh`; Windows `Logging` / `Args` / `Version` / `Config` / `License` / `InstallTrack`
-- Delete checkout Bash/PS long-name scripts once suites no longer need them
 - Further trim long-name Bash/Pester suites where unique seams remain (schedule/theme/purge)
-- Migrate Unix systemd/launchd/cron Exec lines fully onto `millennium <cmd>` (Windows Task Scheduler already uses `millennium.exe`); rewrite on next `schedule enable`
+- Delete checkout Bash/PS long-name scripts once suites no longer need them
 
 ---
 

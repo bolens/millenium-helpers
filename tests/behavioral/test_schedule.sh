@@ -35,7 +35,14 @@ EXPECTED_STATE_FILE="${FAKE_STATE_DIR}/relaunch.env"
 FAKE_XDG_CONFIG=$(mktemp -d)
 export XDG_CONFIG_HOME="$FAKE_XDG_CONFIG"
 
-# Fast stand-ins for the other helper scripts (avoid invoking real, slow tools)
+# Fast stand-ins for helper CLIs (post-update calls `millennium diag`)
+# shellcheck disable=SC2016
+mock_cmd "millennium" '
+case "${1:-}" in
+  diag) exit "${MILLENNIUM_MOCK_DIAG_RC:-0}" ;;
+  *) exit 0 ;;
+esac
+'
 mock_cmd "millennium-diag" 'exit 0'
 mock_cmd "millennium-theme" 'exit 0'
 mock_cmd "millennium-upgrade" 'exit 0'
@@ -100,7 +107,7 @@ rc=$?
 assert_success "$rc" "millennium-schedule enable beta --cron --dry-run exits 0"
 assert_contains "$out" "DRY RUN" "millennium-schedule enable --cron --dry-run announces dry-run mode"
 assert_contains "$out" "crontab" "millennium-schedule enable --cron --dry-run mentions crontab"
-assert_contains "$out" "millennium-upgrade" "millennium-schedule enable beta --cron --dry-run references the upgrade script"
+assert_contains "$out" "upgrade --channel" "millennium-schedule enable beta --cron --dry-run references millennium upgrade"
 
 # --- disable dry-run ---
 
@@ -182,12 +189,24 @@ assert_contains "$out" "No saved relaunch state" "millennium-schedule post-updat
 
 # --- post-update: diagnostics failure aborts relaunch ---
 
-mock_cmd "millennium-diag" 'exit 1'
+# shellcheck disable=SC2016
+mock_cmd "millennium" '
+case "${1:-}" in
+  diag) exit 1 ;;
+  *) exit 0 ;;
+esac
+'
 out=$(MILLENNIUM_SCHEDULER=1 run_schedule post-update 2>&1)
 rc=$?
 assert_failure "$rc" "millennium-schedule post-update exits non-zero when diagnostics fail"
 assert_contains "$out" "failed verification" "millennium-schedule post-update explains the verification failure"
-mock_cmd "millennium-diag" 'exit 0'
+# shellcheck disable=SC2016
+mock_cmd "millennium" '
+case "${1:-}" in
+  diag) exit "${MILLENNIUM_MOCK_DIAG_RC:-0}" ;;
+  *) exit 0 ;;
+esac
+'
 
 # --- post-update with saved state must not launch host Steam under TEST_SUITE_RUN ---
 mkdir -p "$(dirname "$EXPECTED_STATE_FILE")"
@@ -206,12 +225,13 @@ assert_file_not_exists "${MOCK_BIN}/steam.calls" "millennium-schedule post-updat
 assert_file_not_exists "$EXPECTED_STATE_FILE" "millennium-schedule post-update consumes the relaunch state file"
 mock_cmd "steam" 'exit 0'
 
-# --- Default channel selection from CONFIG_UPDATE_CHANNEL ---
+# --- Default channel selection from config update_channel ---
 
-export CONFIG_UPDATE_CHANNEL="beta"
+mkdir -p "${FAKE_XDG_CONFIG}/millennium-helpers"
+printf '%s\n' '{"update_channel":"beta"}' > "${FAKE_XDG_CONFIG}/millennium-helpers/config.json"
+export XDG_CONFIG_HOME="${FAKE_XDG_CONFIG}"
 out=$(run_schedule enable --dry-run --cron 2>&1)
-assert_contains "$out" "millennium-upgrade" "millennium-schedule defaults to beta channel when CONFIG_UPDATE_CHANNEL is set to beta"
-unset CONFIG_UPDATE_CHANNEL
+assert_contains "$out" "upgrade --channel beta" "millennium-schedule enable uses update_channel from config.json"
 
 # --- config command tests ---
 
