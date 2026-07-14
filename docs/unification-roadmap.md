@@ -49,14 +49,13 @@ are strangler progress, not automatic permission to delete `.sh` / `.ps1`.
 
 Work through this queue; check items off as PRs land and update this list.
 
-1. [ ] **Non-root Linux upgrade install** — elevate or document `sudo` handoff when `/usr/lib` needs root
-2. [ ] **`purge` Windows live** — multi-path + Task Scheduler cleanup
-3. [ ] **`diag doctor` live** — elevated repairs; dry-run already native
-4. [ ] **`diag logs --follow`** — long-running tail
-5. [ ] **`schedule setup` + pre/post-update** — wizard + scheduler job body (honor system-vs-user choice)
-6. [ ] **Installers → Go binary** — `install.sh` / Windows / packaging ship `millennium` first
-7. [ ] **MCP → Go CLI** — Phase 5; retire Python dispatcher
-8. [ ] **Graduate commands** — dual-OS CI + delete dual libs per [graduation rule](#command-graduation-rule)
+1. [ ] **`purge` Windows live** — multi-path + Task Scheduler cleanup
+2. [ ] **`diag doctor` live** — elevated repairs; dry-run already native
+3. [ ] **`diag logs --follow`** — long-running tail
+4. [ ] **`schedule setup` + pre/post-update** — wizard + scheduler job body (honor system-vs-user choice)
+5. [ ] **Installers → Go binary** — `install.sh` / Windows / packaging ship `millennium` first
+6. [ ] **MCP → Go CLI** — Phase 5; retire Python dispatcher
+7. [ ] **Graduate commands** — dual-OS CI + delete dual libs per [graduation rule](#command-graduation-rule)
 
 ---
 
@@ -108,10 +107,10 @@ Work through this queue; check items off as PRs land and update this list.
 | `--rollback list` | Done | `internal/upgrade` |
 | `--dry-run` (local + remote resolve) | Done | — |
 | Remote download + SHA | Done | `internal/githubapi` |
-| Extract/install when writable | Partial | Root / `MILLENNIUM_LIB_DIR` / Windows Steam; else legacy |
+| Extract/install when writable | Done | Writable lib / Windows Steam; else Linux `sudo` re-exec |
 | `--file` SHA gate | Done | Fail-closed before install |
-| `--rollback <id>` apply | Done | Unix swap + Windows restore when writable; else legacy |
-| Non-root Linux → `/usr/lib` | Legacy | Needs sudo / elevation story |
+| `--rollback <id>` apply | Done | Unix swap + Windows restore when writable; else Linux `sudo` |
+| Non-root Linux → `/usr/lib` | Done | Download/verify as user, then `sudo` handoff (native under root) |
 
 ### `purge` / `repair`
 
@@ -160,7 +159,7 @@ Exit when upgrade / repair / purge / doctor are natively usable on both OSes
 with `MILLENNIUM_LEGACY=1` only as escape hatch.
 
 - [x] Upgrade: rollback list/apply, dry-run, download+SHA, install when writable
-- [ ] Upgrade: non-root Linux system install path (sudo handoff)
+- [x] Upgrade: non-root Linux system install / rollback via `sudo` handoff
 - [x] Purge: dry-run + Unix live
 - [ ] Purge: Windows live
 - [x] Repair: dry-run + user-path live
