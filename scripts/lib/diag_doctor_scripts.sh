@@ -24,6 +24,9 @@ if [[ "$SCRIPTS_UP_TO_DATE" == false ]]; then
   elif [[ "$(id -u)" -ne 0 ]]; then
     echo -e "${RED}Error: Root privileges are required to update helper scripts.${NC}" >&2
     echo -e "Please re-run the doctor with sudo: ${YELLOW}sudo $(basename "$0") doctor${NC}" >&2
+  elif [[ "${ASSUME_YES:-false}" != "true" && "$DRY_RUN" == "false" ]]; then
+    echo -e "${YELLOW}Helper scripts are out of date. Overwriting root-owned binaries requires confirmation.${NC}"
+    echo -e "Re-run with ${YELLOW}--yes${NC}: ${YELLOW}sudo $(basename "$0") doctor --yes${NC}"
   else
     # Ensure release extract is available (single tarball sync).
     if [[ -z "${DIAG_RELEASE_EXTRACT:-}" || ! -d "${DIAG_RELEASE_EXTRACT}" ]]; then
@@ -31,7 +34,10 @@ if [[ "$SCRIPTS_UP_TO_DATE" == false ]]; then
         echo -e "[DRY RUN] Would download latest release tarball (${LATEST_RELEASE_TAG:-latest})"
       else
         fetch_latest_release_tag || true
-        diag_fetch_release_tarball || true
+        if ! diag_fetch_release_tarball; then
+          echo -e "${RED}Error: Could not download/verify helpers release tarball; refusing to overwrite scripts.${NC}" >&2
+          return 1
+        fi
       fi
     fi
     if [[ -z "${TMP_SCRIPTS:-}" || ! -d "${TMP_SCRIPTS}" ]]; then

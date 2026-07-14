@@ -283,6 +283,7 @@ UTILITIES=(
 # shellcheck disable=SC2034
 SHARED_MODULES=(
   "common.sh:scripts/common.sh"
+  "lib/archive.sh:scripts/lib/archive.sh"
   "lib/backup.sh:scripts/lib/backup.sh"
   "lib/diag.sh:scripts/lib/diag.sh"
   "lib/diag_ui.sh:scripts/lib/diag_ui.sh"

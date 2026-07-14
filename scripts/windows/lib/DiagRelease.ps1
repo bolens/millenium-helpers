@@ -87,18 +87,27 @@ function Get-ReleaseZipExtract {
     if ($needsSha) {
         try {
             Invoke-WebRequest -Uri "$url.sha256" -OutFile $shaPath -UseBasicParsing -ErrorAction Stop
-            if (Test-Path -Path $shaPath) {
-                $expectedSha = ((Get-Content -Path $shaPath -Raw).Trim() -split '\s+')[0]
-                if ($expectedSha -match '^[0-9a-fA-F]{64}$') {
-                    $actualSha = (Get-FileHash -Path $zipPath -Algorithm SHA256).Hash
-                    if ($actualSha.ToLowerInvariant() -ne $expectedSha.ToLowerInvariant()) {
-                        Invoke-DiagReleaseCleanup
-                        return $false
-                    }
-                }
-            }
         } catch {
-            # SHA sidecar unavailable; continue without verification
+            Write-Host "Error: Failed to download SHA256 sidecar for helpers release archive." -ForegroundColor Red
+            Invoke-DiagReleaseCleanup
+            return $false
+        }
+        if (-not (Test-Path -Path $shaPath)) {
+            Write-Host "Error: SHA256 sidecar for helpers release archive was not downloaded." -ForegroundColor Red
+            Invoke-DiagReleaseCleanup
+            return $false
+        }
+        $expectedSha = ((Get-Content -Path $shaPath -Raw).Trim() -split '\s+')[0]
+        if ($expectedSha -notmatch '^[0-9a-fA-F]{64}$') {
+            Write-Host "Error: SHA256 sidecar for helpers release archive is invalid." -ForegroundColor Red
+            Invoke-DiagReleaseCleanup
+            return $false
+        }
+        $actualSha = (Get-FileHash -Path $zipPath -Algorithm SHA256).Hash
+        if ($actualSha.ToLowerInvariant() -ne $expectedSha.ToLowerInvariant()) {
+            Write-Host "Error: SHA256 checksum mismatch for helpers release archive." -ForegroundColor Red
+            Invoke-DiagReleaseCleanup
+            return $false
         }
     }
 
