@@ -3,6 +3,9 @@ name: "CI: PowerShell Script Analysis"
 on:
   push:
     branches: [ main ]
+    # Tag pushes always run (GitHub skips path filters for tags) so the
+    # release workflow gate can wait on powershell-lint for the tag SHA.
+    tags: [ 'v*' ]
     paths:
       - 'scripts/windows/**'
       - 'completions/powershell/**'

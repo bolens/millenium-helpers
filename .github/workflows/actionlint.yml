@@ -3,6 +3,9 @@ name: "CI: Actionlint"
 on:
   push:
     branches: [ main ]
+    # Tag pushes always run (GitHub skips path filters for tags) so the
+    # release workflow gate can wait on actionlint for the tag SHA.
+    tags: [ 'v*' ]
     paths:
       - '.github/workflows/**'
   pull_request:

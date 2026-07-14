@@ -44,7 +44,7 @@ print(m.group(1).lower() if m else "")
 PY
 )"
 
-expected_source="https://github.com/bolens/millenium-helpers/releases/download/v${pkgver}/millennium-helpers-linux.tar.gz"
+expected_source="https://github.com/bolens/millenium-helpers/releases/download/v${pkgver}/millennium-helpers-v${pkgver}-linux-amd64.tar.gz"
 
 srcinfo_stale() {
   [[ -f "$SRCINFO" ]] || return 0
@@ -98,11 +98,19 @@ info = Path(path).read_text(encoding="utf-8")
 info = re.sub(r"(?m)^(\tpkgver = ).*$", rf"\g<1>{pkgver}", info, count=1)
 info = re.sub(r"(?m)^(\tpkgrel = ).*$", rf"\g<1>{pkgrel}", info, count=1)
 info = re.sub(
-    r"(?m)^(\tsource = https://github\.com/.+/releases/download/)v[^/]+(/millennium-helpers-linux\.tar\.gz)$",
-    rf"\g<1>v{pkgver}\g<2>",
+    r"(?m)^(\tsource = https://github\.com/.+/releases/download/)v[^/]+(/millennium-helpers-v)[^/]+(-linux-amd64\.tar\.gz)$",
+    rf"\g<1>v{pkgver}\g<2>{pkgver}\g<3>",
     info,
     count=1,
 )
+# Also accept a full rewrite if the old unversioned name is still present.
+if f"source = {source}" not in info:
+    info = re.sub(
+        r"(?m)^(\tsource = )https://github\.com/.+$",
+        rf"\g<1>{source}",
+        info,
+        count=1,
+    )
 if sha:
     info = re.sub(
         r"(?m)^(\tsha256sums = )[0-9a-fA-F]{64}$",

@@ -202,7 +202,7 @@ make check-version   # already run by bump-version; safe to re-run
 `bump-version` updates:
 
 - `VERSION`, `pyproject.toml`
-- Formula from-source (tag archive) + Formula-bin (Linux tarball) URLs
+- Formula from-source (`-src.tar.gz`) + Formula-bin (per-OS/arch tarball) URLs
 - Scoop from-source (tag zip) + Scoop-bin (Windows zip) versions/URLs
 - Winget installer URL + `PackageVersion` / `ReleaseDate`
 - Arch from-source + `-bin` `pkgver`/`pkgrel` and both `.SRCINFO` files
@@ -237,7 +237,7 @@ ShellCheck and the test suite pass locally and on `main`.
 Tagging `vX.Y.Z` runs the release workflow:
 
 1. Wait for **Test Suite + ShellCheck + Completions** on that commit
-2. Draft a GitHub release with platform-trimmed assets (`millennium-helpers-linux.tar.gz` embeds `bin/millennium`, `millennium-helpers-windows.zip` embeds `millennium.exe` when built), standalone Go binaries, plus checksum sidecars
+2. Draft a GitHub release with versioned OS/arch assets (`millennium-helpers-vX.Y.Z-linux-amd64.tar.gz`, Darwin packs, `…-windows-amd64.zip`, `-src.tar.gz`/`.zip`), matching embedded Go dispatchers, standalone `millennium-vX.Y.Z-…` binaries, plus checksum sidecars
 3. Open a packaging PR that bumps from-source + bin packaging (and Winget/Chocolatey) and fills SHA256s from the draft upload
 4. **If packaging CI passes:** squash-merge the PR and publish the draft release automatically
 5. **If packaging CI fails (or never starts):** leave the draft release and packaging PR for manual recovery (fix, merge, then publish)
@@ -286,9 +286,9 @@ pre-commit install --hook-type pre-push
 ## Packaging notes
 
 - See [`packaging/README.md`](packaging/README.md) for the full from-source / bin / git matrix.
-- **bin** packages consume trimmed GitHub Release assets (`millennium-helpers-linux.tar.gz` /
-  `…-windows.zip`), which embed the Go dispatcher when release CD builds it.
-- **from-source** packages use the GitHub tag archive + `make build` (or PS scripts only on Scoop).
+- **bin** packages consume versioned GitHub Release assets
+  (`millennium-helpers-vX.Y.Z-{os}-{arch}…`), each embedding the matching Go dispatcher.
+- **from-source** packages use release `-src.tar.gz` / `-src.zip` + `make build` (or PS scripts only on Scoop).
 - Homebrew: do **not** add a redundant `version "X.Y.Z"` when the URL encodes the tag —
   `brew audit` rejects it. Keep `license "MIT"`.
 - Scoop is the supported multi-command Windows install path; Scoop `-git` is tip-of-`main`.

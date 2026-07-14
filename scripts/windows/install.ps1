@@ -110,11 +110,17 @@ if ($isStandalone) {
                 if ([string]::IsNullOrWhiteSpace($Tag) -and $env:MILLENNIUM_HELPERS_TAG) { $Tag = $env:MILLENNIUM_HELPERS_TAG }
                 if ([string]::IsNullOrWhiteSpace($Tag)) { throw "Tag is required for -Track tag" }
                 $norm = if ($Tag.StartsWith('v')) { $Tag } else { "v$Tag" }
-                $url = "https://github.com/$repo/releases/download/$norm/millennium-helpers-windows.zip"
+                $ver = $norm.TrimStart('v')
+                $url = "https://github.com/$repo/releases/download/$norm/millennium-helpers-v$ver-windows-amd64.zip"
                 $shaUrl = "$url.sha256"
             }
             default {
-                $url = "https://github.com/$repo/releases/latest/download/millennium-helpers-windows.zip"
+                $headers = @{ 'User-Agent' = 'millennium-helpers'; 'Accept' = 'application/vnd.github+json' }
+                $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/latest" -Headers $headers -UseBasicParsing
+                $norm = [string]$release.tag_name
+                if ([string]::IsNullOrWhiteSpace($norm)) { throw "Could not resolve latest release tag for $repo" }
+                $ver = $norm.TrimStart('v')
+                $url = "https://github.com/$repo/releases/download/$norm/millennium-helpers-v$ver-windows-amd64.zip"
                 $shaUrl = "$url.sha256"
             }
         }

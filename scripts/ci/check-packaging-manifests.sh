@@ -40,8 +40,8 @@ done
 
 scoop_src=packaging/scoop/millennium-helpers.json
 url="$(jq -r .url "$scoop_src")"
-[[ "$url" == *"archive/refs/tags/v${VERSION}.zip" ]] \
-  || fail "Scoop from-source url must be tag zip for v${VERSION}, got: $url"
+[[ "$url" == *"/releases/download/v${VERSION}/millennium-helpers-v${VERSION}-src.zip" ]] \
+  || fail "Scoop from-source url must be -src.zip for v${VERSION}, got: $url"
 extract_dir="$(jq -r .extract_dir "$scoop_src")"
 [[ "$extract_dir" == "millenium-helpers-${VERSION}" ]] \
   || fail "Scoop from-source extract_dir must be millenium-helpers-${VERSION}, got: $extract_dir"
@@ -50,10 +50,10 @@ echo "Scoop from-source OK"
 
 scoop_bin=packaging/scoop/millennium-helpers-bin.json
 url="$(jq -r .url "$scoop_bin")"
-[[ "$url" == *"/releases/download/v${VERSION}/millennium-helpers-windows.zip" ]] \
-  || fail "Scoop-bin url must be trimmed Windows release zip, got: $url"
+[[ "$url" == *"/releases/download/v${VERSION}/millennium-helpers-v${VERSION}-windows-amd64.zip" ]] \
+  || fail "Scoop-bin url must be windows-amd64 release zip, got: $url"
 hash_url="$(jq -r '.autoupdate.hash.url // empty' "$scoop_bin")"
-[[ "$hash_url" == *"/millennium-helpers-windows.zip.sha256" ]] \
+[[ "$hash_url" == *"/millennium-helpers-v"*"-windows-amd64.zip.sha256" ]] \
   || fail "Scoop-bin autoupdate.hash.url must point at .sha256 sidecar, got: $hash_url"
 require_bins "$scoop_bin" millennium millennium-mcp millennium-diag
 echo "Scoop-bin OK"
@@ -97,8 +97,10 @@ m = re.search(r'<version>([^<]+)</version>', text)
 print(m.group(1) if m else '')
 " "$nuspec")"
 [[ "$choco_ver" == "$VERSION" ]] || fail "Chocolatey nuspec version '$choco_ver' != VERSION '$VERSION'"
-grep -q "millennium-helpers-windows.zip" "$install_ps1" \
-  || fail "Chocolatey install script must reference Windows release zip"
+# Prefer PowerShell '$version' interpolation; also accept a pinned version literal.
+# shellcheck disable=SC2016
+grep -qE 'millennium-helpers-v\$version-windows-amd64\.zip|millennium-helpers-v'"${VERSION}"'-windows-amd64\.zip' "$install_ps1" \
+  || fail "Chocolatey install script must reference windows-amd64 release zip"
 grep -qE "\\\$version\s*=\s*'${VERSION}'" "$install_ps1" \
   || fail "Chocolatey install script \$version must match VERSION"
 echo "Chocolatey OK"
@@ -128,19 +130,21 @@ for spec in packaging/rpm/millennium-helpers.spec packaging/rpm/millennium-helpe
   grep -qE '^Name:' "$spec" || fail "$spec missing Name"
   grep -qE '^Source0:' "$spec" || fail "$spec missing Source0"
 done
-grep -q 'archive/refs/tags/v%{version}.tar.gz' packaging/rpm/millennium-helpers.spec \
-  || fail "rpm from-source Source0 must be tag archive"
-grep -q 'millennium-helpers-linux.tar.gz' packaging/rpm/millennium-helpers-bin.spec \
-  || fail "rpm-bin Source0 must be Linux release tarball"
+grep -q 'millennium-helpers-v%{version}-src.tar.gz' packaging/rpm/millennium-helpers.spec \
+  || fail "rpm from-source Source0 must be -src.tar.gz"
+grep -q 'millennium-helpers-v%{version}-linux-amd64.tar.gz' packaging/rpm/millennium-helpers-bin.spec \
+  || fail "rpm-bin Source0 must be linux-amd64 release tarball"
 echo "rpm packaging OK"
 
 # --- Formula files present (Homebrew CI audits deeply) ---
 [[ -f Formula/millennium-helpers.rb ]] || fail "missing Formula/millennium-helpers.rb"
 [[ -f Formula/millennium-helpers-bin.rb ]] || fail "missing Formula/millennium-helpers-bin.rb"
-grep -q 'archive/refs/tags/' Formula/millennium-helpers.rb \
-  || fail "Formula from-source must use tag archive URL"
-grep -q 'millennium-helpers-linux.tar.gz' Formula/millennium-helpers-bin.rb \
-  || fail "Formula-bin must use Linux release tarball"
+grep -q "millennium-helpers-v${VERSION}-src.tar.gz" Formula/millennium-helpers.rb \
+  || fail "Formula from-source must use versioned -src.tar.gz"
+grep -q "millennium-helpers-v${VERSION}-linux-amd64.tar.gz" Formula/millennium-helpers-bin.rb \
+  || fail "Formula-bin must include linux-amd64 release tarball"
+grep -q "millennium-helpers-v${VERSION}-darwin-arm64.tar.gz" Formula/millennium-helpers-bin.rb \
+  || fail "Formula-bin must include darwin-arm64 release tarball"
 echo "Homebrew Formula files OK"
 
 echo "All packaging manifest checks passed."

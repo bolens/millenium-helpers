@@ -132,31 +132,37 @@ Before tagging, confirm the push to `main` is green (or understand any expected 
 SHA="$(git rev-parse HEAD)"
 gh run list --commit "$SHA" --limit 30
 
-# Required for the release CD gate (must be success on this SHA before/when tagging):
-for wf in test-suite.yml shellcheck.yml completions.yml; do
+# Required for the release CD gate (latest completed run must be success on this SHA):
+for wf in \
+  test-suite.yml shellcheck.yml completions.yml go.yml \
+  version-sync.yml package-manifests.yml actionlint.yml \
+  python-lint.yml powershell-lint.yml man-pages.yml
+do
   echo "=== $wf ==="
   gh run list --commit "$SHA" --workflow "$wf" --limit 3
 done
 
-# Strongly recommended before tagging:
-for wf in homebrew.yml version-sync.yml package-manifests.yml powershell-lint.yml; do
-  echo "=== $wf ==="
-  gh run list --commit "$SHA" --workflow "$wf" --limit 3
-done
+# Packaging installs/audits that need published assets are gated later in release finalize:
+# homebrew.yml, nix.yml, pkgbuild.yml, package-install-windows.yml, etc.
 
 # Investigate failures:
 # gh run view <run-id> --log-failed
 ```
 
-Critical workflows for a release commit:
+Critical workflows for a release commit (**CD pre-build gate** — all must pass on the tag SHA):
 
-- **CI: Shell Script Linting** (ShellCheck) — must pass (**CD gate**)
-- **CI: Cross-Platform Test Suite** — must pass (**CD gate**)
-- **CI: Shell Completions Validation** — must pass (**CD gate**)
+- **CI: Cross-Platform Test Suite**
+- **CI: Shell Script Linting** (ShellCheck)
+- **CI: Shell Completions Validation**
+- **CI: Go**
 - **CI: Packaging Version Sync**
-- **CI: Homebrew Formula Validation**
+- **CI: Package Manifests Validation**
+- **CI: actionlint**
+- **CI: Python Lint**
 - **CI: PowerShell Script Analysis**
-- **CI: Package Manifests Validation** / Windows package install / PKGBUILD / Nix / man pages as applicable
+- **CI: Man Pages**
+
+`skip_ci_gate` on workflow_dispatch is allowed only for `tag_name=v-draft`. Real `vX.Y.Z` tags always wait for the gate before building assets.
 
 Do **not** tag while ShellCheck, the Test Suite, or Completions CI is red.
 
@@ -172,7 +178,7 @@ git push origin "vX.Y.Z"
 This starts **CD: Deployment & Release Automation**, which:
 
 1. Waits for **Test Suite + ShellCheck + Completions** success on that commit SHA
-2. Builds trimmed Linux/Windows assets + checksums
+2. Builds versioned OS/arch bin packs, `-src` archives, standalone Go binaries + checksums
 3. Creates a **draft** GitHub release
 4. Opens a packaging PR with real SHA256s
 5. Auto-merges the packaging PR and publishes the draft when packaging CI is green
@@ -230,10 +236,14 @@ make test
 git add -A && git commit -m "release: vX.Y.Z …" && git push origin main
 SHA="$(git rev-parse HEAD)"
 gh run list --commit "$SHA" --limit 30
-for wf in test-suite.yml shellcheck.yml completions.yml; do
+for wf in \
+  test-suite.yml shellcheck.yml completions.yml go.yml \
+  version-sync.yml package-manifests.yml actionlint.yml \
+  python-lint.yml powershell-lint.yml man-pages.yml
+do
   gh run list --commit "$SHA" --workflow "$wf" --limit 3
 done
-# wait until those three are success, then:
+# wait until gate workflows are success on this SHA, then:
 
 git tag -a vX.Y.Z -m vX.Y.Z && git push origin vX.Y.Z
 gh run list --workflow release.yml --limit 3

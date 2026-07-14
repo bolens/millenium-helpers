@@ -60,14 +60,14 @@ jobs:
           nix build --experimental-features "nix-command flakes" --no-link .#millennium-helpers-git
 
           VERSION="$(tr -d '[:space:]' < VERSION)"
-          TAG_URL="https://github.com/bolens/millenium-helpers/archive/refs/tags/v${VERSION}.tar.gz"
-          BIN_URL="https://github.com/bolens/millenium-helpers/releases/download/v${VERSION}/millennium-helpers-linux.tar.gz"
+          TAG_URL="https://github.com/bolens/millenium-helpers/releases/download/v${VERSION}/millennium-helpers-v${VERSION}-src.tar.gz"
+          BIN_URL="https://github.com/bolens/millenium-helpers/releases/download/v${VERSION}/millennium-helpers-v${VERSION}-linux-amd64.tar.gz"
 
           if curl -fsI "$TAG_URL" >/dev/null 2>&1; then
             nix build --experimental-features "nix-command flakes" --no-link .#millennium-helpers
             nix build --experimental-features "nix-command flakes" --no-link
           else
-            echo "::notice::Tag archive not published yet ($TAG_URL); skipping from-source / default build"
+            echo "::notice::Source release asset not published yet ($TAG_URL); skipping from-source / default build"
             echo "Evaluated from-source package version:"
             nix eval --experimental-features "nix-command flakes" .#millennium-helpers.version
           fi

@@ -3,7 +3,7 @@
     "description": "Millennium helpers (prebuilt release zip) \u2014 PowerShell helpers/MCP; prefers millennium.exe when present.",
     "homepage": "https://github.com/bolens/millenium-helpers",
     "license": "MIT",
-    "url": "https://github.com/bolens/millenium-helpers/releases/download/v2.6.2/millennium-helpers-windows.zip",
+    "url": "https://github.com/bolens/millenium-helpers/releases/download/v2.6.2/millennium-helpers-v2.6.2-windows-amd64.zip",
     "hash": "3d1fabe638ce2e990b7b0007ef77dd4afa1668fd558010758f0213c1c8826506",
     "bin": [
         [
@@ -79,9 +79,9 @@
         "}"
     ],
     "autoupdate": {
-        "url": "https://github.com/bolens/millenium-helpers/releases/download/v$version/millennium-helpers-windows.zip",
+        "url": "https://github.com/bolens/millenium-helpers/releases/download/v$version/millennium-helpers-v$version-windows-amd64.zip",
         "hash": {
-            "url": "https://github.com/bolens/millenium-helpers/releases/download/v$version/millennium-helpers-windows.zip.sha256"
+            "url": "https://github.com/bolens/millenium-helpers/releases/download/v$version/millennium-helpers-v$version-windows-amd64.zip.sha256"
         }
     }
 }

@@ -244,7 +244,7 @@ cp -r "$REPO_ROOT/completions/." "$MOCK_PAYLOAD/completions/" 2>/dev/null || tru
 cp -r "$REPO_ROOT/man/." "$MOCK_PAYLOAD/man/" 2>/dev/null || true
 tar -czf "$MOCK_TARBALL" -C "$MOCK_PAYLOAD" .
 
-# Mock curl: serve archive or matching .sha256 sidecar based on URL / -o path
+# Mock curl: GitHub latest-release API, archive, or .sha256 sidecar
 # shellcheck disable=SC2016
 mock_cmd "curl" '
 out=""
@@ -255,6 +255,10 @@ for arg in "$@"; do
   if [[ "$arg" == http* ]]; then url="$arg"; fi
   prev="$arg"
 done
+if [[ "$url" == *"/releases/latest" ]]; then
+  echo "{\"tag_name\":\"v2.6.2\"}"
+  exit 0
+fi
 if [[ -z "$out" ]]; then
   echo "mock curl: missing -o" >&2
   exit 1
@@ -262,7 +266,7 @@ fi
 if [[ "$url" == *.sha256 || "$out" == *.sha256 ]]; then
   archive="'"$MOCK_TARBALL"'"
   hash=$(sha256sum "$archive" | awk "{print \$1}")
-  echo "${hash}  millennium-helpers-linux.tar.gz" > "$out"
+  echo "${hash}  millennium-helpers-v2.6.2-linux-amd64.tar.gz" > "$out"
   exit 0
 fi
 cat "'"$MOCK_TARBALL"'" > "$out"
@@ -405,11 +409,12 @@ assert_contains "$formula" 'ln_sf "_millennium-helpers", zsh_completion/"_#{cmd}
 assert_contains "$formula" 'share/"nushell/completions"' "Formula installs nushell completions"
 assert_contains "$formula" 'MILLENNIUM-LICENSE.md' "Formula installs vendored Millennium LICENSE"
 assert_contains "$formula" 'assert_path_exists bash_completion/"millennium"' "Formula test checks millennium bash completion"
-assert_contains "$formula" 'archive/refs/tags/' "from-source Formula uses GitHub tag archive"
+assert_contains "$formula" '-src.tar.gz' "from-source Formula uses versioned -src.tar.gz"
 assert_contains "$formula" 'depends_on "go" => :build' "from-source Formula builds with Go"
 
 formula_bin=$(cat "${REPO_ROOT}/Formula/millennium-helpers-bin.rb")
-assert_contains "$formula_bin" "millennium-helpers-linux.tar.gz" "bin Formula uses Linux release tarball"
+assert_contains "$formula_bin" "linux-amd64.tar.gz" "bin Formula uses linux-amd64 release tarball"
+assert_contains "$formula_bin" "darwin-arm64.tar.gz" "bin Formula uses darwin-arm64 release tarball"
 assert_contains "$formula_bin" 'conflicts_with "millennium-helpers"' "bin Formula conflicts with from-source"
 
 pkgbuild=$(cat "${REPO_ROOT}/packaging/millennium-helpers-git/PKGBUILD")
@@ -419,21 +424,21 @@ arch_helper=$(cat "${REPO_ROOT}/packaging/lib/arch-unix-install.sh")
 assert_contains "$arch_helper" "/usr/local/bin/millennium " "Arch install helper mentions bare millennium binary"
 assert_contains "$arch_helper" "millennium.fish" "Arch install helper mentions millennium.fish"
 stable_pkgbuild=$(cat "${REPO_ROOT}/packaging/millennium-helpers/PKGBUILD")
-assert_contains "$stable_pkgbuild" "archive/refs/tags/" "from-source PKGBUILD uses GitHub tag archive"
+assert_contains "$stable_pkgbuild" "-src.tar.gz" "from-source PKGBUILD uses versioned -src.tar.gz"
 assert_contains "$stable_pkgbuild" "makedepends=('go')" "from-source PKGBUILD builds with Go"
 assert_contains "$stable_pkgbuild" "conflicts=(" "from-source PKGBUILD declares conflicts"
 bin_pkgbuild=$(cat "${REPO_ROOT}/packaging/millennium-helpers-bin/PKGBUILD")
-assert_contains "$bin_pkgbuild" "millennium-helpers-linux.tar.gz" "bin PKGBUILD uses Linux release tarball"
+assert_contains "$bin_pkgbuild" "linux-amd64.tar.gz" "bin PKGBUILD uses linux-amd64 release tarball"
 assert_contains "$bin_pkgbuild" "provides=" "bin PKGBUILD declares provides"
 
 scoop=$(cat "${REPO_ROOT}/packaging/scoop/millennium-helpers.json")
-assert_contains "$scoop" "archive/refs/tags/" "Scoop from-source uses tag archive"
+assert_contains "$scoop" "-src.zip" "Scoop from-source uses versioned -src.zip"
 assert_contains "$scoop" "post_install" "Scoop from-source registers post_install hooks"
 assert_contains "$scoop" "pre_uninstall" "Scoop from-source registers pre_uninstall hooks"
 assert_contains "$scoop" "millennium-helpers.ps1" "Scoop post_install wires PowerShell completions"
 assert_contains "$scoop" "MillenniumUpdate" "Scoop pre_uninstall removes MillenniumUpdate task"
 scoop_bin=$(cat "${REPO_ROOT}/packaging/scoop/millennium-helpers-bin.json")
-assert_contains "$scoop_bin" "millennium-helpers-windows.zip" "Scoop-bin uses Windows release zip"
+assert_contains "$scoop_bin" "windows-amd64.zip" "Scoop-bin uses windows-amd64 release zip"
 assert_contains "$scoop_bin" "post_install" "Scoop-bin registers post_install hooks"
 scoop_git=$(cat "${REPO_ROOT}/packaging/scoop/millennium-helpers-git.json")
 assert_contains "$scoop_git" '"version": "nightly"' "Scoop git manifest uses nightly version"

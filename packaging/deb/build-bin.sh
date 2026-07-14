@@ -6,7 +6,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 VERSION="${1:-$(tr -d '[:space:]' < "$ROOT/VERSION")}"
 VERSION="${VERSION#v}"
-SRC="${2:-https://github.com/bolens/millenium-helpers/releases/download/v${VERSION}/millennium-helpers-linux.tar.gz}"
+SRC="${2:-https://github.com/bolens/millenium-helpers/releases/download/v${VERSION}/millennium-helpers-v${VERSION}-linux-amd64.tar.gz}"
 OUT_DIR="${OUT_DIR:-$ROOT/dist}"
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT

@@ -4,12 +4,7 @@ Describe "InstallTrack helpers" {
         . (Join-Path $winLib 'InstallTrack.ps1')
     }
 
-    It "Resolves release, main, and tag tracks" {
-        $r = Resolve-HelpersInstallTrack -Track release -Platform windows
-        $r.Track | Should -Be 'release'
-        $r.Url | Should -BeLike '*releases/latest/download/millennium-helpers-windows.zip'
-        $r.NeedsSha | Should -Be $true
-
+    It "Resolves main and tag tracks (versioned windows-amd64 asset)" {
         $m = Resolve-HelpersInstallTrack -Track main -Platform windows
         $m.Track | Should -Be 'main'
         $m.Url | Should -BeLike '*archive/refs/heads/main.zip'
@@ -18,7 +13,11 @@ Describe "InstallTrack helpers" {
         $t = Resolve-HelpersInstallTrack -Track tag -Tag '2.5.0' -Platform windows
         $t.Track | Should -Be 'tag'
         $t.Ref | Should -Be 'v2.5.0'
-        $t.Url | Should -BeLike '*releases/download/v2.5.0/millennium-helpers-windows.zip'
+        $t.Url | Should -BeLike '*releases/download/v2.5.0/millennium-helpers-v2.5.0-windows-amd64.zip'
+        $t.NeedsSha | Should -Be $true
+
+        Get-HelpersBinAssetName -Version '1.2.3' -Platform windows |
+            Should -Be 'millennium-helpers-v1.2.3-windows-amd64.zip'
     }
 
     It "Writes and migrates install-meta.json" {

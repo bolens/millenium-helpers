@@ -1,9 +1,29 @@
 class MillenniumHelpersBin < Formula
   desc "Millennium helpers (prebuilt release assets) — scripts/MCP; Go dispatcher when embedded"
   homepage "https://github.com/bolens/millenium-helpers"
-  url "https://github.com/bolens/millenium-helpers/releases/download/v2.6.2/millennium-helpers-linux.tar.gz"
-  sha256 "c077c3f536e751e776fabb329600b18d7452d455a2e2dd1908491332569f4e55"
   license "MIT"
+
+  on_macos do
+    on_arm do
+      url "https://github.com/bolens/millenium-helpers/releases/download/v2.6.2/millennium-helpers-v2.6.2-darwin-arm64.tar.gz"
+      sha256 "c077c3f536e751e776fabb329600b18d7452d455a2e2dd1908491332569f4e55"
+    end
+    on_intel do
+      url "https://github.com/bolens/millenium-helpers/releases/download/v2.6.2/millennium-helpers-v2.6.2-darwin-amd64.tar.gz"
+      sha256 "c077c3f536e751e776fabb329600b18d7452d455a2e2dd1908491332569f4e55"
+    end
+  end
+
+  on_linux do
+    on_arm do
+      url "https://github.com/bolens/millenium-helpers/releases/download/v2.6.2/millennium-helpers-v2.6.2-linux-arm64.tar.gz"
+      sha256 "c077c3f536e751e776fabb329600b18d7452d455a2e2dd1908491332569f4e55"
+    end
+    on_intel do
+      url "https://github.com/bolens/millenium-helpers/releases/download/v2.6.2/millennium-helpers-v2.6.2-linux-amd64.tar.gz"
+      sha256 "c077c3f536e751e776fabb329600b18d7452d455a2e2dd1908491332569f4e55"
+    end
+  end
 
   depends_on "bash"
   depends_on "curl"
@@ -62,7 +82,7 @@ class MillenniumHelpersBin < Formula
 
   def caveats
     <<~EOS
-      This formula installs the published release tarball.
+      This formula installs the published OS/arch release tarball.
       For a from-source build with `go`, use: millennium-helpers
     EOS
   end

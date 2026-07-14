@@ -76,16 +76,30 @@ if [[ ! -f "${SCRIPT_DIR}/scripts/common.sh" ]]; then
         NEEDS_SHA=0
         IS_SOURCE=1
         ;;
-      tag)
-        _tag="$_PIPE_TAG"
-        _tag="${_tag#v}"
-        [[ -n "$_tag" ]] || { echo "Error: --tag required for track=tag" >&2; exit 1; }
-        RELEASE_URL="https://github.com/${HELPERS_REPO}/releases/download/v${_tag}/millennium-helpers-linux.tar.gz"
-        SHA_URL="${RELEASE_URL}.sha256"
-        NEEDS_SHA=1
-        ;;
-      release|*)
-        RELEASE_URL="https://github.com/${HELPERS_REPO}/releases/latest/download/millennium-helpers-linux.tar.gz"
+      tag|release|*)
+        _pipe_arch=amd64
+        case "$(uname -m 2>/dev/null || echo x86_64)" in
+          aarch64 | arm64) _pipe_arch=arm64 ;;
+        esac
+        if [[ "$_PIPE_TRACK" == "tag" ]]; then
+          _tag="$_PIPE_TAG"
+          _tag="${_tag#v}"
+          [[ -n "$_tag" ]] || { echo "Error: --tag required for track=tag" >&2; exit 1; }
+        else
+          _tag="$(
+            curl -fsSL --retry 2 --retry-delay 1 \
+              -H "User-Agent: millennium-helpers" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${HELPERS_REPO}/releases/latest" 2>/dev/null \
+              | python3 -c "import json,sys; print((json.load(sys.stdin).get('tag_name') or '').lstrip('v'))" 2>/dev/null \
+              || true
+          )"
+          [[ -n "$_tag" ]] || {
+            echo "Error: could not resolve latest release tag for ${HELPERS_REPO}" >&2
+            exit 1
+          }
+        fi
+        RELEASE_URL="https://github.com/${HELPERS_REPO}/releases/download/v${_tag}/millennium-helpers-v${_tag}-linux-${_pipe_arch}.tar.gz"
         SHA_URL="${RELEASE_URL}.sha256"
         NEEDS_SHA=1
         ;;

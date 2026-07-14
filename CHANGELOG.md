@@ -33,6 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Unification audit + roadmap docs with feature×OS×test parity matrix and command graduation rule
 
 ### Changed
+- Release CD waits for a broader green CI set (tests, Go, linters, version-sync, manifests, man pages) on the tag SHA before building assets; `skip_ci_gate` is allowed only for `v-draft`
+- Release assets are versioned and OS/arch-split (`millennium-helpers-v{VER}-{os}-{arch}…`); from-source packaging uses controlled `-src.tar.gz` / `-src.zip` (no GitHub autoarchive URLs; no legacy unversioned aliases)
 - AUR-standard naming: plain `millennium-helpers` = tagged from-source; `millennium-helpers-bin` = release assets; Nix default package is from-source
 - Modularization: feature libraries for schedule/theme/upgrade/repair/purge and the top-level `millennium` dispatcher on Linux and Windows; Windows `common.ps1` split into `scripts/windows/lib/*.ps1` (sourced by retained `common.ps1`)
 - Removed thin diag aggregators (`scripts/lib/diag.sh`, `scripts/windows/lib/Diag.ps1`); orchestration lives in `millennium-diag` entrypoints; report API is `DiagReport.ps1`

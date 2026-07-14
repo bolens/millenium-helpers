@@ -10,6 +10,11 @@
 HELPERS_GITHUB_REPO="${HELPERS_GITHUB_REPO:-bolens/millenium-helpers}"
 HELPERS_INSTALL_META_NAME="install-meta.json"
 
+# shellcheck source=scripts/lib/release_assets.sh
+_INSTALL_TRACK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "${_INSTALL_TRACK_DIR}/release_assets.sh"
+
 # Globals set by resolve_helpers_install_track / helpers_install_meta_*:
 # HELPERS_TRACK, HELPERS_TRACK_REF, HELPERS_TRACK_VERSION, HELPERS_TRACK_URL,
 # HELPERS_TRACK_SHA_URL, HELPERS_TRACK_NEEDS_SHA, HELPERS_TRACK_IS_SOURCE_ARCHIVE
@@ -58,15 +63,6 @@ resolve_helpers_install_track() {
   HELPERS_TRACK_NEEDS_SHA=0
   HELPERS_TRACK_IS_SOURCE_ARCHIVE=0
 
-  local asset_linux="millennium-helpers-linux.tar.gz"
-  local asset_win="millennium-helpers-windows.zip"
-  local asset
-  if [[ "$platform" == "windows" ]]; then
-    asset="$asset_win"
-  else
-    asset="$asset_linux"
-  fi
-
   # Explicit URL override wins for download (track still recorded).
   if [[ -n "${MILLENNIUM_HELPERS_RELEASE_URL:-}" ]]; then
     HELPERS_TRACK_URL="$MILLENNIUM_HELPERS_RELEASE_URL"
@@ -89,21 +85,41 @@ resolve_helpers_install_track() {
     return 0
   fi
 
+  helpers_bin_asset_for_version() {
+    local ver="$1"
+    local arch
+    if [[ "$platform" == "windows" ]]; then
+      release_asset_helpers "$ver" windows amd64 zip
+      return 0
+    fi
+    arch="$(release_host_arch)" || return 1
+    # install.sh Unix path uses linux packs (darwin installs typically use Homebrew).
+    release_asset_helpers "$ver" linux "$arch" tar.gz
+  }
+
   case "$track" in
     release)
-      HELPERS_TRACK_REF="latest"
-      HELPERS_TRACK_URL="https://github.com/${HELPERS_GITHUB_REPO}/releases/latest/download/${asset}"
+      local latest_tag asset
+      latest_tag="$(release_fetch_latest_tag "$HELPERS_GITHUB_REPO")" || {
+        echo "error: could not resolve latest GitHub release tag for ${HELPERS_GITHUB_REPO}" >&2
+        return 1
+      }
+      HELPERS_TRACK_REF="$latest_tag"
+      HELPERS_TRACK_VERSION="${latest_tag#v}"
+      asset="$(helpers_bin_asset_for_version "$HELPERS_TRACK_VERSION")" || return 1
+      HELPERS_TRACK_URL="https://github.com/${HELPERS_GITHUB_REPO}/releases/download/${latest_tag}/${asset}"
       HELPERS_TRACK_SHA_URL="${HELPERS_TRACK_URL}.sha256"
       HELPERS_TRACK_NEEDS_SHA=1
       ;;
     tag)
-      local norm
+      local norm asset
       norm="$(helpers_normalize_tag "$tag")" || {
         echo "error: --tag / MILLENNIUM_HELPERS_TAG required for track=tag (got '$tag')" >&2
         return 1
       }
       HELPERS_TRACK_REF="$norm"
       HELPERS_TRACK_VERSION="${norm#v}"
+      asset="$(helpers_bin_asset_for_version "$HELPERS_TRACK_VERSION")" || return 1
       HELPERS_TRACK_URL="https://github.com/${HELPERS_GITHUB_REPO}/releases/download/${norm}/${asset}"
       HELPERS_TRACK_SHA_URL="${HELPERS_TRACK_URL}.sha256"
       HELPERS_TRACK_NEEDS_SHA=1

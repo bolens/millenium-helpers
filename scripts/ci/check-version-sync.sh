@@ -69,7 +69,7 @@ if m:
 m = re.search(r'releases/download/v([0-9][^\"/]+)/', text)
 if m:
     print(m.group(1)); raise SystemExit(0)
-m = re.search(r'archive/refs/tags/v([0-9][^\"/]+)\.tar\.gz', text)
+m = re.search(r'millennium-helpers-v([0-9][^\"/]+)-src\.tar\.gz', text)
 if m:
     print(m.group(1)); raise SystemExit(0)
 print('')
@@ -91,12 +91,12 @@ for AUR_PKGBUILD in packaging/millennium-helpers/PKGBUILD packaging/millennium-h
   [[ "$AUR_PKGVER" == "$VERSION" ]] || fail "Arch $AUR_PKGBUILD pkgver '$AUR_PKGVER' != VERSION '$VERSION'"
 done
 # shellcheck disable=SC2016
-if ! grep -qE 'archive/refs/tags/v(\$\{pkgver\}|\$pkgver|'"${VERSION}"')\.tar\.gz' packaging/millennium-helpers/PKGBUILD; then
-  fail "Arch from-source PKGBUILD missing tag archive URL for v${VERSION}"
+if ! grep -qE 'releases/download/v(\$\{pkgver\}|\$pkgver|'"${VERSION}"')/millennium-helpers-v(\$\{pkgver\}|\$pkgver|'"${VERSION}"')-src\.tar\.gz' packaging/millennium-helpers/PKGBUILD; then
+  fail "Arch from-source PKGBUILD missing -src.tar.gz URL for v${VERSION}"
 fi
 # shellcheck disable=SC2016
-if ! grep -qE 'releases/download/v(\$\{pkgver\}|\$pkgver|'"${VERSION}"')/millennium-helpers-linux\.tar\.gz' packaging/millennium-helpers-bin/PKGBUILD; then
-  fail "Arch -bin PKGBUILD missing trimmed Linux release asset URL for v${VERSION}"
+if ! grep -qE 'releases/download/v(\$\{pkgver\}|\$pkgver|'"${VERSION}"')/millennium-helpers-v(\$\{pkgver\}|\$pkgver|'"${VERSION}"')-linux-amd64\.tar\.gz' packaging/millennium-helpers-bin/PKGBUILD; then
+  fail "Arch -bin PKGBUILD missing linux-amd64 release asset URL for v${VERSION}"
 fi
 bash scripts/ci/sync-stable-srcinfo.sh --check || fail "Arch from-source .SRCINFO out of date (run: bash scripts/ci/sync-stable-srcinfo.sh)"
 bash scripts/ci/sync-bin-srcinfo.sh --check || fail "Arch -bin .SRCINFO out of date (run: bash scripts/ci/sync-bin-srcinfo.sh)"
@@ -147,43 +147,45 @@ version = sys.argv[1]
 errors = []
 
 formula = Path("Formula/millennium-helpers.rb").read_text(encoding="utf-8")
-if f"archive/refs/tags/v{version}.tar.gz" not in formula:
-    errors.append("Formula from-source URL must use GitHub tag archive")
+if f"releases/download/v{version}/millennium-helpers-v{version}-src.tar.gz" not in formula:
+    errors.append("Formula from-source URL must use versioned -src.tar.gz")
 
 formula_bin = Path("Formula/millennium-helpers-bin.rb").read_text(encoding="utf-8")
-if f"releases/download/v{version}/millennium-helpers-linux.tar.gz" not in formula_bin:
-    errors.append("Formula-bin URL must use trimmed Linux release asset")
+if f"releases/download/v{version}/millennium-helpers-v{version}-linux-amd64.tar.gz" not in formula_bin:
+    errors.append("Formula-bin URL must include linux-amd64 release asset")
+if f"releases/download/v{version}/millennium-helpers-v{version}-darwin-arm64.tar.gz" not in formula_bin:
+    errors.append("Formula-bin URL must include darwin-arm64 release asset")
 
 scoop = json.loads(Path("packaging/scoop/millennium-helpers.json").read_text(encoding="utf-8"))
-if f"archive/refs/tags/v{version}.zip" not in str(scoop.get("url", "")):
-    errors.append("Scoop from-source URL must use GitHub tag zip")
+if f"releases/download/v{version}/millennium-helpers-v{version}-src.zip" not in str(scoop.get("url", "")):
+    errors.append("Scoop from-source URL must use versioned -src.zip")
 
 scoop_bin = json.loads(Path("packaging/scoop/millennium-helpers-bin.json").read_text(encoding="utf-8"))
 url = str(scoop_bin.get("url", ""))
-if f"releases/download/v{version}/millennium-helpers-windows.zip" not in url:
-    errors.append("Scoop-bin URL must use trimmed Windows release asset")
+if f"releases/download/v{version}/millennium-helpers-v{version}-windows-amd64.zip" not in url:
+    errors.append("Scoop-bin URL must use windows-amd64 release asset")
 bins = {b[1] if isinstance(b, list) else b for b in scoop_bin.get("bin", [])}
 for required in ("millennium", "millennium-mcp", "millennium-diag"):
     if required not in bins:
         errors.append(f"Scoop-bin missing {required!r}")
 
 installer = Path("packaging/winget/bolens.millenniumhelpers.installer.yaml").read_text(encoding="utf-8")
-if f"releases/download/v{version}/millennium-helpers-windows.zip" not in installer:
-    errors.append("Winget InstallerUrl must use trimmed Windows release asset")
+if f"releases/download/v{version}/millennium-helpers-v{version}-windows-amd64.zip" not in installer:
+    errors.append("Winget InstallerUrl must use windows-amd64 release asset")
 
 pkg = Path("packaging/millennium-helpers/PKGBUILD").read_text(encoding="utf-8")
 if not re.search(
-    rf"archive/refs/tags/v(\$\{{pkgver\}}|\$pkgver|{re.escape(version)})\.tar\.gz",
+    rf"releases/download/v(\$\{{pkgver\}}|\$pkgver|{re.escape(version)})/millennium-helpers-v(\$\{{pkgver\}}|\$pkgver|{re.escape(version)})-src\.tar\.gz",
     pkg,
 ):
-    errors.append("Arch from-source PKGBUILD must use tag archive")
+    errors.append("Arch from-source PKGBUILD must use -src.tar.gz")
 
 pkg_bin = Path("packaging/millennium-helpers-bin/PKGBUILD").read_text(encoding="utf-8")
 if not re.search(
-    rf"releases/download/v(\$\{{pkgver\}}|\$pkgver|{re.escape(version)})/millennium-helpers-linux\.tar\.gz",
+    rf"releases/download/v(\$\{{pkgver\}}|\$pkgver|{re.escape(version)})/millennium-helpers-v(\$\{{pkgver\}}|\$pkgver|{re.escape(version)})-linux-amd64\.tar\.gz",
     pkg_bin,
 ):
-    errors.append("Arch -bin PKGBUILD must use trimmed Linux release asset")
+    errors.append("Arch -bin PKGBUILD must use linux-amd64 release asset")
 
 if errors:
     for err in errors:

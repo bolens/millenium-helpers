@@ -49,7 +49,8 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           $stage = Join-Path $env:TEMP "mh-scoop-stage"
-          $zipPath = Join-Path $env:TEMP "millennium-helpers-windows.zip"
+          $version = (Get-Content VERSION -Raw).Trim()
+          $zipPath = Join-Path $env:TEMP "millennium-helpers-v$version-windows-amd64.zip"
           Remove-Item -Recurse -Force $stage, $zipPath -ErrorAction SilentlyContinue
           New-Item -ItemType Directory -Path (Join-Path $stage "scripts") | Out-Null
           New-Item -ItemType Directory -Path (Join-Path $stage "completions") | Out-Null
@@ -74,8 +75,8 @@ jobs:
 
           # Manifest URL shape check (release asset naming), independent of local install URL.
           $declaredUrl = (Get-Content packaging/scoop/millennium-helpers-bin.json -Raw | ConvertFrom-Json).url
-          if ($declaredUrl -notmatch '/releases/download/v[^/]+/millennium-helpers-windows\.zip$') {
-            throw "Scoop-bin manifest url must be a trimmed Windows release asset, got: $declaredUrl"
+          if ($declaredUrl -notmatch '/releases/download/v[^/]+/millennium-helpers-v[^/]+-windows-amd64\.zip$') {
+            throw "Scoop-bin manifest url must be a versioned windows-amd64 release asset, got: $declaredUrl"
           }
 
           $env:PATH += ";$HOME\scoop\shims"
@@ -143,8 +144,8 @@ jobs:
             Write-Host "Parse OK: $f"
           }
           $install = Get-Content 'packaging\chocolatey\millennium-helpers\tools\chocolateyInstall.ps1' -Raw
-          if ($install -notmatch 'millennium-helpers-windows\.zip') {
-            throw 'chocolateyInstall.ps1 must reference millennium-helpers-windows.zip'
+          if ($install -notmatch 'millennium-helpers-v\$version-windows-amd64\.zip') {
+            throw 'chocolateyInstall.ps1 must reference versioned windows-amd64 zip'
           }
           if ($install -notmatch 'millennium\.exe') {
             throw 'chocolateyInstall.ps1 must prefer millennium.exe when present'

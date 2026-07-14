@@ -97,7 +97,7 @@ jobs:
           PKG_DIR="/home/builduser/millenium-helpers/packaging/${PKG}"
           VERSION="$(tr -d '[:space:]' < VERSION)"
           if [[ "$PKG" == "millennium-helpers-bin" ]]; then
-            URL="https://github.com/bolens/millenium-helpers/releases/download/v${VERSION}/millennium-helpers-linux.tar.gz"
+            URL="https://github.com/bolens/millenium-helpers/releases/download/v${VERSION}/millennium-helpers-v${VERSION}-linux-amd64.tar.gz"
             if ! curl -fsI "$URL" >/dev/null 2>&1; then
               echo "::notice::Release asset not published yet ($URL); skipping makepkg for -bin package"
               echo "namcap + .SRCINFO checks already passed."
@@ -105,9 +105,9 @@ jobs:
             fi
           fi
           if [[ "$PKG" == "millennium-helpers" ]]; then
-            URL="https://github.com/bolens/millenium-helpers/archive/refs/tags/v${VERSION}.tar.gz"
+            URL="https://github.com/bolens/millenium-helpers/releases/download/v${VERSION}/millennium-helpers-v${VERSION}-src.tar.gz"
             if ! curl -fsI "$URL" >/dev/null 2>&1; then
-              echo "::notice::Tag archive not published yet ($URL); skipping makepkg for from-source package"
+              echo "::notice::Source release asset not published yet ($URL); skipping makepkg for from-source package"
               echo "namcap + .SRCINFO checks already passed."
               exit 0
             fi

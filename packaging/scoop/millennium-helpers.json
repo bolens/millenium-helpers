@@ -1,9 +1,9 @@
 {
     "version": "2.6.2",
-    "description": "Millennium helpers (from source tag) \u2014 PowerShell helpers/MCP from the GitHub tag archive.",
+    "description": "Millennium helpers (from source tag) \u2014 PowerShell helpers/MCP from the release source zip.",
     "homepage": "https://github.com/bolens/millenium-helpers",
     "license": "MIT",
-    "url": "https://github.com/bolens/millenium-helpers/archive/refs/tags/v2.6.2.zip",
+    "url": "https://github.com/bolens/millenium-helpers/releases/download/v2.6.2/millennium-helpers-v2.6.2-src.zip",
     "hash": "19c2970cde6ccff90071be6950bd99919dac443c37309e37f2e85084f13d5b00",
     "bin": [
         [
@@ -79,7 +79,7 @@
         "}"
     ],
     "autoupdate": {
-        "url": "https://github.com/bolens/millenium-helpers/archive/refs/tags/v$version.zip",
+        "url": "https://github.com/bolens/millenium-helpers/releases/download/v$version/millennium-helpers-v$version-src.zip",
         "extract_dir": "millenium-helpers-$version"
     },
     "extract_dir": "millenium-helpers-2.6.2"

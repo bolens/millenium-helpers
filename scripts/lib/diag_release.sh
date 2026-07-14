@@ -51,7 +51,9 @@ diag_fetch_release_tarball() {
       local tag_ref="${HELPERS_TRACK_REF:-}"
       [[ -n "$tag_ref" ]] || tag_ref="${LATEST_RELEASE_TAG:-}"
       [[ -n "$tag_ref" ]] || return 1
-      url="https://github.com/${HELPERS_REPO}/releases/download/${tag_ref}/millennium-helpers-linux.tar.gz"
+      local ver="${tag_ref#v}" arch=amd64
+      case "$(uname -m 2>/dev/null || echo x86_64)" in aarch64 | arm64) arch=arm64 ;; esac
+      url="https://github.com/${HELPERS_REPO}/releases/download/${tag_ref}/millennium-helpers-v${ver}-linux-${arch}.tar.gz"
       ;;
     *)
       local tag="${LATEST_RELEASE_TAG:-}"
@@ -60,7 +62,9 @@ diag_fetch_release_tarball() {
         tag="${LATEST_RELEASE_TAG:-}"
       fi
       [[ -n "$tag" ]] || return 1
-      url="https://github.com/${HELPERS_REPO}/releases/download/${tag}/millennium-helpers-linux.tar.gz"
+      local ver="${tag#v}" arch=amd64
+      case "$(uname -m 2>/dev/null || echo x86_64)" in aarch64 | arm64) arch=arm64 ;; esac
+      url="https://github.com/${HELPERS_REPO}/releases/download/${tag}/millennium-helpers-v${ver}-linux-${arch}.tar.gz"
       ;;
   esac
 

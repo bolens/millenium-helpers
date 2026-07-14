@@ -3,6 +3,9 @@ name: "CI: Package Manifests Validation"
 on:
   push:
     branches: [ main ]
+    # Tag pushes always run (GitHub skips path filters for tags) so the
+    # release workflow gate can wait on package-manifests for the tag SHA.
+    tags: [ 'v*' ]
     paths:
       - 'VERSION'
       - 'Formula/**'
@@ -75,14 +78,14 @@ jobs:
 
           jq -e --arg v "$VERSION" '
             .version == $v
-            and (.url | contains("archive/refs/tags/v\($v).zip"))
+            and (.url | endswith("/releases/download/v\($v)/millennium-helpers-v\($v)-src.zip"))
             and .extract_dir == ("millenium-helpers-" + $v)
           ' "$src" >/dev/null
 
           jq -e --arg v "$VERSION" '
             .version == $v
-            and (.url | endswith("/releases/download/v\($v)/millennium-helpers-windows.zip"))
-            and (.autoupdate.hash.url | endswith("millennium-helpers-windows.zip.sha256"))
+            and (.url | endswith("/releases/download/v\($v)/millennium-helpers-v\($v)-windows-amd64.zip"))
+            and (.autoupdate.hash.url | endswith("millennium-helpers-v\($v)-windows-amd64.zip.sha256"))
           ' "$bin" >/dev/null
 
           jq -e '
@@ -160,7 +163,9 @@ jobs:
               raise SystemExit(f"nuspec version {found!r} != {ver!r}")
           print(f"nuspec OK version={found}")
           PY
-          grep -q 'millennium-helpers-windows.zip' "$install"
+          # Match PowerShell literal $version in chocolateyInstall.ps1
+          # shellcheck disable=SC2016
+          grep -qE 'millennium-helpers-v\$version-windows-amd64\.zip' "$install"
           grep -qE "\\\$version\s*=\s*'${VERSION}'" "$install"
           grep -q 'millennium.exe' "$install"
           echo "Chocolatey package OK"
@@ -190,8 +195,8 @@ jobs:
             grep -qE "^Version:[[:space:]]*${VERSION}$" "$spec"
             grep -qE '^Source0:' "$spec"
           done
-          grep -q 'archive/refs/tags/v%{version}.tar.gz' packaging/rpm/millennium-helpers.spec
-          grep -q 'millennium-helpers-linux.tar.gz' packaging/rpm/millennium-helpers-bin.spec
+          grep -q 'millennium-helpers-v%{version}-src.tar.gz' packaging/rpm/millennium-helpers.spec
+          grep -q 'millennium-helpers-v%{version}-linux-amd64.tar.gz' packaging/rpm/millennium-helpers-bin.spec
           echo "deb/rpm recipe metadata OK"
 
   deb-build:

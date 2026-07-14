@@ -21,7 +21,7 @@ install=millennium-helpers.install
 backup=('etc/sudoers.d/millennium-helpers')
 # GitHub source archives use the repo name (millenium-helpers) as the top-level directory.
 _srcdir="millenium-helpers-${pkgver}"
-source=("${url}/archive/refs/tags/v${pkgver}.tar.gz"
+source=("${url}/releases/download/v${pkgver}/millennium-helpers-v${pkgver}-src.tar.gz"
         "millennium-helpers.sudoers")
 sha256sums=('65e4c76384f79f5e75838809a30369e8dd5150d7c61bcb6b093d05544ad2e419'
             'd2a3e23decbd8d3e8ec59919f3bc244be21b9a1f6fa5e70ddd039243b7a87c9d')

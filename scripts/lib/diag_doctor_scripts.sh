@@ -108,7 +108,9 @@ if [[ "$SCRIPTS_UP_TO_DATE" == false ]]; then
         case "$meta_track" in
           tag)
             meta_ver="${meta_ref#v}"
-            meta_url="https://github.com/bolens/millenium-helpers/releases/download/${meta_ref}/millennium-helpers-linux.tar.gz"
+            _meta_arch=amd64
+            case "$(uname -m 2>/dev/null || echo x86_64)" in aarch64 | arm64) _meta_arch=arm64 ;; esac
+            meta_url="https://github.com/bolens/millenium-helpers/releases/download/${meta_ref}/millennium-helpers-v${meta_ver}-linux-${_meta_arch}.tar.gz"
             ;;
           main)
             meta_ref="${meta_ref:-main}"
@@ -118,7 +120,9 @@ if [[ "$SCRIPTS_UP_TO_DATE" == false ]]; then
             meta_ref="${LATEST_RELEASE_TAG:-${meta_ref:-latest}}"
             meta_ver="${LATEST_RELEASE_VERSION:-${meta_ref#v}}"
             if [[ -n "${LATEST_RELEASE_TAG:-}" ]]; then
-              meta_url="https://github.com/bolens/millenium-helpers/releases/download/${LATEST_RELEASE_TAG}/millennium-helpers-linux.tar.gz"
+              _meta_arch=amd64
+              case "$(uname -m 2>/dev/null || echo x86_64)" in aarch64 | arm64) _meta_arch=arm64 ;; esac
+              meta_url="https://github.com/bolens/millenium-helpers/releases/download/${LATEST_RELEASE_TAG}/millennium-helpers-v${meta_ver}-linux-${_meta_arch}.tar.gz"
             fi
             ;;
         esac

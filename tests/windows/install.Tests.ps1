@@ -103,16 +103,23 @@ Describe "Windows Installer" {
 
     Context "Standalone / Piped Installer Mode" {
         BeforeAll {
+            Mock Invoke-RestMethod {
+                param($Uri, $Headers, $UseBasicParsing)
+                if ($Uri -like "*api.github.com/*/releases/latest*") {
+                    return [pscustomobject]@{ tag_name = 'v2.6.2' }
+                }
+                throw "Unexpected Invoke-RestMethod URI: $Uri"
+            }
             Mock Invoke-WebRequest {
                 param($Uri, $OutFile, $UseBasicParsing)
                 if (-not $OutFile) { return }
                 if ($Uri -like "*.sha256*") {
                     $zipCandidate = $OutFile -replace '\.sha256$', ''
                     if (!(Test-Path -Path $zipCandidate -PathType Leaf)) {
-                        $zipCandidate = Join-Path -Path (Split-Path -Parent $OutFile) -ChildPath "millennium-helpers-windows.zip"
+                        $zipCandidate = Join-Path -Path (Split-Path -Parent $OutFile) -ChildPath "millennium-helpers-v2.6.2-windows-amd64.zip"
                     }
                     $hash = (Get-FileHash -Path $zipCandidate -Algorithm SHA256).Hash.ToLowerInvariant()
-                    Set-Content -Path $OutFile -Value "$hash  millennium-helpers-windows.zip" -Force
+                    Set-Content -Path $OutFile -Value "$hash  millennium-helpers-v2.6.2-windows-amd64.zip" -Force
                 } else {
                     Set-Content -Path $OutFile -Value "fake-zip-content" -Force
                 }

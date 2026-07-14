@@ -24,12 +24,22 @@ VERSION="${VERSION#v}"
 }
 
 REPO="${REPO:-bolens/millenium-helpers}"
-ASSET_TGZ="millennium-helpers-linux.tar.gz"
-ASSET_ZIP="millennium-helpers-windows.zip"
-TAG_URL_TGZ="https://github.com/${REPO}/releases/download/v${VERSION}/${ASSET_TGZ}"
-TAG_URL_ZIP="https://github.com/${REPO}/releases/download/v${VERSION}/${ASSET_ZIP}"
-SRC_TAR_URL="https://github.com/${REPO}/archive/refs/tags/v${VERSION}.tar.gz"
-SRC_ZIP_URL="https://github.com/${REPO}/archive/refs/tags/v${VERSION}.zip"
+# shellcheck source=scripts/lib/release_assets.sh
+source "$ROOT/scripts/lib/release_assets.sh"
+ASSET_LINUX_AMD64="$(release_asset_helpers "$VERSION" linux amd64 tar.gz)"
+ASSET_LINUX_ARM64="$(release_asset_helpers "$VERSION" linux arm64 tar.gz)"
+ASSET_DARWIN_AMD64="$(release_asset_helpers "$VERSION" darwin amd64 tar.gz)"
+ASSET_DARWIN_ARM64="$(release_asset_helpers "$VERSION" darwin arm64 tar.gz)"
+ASSET_WINDOWS="$(release_asset_helpers "$VERSION" windows amd64 zip)"
+ASSET_SRC_TAR="$(release_asset_src "$VERSION" tar.gz)"
+ASSET_SRC_ZIP="$(release_asset_src "$VERSION" zip)"
+TAG_URL_LINUX_AMD64="https://github.com/${REPO}/releases/download/v${VERSION}/${ASSET_LINUX_AMD64}"
+TAG_URL_LINUX_ARM64="https://github.com/${REPO}/releases/download/v${VERSION}/${ASSET_LINUX_ARM64}"
+TAG_URL_DARWIN_AMD64="https://github.com/${REPO}/releases/download/v${VERSION}/${ASSET_DARWIN_AMD64}"
+TAG_URL_DARWIN_ARM64="https://github.com/${REPO}/releases/download/v${VERSION}/${ASSET_DARWIN_ARM64}"
+TAG_URL_ZIP="https://github.com/${REPO}/releases/download/v${VERSION}/${ASSET_WINDOWS}"
+SRC_TAR_URL="https://github.com/${REPO}/releases/download/v${VERSION}/${ASSET_SRC_TAR}"
+SRC_ZIP_URL="https://github.com/${REPO}/releases/download/v${VERSION}/${ASSET_SRC_ZIP}"
 TODAY="$(date -u +%Y-%m-%d)"
 
 echo "$VERSION" > VERSION
@@ -71,22 +81,40 @@ path.write_text(text, encoding="utf-8")
 print(f"Updated {path}")
 PY
 
-# --- Homebrew -bin (release tarball URL; keep sha256) ---
-python3 - "$VERSION" "$TAG_URL_TGZ" <<'PY'
+# --- Homebrew -bin (multi OS/arch URLs; keep sha256s) ---
+python3 - \
+  "$TAG_URL_DARWIN_ARM64" \
+  "$TAG_URL_DARWIN_AMD64" \
+  "$TAG_URL_LINUX_ARM64" \
+  "$TAG_URL_LINUX_AMD64" <<'PY'
 import re
 import sys
 from pathlib import Path
 
-version, url = sys.argv[1], sys.argv[2]
+urls = sys.argv[1:]
 path = Path("Formula/millennium-helpers-bin.rb")
 text = path.read_text(encoding="utf-8")
-text = re.sub(r'url\s+"https://github\.com/[^"]+"', f'url "{url}"', text, count=1)
-text = re.sub(r'^\s*version\s+"[^"]+"\n', '', text, count=1, flags=re.M)
-path.write_text(text, encoding="utf-8")
+parts: list[str] = []
+pos = 0
+idx = 0
+pattern = re.compile(
+    r'(url\s+")https://github\.com/[^"]+("\s*\n\s*sha256\s+"[0-9a-fA-F]{64}")'
+)
+for m in pattern.finditer(text):
+    if idx >= len(urls):
+        break
+    parts.append(text[pos:m.start()])
+    parts.append(f'{m.group(1)}{urls[idx]}{m.group(2)}')
+    pos = m.end()
+    idx += 1
+parts.append(text[pos:])
+if idx != len(urls):
+    raise SystemExit(f"error: expected {len(urls)} url/sha pairs in Formula-bin, found {idx}")
+path.write_text("".join(parts), encoding="utf-8")
 print(f"Updated {path}")
 PY
 
-# --- Scoop from-source (tag zip) ---
+# --- Scoop from-source (-src.zip) ---
 python3 - "$VERSION" "$SRC_ZIP_URL" <<'PY'
 import json
 import sys
@@ -99,7 +127,10 @@ data["version"] = version
 data["url"] = url
 data["extract_dir"] = f"millenium-helpers-{version}"
 if "autoupdate" in data:
-    data["autoupdate"]["url"] = "https://github.com/bolens/millenium-helpers/archive/refs/tags/v$version.zip"
+    data["autoupdate"]["url"] = (
+        "https://github.com/bolens/millenium-helpers/releases/download/"
+        "v$version/millennium-helpers-v$version-src.zip"
+    )
     data["autoupdate"]["extract_dir"] = "millenium-helpers-$version"
 path.write_text(json.dumps(data, indent=4) + "\n", encoding="utf-8")
 print(f"Updated {path}")
@@ -116,6 +147,17 @@ path = Path("packaging/scoop/millennium-helpers-bin.json")
 data = json.loads(path.read_text(encoding="utf-8"))
 data["version"] = version
 data["url"] = url
+if "autoupdate" in data:
+    data["autoupdate"]["url"] = (
+        "https://github.com/bolens/millenium-helpers/releases/download/"
+        "v$version/millennium-helpers-v$version-windows-amd64.zip"
+    )
+    data["autoupdate"]["hash"] = {
+        "url": (
+            "https://github.com/bolens/millenium-helpers/releases/download/"
+            "v$version/millennium-helpers-v$version-windows-amd64.zip.sha256"
+        )
+    }
 path.write_text(json.dumps(data, indent=4) + "\n", encoding="utf-8")
 print(f"Updated {path}")
 PY

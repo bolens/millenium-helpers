@@ -67,13 +67,15 @@ function Get-ReleaseZipExtract {
         'tag' {
             $tag = if ($script:HelpersTrackRef) { $script:HelpersTrackRef } else { $script:LatestReleaseTag }
             if (-not $tag) { Invoke-DiagReleaseCleanup; return $false }
-            $url = "https://github.com/bolens/millenium-helpers/releases/download/$tag/millennium-helpers-windows.zip"
+            $ver = $tag.TrimStart('v')
+            $url = "https://github.com/bolens/millenium-helpers/releases/download/$tag/millennium-helpers-v$ver-windows-amd64.zip"
         }
         default {
             $tag = if ($script:LatestReleaseTag) { $script:LatestReleaseTag } else { '' }
             if (-not $tag) { Get-LatestReleaseTag; $tag = $script:LatestReleaseTag }
             if (-not $tag) { Invoke-DiagReleaseCleanup; return $false }
-            $url = "https://github.com/bolens/millenium-helpers/releases/download/$tag/millennium-helpers-windows.zip"
+            $ver = $tag.TrimStart('v')
+            $url = "https://github.com/bolens/millenium-helpers/releases/download/$tag/millennium-helpers-v$ver-windows-amd64.zip"
         }
     }
 

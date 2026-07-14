@@ -39,7 +39,7 @@ pkgrel="$(grep -E '^pkgrel=' "$PKGBUILD" | head -1 | cut -d= -f2-)"
   exit 1
 }
 
-# First sha256sums entry is the GitHub tag source archive.
+# First sha256sums entry is the controlled -src.tar.gz release asset.
 tarball_sha="$(python3 - "$PKGBUILD" <<'PY'
 import re, sys
 text = open(sys.argv[1], encoding="utf-8").read()
@@ -48,7 +48,7 @@ print(m.group(1).lower() if m else "")
 PY
 )"
 
-expected_source="https://github.com/bolens/millenium-helpers/archive/refs/tags/v${pkgver}.tar.gz"
+expected_source="https://github.com/bolens/millenium-helpers/releases/download/v${pkgver}/millennium-helpers-v${pkgver}-src.tar.gz"
 
 srcinfo_stale() {
   [[ -f "$SRCINFO" ]] || return 0
@@ -102,11 +102,18 @@ info = Path(path).read_text(encoding="utf-8")
 info = re.sub(r"(?m)^(\tpkgver = ).*$", rf"\g<1>{pkgver}", info, count=1)
 info = re.sub(r"(?m)^(\tpkgrel = ).*$", rf"\g<1>{pkgrel}", info, count=1)
 info = re.sub(
-    r"(?m)^(\tsource = https://github\.com/.+/archive/refs/tags/)v[^/]+(\.tar\.gz)$",
-    rf"\g<1>v{pkgver}\g<2>",
+    r"(?m)^(\tsource = https://github\.com/.+/releases/download/)v[^/]+(/millennium-helpers-v)[^/]+(-src\.tar\.gz)$",
+    rf"\g<1>v{pkgver}\g<2>{pkgver}\g<3>",
     info,
     count=1,
 )
+if f"source = {source}" not in info:
+    info = re.sub(
+        r"(?m)^(\tsource = )https://github\.com/.+$",
+        rf"\g<1>{source}",
+        info,
+        count=1,
+    )
 if sha:
     info = re.sub(
         r"(?m)^(\tsha256sums = )[0-9a-fA-F]{64}$",

@@ -12,11 +12,11 @@
         pkgs = import nixpkgs { inherit system; };
         releaseInfo = import ./nix/release-info.nix;
 
-        # From-source tagged release (default): build Go dispatcher from GitHub tag archive.
+        # From-source tagged release (default): build Go from controlled -src.tar.gz.
         millennium-helpers = pkgs.callPackage ./nix/default.nix {
           version = releaseInfo.version;
           src = pkgs.fetchurl {
-            url = "https://github.com/bolens/millenium-helpers/archive/refs/tags/v${releaseInfo.version}.tar.gz";
+            url = "https://github.com/bolens/millenium-helpers/releases/download/v${releaseInfo.version}/millennium-helpers-v${releaseInfo.version}-src.tar.gz";
             hash = releaseInfo.srcGitHash;
           };
           buildGoDispatcher = true;
@@ -27,7 +27,7 @@
           pname = "millennium-helpers-bin";
           version = releaseInfo.version;
           src = pkgs.fetchurl {
-            url = "https://github.com/bolens/millenium-helpers/releases/download/v${releaseInfo.version}/millennium-helpers-linux.tar.gz";
+            url = "https://github.com/bolens/millenium-helpers/releases/download/v${releaseInfo.version}/millennium-helpers-v${releaseInfo.version}-linux-amd64.tar.gz";
             hash = releaseInfo.srcAssetHash or releaseInfo.srcHash;
           };
           unpackFlat = true;
