@@ -22,6 +22,15 @@ see [security_troubleshooting.md](security_troubleshooting.md). Licensing:
 
 **Helpers track vs client channel:** MCP `channel` arguments always mean the Millennium **client** `update_channel` (`stable` / `beta` / `main`). Helpers install track (`release` / `main` / `tag`) is chosen at install time (`install.sh --track`, `install.ps1 -Track`) and is not an MCP tool parameter.
 
+**Safety gates (server-side):**
+- `action` / `channel` values are allow-listed independently of the JSON schema (clients can send arbitrary strings)
+- `theme` / `rollback` strings are character-class validated; path traversal (`..`) is refused
+- `millennium_purge` requires `confirm=true` (or `dry_run=true`)
+- Elevated Windows runs use Base64 `-EncodedCommand` + `-File` argument arrays (no shell `ArgumentList` string interpolation)
+- Internal schedule hooks `pre-update` / `post-update` are not exposed as MCP actions
+
+Doctor mode (`millennium_diag` with `doctor=true`) escalates and may rewrite helpers; overwriting root-owned scripts still requires the underlying CLI `--yes` confirmation path.
+
 ---
 
 ## Configuration & Registration
