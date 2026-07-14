@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"runtime"
 	"strings"
 
 	"github.com/bolens/millenium-helpers/internal/config"
@@ -31,7 +30,7 @@ func run(args []string) int {
 
 Native: version/help, schedule config/status/enable/disable, theme mutate,
 diag report/--json/--share/logs/doctor --dry-run, upgrade download+SHA+install
-(+ sudo handoff on Linux) and --rollback when writable, purge (Unix live),
+(+ sudo handoff on Linux) and --rollback when writable, purge (Unix+Windows),
 repair user-path. Live doctor, schedule setup, --follow still legacy
 (see docs/unification-roadmap.md).
 
@@ -340,7 +339,7 @@ func filterFileArgs(orig []string) []string {
 func newPurgeCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:                "purge",
-		Short:              "Purge Millennium (native dry-run + live Unix; Windows live legacy)",
+		Short:              "Purge Millennium (native dry-run + live Unix/Windows)",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
 			if useLegacy() {
@@ -358,16 +357,7 @@ func newPurgeCmd() *cobra.Command {
 				os.Exit(0)
 				return nil
 			}
-			if dry {
-				os.Exit(purge.RunDryRunCLI())
-				return nil
-			}
-			// Windows live purge stays on PowerShell (multi-path / Task Scheduler cleanup).
-			if runtime.GOOS == "windows" {
-				os.Exit(legacy.RunLegacy("purge", a))
-				return nil
-			}
-			os.Exit(purge.RunCLI(false, yes, quiet))
+			os.Exit(purge.RunCLI(dry, yes, quiet))
 			return nil
 		},
 	}

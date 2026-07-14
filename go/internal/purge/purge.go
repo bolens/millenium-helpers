@@ -21,6 +21,9 @@ type Action struct {
 // Plan builds a dry-run plan of Millennium removal targets.
 func Plan() []Action {
 	var out []Action
+	if runtime.GOOS == "windows" {
+		return planWindows()
+	}
 	for _, steam := range discoverSteamDirs() {
 		for _, rel := range []struct {
 			rel  string
@@ -39,11 +42,14 @@ func Plan() []Action {
 			out = append(out, Action{Path: cache, Kind: "htmlcache", Detail: "clear contents"})
 		}
 	}
-	if runtime.GOOS != "windows" {
-		sys := "/usr/lib/millennium"
-		if st, err := os.Stat(sys); err == nil && st.IsDir() {
-			out = append(out, Action{Path: sys, Kind: "system_dir", Detail: "remove tree"})
-		}
+	sys := "/usr/lib/millennium"
+	if d := os.Getenv("MOCK_LIB_DIR"); d != "" {
+		sys = filepath.Join(d, "millennium")
+	} else if d := os.Getenv("MILLENNIUM_LIB_DIR"); d != "" {
+		sys = filepath.Join(d, "millennium")
+	}
+	if st, err := os.Stat(sys); err == nil && st.IsDir() {
+		out = append(out, Action{Path: sys, Kind: "system_dir", Detail: "remove tree"})
 	}
 	return out
 }
@@ -116,6 +122,10 @@ func Apply(actions []Action) error {
 				}
 			}
 			fmt.Printf("Clearing Steam htmlcache: %s\n", a.Path)
+		case "scheduled_task":
+			if err := applyWindowsExtra(a); err != nil {
+				return err
+			}
 		default:
 			fmt.Printf("Removing (%s): %s\n", a.Kind, a.Path)
 			if err := os.RemoveAll(a.Path); err != nil {
@@ -148,9 +158,15 @@ func ConfirmOrRefuse(yes bool, stdin *os.File) error {
 	return nil
 }
 
-// DisableSchedulerBestEffort runs millennium-schedule disable when available.
+// DisableSchedulerBestEffort runs schedule disable when available.
 func DisableSchedulerBestEffort() {
 	fmt.Println("Disabling Millennium auto-update scheduler (if configured)...")
+	if exe, err := os.Executable(); err == nil && exe != "" {
+		cmd := execCommand(exe, "schedule", "disable", "-q")
+		if cmd.Run() == nil {
+			return
+		}
+	}
 	path, err := execLookPath("millennium-schedule")
 	if err != nil {
 		return
@@ -190,16 +206,19 @@ func ParseFlags(args []string) (dryRun, yes, quiet, help bool, err error) {
 	return dryRun, yes, quiet, help, nil
 }
 
-// RunCLI runs dry-run or live native purge (Unix). Windows live should stay on legacy.
+// RunCLI runs dry-run or live native purge (Unix + Windows).
 func RunCLI(dryRun, yes, quiet bool) int {
-	if runtime.GOOS == "windows" && !dryRun {
-		fmt.Fprintln(os.Stderr, "Error: native live purge on Windows is not implemented; use legacy or MILLENNIUM_LEGACY=1.")
-		return 1
-	}
 	actions := Plan()
 	if dryRun {
 		fmt.Print(FormatPlan(actions))
 		return 0
+	}
+	if runtime.GOOS == "windows" {
+		steam := theme.FindSteamDir()
+		if steam == "" && len(actions) == 0 {
+			fmt.Fprintln(os.Stderr, "Error: Steam installation path could not be resolved.")
+			return 1
+		}
 	}
 	if err := ConfirmOrRefuse(yes, os.Stdin); err != nil {
 		msg := err.Error()
@@ -210,17 +229,32 @@ func RunCLI(dryRun, yes, quiet bool) int {
 		fmt.Fprintln(os.Stderr, msg)
 		return 1
 	}
+	relaunch, err := ensureSteamClosedForPurge(yes)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		return 1
+	}
 	DisableSchedulerBestEffort()
 	fmt.Println("Purging Millennium hooks and files...")
 	if err := Apply(actions); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return 1
 	}
+	if relaunch {
+		relaunchSteamBestEffort()
+	}
 	if !quiet {
 		fmt.Println("Millennium has been successfully purged from Steam!")
-		fmt.Println("Tip: remove helper tools with sudo ./install.sh uninstall if you no longer need them.")
+		fmt.Println(successTip())
 	}
 	return 0
+}
+
+func successTip() string {
+	if runtime.GOOS == "windows" {
+		return "Tip: remove helper tools with .\\install.ps1 uninstall if you no longer need them.\n     Scheduler tip: millennium schedule status should now report disabled."
+	}
+	return "Tip: remove helper tools with sudo ./install.sh uninstall if you no longer need them."
 }
 
 // RunDryRunCLI prints a native purge plan.

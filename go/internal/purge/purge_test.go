@@ -3,10 +3,14 @@ package purge
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
 func TestPlanFindsHook(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("unix hook plan")
+	}
 	root := t.TempDir()
 	steam := filepath.Join(root, "Steam")
 	hook := filepath.Join(steam, "ubuntu12_32", "libXtst.so.6")
