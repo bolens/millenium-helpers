@@ -19,8 +19,8 @@ Project: [README](../README.md). Index: [README.md](README.md).
 | Man pages | [`man/`](../man/) | mandoc |
 | Packaging | Formula, Nix, Arch, Scoop/Winget, deb/rpm/Chocolatey | various |
 
-Rough size: ~13 Bash lib modules, ~12 PowerShell lib modules (schedule/theme/purge/diag
-feature libs peeled; upgrade/repair/shared remain); Go owns MCP stdio (~Python escape hatch), 8 man pages, 12
+Rough size: ~12 Bash lib modules, ~11 PowerShell lib modules (schedule/theme/purge/diag/repair
+feature libs peeled; upgrade/shared + dispatcher remain); Go owns MCP stdio (~Python escape hatch), 8 man pages, 12
 completion files. CLI surface is gated by
 [`spec/cli-contract.yaml`](../spec/cli-contract.yaml); remaining dual-shell
 parity gaps are tracked in the matrix below
@@ -95,7 +95,7 @@ Tests: Bash behavioral/unit under `tests/` · Pester under `tests/windows/`.
 | `upgrade` download/verify/install | Y | Y | **Native when writable**; long-name thin-wrap (6v); Linux non-root → `sudo` | `test_upgrade` + Go | Go thin-wrap | Dual libs for `MILLENNIUM_LEGACY=1` install handoff |
 | `upgrade --rollback` apply | Y | Y | **Graduated** when writable (6u); list Graduated 6q | `test_upgrade` + Go | Go | Sudo handoff when unwritable |
 | `upgrade --file` / `--sha256` | Y | Y | **Graduated** verify (6t) + dry-run (6s) | Y + Go | Y | Fail-closed SHA before install |
-| `repair` | Y | Y | **Partial** — user-path live; hook/binary reinstall legacy | `test_repair` + Go | `millennium-repair` + Go | **Blocked:** make hooks native before peel |
+| `repair` | Y | Y | **Graduated/peeled** (6ab–6ad) | `test_repair` + Go thin-wrap | Go thin-wrap | Dual libs removed |
 | `purge` | Y | Y | **Graduated/peeled** (6p smoke + 6r peel) | `test_purge` + Go thin-wrap | Go thin-wrap | Dual libs removed |
 | `upgrade --all-users` | Y | — | Linux/macOS only | P | — | Keep contract-marked |
 | `schedule` (all commands) | Y | Y* | **Graduated/peeled** (6c–6o) | Go + thin-wrap | Go + thin-wrap | *hooks Unix-only |
