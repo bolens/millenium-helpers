@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-func runEnable(channel string, useCron, dryRun, quiet bool) int {
+func runEnable(channel string, useCron, dryRun, quiet bool, forceScope SystemdScope) int {
 	upgrade := ResolvePackagedHelper("millennium-upgrade")
 	if !dryRun {
 		if _, err := os.Stat(upgrade); err != nil {
@@ -26,15 +26,18 @@ func runEnable(channel string, useCron, dryRun, quiet bool) int {
 	}
 	theme := ResolvePackagedHelper("millennium-theme")
 	sched := ResolvePackagedHelper("millennium-schedule")
-	state := StateDir()
 
 	if useCron {
+		tu, _ := ResolveTargetUser()
+		state := StateDirForUser(tu)
 		return enableCron(channel, upgrade, theme, sched, state, dryRun, quiet)
 	}
 	if runtime.GOOS == "darwin" {
+		tu, _ := ResolveTargetUser()
+		state := StateDirForUser(tu)
 		return enableLaunchd(channel, upgrade, theme, sched, state, dryRun, quiet)
 	}
-	return enableSystemd(channel, upgrade, theme, sched, state, dryRun, quiet)
+	return enableSystemd(channel, upgrade, theme, sched, dryRun, quiet, forceScope)
 }
 
 func runDisable(dryRun, quiet bool) int {
@@ -42,7 +45,7 @@ func runDisable(dryRun, quiet bool) int {
 	if runtime.GOOS == "darwin" {
 		code = disableLaunchd(dryRun, quiet)
 	} else {
-		code = disableSystemd(dryRun, quiet)
+		code = disableSystemdAll(dryRun, quiet)
 	}
 	if c := disableCron(dryRun, quiet); c != 0 && code == 0 {
 		code = c
@@ -50,91 +53,180 @@ func runDisable(dryRun, quiet bool) int {
 	return code
 }
 
-func enableSystemd(channel, upgrade, theme, sched, state string, dryRun, quiet bool) int {
-	svcDir := UserSystemdDir()
-	svc := ServicePath()
-	tim := TimerPath()
+func enableSystemd(channel, upgrade, theme, sched string, dryRun, quiet bool, forceScope SystemdScope) int {
+	scope, err := ResolveSystemdScope(forceScope)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		return 1
+	}
+	tu, err := ResolveTargetUser()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		return 1
+	}
+	state := StateDirForUser(tu)
+	svcBody := BuildSystemdServiceUnit(channel, state, sched, upgrade, theme, scope, tu)
+	timBody := BuildSystemdTimerUnit()
 
-	svcBody := fmt.Sprintf(`[Unit]
-Description=Auto-update Millennium client (%s) and themes
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=oneshot
-ExecStart=/bin/bash -c 'mkdir -p "%s" && { MILLENNIUM_SCHEDULER=1 "%s" pre-update && /usr/bin/sudo -n "%s" --channel "%s" --quiet && "%s" update --quiet && MILLENNIUM_SCHEDULER=1 "%s" post-update; } >> "%s/updater.log" 2>&1'
-`, channel, state, sched, upgrade, channel, theme, sched, state)
-
-	timBody := `[Unit]
-Description=Trigger Millennium auto-update daily
-
-[Timer]
-OnCalendar=daily
-Persistent=true
-RandomizedDelaySec=1h
-
-[Install]
-WantedBy=timers.target
-`
+	var svcPath, timPath, svcDir string
+	if scope == ScopeSystem {
+		svcDir = SystemSystemdDir()
+		svcPath = SystemServicePath()
+		timPath = SystemTimerPath()
+	} else {
+		svcDir = UserSystemdDirFor(tu)
+		svcPath = ServicePathFor(tu)
+		timPath = TimerPathFor(tu)
+	}
 
 	if dryRun {
-		fmt.Printf("[DRY RUN] Would write service: %s\n", svc)
-		fmt.Printf("[DRY RUN] Would write timer: %s\n", tim)
-		fmt.Println("[DRY RUN] Would run: systemctl --user daemon-reload")
-		fmt.Printf("[DRY RUN] Would run: systemctl --user enable --now %s\n", TimerName)
+		fmt.Printf("[DRY RUN] Would use systemd %s scope\n", scope)
+		fmt.Printf("[DRY RUN] Would write service: %s\n", svcPath)
+		fmt.Printf("[DRY RUN] Would write timer: %s\n", timPath)
+		if scope == ScopeSystem {
+			fmt.Printf("[DRY RUN] Would disable conflicting user units (if any)\n")
+			fmt.Println("[DRY RUN] Would run: systemctl daemon-reload")
+			fmt.Printf("[DRY RUN] Would run: systemctl enable --now %s\n", TimerName)
+		} else {
+			fmt.Printf("[DRY RUN] Would disable conflicting system units (if privileged)\n")
+			fmt.Println("[DRY RUN] Would run: systemctl --user daemon-reload")
+			fmt.Printf("[DRY RUN] Would run: systemctl --user enable --now %s\n", TimerName)
+		}
 		fmt.Println("Dry run: Timer enablement simulated successfully.")
 		return 0
+	}
+
+	// Prefer a single scope: clear the other before writing.
+	if scope == ScopeSystem {
+		_ = removeUserSystemdUnits(tu, false)
+	} else {
+		if CanUseSystemSystemd() {
+			_ = removeSystemSystemdUnits(false)
+		} else if _, err := os.Stat(SystemTimerPath()); err == nil {
+			fmt.Fprintln(os.Stderr, "Warning: system timer units exist under /etc/systemd/system but this process cannot remove them.")
+			fmt.Fprintln(os.Stderr, "Re-run with sudo to migrate fully to a user timer, or use: sudo millennium schedule enable --system")
+		}
 	}
 
 	if err := os.MkdirAll(svcDir, 0o755); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return 1
 	}
-	fmt.Println("Creating systemd user service file...")
-	if err := os.WriteFile(svc, []byte(svcBody), 0o644); err != nil {
+	fmt.Printf("Creating systemd %s service file...\n", scope)
+	if err := os.WriteFile(svcPath, []byte(svcBody), 0o644); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: write service: %v\n", err)
 		return 1
 	}
-	fmt.Println("Creating systemd user timer file...")
-	if err := os.WriteFile(tim, []byte(timBody), 0o644); err != nil {
+	fmt.Printf("Creating systemd %s timer file...\n", scope)
+	if err := os.WriteFile(timPath, []byte(timBody), 0o644); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: write timer: %v\n", err)
 		return 1
 	}
-	fmt.Println("Reloading systemd user daemon...")
-	_ = exec.Command("systemctl", "--user", "daemon-reload").Run()
+	if scope == ScopeUser && os.Geteuid() == 0 && tu.Name != "root" {
+		uid := parseUint(tu.UID)
+		gid := parseUint(tu.GID)
+		_ = os.Chown(svcDir, uid, gid)
+		_ = os.Chown(svcPath, uid, gid)
+		_ = os.Chown(timPath, uid, gid)
+	}
+
+	fmt.Printf("Reloading systemd %s daemon...\n", scope)
+	_ = systemctlRun(scope, "daemon-reload")
 	fmt.Printf("Enabling and starting %s...\n", TimerName)
-	if err := exec.Command("systemctl", "--user", "enable", "--now", TimerName).Run(); err != nil {
+	if err := systemctlRun(scope, "enable", "--now", TimerName); err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: systemctl enable failed: %v\n", err)
 	}
 	if !quiet {
-		fmt.Printf("Millennium auto-update user timer (%s) has been enabled!\n", channel)
+		fmt.Printf("Millennium auto-update %s timer (%s) has been enabled!\n", scope, channel)
 		fmt.Println("It will run daily with a randomized delay of up to 1 hour.")
-		warnSudoers()
+		warnSudoers(tu)
+		if scope == ScopeUser {
+			fmt.Printf("\nSystemd User Lingering (Optional):\nTo allow user timers when logged out: loginctl enable-linger %s\n", tu.Name)
+		}
 		fmt.Println("\nYou can check the status of the timer with: millennium schedule status")
 	}
 	return 0
 }
 
-func disableSystemd(dryRun, quiet bool) int {
-	fmt.Println("Disabling and stopping Millennium update user timer and service...")
+func disableSystemdAll(dryRun, quiet bool) int {
+	tu, err := ResolveTargetUser()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		return 1
+	}
+	fmt.Println("Disabling Millennium update systemd timers (system and user scopes)...")
 	if dryRun {
-		fmt.Printf("[DRY RUN] Would stop and disable timer: %s\n", TimerName)
-		fmt.Printf("[DRY RUN] Would stop service: %s\n", ServiceName)
-		fmt.Printf("[DRY RUN] Would remove: %s\n", TimerPath())
-		fmt.Printf("[DRY RUN] Would remove: %s\n", ServicePath())
-		fmt.Println("[DRY RUN] Would run: systemctl --user daemon-reload")
+		fmt.Printf("[DRY RUN] Would stop/disable/remove system units under %s\n", SystemSystemdDir())
+		fmt.Printf("[DRY RUN] Would stop/disable/remove user units under %s\n", UserSystemdDirFor(tu))
 		fmt.Println("Dry run: Timer disablement simulated successfully.")
 		return 0
 	}
-	_ = exec.Command("systemctl", "--user", "disable", "--now", TimerName).Run()
-	_ = exec.Command("systemctl", "--user", "stop", ServiceName).Run()
-	_ = os.Remove(TimerPath())
-	_ = os.Remove(ServicePath())
-	_ = exec.Command("systemctl", "--user", "daemon-reload").Run()
+	had := false
+	if CanUseSystemSystemd() || fileExists(SystemTimerPath()) || fileExists(SystemServicePath()) {
+		if CanUseSystemSystemd() {
+			_ = removeSystemSystemdUnits(true)
+			had = true
+		} else if fileExists(SystemTimerPath()) || fileExists(SystemServicePath()) {
+			fmt.Fprintln(os.Stderr, "Warning: system units present but not removable without privileges; skipping system scope.")
+		}
+	}
+	if err := removeUserSystemdUnits(tu, true); err == nil {
+		had = true
+	}
 	if !quiet {
-		fmt.Println("Millennium auto-update user timer and service have been disabled and removed.")
+		if had {
+			fmt.Println("Millennium auto-update systemd timers have been disabled and removed (where permitted).")
+		} else {
+			fmt.Println("No systemd timer units found to disable.")
+		}
 	}
 	return 0
+}
+
+func removeSystemSystemdUnits(reload bool) error {
+	_ = systemctlRun(ScopeSystem, "disable", "--now", TimerName)
+	_ = systemctlRun(ScopeSystem, "stop", ServiceName)
+	_ = os.Remove(SystemTimerPath())
+	_ = os.Remove(SystemServicePath())
+	if reload {
+		_ = systemctlRun(ScopeSystem, "daemon-reload")
+	}
+	return nil
+}
+
+func removeUserSystemdUnits(tu TargetUser, reload bool) error {
+	_ = systemctlRun(ScopeUser, "disable", "--now", TimerName)
+	_ = systemctlRun(ScopeUser, "stop", ServiceName)
+	_ = os.Remove(TimerPathFor(tu))
+	_ = os.Remove(ServicePathFor(tu))
+	// Also clear current-process user paths (legacy installs under root's HOME when sudo).
+	_ = os.Remove(TimerPath())
+	_ = os.Remove(ServicePath())
+	if reload {
+		_ = systemctlRun(ScopeUser, "daemon-reload")
+	}
+	return nil
+}
+
+func systemctlRun(scope SystemdScope, args ...string) error {
+	var cmd *exec.Cmd
+	if scope == ScopeUser {
+		cmd = exec.Command("systemctl", append([]string{"--user"}, args...)...)
+	} else {
+		cmd = exec.Command("systemctl", args...)
+	}
+	return cmd.Run()
+}
+
+func parseUint(s string) int {
+	var n int
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return 0
+		}
+		n = n*10 + int(c-'0')
+	}
+	return n
 }
 
 func enableLaunchd(channel, upgrade, theme, sched, state string, dryRun, quiet bool) int {
@@ -298,8 +390,14 @@ func shellQuote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }
 
-func warnSudoers() {
-	out, err := exec.Command("sudo", "-n", "-l").CombinedOutput()
+func warnSudoers(tu TargetUser) {
+	var cmd *exec.Cmd
+	if os.Geteuid() == 0 && tu.Name != "" && tu.Name != "root" {
+		cmd = exec.Command("sudo", "-U", tu.Name, "-n", "-l")
+	} else {
+		cmd = exec.Command("sudo", "-n", "-l")
+	}
+	out, err := cmd.CombinedOutput()
 	text := string(out)
 	if err != nil || (!strings.Contains(text, "millennium-upgrade") && !strings.Contains(text, "NOPASSWD: ALL") && !strings.Contains(text, "NOPASSWD:ALL")) {
 		fmt.Println("\nWarning: Passwordless sudo for the updater script could not be verified.")

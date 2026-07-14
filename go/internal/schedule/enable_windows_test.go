@@ -35,7 +35,7 @@ func TestRunEnableDisableWindows(t *testing.T) {
 		windowsPowerShell = runPowerShell
 	})
 
-	if code := runEnable("stable", false, false, true); code != 0 {
+	if code := runEnable("stable", false, false, true, ScopeAuto); code != 0 {
 		t.Fatalf("enable code=%d", code)
 	}
 	if len(scripts) != 1 || !strings.Contains(scripts[0], "Register-ScheduledTask") {
@@ -53,7 +53,7 @@ func TestRunEnableDisableWindows(t *testing.T) {
 func TestRunEnableRequiresAdmin(t *testing.T) {
 	windowsAdminCheck = func() bool { return false }
 	t.Cleanup(func() { windowsAdminCheck = isWindowsAdmin })
-	if code := runEnable("stable", false, false, true); code != 1 {
+	if code := runEnable("stable", false, false, true, ScopeAuto); code != 1 {
 		t.Fatalf("code=%d", code)
 	}
 }

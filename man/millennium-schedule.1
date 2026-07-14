@@ -5,8 +5,9 @@ millennium-schedule \- manage Millennium helper auto-update timers
 .B millennium-schedule
 \fICOMMAND\fR [\fIARGUMENTS\fR] [\fIOPTIONS\fR]
 .SH DESCRIPTION
-Configures daily auto-update scheduling via systemd user timers (Linux),
-crontab fallback, LaunchAgents/cron (macOS), or Windows Task Scheduler.
+Configures daily auto-update scheduling via systemd timers (Linux; prefers
+system units when privileged, otherwise user units), crontab fallback,
+LaunchAgents/cron (macOS), or Windows Task Scheduler.
 The scheduled job runs
 .B millennium-upgrade
 on the configured Millennium
@@ -42,6 +43,22 @@ or
 .BR main .
 .SH OPTIONS
 .TP
+.BR \-c ", " \-\-cron
+Force crontab instead of systemd (Linux/macOS).
+.TP
+.B \-\-system
+Linux: force systemd
+.B system
+units under
+.I /etc/systemd/system
+(requires root). Default when privileged and systemd is available.
+.TP
+.B \-\-user
+Linux: force systemd
+.B user
+units under
+.IR ~/.config/systemd/user .
+.TP
 .BR \-d ", " \-\-dry\-run
 Simulate without writing files or changing scheduler state.
 .TP
@@ -64,6 +81,12 @@ Check whether the timer is active:
 Tune backup retention:
 .B millennium-schedule config set backup_limit 5
 .SH FILES
+.TP
+.I /etc/systemd/system/millennium-update.timer
+Linux systemd system timer (preferred when installed as root).
+.TP
+.I ~/.config/systemd/user/millennium-update.timer
+Linux systemd user timer (fallback / \-\-user).
 .TP
 .I ~/.config/millennium-helpers/config.json
 Linux/macOS user configuration.

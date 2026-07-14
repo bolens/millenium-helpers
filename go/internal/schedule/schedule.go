@@ -13,13 +13,14 @@ import (
 
 // Options holds parsed schedule argv (excluding schedule config — handled separately).
 type Options struct {
-	Action  string // enable|disable|status|setup|pre-update|post-update|""
-	Channel string
-	Cron    bool
-	DryRun  bool
-	Quiet   bool
-	Help    bool
-	Version bool
+	Action       string // enable|disable|status|setup|pre-update|post-update|""
+	Channel      string
+	Cron         bool
+	DryRun       bool
+	Quiet        bool
+	Help         bool
+	Version      bool
+	SystemdScope SystemdScope // "", "system", or "user" (Linux; auto when empty)
 }
 
 // ParseArgs parses millennium schedule argv.
@@ -42,6 +43,22 @@ func ParseArgs(args []string) (Options, error) {
 				return o, fmt.Errorf("Error: --cron is not supported on Windows.")
 			}
 			o.Cron = true
+		case "--system":
+			if runtime.GOOS != "linux" {
+				return o, fmt.Errorf("Error: --system is only supported on Linux.")
+			}
+			if o.SystemdScope == ScopeUser {
+				return o, fmt.Errorf("Error: cannot combine --system and --user.")
+			}
+			o.SystemdScope = ScopeSystem
+		case "--user":
+			if runtime.GOOS != "linux" {
+				return o, fmt.Errorf("Error: --user is only supported on Linux.")
+			}
+			if o.SystemdScope == ScopeSystem {
+				return o, fmt.Errorf("Error: cannot combine --system and --user.")
+			}
+			o.SystemdScope = ScopeUser
 		case "enable", "disable", "status", "setup", "pre-update", "post-update", "config":
 			if o.Action != "" {
 				return o, fmt.Errorf("Error: multiple schedule actions (%s and %s).", o.Action, a)
@@ -115,7 +132,7 @@ func RunCLI(o Options) int {
 		fmt.Print(FormatStatus(CollectStatus()))
 		return 0
 	case "enable":
-		return runEnable(ResolveChannel(o.Channel), o.Cron, o.DryRun, o.Quiet)
+		return runEnable(ResolveChannel(o.Channel), o.Cron, o.DryRun, o.Quiet, o.SystemdScope)
 	case "disable":
 		return runDisable(o.DryRun, o.Quiet)
 	default:
@@ -128,10 +145,13 @@ func helpText() string {
 	return `Usage: millennium schedule <enable|disable|status|setup|config> [OPTIONS]
 
 Native: status, enable/disable (Unix timers + Windows Task Scheduler), --dry-run.
+Linux systemd prefers system units when privileged; otherwise user units.
 setup / pre-update / post-update remain legacy.
 
 Options:
   -c, --cron     Linux/macOS: force crontab (auto when systemd unavailable)
+      --system   Linux: force systemd system units (requires root)
+      --user     Linux: force systemd user units
   -d, --dry-run  Simulate without writing timer/cron/task state
   -q, --quiet
   -V, --version

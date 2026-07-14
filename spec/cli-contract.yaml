@@ -94,13 +94,17 @@ commands:
     # internal hooks not in MCP: pre-update, post-update
     flags:
       - { name: cron, long: --cron, short: -c, platforms: [linux, darwin], os_only: true }
+      - { name: system, long: --system, platforms: [linux], os_only: true }
+      - { name: user, long: --user, platforms: [linux], os_only: true }
       - { name: dry_run, long: --dry-run, short: -d }
       - { name: quiet, long: --quiet, short: -q }
       - { name: version, long: --version, short: -V }
       - { name: help, long: --help, short: -h }
-    mcp_properties: [action, channel, cron]
+    mcp_properties: [action, channel, cron, system, user]
     mcp_os_only_properties:
       cron: [linux]
+      system: [linux]
+      user: [linux]
 
   theme:
     platforms: [linux, darwin, windows]

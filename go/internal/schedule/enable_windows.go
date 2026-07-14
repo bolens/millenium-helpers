@@ -20,7 +20,7 @@ var (
 	windowsPowerShell = runPowerShell
 )
 
-func runEnable(channel string, useCron, dryRun, quiet bool) int {
+func runEnable(channel string, useCron, dryRun, quiet bool, _ SystemdScope) int {
 	_ = useCron
 	if dryRun {
 		fmt.Printf("[DRY RUN] Would register Task Scheduler task %s (channel %s)\n", WinTaskName, channel)

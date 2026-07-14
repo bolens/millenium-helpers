@@ -93,7 +93,7 @@ _millennium_schedule_comp() {
       ;;
   esac
 
-  COMPREPLY=( $(compgen -W "${subcmds} -c --cron -d --dry-run -q --quiet -V --version -h --help" -- "${cur}") )
+  COMPREPLY=( $(compgen -W "${subcmds} -c --cron --system --user -d --dry-run -q --quiet -V --version -h --help" -- "${cur}") )
   return 0
 }
 complete -F _millennium_schedule_comp millennium-schedule

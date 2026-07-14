@@ -31,29 +31,69 @@ func CollectStatus() Status {
 }
 
 func collectLinux(st *Status) {
-	st.Lines = append(st.Lines, "=== Millennium User Update Timer Status ===")
-	if _, err := os.Stat(TimerPath()); err == nil {
-		st.Configured = true
-		st.Lines = append(st.Lines, fmt.Sprintf("Timer unit present: %s", TimerPath()))
-		if out := systemctlUserStatus(TimerName); out != "" {
-			st.Lines = append(st.Lines, out)
-		}
-	} else {
-		st.Lines = append(st.Lines, "Timer is not installed/configured.")
+	tu, err := ResolveTargetUser()
+	if err != nil {
+		tu = TargetUser{}
 	}
 
-	st.Lines = append(st.Lines, "", "=== Millennium User Update Service Status ===")
-	if _, err := os.Stat(ServicePath()); err == nil {
+	st.Lines = append(st.Lines, "=== Millennium System Update Timer Status ===")
+	sysTim := SystemTimerPath()
+	sysSvc := SystemServicePath()
+	if fileExists(sysTim) {
 		st.Configured = true
-		st.Lines = append(st.Lines, fmt.Sprintf("Service unit present: %s", ServicePath()))
-		if ch := channelFromServiceFile(ServicePath()); ch != "" {
-			st.Channel = ch
-		}
-		if out := systemctlUserStatus(ServiceName); out != "" {
+		st.Lines = append(st.Lines, fmt.Sprintf("Timer unit present: %s", sysTim))
+		if out := systemctlStatus(ScopeSystem, TimerName); out != "" {
 			st.Lines = append(st.Lines, out)
 		}
 	} else {
-		st.Lines = append(st.Lines, "Service is not installed/configured.")
+		st.Lines = append(st.Lines, "System timer is not installed/configured.")
+	}
+	st.Lines = append(st.Lines, "", "=== Millennium System Update Service Status ===")
+	if fileExists(sysSvc) {
+		st.Configured = true
+		st.Lines = append(st.Lines, fmt.Sprintf("Service unit present: %s", sysSvc))
+		if ch := channelFromServiceFile(sysSvc); ch != "" {
+			st.Channel = ch
+		}
+		if out := systemctlStatus(ScopeSystem, ServiceName); out != "" {
+			st.Lines = append(st.Lines, out)
+		}
+	} else {
+		st.Lines = append(st.Lines, "System service is not installed/configured.")
+	}
+
+	userTim := TimerPathFor(tu)
+	userSvc := ServicePathFor(tu)
+	// Also probe process user's path (legacy sudo installs).
+	if !fileExists(userTim) {
+		userTim = TimerPath()
+	}
+	if !fileExists(userSvc) {
+		userSvc = ServicePath()
+	}
+
+	st.Lines = append(st.Lines, "", "=== Millennium User Update Timer Status ===")
+	if fileExists(userTim) {
+		st.Configured = true
+		st.Lines = append(st.Lines, fmt.Sprintf("Timer unit present: %s", userTim))
+		if out := systemctlStatus(ScopeUser, TimerName); out != "" {
+			st.Lines = append(st.Lines, out)
+		}
+	} else {
+		st.Lines = append(st.Lines, "User timer is not installed/configured.")
+	}
+	st.Lines = append(st.Lines, "", "=== Millennium User Update Service Status ===")
+	if fileExists(userSvc) {
+		st.Configured = true
+		st.Lines = append(st.Lines, fmt.Sprintf("Service unit present: %s", userSvc))
+		if ch := channelFromServiceFile(userSvc); ch != "" {
+			st.Channel = ch
+		}
+		if out := systemctlStatus(ScopeUser, ServiceName); out != "" {
+			st.Lines = append(st.Lines, out)
+		}
+	} else {
+		st.Lines = append(st.Lines, "User service is not installed/configured.")
 	}
 
 	appendCronStatus(st)
@@ -126,13 +166,17 @@ func appendCronStatus(st *Status) {
 	}
 }
 
-func systemctlUserStatus(unit string) string {
-	cmd := exec.Command("systemctl", "--user", "status", unit)
+func systemctlStatus(scope SystemdScope, unit string) string {
+	var cmd *exec.Cmd
+	if scope == ScopeUser {
+		cmd = exec.Command("systemctl", "--user", "status", unit)
+	} else {
+		cmd = exec.Command("systemctl", "status", unit)
+	}
 	out, err := cmd.CombinedOutput()
 	if err != nil && len(out) == 0 {
 		return ""
 	}
-	// Keep output bounded.
 	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
 	if len(lines) > 12 {
 		lines = lines[:12]

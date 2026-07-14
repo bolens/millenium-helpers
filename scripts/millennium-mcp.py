@@ -54,6 +54,8 @@ class ScheduleArgs(TypedDict, total=False):
     action: str
     channel: str
     cron: bool
+    system: bool
+    user: bool
 
 
 # Logs go to stderr so they don't corrupt the JSON-RPC stdin/stdout transport
@@ -124,7 +126,7 @@ def get_tools_list():
         },
         {
             "name": "millennium_schedule",
-            "description": "Configure the background update scheduler (enable systemd daily timer or cron job).",
+            "description": "Configure the background update scheduler (enable systemd daily timer or cron job). On Linux, systemd prefers system units when privileged.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -141,6 +143,14 @@ def get_tools_list():
                     "cron": {
                         "type": "boolean",
                         "description": "Force using crontab instead of systemd.",
+                    },
+                    "system": {
+                        "type": "boolean",
+                        "description": "Linux: force systemd system units (requires root).",
+                    },
+                    "user": {
+                        "type": "boolean",
+                        "description": "Linux: force systemd user units.",
                     },
                 },
                 "required": ["action"],
@@ -474,6 +484,8 @@ def handle_tool_call(
         action = arguments.get("action")
         channel = arguments.get("channel")
         cron = arguments.get("cron", False)
+        system = arguments.get("system", False)
+        user = arguments.get("user", False)
 
         if action not in VALID_SCHEDULE_ACTIONS:
             return {
@@ -495,12 +507,26 @@ def handle_tool_call(
                     }
                 ],
             }
+        if system and user:
+            return {
+                "isError": True,
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "Error: cannot combine system=true and user=true.",
+                    }
+                ],
+            }
 
         args = ["millennium-schedule", action]
         if action == "enable" and channel:
             args.append(channel)
         if cron:
             args.append("--cron")
+        if system:
+            args.append("--system")
+        if user:
+            args.append("--user")
         return run_cmd(args)
 
     elif tool_name == "millennium_repair":

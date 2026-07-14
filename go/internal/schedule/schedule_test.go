@@ -3,6 +3,7 @@ package schedule
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -19,6 +20,28 @@ func TestParseArgs(t *testing.T) {
 	_, err = ParseArgs([]string{"--nope"})
 	if err == nil {
 		t.Fatal("expected error")
+	}
+}
+
+func TestParseSystemdScopeFlags(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		_, err := ParseArgs([]string{"enable", "--system"})
+		if err == nil {
+			t.Fatal("expected --system reject off linux")
+		}
+		return
+	}
+	o, err := ParseArgs([]string{"enable", "--system", "stable"})
+	if err != nil || o.SystemdScope != ScopeSystem || o.Channel != "stable" {
+		t.Fatalf("%+v err=%v", o, err)
+	}
+	o, err = ParseArgs([]string{"enable", "--user"})
+	if err != nil || o.SystemdScope != ScopeUser {
+		t.Fatalf("%+v err=%v", o, err)
+	}
+	_, err = ParseArgs([]string{"enable", "--system", "--user"})
+	if err == nil {
+		t.Fatal("expected conflict")
 	}
 }
 
