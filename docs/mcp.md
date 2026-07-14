@@ -22,7 +22,7 @@ see [security_troubleshooting.md](security_troubleshooting.md). Licensing:
 
 **Helpers track vs client channel:** MCP `channel` arguments always mean the Millennium **client** `update_channel` (`stable` / `beta` / `main`). Helpers install track (`release` / `main` / `tag`) is chosen at install time (`install.sh --track`, `install.ps1 -Track`) and is not an MCP tool parameter.
 
-**Go dispatcher (Phase 5a):** When the Go `millennium` binary is on `PATH` (or installed beside the scripts), non-elevating tools (`diag` report, `theme`, `schedule`) invoke `millennium <feature> …`. Elevating tools (`diag` doctor, `upgrade`, `repair`, `purge`) still call the long-name helpers (`millennium-diag`, …) because passwordless sudoers allowlist those paths. Force the old path with `MILLENNIUM_MCP_LONGNAMES=1` (or `MILLENNIUM_LEGACY=1`).
+**Go dispatcher (Phase 5b):** When the Go `millennium` binary is on `PATH` (or installed beside the scripts), MCP tools invoke `millennium <feature> …`, including elevating doctor/upgrade/repair/purge (wrapped in `sudo -n` / UAC). Installer and Arch sudoers allowlist those Go verbs plus the long-name helpers (timers / older installs). Force the old path with `MILLENNIUM_MCP_LONGNAMES=1` (or `MILLENNIUM_LEGACY=1`). Re-run the installer (or refresh Arch) so the drop-in allows `millennium upgrade|diag|repair|purge`.
 
 **Safety gates (server-side):**
 - `action` / `channel` values are allow-listed independently of the JSON schema (clients can send arbitrary strings)

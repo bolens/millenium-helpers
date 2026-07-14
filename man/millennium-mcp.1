@@ -11,12 +11,12 @@ Exposes Millennium helper commands as MCP tools for AI assistants
 With no options, runs as a stdio JSON-RPC MCP server.
 When the Go
 .B millennium
-dispatcher is installed, non-elevating tools invoke it
-.RB ( millennium " " diag / theme / schedule );
-elevating tools still call the long-name helpers allowed by sudoers.
+dispatcher is installed, tools invoke it
+.RB ( millennium " " diag / theme / schedule / upgrade / repair / purge ),
+with elevating calls wrapped in passwordless sudo / UAC.
 Set
 .B MILLENNIUM_MCP_LONGNAMES=1
-to force the long-name path.
+to force the long-name helper path.
 .SH OPTIONS
 .TP
 .BR \-r ", " \-\-register
