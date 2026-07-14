@@ -31,8 +31,8 @@ func run(args []string) int {
 		Long: `Millennium helpers — unified dispatcher.
 
 Native: version/help, schedule config/status + Unix enable/disable,
-theme list, read-only diag, upgrade rollback-list / dry-run / download+SHA,
-purge (Unix live) + dry-run, repair user-path chown/htmlcache.
+theme list/install/update/remove, read-only diag, upgrade download+SHA,
+purge (Unix live), repair user-path chown/htmlcache.
 Install/rollback extract, Windows live schedule enable/disable, and setup
 still legacy (see docs/unification-roadmap.md).
 
@@ -182,43 +182,28 @@ func takeConfigArgs(a []string) ([]string, bool) {
 func newThemeCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:                "theme",
-		Short:              "Themes (list is native Go; install/update/remove legacy)",
+		Short:              "Themes (list/install/update/remove native Go)",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
-			if !useLegacy() && isThemeList(a) {
-				os.Exit(theme.RunListCLI(filterThemeListArgs(a)))
+			if useLegacy() {
+				os.Exit(legacy.RunLegacy("theme", a))
 				return nil
 			}
-			os.Exit(legacy.RunLegacy("theme", a))
+			opts, err := theme.ParseArgs(a)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err.Error())
+				os.Exit(1)
+				return nil
+			}
+			if opts.Version {
+				version.Print("millennium-theme")
+				os.Exit(0)
+				return nil
+			}
+			os.Exit(theme.RunCLI(opts))
 			return nil
 		},
 	}
-}
-
-func isThemeList(a []string) bool {
-	if len(a) == 0 {
-		return false
-	}
-	for _, tok := range a {
-		if tok == "list" {
-			return true
-		}
-		if tok == "install" || tok == "update" || tok == "remove" {
-			return false
-		}
-	}
-	return false
-}
-
-func filterThemeListArgs(a []string) []string {
-	var out []string
-	for _, tok := range a {
-		if tok == "list" {
-			continue
-		}
-		out = append(out, tok)
-	}
-	return out
 }
 
 func newDiagCmd() *cobra.Command {

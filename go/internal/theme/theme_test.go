@@ -1,9 +1,11 @@
 package theme
 
 import (
+	"archive/zip"
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -33,7 +35,7 @@ func TestListInstalled(t *testing.T) {
 		t.Fatalf("%+v", themes)
 	}
 	js := FormatJSON(themes)
-	if js == "[]" || !contains(js, "DemoTheme") {
+	if js == "[]" || !strings.Contains(js, "DemoTheme") {
 		t.Fatalf("json=%s", js)
 	}
 	if code := RunListCLI([]string{"--json"}); code != 0 {
@@ -41,13 +43,92 @@ func TestListInstalled(t *testing.T) {
 	}
 }
 
-func contains(s, sub string) bool {
-	return len(s) >= len(sub) && (func() bool {
-		for i := 0; i+len(sub) <= len(s); i++ {
-			if s[i:i+len(sub)] == sub {
-				return true
-			}
-		}
-		return false
-	})()
+func TestSanitizeAndParse(t *testing.T) {
+	if err := SanitizeComponent("../x", "theme name"); err == nil {
+		t.Fatal("expected error")
+	}
+	o, r, err := ParseOwnerRepo("acme/Skin")
+	if err != nil || o != "acme" || r != "Skin" {
+		t.Fatalf("%s %s %v", o, r, err)
+	}
+}
+
+func TestSafeExtractZipRejectsSlip(t *testing.T) {
+	dir := t.TempDir()
+	zipPath := filepath.Join(dir, "bad.zip")
+	f, err := os.Create(zipPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	zw := zip.NewWriter(f)
+	w, err := zw.Create("../evil.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = w.Write([]byte("nope"))
+	_ = zw.Close()
+	_ = f.Close()
+	dest := filepath.Join(dir, "out")
+	if err := SafeExtractZip(zipPath, dest); err == nil {
+		t.Fatal("expected zip-slip rejection")
+	}
+}
+
+func TestInstallAndRemove(t *testing.T) {
+	skins := t.TempDir()
+	t.Setenv("MILLENNIUM_SKINS_DIR", skins)
+
+	prevCommit := latestCommit
+	prevDL := downloadURL
+	t.Cleanup(func() {
+		latestCommit = prevCommit
+		downloadURL = prevDL
+	})
+	latestCommit = func(owner, repo string) (string, error) {
+		return "abc1234deadbeef", nil
+	}
+	downloadURL = func(url, dest string) error {
+		return writeThemeZip(dest, "DemoSkin", "abc1234deadbeef")
+	}
+
+	if err := Install("acme/DemoSkin", true); err != nil {
+		t.Fatal(err)
+	}
+	if err := Install("acme/DemoSkin", false); err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(skins, "DemoSkin")
+	if _, err := os.Stat(filepath.Join(target, "metadata.json")); err != nil {
+		t.Fatal(err)
+	}
+	if err := Remove("DemoSkin", true, false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(target); !os.IsNotExist(err) {
+		t.Fatalf("still present: %v", err)
+	}
+}
+
+func writeThemeZip(dest, repo, commit string) error {
+	f, err := os.Create(dest)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	zw := zip.NewWriter(f)
+	root := repo + "-" + commit + "/"
+	_, _ = zw.Create(root)
+	w, err := zw.Create(root + "skin.json")
+	if err != nil {
+		return err
+	}
+	_, _ = w.Write([]byte(`{"name":"demo"}`))
+	return zw.Close()
+}
+
+func TestParseArgsTheme(t *testing.T) {
+	o, err := ParseArgs([]string{"install", "a/b", "--dry-run"})
+	if err != nil || o.Action != "install" || o.Arg != "a/b" || !o.DryRun {
+		t.Fatalf("%+v %v", o, err)
+	}
 }

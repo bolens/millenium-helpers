@@ -155,6 +155,34 @@ func FetchFirstFieldSHA(shaURL string) (string, error) {
 	return fields[0], nil
 }
 
+// LatestCommit returns the tip SHA for owner/repo default branch commits API.
+func LatestCommit(owner, repo string) (string, error) {
+	owner = strings.TrimSpace(owner)
+	repo = strings.TrimSpace(repo)
+	if owner == "" || repo == "" {
+		return "", fmt.Errorf("owner and repo are required")
+	}
+	body, err := apiGet(fmt.Sprintf("https://api.github.com/repos/%s/%s/commits", owner, repo))
+	if err != nil {
+		return "", err
+	}
+	var commits []struct {
+		SHA string `json:"sha"`
+	}
+	if err := json.Unmarshal(body, &commits); err != nil {
+		return "", err
+	}
+	if len(commits) == 0 || commits[0].SHA == "" {
+		return "", fmt.Errorf("no commits found")
+	}
+	return commits[0].SHA, nil
+}
+
+// CommitZipURL builds the GitHub archive zip URL for a commit.
+func CommitZipURL(owner, repo, commit string) string {
+	return fmt.Sprintf("https://github.com/%s/%s/archive/%s.zip", owner, repo, commit)
+}
+
 // Download writes url to destPath.
 func Download(url, destPath string) error {
 	req, err := http.NewRequest(http.MethodGet, url, nil)

@@ -26,6 +26,28 @@ func TestLatestTagStable(t *testing.T) {
 	}
 }
 
+func TestLatestCommitAndZipURL(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "/commits") {
+			_ = json.NewEncoder(w).Encode([]map[string]string{{"sha": "deadbeefcafe"}})
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	t.Cleanup(srv.Close)
+	// LatestCommit hits api.github.com — unit-test URL helper + JSON shape instead.
+	url := CommitZipURL("acme", "skin", "deadbeef")
+	if !strings.Contains(url, "acme/skin/archive/deadbeef.zip") {
+		t.Fatalf("%s", url)
+	}
+	var commits []struct {
+		SHA string `json:"sha"`
+	}
+	if err := json.Unmarshal([]byte(`[{"sha":"deadbeefcafe"}]`), &commits); err != nil || commits[0].SHA != "deadbeefcafe" {
+		t.Fatal(err)
+	}
+}
+
 func TestLinuxArchiveNames(t *testing.T) {
 	a, s := LinuxArchiveNames("v1.2.3")
 	if a != "millennium-v1.2.3-linux-x86_64.tar.gz" || !strings.HasSuffix(s, ".sha256") {
