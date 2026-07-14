@@ -20,17 +20,13 @@ if (!(Test-Path -LiteralPath $winScripts)) {
   throw "Unexpected archive layout: missing scripts\windows under $payload"
 }
 
-# Prefer Go .exe when the release zip embeds it; otherwise keep PowerShell dispatcher.
+# Require Go .exe when the release zip embeds it.
 $millenniumExe = Join-Path $winScripts 'millennium.exe'
-$millenniumPs1 = Join-Path $winScripts 'millennium.ps1'
 if (Test-Path -LiteralPath $millenniumExe) {
   Install-ChocolateyPath -PathToInstall $winScripts -PathType 'User'
   Install-BinFile -Name 'millennium' -Path $millenniumExe
-} elseif (Test-Path -LiteralPath $millenniumPs1) {
-  Install-ChocolateyPath -PathToInstall $winScripts -PathType 'User'
-  Install-BinFile -Name 'millennium' -Path $millenniumPs1
 } else {
-  throw 'Neither millennium.exe nor millennium.ps1 found in release zip'
+  throw 'millennium.exe (Go dispatcher) not found in release zip'
 }
 
 foreach ($pair in @(

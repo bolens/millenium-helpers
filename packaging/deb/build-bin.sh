@@ -44,8 +44,8 @@ if [[ -x "$TREE/bin/millennium" ]]; then
   install -m755 "$TREE/bin/millennium" "$DEST/usr/bin/millennium"
   install -m755 "$TREE/bin/millennium" "$DEST/usr/bin/millennium-mcp"
 else
-  install -m755 "$TREE/scripts/millennium.sh" "$DEST/usr/bin/millennium"
-  install -m755 "$TREE/scripts/millennium-mcp.sh" "$DEST/usr/bin/millennium-mcp"
+  echo "error: release tree missing bin/millennium (Go dispatcher required)" >&2
+  exit 1
 fi
 
 install -m644 "$TREE"/scripts/common.sh "$DEST/usr/lib/millennium-helpers/common.sh"

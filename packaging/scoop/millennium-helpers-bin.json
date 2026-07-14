@@ -1,13 +1,13 @@
 {
     "version": "2.6.2",
-    "description": "Millennium helpers (prebuilt release zip) \u2014 PowerShell helpers/MCP; prefers millennium.exe when present.",
+    "description": "Millennium helpers (prebuilt release zip) \u2014 PowerShell long-name helpers/MCP + millennium.exe Go dispatcher.",
     "homepage": "https://github.com/bolens/millenium-helpers",
     "license": "MIT",
     "url": "https://github.com/bolens/millenium-helpers/releases/download/v2.6.2/millennium-helpers-v2.6.2-windows-amd64.zip",
     "hash": "3d1fabe638ce2e990b7b0007ef77dd4afa1668fd558010758f0213c1c8826506",
     "bin": [
         [
-            "scripts\\windows\\millennium.ps1",
+            "scripts\\windows\\millennium.exe",
             "millennium"
         ],
         [

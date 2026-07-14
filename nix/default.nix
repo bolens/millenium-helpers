@@ -53,8 +53,8 @@ stdenv.mkDerivation ({
       install -m755 bin/millennium $out/bin/millennium
       install -m755 bin/millennium $out/bin/millennium-mcp
     else
-      install -m755 scripts/millennium.sh $out/bin/millennium
-      install -m755 scripts/millennium-mcp.sh $out/bin/millennium-mcp
+      echo "error: Go dispatcher bin/millennium is required" >&2
+      exit 1
     fi
 
     mkdir -p $out/lib/millennium-helpers/lib

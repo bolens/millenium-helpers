@@ -6,13 +6,14 @@
     "notes": [
         "Installs tip-of-main from GitHub (not a release tag).",
         "Uninstall the release package first if present: scoop uninstall millennium-helpers",
-        "To refresh on scoop update: scoop config update_nightly true"
+        "To refresh on scoop update: scoop config update_nightly true",
+        "Requires a Go toolchain to build millennium.exe on first install/update."
     ],
     "url": "https://github.com/bolens/millenium-helpers/archive/refs/heads/main.zip",
     "extract_dir": "millenium-helpers-main",
     "bin": [
         [
-            "scripts\\windows\\millennium.ps1",
+            "scripts\\windows\\millennium.exe",
             "millennium"
         ],
         [
@@ -81,6 +82,17 @@
         "    }) -join \"`n\"",
         "    Set-Content -Path $p -Value $filtered -Encoding UTF8",
         "  }",
+        "}"
+    ],
+    "pre_install": [
+        "$exe = Join-Path $dir 'scripts\\windows\\millennium.exe'",
+        "if (!(Test-Path -LiteralPath $exe)) {",
+        "  $goCmd = Get-Command go -ErrorAction SilentlyContinue",
+        "  if (-not $goCmd) { throw 'Go toolchain required to build millennium.exe for Scoop from-source/git installs' }",
+        "  Push-Location (Join-Path $dir 'go')",
+        "  & go build -o $exe ./cmd/millennium",
+        "  if ($LASTEXITCODE -ne 0) { Pop-Location; throw 'go build failed for millennium.exe' }",
+        "  Pop-Location",
         "}"
     ]
 }

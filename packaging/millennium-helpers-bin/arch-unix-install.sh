@@ -4,7 +4,7 @@
 #   pkgdir  — package root
 #   pkgname — package name (for license path)
 # And cwd to the extracted helpers tree (scripts/, completions/, …).
-# Optional: MILLENNIUM_ARCH_DISPATCHER=/path/to/go-binary (else bin/millennium, else shell).
+# Optional: MILLENNIUM_ARCH_DISPATCHER=/path/to/go-binary (else bin/millennium required).
 
 _arch_install_unix_helpers() {
   local dispatcher=""
@@ -13,7 +13,8 @@ _arch_install_unix_helpers() {
   elif [[ -x bin/millennium ]]; then
     dispatcher="bin/millennium"
   else
-    dispatcher="scripts/millennium.sh"
+    echo "error: Go dispatcher (bin/millennium) is required; build with make build or set MILLENNIUM_ARCH_DISPATCHER" >&2
+    return 1
   fi
 
   install -d "${pkgdir}/usr/bin"
@@ -24,11 +25,7 @@ _arch_install_unix_helpers() {
   install -m755 scripts/millennium-diag.sh "${pkgdir}/usr/bin/millennium-diag"
   install -m755 scripts/millennium-theme.sh "${pkgdir}/usr/bin/millennium-theme"
   install -m755 "${dispatcher}" "${pkgdir}/usr/bin/millennium"
-  if [[ "${dispatcher}" == scripts/millennium.sh ]]; then
-    install -m755 scripts/millennium-mcp.sh "${pkgdir}/usr/bin/millennium-mcp"
-  else
-    install -m755 "${dispatcher}" "${pkgdir}/usr/bin/millennium-mcp"
-  fi
+  install -m755 "${dispatcher}" "${pkgdir}/usr/bin/millennium-mcp"
 
   install -d "${pkgdir}/usr/lib/millennium-helpers/lib"
   install -m644 scripts/common.sh "${pkgdir}/usr/lib/millennium-helpers/common.sh"

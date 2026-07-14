@@ -1,13 +1,13 @@
 {
     "version": "2.6.2",
-    "description": "Millennium helpers (from source tag) \u2014 PowerShell helpers/MCP from the release source zip.",
+    "description": "Millennium helpers (from source tag) \u2014 builds Go dispatcher; PowerShell long-name helpers/MCP.",
     "homepage": "https://github.com/bolens/millenium-helpers",
     "license": "MIT",
     "url": "https://github.com/bolens/millenium-helpers/releases/download/v2.6.2/millennium-helpers-v2.6.2-src.zip",
     "hash": "19c2970cde6ccff90071be6950bd99919dac443c37309e37f2e85084f13d5b00",
     "bin": [
         [
-            "scripts\\windows\\millennium.ps1",
+            "scripts\\windows\\millennium.exe",
             "millennium"
         ],
         [
@@ -82,5 +82,16 @@
         "url": "https://github.com/bolens/millenium-helpers/releases/download/v$version/millennium-helpers-v$version-src.zip",
         "extract_dir": "millenium-helpers-$version"
     },
-    "extract_dir": "millenium-helpers-2.6.2"
+    "extract_dir": "millenium-helpers-2.6.2",
+    "pre_install": [
+        "$exe = Join-Path $dir 'scripts\\windows\\millennium.exe'",
+        "if (!(Test-Path -LiteralPath $exe)) {",
+        "  $goCmd = Get-Command go -ErrorAction SilentlyContinue",
+        "  if (-not $goCmd) { throw 'Go toolchain required to build millennium.exe for Scoop from-source/git installs' }",
+        "  Push-Location (Join-Path $dir 'go')",
+        "  & go build -o $exe ./cmd/millennium",
+        "  if ($LASTEXITCODE -ne 0) { Pop-Location; throw 'go build failed for millennium.exe' }",
+        "  Pop-Location",
+        "}"
+    ]
 }

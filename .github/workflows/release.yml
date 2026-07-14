@@ -233,7 +233,6 @@ jobs:
             third_party/MILLENNIUM-LICENSE.md
             bin/millennium
             scripts/common.sh
-            scripts/millennium.sh
             scripts/millennium-diag.sh
             scripts/millennium-mcp.py
             scripts/millennium-mcp.sh

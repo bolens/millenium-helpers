@@ -40,13 +40,9 @@ class MillenniumHelpersBin < Formula
     bin.install "scripts/millennium-purge.sh" => "millennium-purge"
     bin.install "scripts/millennium-diag.sh" => "millennium-diag"
     bin.install "scripts/millennium-theme.sh" => "millennium-theme"
-    if (buildpath/"bin/millennium").exist?
-      bin.install "bin/millennium"
-      bin.install_symlink "millennium" => "millennium-mcp"
-    else
-      bin.install "scripts/millennium.sh" => "millennium"
-      bin.install "scripts/millennium-mcp.sh" => "millennium-mcp"
-    end
+    odie "Release archive missing bin/millennium (Go dispatcher required)" unless (buildpath/"bin/millennium").exist?
+    bin.install "bin/millennium"
+    bin.install_symlink "millennium" => "millennium-mcp"
 
     (lib/"millennium-helpers").install "scripts/common.sh"
     (lib/"millennium-helpers/lib").install Dir["scripts/lib/*.sh"]

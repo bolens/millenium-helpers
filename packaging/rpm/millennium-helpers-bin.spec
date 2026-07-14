@@ -43,8 +43,8 @@ if [ -x bin/millennium ]; then
   install -m755 bin/millennium %{buildroot}%{_bindir}/millennium
   install -m755 bin/millennium %{buildroot}%{_bindir}/millennium-mcp
 else
-  install -m755 scripts/millennium.sh %{buildroot}%{_bindir}/millennium
-  install -m755 scripts/millennium-mcp.sh %{buildroot}%{_bindir}/millennium-mcp
+  echo "error: release tree missing bin/millennium (Go dispatcher required)" >&2
+  exit 1
 fi
 install -m644 scripts/common.sh %{buildroot}%{_libdir}/millennium-helpers/common.sh
 install -m644 scripts/lib/*.sh %{buildroot}%{_libdir}/millennium-helpers/lib/
