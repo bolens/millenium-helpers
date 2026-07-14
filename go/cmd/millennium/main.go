@@ -30,11 +30,11 @@ func run(args []string) int {
 		Short: "Millennium helpers dispatcher (Go strangler)",
 		Long: `Millennium helpers — unified dispatcher.
 
-Native: version/help, schedule config/status + Unix enable/disable,
-theme list/install/update/remove, diag report/--json/--share/logs/doctor --dry-run,
-upgrade download+SHA+install when writable, purge (Unix live), repair user-path.
-Rollback apply, non-root Linux system install, live doctor, Windows schedule
-enable, setup, --follow still legacy (see docs/unification-roadmap.md).
+Native: version/help, schedule config/status/enable/disable, theme mutate,
+diag report/--json/--share/logs/doctor --dry-run, upgrade download+SHA+install
+when writable + --rollback apply when writable, purge (Unix live), repair user-path.
+Non-root Linux system install, live doctor, schedule setup, --follow still legacy
+(see docs/unification-roadmap.md).
 
 Force legacy for a native path: MILLENNIUM_LEGACY=1`,
 		SilenceUsage:  true,
@@ -236,7 +236,7 @@ func newDiagCmd() *cobra.Command {
 func newUpgradeCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:                "upgrade",
-		Short:              "Upgrade Millennium (download+SHA+install native when writable; rollback apply legacy)",
+		Short:              "Upgrade Millennium (download+SHA+install+rollback when writable)",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
 			if useLegacy() {

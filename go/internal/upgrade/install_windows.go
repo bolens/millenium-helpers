@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/bolens/millenium-helpers/internal/theme"
 )
@@ -29,7 +30,7 @@ func installPlatform(archivePath, version string, o Options) error {
 
 	mill := filepath.Join(steam, "millennium")
 	if st, err := os.Stat(mill); err == nil && st.IsDir() {
-		bakRoot := BackupDir()
+		bakRoot := EffectiveBackupDir()
 		if bakRoot == "" {
 			bakRoot = filepath.Join(steam, "millennium_backups")
 		}
@@ -38,9 +39,14 @@ func installPlatform(archivePath, version string, o Options) error {
 		if b, err := os.ReadFile(filepath.Join(mill, "version.txt")); err == nil {
 			oldVer = strings.TrimSpace(string(b))
 		}
-		bak := filepath.Join(bakRoot, oldVer)
-		_ = os.RemoveAll(bak)
-		_ = copyDirTree(mill, bak)
+		// Match PowerShell layout: millennium_backups/<ver>_<ts>/{millennium,wsock32.dll}
+		bak := filepath.Join(bakRoot, oldVer+"_"+time.Now().Format("20060102150405"))
+		_ = os.MkdirAll(bak, 0o755)
+		_ = copyDirTree(mill, filepath.Join(bak, "millennium"))
+		wsock := filepath.Join(steam, "wsock32.dll")
+		if _, err := os.Stat(wsock); err == nil {
+			_ = copyFile(wsock, filepath.Join(bak, "wsock32.dll"))
+		}
 	}
 
 	entries, err := os.ReadDir(stage)

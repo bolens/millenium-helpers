@@ -121,7 +121,7 @@ func ParseArgs(args []string) (Options, error) {
 // ListBackups returns backup directory basenames (Unix millennium.bak_* style, or Windows backup dir entries).
 func ListBackups() ([]string, error) {
 	if runtime.GOOS == "windows" || BackupDir() != "" {
-		dir := BackupDir()
+		dir := EffectiveBackupDir()
 		if dir == "" {
 			return nil, nil
 		}
@@ -211,7 +211,7 @@ func NeedsLegacy(o Options) bool {
 		return false
 	}
 	if o.Rollback {
-		return true
+		return !CanNativeRollback()
 	}
 	if o.DryRun {
 		return false // native dry-run (local or remote resolve)
@@ -241,10 +241,10 @@ Options:
   -f, --force  -y, --yes  -d, --dry-run  -q, --quiet
   -V, --version  -h, --help
 
-Native: --rollback list, --dry-run (resolve/verify), remote download+SHA,
---file SHA pre-check, live extract/install when writable (root / MILLENNIUM_LIB_DIR /
-Windows Steam path). Rollback apply and non-root Linux system install use legacy
-(MILLENNIUM_LEGACY=1 forces all legacy).
+Native: --rollback list|apply (when writable), --dry-run (resolve/verify/rollback),
+remote download+SHA, --file SHA pre-check, live extract/install when writable
+(root / MILLENNIUM_LIB_DIR / Windows Steam path). Non-root Linux system install
+uses legacy (MILLENNIUM_LEGACY=1 forces all legacy).
 `)
 		return true, 0
 	}
@@ -259,6 +259,12 @@ Windows Steam path). Rollback apply and non-root Linux system install use legacy
 		}
 		fmt.Print(FormatBackupList(backs))
 		return true, 0
+	}
+	if o.Rollback {
+		if !CanNativeRollback() {
+			return false, 0
+		}
+		return true, applyRollback(o)
 	}
 	if o.DryRun {
 		code := runDryRun(o)
