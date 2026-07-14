@@ -17,10 +17,12 @@ Project: [README](../README.md). Index: [README.md](README.md).
 | MCP | [`scripts/millennium-mcp.py`](../scripts/millennium-mcp.py) | Python 3 |
 | Completions | [`completions/`](../completions/) | Bash / Zsh / Fish / Nushell / PowerShell |
 | Man pages | [`man/`](../man/) | mandoc |
-| Packaging | Formula, Nix, Arch, Scoop, Winget | various |
+| Packaging | Formula, Nix, Arch, Scoop/Winget, deb/rpm/Chocolatey | various |
 
 Rough size: ~30 Bash lib modules, ~30 PowerShell lib modules, ~725 LOC MCP,
-8 man pages, 12 completion files. No shared IDL — parity is manual
+8 man pages, 12 completion files. CLI surface is gated by
+[`spec/cli-contract.yaml`](../spec/cli-contract.yaml); remaining dual-shell
+parity gaps are tracked in the matrix below
 ([CONTRIBUTING](../CONTRIBUTING.md#linux--windows-parity)).
 
 ---
@@ -94,7 +96,8 @@ Tests: Bash behavioral/unit under `tests/` · Pester under `tests/windows/`.
 | `repair` | Y | Y | **Dry-run + live user-path native** | `test_repair` + Go | `millennium-repair` + Go | Hook reinstall still legacy as needed |
 | `purge` (+ `--yes` / dry-run) | Y | Y | **Dry-run + live Unix/Windows native** | `test_purge` + Go | `millennium-purge` | — |
 | `upgrade --all-users` | Y | — | Linux/macOS only | P | — | Keep contract-marked |
-| `schedule enable/disable/status` | Y | Y | **Native**; Linux systemd prefers **system**, else user | `test_schedule` + Go | `millennium-schedule` | Bash path user-only until graduated |
+| `schedule enable/disable/status` | Y | Y | **Native**; Linux systemd prefers **system**, else user | `test_schedule` + Go | `millennium-schedule` | Bash enable still writes user units; Bash disable/uninstall clear both scopes |
+
 | `schedule pre/post-update` | Y | — | **Native** (Unix/macOS; Windows N/A) | `test_schedule` + Go | — | Scheduler gate + Steam/diag |
 | `schedule setup` wizard | Y | Y | **Native** (config + optional enable) | Y + Go | Y + Go | `FORCE_WIZARD`; scope flags on enable |
 | `schedule config get/set/list` | Y | Y | **Native Go (Phase 2)** | Y + Go | Y + Go | Config path graduated |
@@ -102,7 +105,7 @@ Tests: Bash behavioral/unit under `tests/` · Pester under `tests/windows/`.
 | `theme` list/install/update/remove | Y | Y | **Native Go (list + mutate)** | `test_theme` + Go | `millennium-theme` + Go | zip-slip safe extract; `--yes` on remove |
 | `theme --json` | Y | Y | **Native (Phase 2 list)** | Y + Go | Y + Go | — |
 | `mcp` tools surface | Y | Y | Phase 5 → Go CLI | `test_mcp` | `millennium-mcp` | Stop dual argv maps |
-| Install / uninstall helpers | Y | Y | **Unix Go-first** PATH `millennium`; Windows/pkg still shell/PS | `test_install` | `install` | Win exe + release assets; long-names remain |
+| Install / uninstall helpers | Y | Y | **Go-first** PATH `millennium` / `.exe`; versioned OS/arch release archives | `test_install` | `install` | Long-name helpers + shell/PS fallback remain; uninstall clears both systemd scopes |
 | Install track / doctor sync | Y | Y | Native | `test_install_track` | `InstallTrack` | Shared meta JSON |
 | Completions | Y | Y | Generated from contract | `test_completions` | `completions` | Codegen later |
 | Man pages | Y | — | Generated / kept | `check-man` | — | Keep shipping on Unix |

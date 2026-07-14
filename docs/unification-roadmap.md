@@ -20,13 +20,15 @@ and test parity** on Linux, macOS, and Windows.
 | **1 — MVP strangler** | Done | `go/` Cobra dispatcher + legacy exec |
 | **2 — Config + read-mostly** | Done | `schedule config`, `theme list`, bare diag |
 | **3 — Mutating core** | Done | Upgrade/repair/purge/diag (incl. follow) native |
-| **4 — Schedule + installers** | In progress | Schedule native; Unix install Go-first; packaging matrix + Windows exe prep |
+| **4 — Schedule + installers** | Done | Schedule + installers Go-first; legacy dual-scope systemd cleanup (4m) |
 | **5 — MCP + cleanup** | Not started | MCP still Python; dual libs still required |
 
 Force any native path back to shell/PS: `MILLENNIUM_LEGACY=1`.
 
-`make build` → `bin/millennium`. Unix `install.sh` prefers that Go binary for
-PATH `millennium` (shell fallback). Packaging / Windows still shell/PS by default.
+`make build` → `bin/millennium`. Unix `install.sh` and Windows `install.ps1`
+prefer that Go binary for PATH `millennium` / `millennium.exe` (shell/PS
+fallback). Release CD embeds per-OS/arch Go binaries and versioned archives;
+builds wait on a green required-CI gate before packaging assets.
 
 ---
 
@@ -49,9 +51,10 @@ are strangler progress, not automatic permission to delete `.sh` / `.ps1`.
 
 Work through this queue; check items off as PRs land and update this list.
 
-1. [x] **Windows + packaging Go-first** — `install.ps1` prefers `.exe`; release/homebrew/arch/scoop/nix matrix; deb/rpm/Chocolatey recipes (next tag ships embedded binaries)
-2. [ ] **MCP → Go CLI** — Phase 5; retire Python dispatcher
-3. [ ] **Graduate commands** — dual-OS CI + delete dual libs per [graduation rule](#command-graduation-rule)
+1. [x] **Windows + packaging Go-first** — `install.ps1` prefers `.exe`; versioned OS/arch release assets; from-source / `-bin` / `-git` matrix (+ deb/rpm/Chocolatey); release CD gated on green CI
+2. [x] **Doctor / purge / uninstall: dual systemd scopes** — Phase 4m; legacy Bash + `install.sh` clean system **and** user units
+3. [ ] **MCP → Go CLI** — Phase 5; retire Python dispatcher
+4. [ ] **Graduate commands** — dual-OS CI + delete dual libs per [graduation rule](#command-graduation-rule)
 
 ---
 
@@ -123,7 +126,7 @@ Work through this queue; check items off as PRs land and update this list.
 | Surface | Status | Notes |
 | --- | --- | --- |
 | MCP server | Legacy | `scripts/millennium-mcp.py` |
-| Installers ship Go binary first | Partial | Unix `install.sh` + Arch/brew/nix from-source Go-first; Windows/bin packages prefer `.exe` when release embeds it |
+| Installers ship Go binary first | Done | Unix `install.sh` + Windows `install.ps1`; release embeds `millennium` / `millennium.exe` in versioned OS/arch archives; shell/PS fallback remains |
 | Dual `.sh` / `.ps1` libs removed | Not started | Only after graduation |
 
 ---
@@ -160,7 +163,7 @@ with `MILLENNIUM_LEGACY=1` only as escape hatch.
 - [x] Repair: dry-run + user-path live
 - [x] Diag: `--json`, `--share`, `logs`, doctor dry-run + live, `--follow`
 
-### Phase 4 — Schedule + installers — In progress
+### Phase 4 — Schedule + installers — Done
 
 - [x] Schedule status + Unix enable/disable (+ dry-run everywhere)
 - [x] Linux **system** + **user** systemd service/timer (prefer system; `--system` / `--user`; migrate other scope)
@@ -169,9 +172,9 @@ with `MILLENNIUM_LEGACY=1` only as escape hatch.
 - [x] `pre-update` / `post-update` (Unix/macOS; Steam capture/close/relaunch + diag)
 - [x] `schedule setup` wizard → native enable (honors `--system` / `--user` / `--cron`)
 - [x] Unix `install.sh` Go-first PATH `millennium` (`make build` / prebuilt; shell fallback)
-- [x] Windows `install.ps1` prefers `millennium.exe`; release CD embeds Go in archives (from next tag)
+- [x] Windows `install.ps1` prefers `millennium.exe`; release CD embeds Go in versioned OS/arch archives
 - [x] Packaging matrix: from-source / `-bin` / `-git` (+ deb/rpm/Chocolatey recipes)
-- [ ] Doctor / purge / uninstall: clean both systemd scopes (when still on legacy paths)
+- [x] **Phase 4m:** Doctor / purge / uninstall clean **both** systemd scopes on legacy Bash paths (`disable_timer`, `install.sh` uninstall without `runuser` privilege drop, purge prefers `millennium schedule disable`); diag detects system timers
 
 ### Systemd system vs user
 
@@ -186,9 +189,9 @@ Shipped behavior:
 
 1. **Selection:** auto prefers system; `--system` / `--user` force; mutual exclusion.
 2. **Units:** `millennium-update.service` / `.timer`; system scope sets `User=` / `Group=` / `HOME=` from `SUDO_USER` (or current user).
-3. **Status / disable:** probe and clear both scopes (system skip if unprivileged).
-4. **Enable:** removes the other scope when possible before writing.
-5. **Legacy Bash:** still user-only until graduated.
+3. **Status / disable (Go):** probe and clear both scopes (system skip if unprivileged).
+4. **Enable (Go):** removes the other scope when possible before writing.
+5. **Legacy Bash:** `disable` / enable-migration / uninstall clear both scopes; Bash enable still writes user units until graduated.
 6. **macOS / Windows / cron:** unchanged.
 
 ### Phase 5 — MCP + cleanup — Not started
