@@ -1,6 +1,6 @@
 # Makefile for Millennium Helpers local development automation
 
-.PHONY: setup test test-windows test-go build lint format check-all check-version check-man check-docs check-licensing check-winget check-completions check-cli-contract sync-git-srcinfo sync-stable-srcinfo bump-version test-debian test-ubuntu test-fedora test-all-distros
+.PHONY: setup test test-windows test-go build lint format check-all check-version check-man check-docs check-licensing check-winget check-packaging check-completions check-cli-contract sync-git-srcinfo sync-stable-srcinfo sync-bin-srcinfo bump-version test-debian test-ubuntu test-fedora test-all-distros
 
 GO ?= go
 CGO_ENABLED ?= 0
@@ -73,6 +73,9 @@ check-licensing: check-docs
 check-winget:
 	bash scripts/ci/check-winget-manifests.sh
 
+check-packaging:
+	bash scripts/ci/check-packaging-manifests.sh
+
 check-completions:
 	bash tests/unit/test_completions.sh
 
@@ -84,10 +87,14 @@ check-cli-contract:
 sync-git-srcinfo:
 	bash scripts/ci/sync-git-srcinfo.sh
 
-# Regenerate packaging/millennium-helpers/.SRCINFO from PKGBUILD.
+# Regenerate packaging/millennium-helpers/.SRCINFO from PKGBUILD (from-source).
 # See CONTRIBUTING.md § Versioning.
 sync-stable-srcinfo:
 	bash scripts/ci/sync-stable-srcinfo.sh
+
+# Regenerate packaging/millennium-helpers-bin/.SRCINFO from PKGBUILD.
+sync-bin-srcinfo:
+	bash scripts/ci/sync-bin-srcinfo.sh
 
 # Pre-tag bump: VERSION + packaging URLs/versions (keeps hashes). Usage: make bump-version VERSION=X.Y.Z
 # See CONTRIBUTING.md § Versioning and docs/release_runbook.md.

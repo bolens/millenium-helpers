@@ -1,21 +1,19 @@
-class MillenniumHelpers < Formula
-  desc "Millennium helpers (from source) — Go strangler CLI plus shell helpers/MCP"
+class MillenniumHelpersBin < Formula
+  desc "Millennium helpers (prebuilt release assets) — scripts/MCP; Go dispatcher when embedded"
   homepage "https://github.com/bolens/millenium-helpers"
-  url "https://github.com/bolens/millenium-helpers/archive/refs/tags/v2.6.2.tar.gz"
-  sha256 "65e4c76384f79f5e75838809a30369e8dd5150d7c61bcb6b093d05544ad2e419"
+  url "https://github.com/bolens/millenium-helpers/releases/download/v2.6.2/millennium-helpers-linux.tar.gz"
+  sha256 "c077c3f536e751e776fabb329600b18d7452d455a2e2dd1908491332569f4e55"
   license "MIT"
-  head "https://github.com/bolens/millenium-helpers.git", branch: "main"
 
-  depends_on "go" => :build
   depends_on "bash"
   depends_on "curl"
   depends_on "jq"
   depends_on "python"
   depends_on "unzip"
 
-  def install
-    system "make", "build"
+  conflicts_with "millennium-helpers", because: "both install the millennium helper tools"
 
+  def install
     bin.install "scripts/millennium-repair.sh" => "millennium-repair"
     bin.install "scripts/millennium-upgrade.sh" => "millennium-upgrade"
     bin.install "scripts/millennium-schedule.sh" => "millennium-schedule"
@@ -64,20 +62,13 @@ class MillenniumHelpers < Formula
 
   def caveats
     <<~EOS
-      To enable daily automated updates on macOS, run:
-        millennium schedule enable
-
-      For the prebuilt release-asset formula, see: millennium-helpers-bin
-
-      Nushell completions are installed to:
-        #{opt_share}/nushell/completions/millennium-helpers.nu
+      This formula installs the published release tarball.
+      For a from-source build with `go`, use: millennium-helpers
     EOS
   end
 
   test do
-    system "#{bin}/millennium", "version"
     system "#{bin}/millennium-diag", "--help"
     assert_path_exists lib/"millennium-helpers/common.sh"
-    assert_path_exists bash_completion/"millennium"
   end
 end

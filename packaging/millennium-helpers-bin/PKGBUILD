@@ -1,14 +1,14 @@
 # Maintainer: bolens <https://github.com/bolens>
-# From-source package: builds the Go dispatcher from the tagged source tree.
-pkgname=millennium-helpers
+# Binary/asset package: installs the published release tarball (scripts + optional prebuilt Go dispatcher).
+pkgname=millennium-helpers-bin
+_pkgname=millennium-helpers
 pkgver=2.6.2
 pkgrel=1
-pkgdesc="Millennium helpers (from source) — Go strangler CLI plus shell helpers/MCP"
-arch=('x86_64' 'aarch64')
+pkgdesc="Millennium helpers (prebuilt release assets) — Go dispatcher when present, plus shell helpers/MCP"
+arch=('any')
 url="https://github.com/bolens/millenium-helpers"
 license=('MIT')
 depends=('bash' 'curl' 'unzip' 'python' 'sudo')
-makedepends=('go')
 optdepends=(
   'jq: enhanced JSON parsing for updates'
   'systemd: daily update timer scheduler'
@@ -16,14 +16,13 @@ optdepends=(
   'flatpak: compatibility with Flatpak Steam'
   'cronie: alternative daily update timer scheduler via cron (fallback)'
 )
-conflicts=("${pkgname}-git" "${pkgname}-bin")
+provides=("${_pkgname}")
+conflicts=("${_pkgname}" "${_pkgname}-git")
 install=millennium-helpers.install
 backup=('etc/sudoers.d/millennium-helpers')
-# GitHub source archives use the repo name (millenium-helpers) as the top-level directory.
-_srcdir="millenium-helpers-${pkgver}"
-source=("${url}/archive/refs/tags/v${pkgver}.tar.gz"
+source=("${url}/releases/download/v${pkgver}/millennium-helpers-linux.tar.gz"
         "millennium-helpers.sudoers")
-sha256sums=('65e4c76384f79f5e75838809a30369e8dd5150d7c61bcb6b093d05544ad2e419'
+sha256sums=('c077c3f536e751e776fabb329600b18d7452d455a2e2dd1908491332569f4e55'
             'd2a3e23decbd8d3e8ec59919f3bc244be21b9a1f6fa5e70ddd039243b7a87c9d')
 
 prepare() {
@@ -32,16 +31,11 @@ prepare() {
   _arch_prepare_manual_conflict_check
 }
 
-build() {
-  cd "${srcdir}/${_srcdir}"
-  export CGO_ENABLED=0
-  make build
-}
-
 package() {
   # shellcheck source=/dev/null
   source "${startdir}/arch-unix-install.sh"
   install -Dm440 "${srcdir}/millennium-helpers.sudoers" "${pkgdir}/etc/sudoers.d/millennium-helpers"
-  cd "${srcdir}/${_srcdir}"
+  # Release tarball extracts flat into srcdir
+  cd "${srcdir}"
   _arch_install_unix_helpers
 }

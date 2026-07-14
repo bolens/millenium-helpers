@@ -6,21 +6,31 @@
 , unzip
 , python3
 , git
+, go
 , src
 , version
 , pname ? "millennium-helpers"
   # Release tarball is flat (multiple top-level dirs). Git/cleanSource is a directory.
 , unpackFlat ? false
+  # Build Go strangler dispatcher (from-source / git). -bin uses prebuilt if present.
+, buildGoDispatcher ? false
 }:
 
 stdenv.mkDerivation ({
   inherit pname version src;
 
-  nativeBuildInputs = [ makeWrapper ];
+  nativeBuildInputs = [ makeWrapper ] ++ lib.optionals buildGoDispatcher [ go ];
 
   buildInputs = [ bash python3 curl unzip git ];
 
-  dontBuild = true;
+  dontBuild = !buildGoDispatcher;
+
+  buildPhase = lib.optionalString buildGoDispatcher ''
+    runHook preBuild
+    export CGO_ENABLED=0
+    make build
+    runHook postBuild
+  '';
 
   postPatch = ''
     for f in scripts/millennium-*.sh; do
@@ -32,7 +42,6 @@ stdenv.mkDerivation ({
   installPhase = ''
     runHook preInstall
 
-    # Install scripts
     mkdir -p $out/bin
     install -m755 scripts/millennium-repair.sh $out/bin/millennium-repair
     install -m755 scripts/millennium-upgrade.sh $out/bin/millennium-upgrade
@@ -41,20 +50,21 @@ stdenv.mkDerivation ({
     install -m755 scripts/millennium-diag.sh $out/bin/millennium-diag
     install -m755 scripts/millennium-theme.sh $out/bin/millennium-theme
     install -m755 scripts/millennium-mcp.py $out/bin/millennium-mcp
-    install -m755 scripts/millennium.sh $out/bin/millennium
+    if [ -x bin/millennium ]; then
+      install -m755 bin/millennium $out/bin/millennium
+    else
+      install -m755 scripts/millennium.sh $out/bin/millennium
+    fi
 
-    # Install shared library and its modules
     mkdir -p $out/lib/millennium-helpers/lib
     install -m644 scripts/common.sh $out/lib/millennium-helpers/common.sh
     install -m644 scripts/lib/*.sh $out/lib/millennium-helpers/lib/
 
-    # Wrap the scripts to ensure they have the runtime dependencies on PATH
     for script in millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp millennium; do
       wrapProgram $out/bin/$script \
         --prefix PATH : ${lib.makeBinPath [ bash python3 curl unzip git ]}
     done
 
-    # Install completions
     mkdir -p $out/share/bash-completion/completions
     install -m644 completions/bash/millennium-helpers $out/share/bash-completion/completions/millennium-helpers
     for script in millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp millennium; do
@@ -75,20 +85,15 @@ stdenv.mkDerivation ({
     mkdir -p $out/share/nushell/completions
     install -m644 completions/nushell/millennium-helpers.nu $out/share/nushell/completions/millennium-helpers.nu
 
-    # Install man pages
     mkdir -p $out/share/man/man1
     install -m644 man/*.1 $out/share/man/man1/
 
-    # Install VERSION for --version lookups
     install -m644 VERSION $out/lib/millennium-helpers/VERSION
 
-    # Vendored Millennium client MIT license (copied next to client on upgrade).
-    # Optional so packaging still works against older release tarballs without third_party/.
     if [ -f third_party/MILLENNIUM-LICENSE.md ]; then
       install -m644 third_party/MILLENNIUM-LICENSE.md $out/lib/millennium-helpers/MILLENNIUM-LICENSE.md
     fi
 
-    # Install license
     mkdir -p $out/share/licenses/${pname}
     install -m644 LICENSE $out/share/licenses/${pname}/LICENSE
 

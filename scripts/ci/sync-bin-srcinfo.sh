@@ -1,21 +1,18 @@
 #!/usr/bin/env bash
-# Sync packaging/millennium-helpers/.SRCINFO from PKGBUILD (from-source / tag archive).
+# Sync packaging/millennium-helpers-bin/.SRCINFO from PKGBUILD.
 # Prefer makepkg --printsrcinfo; fall back to patching key fields when makepkg
 # is unavailable (non-Arch hosts / root).
 #
 # Usage:
-#   scripts/ci/sync-stable-srcinfo.sh           # write .SRCINFO
-#   scripts/ci/sync-stable-srcinfo.sh --check   # exit 1 if stale (no writes)
-#   make sync-stable-srcinfo
-#
-# Prefer make bump-version for full pre-tag bumps (calls this automatically).
-# See CONTRIBUTING.md § Versioning.
+#   scripts/ci/sync-bin-srcinfo.sh           # write .SRCINFO
+#   scripts/ci/sync-bin-srcinfo.sh --check   # exit 1 if stale (no writes)
+#   make sync-bin-srcinfo
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
-PKG_DIR="packaging/millennium-helpers"
+PKG_DIR="packaging/millennium-helpers-bin"
 PKGBUILD="${PKG_DIR}/PKGBUILD"
 SRCINFO="${PKG_DIR}/.SRCINFO"
 CHECK_ONLY=0
@@ -39,7 +36,6 @@ pkgrel="$(grep -E '^pkgrel=' "$PKGBUILD" | head -1 | cut -d= -f2-)"
   exit 1
 }
 
-# First sha256sums entry is the GitHub tag source archive.
 tarball_sha="$(python3 - "$PKGBUILD" <<'PY'
 import re, sys
 text = open(sys.argv[1], encoding="utf-8").read()
@@ -48,7 +44,7 @@ print(m.group(1).lower() if m else "")
 PY
 )"
 
-expected_source="https://github.com/bolens/millenium-helpers/archive/refs/tags/v${pkgver}.tar.gz"
+expected_source="https://github.com/bolens/millenium-helpers/releases/download/v${pkgver}/millennium-helpers-linux.tar.gz"
 
 srcinfo_stale() {
   [[ -f "$SRCINFO" ]] || return 0
@@ -66,10 +62,10 @@ srcinfo_stale() {
 if [[ "$CHECK_ONLY" -eq 1 ]]; then
   if srcinfo_stale; then
     echo "error: ${SRCINFO} is out of date with ${PKGBUILD}" >&2
-    echo "Run: bash scripts/ci/sync-stable-srcinfo.sh && git add ${SRCINFO}" >&2
+    echo "Run: bash scripts/ci/sync-bin-srcinfo.sh && git add ${SRCINFO}" >&2
     exit 1
   fi
-  echo "stable .SRCINFO OK (pkgver=${pkgver})"
+  echo "bin .SRCINFO OK (pkgver=${pkgver})"
   exit 0
 fi
 
@@ -102,7 +98,7 @@ info = Path(path).read_text(encoding="utf-8")
 info = re.sub(r"(?m)^(\tpkgver = ).*$", rf"\g<1>{pkgver}", info, count=1)
 info = re.sub(r"(?m)^(\tpkgrel = ).*$", rf"\g<1>{pkgrel}", info, count=1)
 info = re.sub(
-    r"(?m)^(\tsource = https://github\.com/.+/archive/refs/tags/)v[^/]+(\.tar\.gz)$",
+    r"(?m)^(\tsource = https://github\.com/.+/releases/download/)v[^/]+(/millennium-helpers-linux\.tar\.gz)$",
     rf"\g<1>v{pkgver}\g<2>",
     info,
     count=1,
