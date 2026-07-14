@@ -92,7 +92,7 @@ Tests: Bash behavioral/unit under `tests/` · Pester under `tests/windows/`.
 | `upgrade --rollback` / `list` | Y | Y | **list + apply native when writable**; else Linux `sudo` | `test_upgrade` + Go | `millennium-upgrade` | — |
 | `upgrade --file` / `--sha256` | Y | Y | **Verify native**; install legacy | Y + Go | Y | Fail-closed SHA before legacy |
 | `repair` | Y | Y | **Dry-run + live user-path native** | `test_repair` + Go | `millennium-repair` + Go | Hook reinstall still legacy as needed |
-| `purge` (+ `--yes` / dry-run) | Y | Y | **Dry-run + live Unix native**; Windows live legacy | `test_purge` + Go | `millennium-purge` | Windows Task Scheduler / paths still PS |
+| `purge` (+ `--yes` / dry-run) | Y | Y | **Dry-run + live Unix/Windows native** | `test_purge` + Go | `millennium-purge` | — |
 | `upgrade --all-users` | Y | — | Linux/macOS only | P | — | Keep contract-marked |
 | `schedule enable/disable/status` | Y | Y | **Native**; Linux systemd prefers **system**, else user | `test_schedule` + Go | `millennium-schedule` | setup / pre-post still legacy; Bash path user-only |
 | `schedule setup` wizard | Y | Y | Legacy (Phase 4+) | Y | Y | Interactive both OSes |

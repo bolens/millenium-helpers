@@ -49,13 +49,12 @@ are strangler progress, not automatic permission to delete `.sh` / `.ps1`.
 
 Work through this queue; check items off as PRs land and update this list.
 
-1. [ ] **`purge` Windows live** — multi-path + Task Scheduler cleanup
-2. [ ] **`diag doctor` live** — elevated repairs; dry-run already native
-3. [ ] **`diag logs --follow`** — long-running tail
-4. [ ] **`schedule setup` + pre/post-update** — wizard + scheduler job body (honor system-vs-user choice)
-5. [ ] **Installers → Go binary** — `install.sh` / Windows / packaging ship `millennium` first
-6. [ ] **MCP → Go CLI** — Phase 5; retire Python dispatcher
-7. [ ] **Graduate commands** — dual-OS CI + delete dual libs per [graduation rule](#command-graduation-rule)
+1. [ ] **`diag doctor` live** — elevated repairs; dry-run already native
+2. [ ] **`diag logs --follow`** — long-running tail
+3. [ ] **`schedule setup` + pre/post-update** — wizard + scheduler job body (honor system-vs-user choice)
+4. [ ] **Installers → Go binary** — `install.sh` / Windows / packaging ship `millennium` first
+5. [ ] **MCP → Go CLI** — Phase 5; retire Python dispatcher
+6. [ ] **Graduate commands** — dual-OS CI + delete dual libs per [graduation rule](#command-graduation-rule)
 
 ---
 
@@ -118,7 +117,7 @@ Work through this queue; check items off as PRs land and update this list.
 | --- | --- | --- |
 | `purge --dry-run` | Done | `internal/purge` |
 | `purge` live Unix | Done | Confirm / `--yes` |
-| `purge` live Windows | Legacy | — |
+| `purge` live Windows | Done | millennium/wsock/backups/config + Task Scheduler; Steam/-Yes |
 | `repair --dry-run` | Done | `internal/repair` |
 | `repair` live (user paths) | Partial | chown/htmlcache native; hook/binary reinstall may still need legacy |
 
@@ -160,8 +159,7 @@ with `MILLENNIUM_LEGACY=1` only as escape hatch.
 
 - [x] Upgrade: rollback list/apply, dry-run, download+SHA, install when writable
 - [x] Upgrade: non-root Linux system install / rollback via `sudo` handoff
-- [x] Purge: dry-run + Unix live
-- [ ] Purge: Windows live
+- [x] Purge: dry-run + Unix live + Windows live
 - [x] Repair: dry-run + user-path live
 - [x] Diag: `--json`, `--share`, `logs`, doctor dry-run
 - [ ] Diag: live doctor + `--follow`
