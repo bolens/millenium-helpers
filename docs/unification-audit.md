@@ -96,14 +96,14 @@ Tests: Bash behavioral/unit under `tests/` · Pester under `tests/windows/`.
 | `repair` | Y | Y | **Dry-run + live user-path native** | `test_repair` + Go | `millennium-repair` + Go | Hook reinstall still legacy as needed |
 | `purge` (+ `--yes` / dry-run) | Y | Y | **Dry-run + live Unix/Windows native** | `test_purge` + Go | `millennium-purge` | — |
 | `upgrade --all-users` | Y | — | Linux/macOS only | P | — | Keep contract-marked |
-| `schedule enable/disable/status` | Y | Y | **Native**; Linux systemd prefers **system**, else user | `test_schedule` + Go | `millennium-schedule` | Bash enable still writes user units; Bash disable/uninstall clear both scopes |
+| `schedule enable/disable/status` | Y | Y | **Status graduated (6h)**; enable/disable native | `TestNativeScheduleStatus` + `go.yml`; `test_schedule` | Go + `go.yml`; enable/disable still long-name dual libs | Bash enable still writes user units; status peel next |
 
 | `schedule pre/post-update` | Y | — | **Native** (Unix/macOS; Windows N/A) | `test_schedule` + Go | — | Scheduler gate + Steam/diag |
 | `schedule setup` wizard | Y | Y | **Native** (config + optional enable) | Y + Go | Y + Go | `FORCE_WIZARD`; scope flags on enable |
 | `schedule config get/set/list` | Y | Y | **Graduated** (Phase 6c peel) | Go `TestNativeConfig` + `go.yml` dual-OS; Bash/Pester via thin-wrap | Go + `go.yml` | Dual libs removed; long-name `config` execs Go |
 | `schedule --cron` | Y | — | Linux/macOS only | Y | — | Contract OS-only |
-| `theme` list/install/update/remove | Y | Y | **Graduated** (list 6e peel; mutate 6f) | `TestNativeThemeList` / `TestNativeThemeMutate` + `go.yml` dual-OS | Go + `go.yml`; mutate still long-name until peel | zip-slip safe; mutate peel next |
-| `theme list --json` | Y | Y | **Graduated** (Phase 6e peel) | Go + `go.yml` dual-OS; Bash/Pester via thin-wrap | Go + `go.yml` | Long-name `list` execs Go |
+| `theme` list/install/update/remove | Y | Y | **Graduated** (Phase 6g peel) | `TestNativeTheme*` + `go.yml`; Bash/Pester via thin-wrap | Go + `go.yml` | Dual libs removed; long-name theme execs Go |
+| `theme list --json` | Y | Y | **Graduated** (Phase 6g peel) | Go + `go.yml` dual-OS; Bash/Pester via thin-wrap | Go + `go.yml` | Long-name theme thin-wrap |
 | `mcp` tools surface | Y | Y | **Done:** Go owns stdio + `--register`; PATH twin; Python opt-in escape | `test_mcp` (`MCP_IMPL`) | `millennium` / `millennium-mcp` | Python suite retained until graduation |
 | Install / uninstall helpers | Y | Y | **Go-first** PATH `millennium` / `.exe`; versioned OS/arch release archives | `test_install` | `install` | Long-name helpers + shell/PS fallback remain; uninstall clears both systemd scopes |
 | Install track / doctor sync | Y | Y | Native | `test_install_track` | `InstallTrack` | Shared meta JSON |
