@@ -49,15 +49,14 @@ are strangler progress, not automatic permission to delete `.sh` / `.ps1`.
 
 Work through this queue; check items off as PRs land and update this list.
 
-1. [ ] **`upgrade --rollback <id>` apply** — restore from `millennium.bak_*` / Windows backups
-2. [ ] **Non-root Linux upgrade install** — elevate or document `sudo` handoff when `/usr/lib` needs root
-3. [ ] **`purge` Windows live** — multi-path + Task Scheduler cleanup
-4. [ ] **`diag doctor` live** — elevated repairs; dry-run already native
-5. [ ] **`diag logs --follow`** — long-running tail
-6. [ ] **`schedule setup` + pre/post-update** — wizard + scheduler job body
-7. [ ] **Installers → Go binary** — `install.sh` / Windows / packaging ship `millennium` first
-8. [ ] **MCP → Go CLI** — Phase 5; retire Python dispatcher
-9. [ ] **Graduate commands** — dual-OS CI + delete dual libs per [graduation rule](#command-graduation-rule)
+1. [ ] **Non-root Linux upgrade install** — elevate or document `sudo` handoff when `/usr/lib` needs root
+2. [ ] **`purge` Windows live** — multi-path + Task Scheduler cleanup
+3. [ ] **`diag doctor` live** — elevated repairs; dry-run already native
+4. [ ] **`diag logs --follow`** — long-running tail
+5. [ ] **`schedule setup` + pre/post-update** — wizard + scheduler job body
+6. [ ] **Installers → Go binary** — `install.sh` / Windows / packaging ship `millennium` first
+7. [ ] **MCP → Go CLI** — Phase 5; retire Python dispatcher
+8. [ ] **Graduate commands** — dual-OS CI + delete dual libs per [graduation rule](#command-graduation-rule)
 
 ---
 
@@ -110,7 +109,7 @@ Work through this queue; check items off as PRs land and update this list.
 | Remote download + SHA | Done | `internal/githubapi` |
 | Extract/install when writable | Partial | Root / `MILLENNIUM_LIB_DIR` / Windows Steam; else legacy |
 | `--file` SHA gate | Done | Fail-closed before install |
-| `--rollback <id>` apply | Legacy | — |
+| `--rollback <id>` apply | Done | Unix swap + Windows restore when writable; else legacy |
 | Non-root Linux → `/usr/lib` | Legacy | Needs sudo / elevation story |
 
 ### `purge` / `repair`
@@ -159,8 +158,8 @@ Work through this queue; check items off as PRs land and update this list.
 Exit when upgrade / repair / purge / doctor are natively usable on both OSes
 with `MILLENNIUM_LEGACY=1` only as escape hatch.
 
-- [x] Upgrade: rollback list, dry-run, download+SHA, install when writable
-- [ ] Upgrade: rollback apply + non-root Linux system install path
+- [x] Upgrade: rollback list/apply, dry-run, download+SHA, install when writable
+- [ ] Upgrade: non-root Linux system install path (sudo handoff)
 - [x] Purge: dry-run + Unix live
 - [ ] Purge: Windows live
 - [x] Repair: dry-run + user-path live

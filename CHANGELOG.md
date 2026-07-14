@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Phase 4a schedule:** `schedule status`, `enable`/`disable --dry-run`, Unix live systemd/launchd/cron enable/disable; Windows live enable/disable and setup still legacy
 - **Phase 4b themes:** native `theme install` / `update` / `remove` (zip-slip safe; `--dry-run` / `--yes`)
 - **Phase 4c schedule Windows:** native Task Scheduler `enable`/`disable` (admin; quoting parity with `ScheduleEnable.ps1`); setup / pre-post still legacy
+- **Phase 4d upgrade rollback:** native `--rollback <id>` apply when writable (Unix `millennium.bak_*` swap; Windows `millennium_backups` restore + Steam/-Yes); dry-run; non-root `/usr/lib` still legacy
 - **Phase 3c diag:** native `--json`, `logs` (non-follow), richer report probes, `doctor --dry-run` plan; live doctor / `--share` / `--follow` still legacy
 - **Phase 3d diag share:** native `--share` (home/user/token redaction + paste.rs upload); `--follow` and live doctor still legacy
 - **Phase 3e upgrade install:** native tar/zip extract + atomic install when writable (root / `MILLENNIUM_LIB_DIR` / Windows Steam); non-root Linux system path and rollback apply still legacy
