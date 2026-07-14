@@ -161,6 +161,47 @@ func TestNativeThemeList(t *testing.T) {
 	}
 }
 
+func TestNativeThemeMutate(t *testing.T) {
+	// Offline gate only — live install/update hits GitHub (covered by unit mocks).
+	exe := buildMillennium(t)
+	skins := t.TempDir()
+	env := append(os.Environ(), "MILLENNIUM_SKINS_DIR="+skins)
+
+	bad := exec.Command(exe, "theme", "install", "not-a-valid")
+	bad.Env = env
+	badOut, err := bad.CombinedOutput()
+	if err == nil {
+		t.Fatalf("expected install format failure, got:\n%s", badOut)
+	}
+	if !strings.Contains(string(badOut), "owner/repo") {
+		t.Fatalf("install format error:\n%s", badOut)
+	}
+
+	missing := exec.Command(exe, "theme", "remove", "MissingTheme", "--yes")
+	missing.Env = env
+	missOut, err := missing.CombinedOutput()
+	if err == nil {
+		t.Fatalf("expected remove missing failure, got:\n%s", missOut)
+	}
+	if !strings.Contains(string(missOut), "not installed") {
+		t.Fatalf("remove missing error:\n%s", missOut)
+	}
+
+	local := filepath.Join(skins, "LocalSkin")
+	if err := os.MkdirAll(local, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	upd := exec.Command(exe, "theme", "update", "LocalSkin")
+	upd.Env = env
+	updOut, err := upd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("update local: %v\n%s", err, updOut)
+	}
+	if !strings.Contains(string(updOut), "does not have GitHub metadata") {
+		t.Fatalf("update local skip:\n%s", updOut)
+	}
+}
+
 func TestNativeUpgradeRollbackList(t *testing.T) {
 	exe := buildMillennium(t)
 	lib := t.TempDir()

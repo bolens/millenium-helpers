@@ -119,6 +119,28 @@ jobs:
           echo "$json" | grep -F '"type":"github"'
           rm -rf "$skins"
 
+      - name: Smoke theme mutate (dual-OS, offline)
+        shell: bash
+        run: |
+          set -euo pipefail
+          skins="$(mktemp -d)"
+          export MILLENNIUM_SKINS_DIR="$skins"
+          set +e
+          install_out="$(bin/millennium theme install not-a-valid 2>&1)"
+          install_rc=$?
+          set -e
+          test "$install_rc" -ne 0
+          echo "$install_out" | grep -F 'owner/repo'
+          set +e
+          remove_out="$(bin/millennium theme remove MissingTheme --yes 2>&1)"
+          remove_rc=$?
+          set -e
+          test "$remove_rc" -ne 0
+          echo "$remove_out" | grep -F 'not installed'
+          mkdir -p "$skins/LocalSkin"
+          bin/millennium theme update LocalSkin | grep -F 'does not have GitHub metadata'
+          rm -rf "$skins"
+
       - name: Smoke legacy help delegate (Linux)
         if: runner.os == 'Linux'
         shell: bash
