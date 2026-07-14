@@ -158,6 +158,28 @@ jobs:
           echo "$out" | grep -F 'millennium schedule enable'
           rm -rf "$home"
 
+      - name: Smoke schedule enable/disable dry-run (dual-OS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$(mktemp -d)"
+          export HOME="$home"
+          export XDG_CONFIG_HOME="$home/.config"
+          export LOCALAPPDATA="$home/LocalAppData"
+          export APPDATA="$home/AppData"
+          export MILLENNIUM_CONFIG_DIR="$home/cfg"
+          export MILLENNIUM_CONFIG_FILE="$home/cfg/config.json"
+          mkdir -p "$MILLENNIUM_CONFIG_DIR" "$XDG_CONFIG_HOME" "$LOCALAPPDATA" "$APPDATA"
+          en="$(bin/millennium schedule enable stable --dry-run)"
+          echo "$en" | grep -F 'DRY RUN'
+          echo "$en" | grep -F '[DRY RUN] Would'
+          dis="$(bin/millennium schedule disable --dry-run)"
+          echo "$dis" | grep -F 'DRY RUN'
+          echo "$dis" | grep -F '[DRY RUN] Would'
+          # Dry-run must not write systemd user units under the fake home.
+          test ! -e "$XDG_CONFIG_HOME/systemd/user/millennium-update.timer"
+          rm -rf "$home"
+
       - name: Smoke legacy help delegate (Linux)
         if: runner.os == 'Linux'
         shell: bash

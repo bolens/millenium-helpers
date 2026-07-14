@@ -186,6 +186,47 @@ func TestNativeScheduleStatus(t *testing.T) {
 	}
 }
 
+func TestNativeScheduleEnableDisableDryRun(t *testing.T) {
+	exe := buildMillennium(t)
+	home := t.TempDir()
+	env := append(os.Environ(),
+		"HOME="+home,
+		"XDG_CONFIG_HOME="+filepath.Join(home, ".config"),
+		"LOCALAPPDATA="+filepath.Join(home, "LocalAppData"),
+		"APPDATA="+filepath.Join(home, "AppData"),
+		"MILLENNIUM_CONFIG_DIR="+filepath.Join(home, "cfg"),
+		"MILLENNIUM_CONFIG_FILE="+filepath.Join(home, "cfg", "config.json"),
+	)
+
+	en := exec.Command(exe, "schedule", "enable", "stable", "--dry-run")
+	en.Env = env
+	enOut, err := en.CombinedOutput()
+	if err != nil {
+		t.Fatalf("enable --dry-run: %v\n%s", err, enOut)
+	}
+	text := string(enOut)
+	if !strings.Contains(text, "DRY RUN") {
+		t.Fatalf("enable missing DRY RUN:\n%s", text)
+	}
+	if !strings.Contains(text, "[DRY RUN] Would") {
+		t.Fatalf("enable missing Would line:\n%s", text)
+	}
+
+	dis := exec.Command(exe, "schedule", "disable", "--dry-run")
+	dis.Env = env
+	disOut, err := dis.CombinedOutput()
+	if err != nil {
+		t.Fatalf("disable --dry-run: %v\n%s", err, disOut)
+	}
+	dtext := string(disOut)
+	if !strings.Contains(dtext, "DRY RUN") {
+		t.Fatalf("disable missing DRY RUN:\n%s", dtext)
+	}
+	if !strings.Contains(dtext, "[DRY RUN] Would") {
+		t.Fatalf("disable missing Would line:\n%s", dtext)
+	}
+}
+
 func TestNativeThemeMutate(t *testing.T) {
 	// Offline gate only — live install/update hits GitHub (covered by unit mocks).
 	exe := buildMillennium(t)
