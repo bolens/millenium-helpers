@@ -109,9 +109,10 @@ func ResolveChannel(explicit string) string {
 	return "stable"
 }
 
-// NeedsLegacy reports actions that still require shell/PS.
+// NeedsLegacy reports actions that still require shell/PS (none — all peeled).
 func NeedsLegacy(o Options) bool {
-	return o.Action == "config"
+	_ = o
+	return false
 }
 
 // RunCLI runs native schedule actions. Caller must skip when NeedsLegacy.
