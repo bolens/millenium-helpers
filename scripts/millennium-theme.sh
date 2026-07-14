@@ -202,15 +202,16 @@ update_single_theme() {
   fi
 
   local parsed_meta
-  parsed_meta=$(python3 -c "
-import json
+  parsed_meta=$(python3 - "$meta_file" <<'PY' 2>/dev/null || echo "::"
+import json, sys
 try:
-    with open('$meta_file') as f:
+    with open(sys.argv[1]) as f:
         d = json.load(f)
-        print(f\"{d.get('owner', '')}:{d.get('repo', '')}:{d.get('commit', '')}\")
+    print(f"{d.get('owner', '')}:{d.get('repo', '')}:{d.get('commit', '')}")
 except Exception:
-    print('::')
-" 2>/dev/null || echo "::")
+    print("::")
+PY
+)
   local owner="${parsed_meta%%:*}"
   local rest="${parsed_meta#*:}"
   local repo="${rest%%:*}"
@@ -220,6 +221,8 @@ except Exception:
     echo -e "${RED}Error: Invalid metadata format in ${meta_file}.${NC}" >&2
     return 1
   fi
+  _sanitize_theme_component "$owner" "theme owner"
+  _sanitize_theme_component "$repo" "theme repo"
 
   echo -e "Checking updates for theme '${theme_name}' (${owner}/${repo})..."
 
@@ -256,7 +259,11 @@ except Exception:
       return 1
     fi
 
-    unzip -q "$TMP/theme.zip" -d "$TMP" || [[ $? -le 2 ]]
+    if ! safe_extract_zip "$TMP/theme.zip" "$TMP"; then
+      echo -e "${RED}Error: Failed to extract theme archive safely.${NC}" >&2
+      rm -rf "$TMP"
+      return 1
+    fi
     if [[ ! -d "$TMP/${repo}-${COMMIT}" ]]; then
       echo -e "${RED}Error: Failed to extract theme archive.${NC}" >&2
       rm -rf "$TMP"
@@ -460,8 +467,11 @@ if [[ "$COMMAND" == "install" ]]; then
       exit 1
     fi
 
-    # Extract
-    unzip -q "$TMP/theme.zip" -d "$TMP" || [[ $? -le 2 ]]
+    # Extract (reject zip-slip)
+    if ! safe_extract_zip "$TMP/theme.zip" "$TMP"; then
+      echo -e "${RED}Error: Failed to extract theme zip safely.${NC}" >&2
+      exit 1
+    fi
     if [[ ! -d "$TMP/${repo}-${COMMIT}" ]]; then
       echo -e "${RED}Error: Failed to extract theme zip.${NC}" >&2
       exit 1

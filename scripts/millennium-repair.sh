@@ -186,49 +186,78 @@ for cand in \
 done
 
 if [[ -n "$CONFIG_JSON" ]]; then
-  parsed_theme=$(python3 -c "
-import json
+  parsed_theme=$(python3 - "$CONFIG_JSON" <<'PY' 2>/dev/null || echo "Steam"
+import json, sys
 try:
-    with open('$CONFIG_JSON') as f:
+    with open(sys.argv[1]) as f:
         data = json.load(f)
-        print(data.get('themes', {}).get('activeTheme', 'Steam'))
+    print(data.get("themes", {}).get("activeTheme", "Steam"))
 except Exception:
-    print('Steam')
-" 2>/dev/null || echo "Steam")
+    print("Steam")
+PY
+)
   if [[ -n "$parsed_theme" ]]; then
     ACTIVE_THEME="$parsed_theme"
   fi
 fi
 
-THEME_DIR="$STEAM/millennium/themes/${ACTIVE_THEME}"
+# Sanitize activeTheme before using it as a path component (prevents ../ escape).
+THEME_DIR=""
+SKIP_UNSAFE_THEME=false
+if [[ "$ACTIVE_THEME" == "Steam" ]]; then
+  THEME_DIR="$STEAM/millennium/themes/Steam"
+elif [[ -z "$ACTIVE_THEME" || "$ACTIVE_THEME" == "." || "$ACTIVE_THEME" == ".." || "$ACTIVE_THEME" == */* ]]; then
+  echo "Warning: activeTheme '${ACTIVE_THEME}' is not a safe directory name. Skipping theme refresh." >&2
+  SKIP_UNSAFE_THEME=true
+  ACTIVE_THEME="Steam"
+  THEME_DIR="$STEAM/millennium/themes/Steam"
+else
+  THEMES_BASE="$STEAM/millennium/themes"
+  THEME_DIR="${THEMES_BASE}/${ACTIVE_THEME}"
+  resolved_theme="$(portable_realpath_m "$THEME_DIR" 2>/dev/null || true)"
+  resolved_base="$(portable_realpath_m "$THEMES_BASE" 2>/dev/null || true)"
+  if [[ -n "$resolved_theme" && -n "$resolved_base" && "$resolved_theme" != "$resolved_base" && "$resolved_theme" != "${resolved_base}/"* ]]; then
+    echo "Warning: activeTheme path escapes themes directory. Skipping theme refresh." >&2
+    SKIP_UNSAFE_THEME=true
+    THEME_DIR=""
+    ACTIVE_THEME="Steam"
+  fi
+fi
 
 # Parse owner and repo from metadata.json if it exists
 OWNER="SpaceTheme"
 REPO="Steam"
 HAS_METADATA=false
 
-METADATA_FILE="${THEME_DIR}/metadata.json"
-if [[ -f "$METADATA_FILE" ]]; then
-  parsed_meta=$(python3 -c "
-import json
+METADATA_FILE=""
+if [[ -n "${THEME_DIR:-}" ]]; then
+  METADATA_FILE="${THEME_DIR}/metadata.json"
+fi
+if [[ -n "$METADATA_FILE" && -f "$METADATA_FILE" ]]; then
+  parsed_meta=$(python3 - "$METADATA_FILE" <<'PY' 2>/dev/null || echo ":"
+import json, sys
 try:
-    with open('$METADATA_FILE') as f:
+    with open(sys.argv[1]) as f:
         data = json.load(f)
-        print(f\"{data.get('owner', '')}:{data.get('repo', '')}\")
+    print(f"{data.get('owner', '')}:{data.get('repo', '')}")
 except Exception:
-    print(':')
-" 2>/dev/null || echo ":")
+    print(":")
+PY
+)
   parsed_owner="${parsed_meta%%:*}"
   parsed_repo="${parsed_meta#*:}"
   if [[ -n "$parsed_owner" && -n "$parsed_repo" ]]; then
-    OWNER="$parsed_owner"
-    REPO="$parsed_repo"
-    HAS_METADATA=true
+    if [[ "$parsed_owner" != */* && "$parsed_owner" != "." && "$parsed_owner" != ".." && \
+          "$parsed_repo" != */* && "$parsed_repo" != "." && "$parsed_repo" != ".." ]]; then
+      OWNER="$parsed_owner"
+      REPO="$parsed_repo"
+      HAS_METADATA=true
+    fi
   fi
 fi
 
 REFRESH_THEME=true
-if [[ "$SKIP_THEME" == "true" ]]; then
+if [[ "$SKIP_THEME" == "true" || "$SKIP_UNSAFE_THEME" == "true" ]]; then
   REFRESH_THEME=false
 elif [[ "$ACTIVE_THEME" != "Steam" && "$HAS_METADATA" == "false" ]]; then
   echo "Active theme '${ACTIVE_THEME}' does not have GitHub metadata. Skipping theme refresh."
@@ -268,8 +297,10 @@ if [[ "$REFRESH_THEME" == "true" ]]; then
       exit 1
     fi
 
-    # Allow unzip to return warnings (exit code <= 2) and verify extraction
-    unzip -q "$TMP/theme.zip" -d "$TMP" || [[ $? -le 2 ]]
+    if ! safe_extract_zip "$TMP/theme.zip" "$TMP"; then
+      echo "Error: Failed to extract theme archive safely." >&2
+      exit 1
+    fi
     if [[ ! -d "$TMP/${REPO}-${COMMIT}" ]]; then
       echo "Error: Failed to extract theme archive." >&2
       exit 1

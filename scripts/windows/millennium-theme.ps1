@@ -343,7 +343,7 @@ if ($Command -eq "install") {
         if (Test-Path -Path $tempExtract) {
             Remove-Item -Path $tempExtract -Recurse -Force
         }
-        Expand-Archive -Path $localZip -DestinationPath $tempExtract -Force
+        Expand-SafeArchive -Path $localZip -DestinationPath $tempExtract
 
         # Move extracted folder (which has GitHub zip-naming: repo-commit)
         $extractedDir = Get-ChildItem -Path $tempExtract -Directory | Select-Object -First 1
@@ -506,7 +506,7 @@ if ($Command -eq "update") {
             if (Test-Path -Path $tempExtract) {
                 Remove-Item -Path $tempExtract -Recurse -Force
             }
-            Expand-Archive -Path $localZip -DestinationPath $tempExtract -Force
+            Expand-SafeArchive -Path $localZip -DestinationPath $tempExtract
 
             # Move extracted folder (which has GitHub zip-naming: repo-commit)
             $extractedDir = Get-ChildItem -Path $tempExtract -Directory | Select-Object -First 1
