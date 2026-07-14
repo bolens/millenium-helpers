@@ -59,3 +59,8 @@ if [[ -f "${_COMMON_LIB_DIR}/backup.sh" ]]; then
   # shellcheck source=lib/backup.sh
   source "${_COMMON_LIB_DIR}/backup.sh"
 fi
+
+if [[ -f "${_COMMON_LIB_DIR}/millennium_license.sh" ]]; then
+  # shellcheck source=lib/millennium_license.sh
+  source "${_COMMON_LIB_DIR}/millennium_license.sh"
+fi

@@ -426,6 +426,9 @@ Execute-Cmd -ScriptBlock {
 
     # Save version info
     $latestVer | Set-Content -Path $installedVerFile -Force
+
+    # MIT requires the copyright/permission notice with redistributed copies
+    Install-MillenniumLicense -DestDir $MillenniumDir
 } -Description "Extract $localArchive to $SteamPath"
 
 # Cleanup downloaded file if not using a custom local file input

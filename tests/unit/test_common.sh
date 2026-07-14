@@ -855,4 +855,27 @@ unmock_cmd "runuser"
 mock_cmd "systemctl" "exit 0"
 mock_cmd "runuser" "exit 0"
 
+# --- install_millennium_license ---
+if declare -F install_millennium_license >/dev/null; then
+  _report true "install_millennium_license is defined"
+else
+  _report false "install_millennium_license is defined"
+fi
+if declare -F find_millennium_license_source >/dev/null; then
+  _report true "find_millennium_license_source is defined"
+else
+  _report false "find_millennium_license_source is defined"
+fi
+
+lic_src="$(find_millennium_license_source)"
+assert_contains "$lic_src" "MILLENNIUM-LICENSE.md" "find_millennium_license_source resolves vendored file"
+assert_file_exists "$lic_src" "vendored Millennium license exists"
+
+lic_dest="$(mktemp -d)"
+install_millennium_license "$lic_dest"
+assert_file_exists "${lic_dest}/LICENSE" "install_millennium_license writes LICENSE"
+assert_contains "$(cat "${lic_dest}/LICENSE")" "Project Millennium" "installed LICENSE names Project Millennium"
+assert_contains "$(cat "${lic_dest}/LICENSE")" "MIT License" "installed LICENSE is MIT"
+rm -rf "$lic_dest"
+
 print_summary

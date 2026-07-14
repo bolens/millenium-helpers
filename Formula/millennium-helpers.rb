@@ -58,6 +58,9 @@ class MillenniumHelpers < Formula
 
     # Install VERSION for --version lookups
     (lib/"millennium-helpers").install "VERSION"
+
+    # Vendored Millennium client license (installed next to the client on upgrade)
+    (lib/"millennium-helpers").install "third_party/MILLENNIUM-LICENSE.md"
   end
 
   def caveats

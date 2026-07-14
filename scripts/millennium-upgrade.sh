@@ -267,6 +267,7 @@ if [[ "$DRY_RUN" == "true" ]]; then
     echo -e "${YELLOW}[DRY RUN] Expected SHA256: ${SHA}${NC}"
   fi
   echo -e "${YELLOW}[DRY RUN] Would clear /usr/lib/millennium/* and install new binaries${NC}"
+  echo -e "${YELLOW}[DRY RUN] Would install Millennium MIT LICENSE into /usr/lib/millennium/${NC}"
   prune_backups
 else
   TMP=$(mktemp -d)
@@ -312,6 +313,11 @@ else
   find "$extracted_dir/" -type f -exec install -m755 -t "$dest_tmp/" {} + 2>/dev/null || true
   echo "${VER}" > "$dest_tmp/version.txt"
   chmod 644 "$dest_tmp/version.txt"
+
+  # MIT requires the copyright/permission notice with redistributed copies.
+  if declare -F install_millennium_license >/dev/null 2>&1; then
+    install_millennium_license "$dest_tmp"
+  fi
 
   (cd "$dest_tmp" && sha256sum libmillennium_bootstrap_x86.so libmillennium_bootstrap_hhx64.so libmillennium_x86.so libmillennium_hhx64.so libmillennium_pvs64 > checksums.txt 2>/dev/null || true)
   chmod 644 "$dest_tmp/checksums.txt" 2>/dev/null || true

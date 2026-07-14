@@ -165,6 +165,7 @@ jobs:
             VERSION \
             LICENSE \
             README.md \
+            third_party/MILLENNIUM-LICENSE.md \
             scripts/common.sh \
             scripts/millennium.sh \
             scripts/millennium-diag.sh \
@@ -190,7 +191,8 @@ jobs:
             completions/powershell/ \
             VERSION \
             LICENSE \
-            README.md
+            README.md \
+            third_party/MILLENNIUM-LICENSE.md
 
       - name: Calculate Checksums
         id: checksums

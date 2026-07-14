@@ -620,12 +620,14 @@ install_scripts() {
      execute cp -f "${SCRIPT_DIR}/scripts/common.sh" "${lib_dir}/common.sh" && \
      execute cp -f "${SCRIPT_DIR}/scripts/lib/"*.sh "${lib_dir}/lib/" && \
      execute cp -f "${SCRIPT_DIR}/VERSION" "${lib_dir}/VERSION" && \
+     { [[ -f "${SCRIPT_DIR}/third_party/MILLENNIUM-LICENSE.md" ]] && execute cp -f "${SCRIPT_DIR}/third_party/MILLENNIUM-LICENSE.md" "${lib_dir}/MILLENNIUM-LICENSE.md" || true; } && \
      change_owner -R "$lib_dir" && \
      execute chmod 755 "$lib_dir" && \
      execute chmod 755 "${lib_dir}/lib" && \
      execute chmod 644 "${lib_dir}/common.sh" && \
      execute chmod 644 "${lib_dir}/lib/"*.sh && \
-     execute chmod 644 "${lib_dir}/VERSION"; then
+     execute chmod 644 "${lib_dir}/VERSION" && \
+     { [[ -f "${lib_dir}/MILLENNIUM-LICENSE.md" ]] && execute chmod 644 "${lib_dir}/MILLENNIUM-LICENSE.md" || true; }; then
     echo -e "${GREEN}OK${NC}"
   else
     echo -e "${RED}FAIL${NC}"

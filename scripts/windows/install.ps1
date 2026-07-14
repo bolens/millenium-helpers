@@ -343,6 +343,20 @@ if (Test-Path -Path $versionSrc) {
     Log-Info "Installed: VERSION"
 }
 
+# Vendored Millennium client MIT license (installed next to the client on upgrade)
+$licenseCandidates = @(
+    (Join-Path -Path $srcDir -ChildPath "..\..\third_party\MILLENNIUM-LICENSE.md"),
+    (Join-Path -Path $srcDir -ChildPath "third_party\MILLENNIUM-LICENSE.md"),
+    (Join-Path -Path $srcDir -ChildPath "MILLENNIUM-LICENSE.md")
+)
+foreach ($licSrc in $licenseCandidates) {
+    if (Test-Path -Path $licSrc -PathType Leaf) {
+        Copy-Item -Path $licSrc -Destination (Join-Path -Path $binDir -ChildPath "MILLENNIUM-LICENSE.md") -Force
+        Log-Info "Installed: MILLENNIUM-LICENSE.md"
+        break
+    }
+}
+
 # Write install-meta.json for track-aware doctor/updates
 $trackLib = Join-Path -Path $srcDir -ChildPath 'lib\InstallTrack.ps1'
 if (Test-Path -LiteralPath $trackLib) {
