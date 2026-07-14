@@ -105,13 +105,13 @@ func RunCLI(args []string) int {
 	if o.Help {
 		fmt.Print(`Usage: millennium diag [doctor|logs] [OPTIONS]
 
-Native: default report, --json, --share, logs (no --follow), doctor (live + --dry-run).
---follow still uses legacy helpers.
+Native: default report, --json, --share, logs (+ --follow), doctor (live + --dry-run).
 
   --json          Structured JSON report
   -s, --share     Upload redacted report to paste.rs
   doctor|--fix   Auto-repair (native; --dry-run for plan only)
   logs            Recent updater + Steam WebHelper lines
+  -l, --follow    Follow (tail) filtered Steam logs (with logs)
   -d, --dry-run   Simulate doctor plan
   -y, --yes       Allow stopping Steam for binary/hook repairs
   -h, --help
@@ -122,7 +122,14 @@ Native: default report, --json, --share, logs (no --follow), doctor (live + --dr
 		return ShareReport(o)
 	}
 	if o.Logs {
+		if o.Follow {
+			return FollowLogs()
+		}
 		return PrintLogs()
+	}
+	if o.Follow {
+		fmt.Fprintln(os.Stderr, "Error: --follow requires the logs subcommand (millennium diag logs --follow).")
+		return 1
 	}
 	if o.Doctor {
 		if o.DryRun {

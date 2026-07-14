@@ -101,13 +101,10 @@ func ParseArgs(args []string) (Options, error) {
 	return o, nil
 }
 
-// NeedsLegacy is true for --follow only (live doctor is native).
+// NeedsLegacy is reserved for remaining legacy-only surfaces (none for diag today).
 func NeedsLegacy(args []string) bool {
-	o, err := ParseArgs(args)
-	if err != nil {
-		return true
-	}
-	return o.Follow
+	_, err := ParseArgs(args)
+	return err != nil
 }
 
 // Collect builds a full read-only report.
@@ -484,7 +481,7 @@ func PrintLogs() int {
 		return 1
 	}
 	fmt.Printf("Reading log file: %s\n\n", logFile)
-	filter := strings.ToLower("Millennium|BOOTSTRAP|update-check|plugin_loader|pressure-vessel|steamwebhelper")
+	parts := logFilterParts()
 	lines, err := tailLines(logFile, 200)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -492,13 +489,9 @@ func PrintLogs() int {
 	}
 	matched := 0
 	for _, line := range lines {
-		low := strings.ToLower(line)
-		for _, part := range strings.Split(filter, "|") {
-			if strings.Contains(low, part) {
-				fmt.Println(line)
-				matched++
-				break
-			}
+		if lineMatchesFilter(line, parts) {
+			fmt.Println(line)
+			matched++
 		}
 	}
 	if matched == 0 {

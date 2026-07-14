@@ -43,8 +43,8 @@ func TestNeedsLegacy(t *testing.T) {
 	if NeedsLegacy([]string{"doctor"}) {
 		t.Fatal("live doctor should be native")
 	}
-	if !NeedsLegacy([]string{"logs", "--follow"}) {
-		t.Fatal("follow needs legacy")
+	if NeedsLegacy([]string{"logs", "--follow"}) {
+		t.Fatal("follow should be native")
 	}
 }
 
