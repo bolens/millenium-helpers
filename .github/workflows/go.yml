@@ -368,6 +368,144 @@ jobs:
           fi
           rm -rf "$home"
 
+      - name: Smoke diag share / doctor live / logs --follow (dual-OS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$(mktemp -d)"
+          export HOME="$home"
+          export USERPROFILE="$home"
+          export LOCALAPPDATA="$home/LocalAppData"
+          export APPDATA="$home/AppData"
+          mkdir -p "$LOCALAPPDATA" "$APPDATA"
+
+          # --share offline via local paste stub
+          port_file="$home/paste.port"
+          python3 - "$port_file" <<'PY' &
+          import http.server, pathlib, sys
+          port_file = sys.argv[1]
+          class H(http.server.BaseHTTPRequestHandler):
+              def do_POST(self):
+                  n = int(self.headers.get("Content-Length", "0"))
+                  _ = self.rfile.read(n)
+                  self.send_response(200)
+                  self.end_headers()
+                  self.wfile.write(b"https://paste.rs/endgame-c-smoke")
+              def log_message(self, *_args):
+                  pass
+          srv = http.server.HTTPServer(("127.0.0.1", 0), H)
+          pathlib.Path(port_file).write_text(str(srv.server_address[1]))
+          srv.handle_request()
+          PY
+          for _ in $(seq 1 50); do
+            [[ -s "$port_file" ]] && break
+            sleep 0.05
+          done
+          port="$(cat "$port_file")"
+          export MILLENNIUM_PASTE_URL="http://127.0.0.1:${port}"
+          share_out="$(bin/millennium diag --share)"
+          echo "$share_out" | grep -F 'Diagnostic report successfully shared'
+          echo "$share_out" | grep -F 'https://paste.rs/endgame-c-smoke'
+          wait || true
+
+          # doctor live — healthy-only under test bypass (no Steam/upgrade side effects)
+          doctor_live="$(DIAG_TEST_BYPASS_CHECKS=1 bin/millennium diag doctor --yes)"
+          echo "$doctor_live" | grep -F 'No issues detected'
+
+          # logs --follow with cycle cap + planted Steam log
+          if [[ "${RUNNER_OS:-}" == "Windows" ]] || [[ "$(uname -s)" == MINGW* ]] || [[ "$(uname -s)" == MSYS* ]]; then
+            steam="$home/Steam"
+            mkdir -p "$steam/logs"
+            printf 'noise\nMILLENNIUM start\n' >"$steam/logs/webhelper.txt"
+            export STEAM="$steam"
+          else
+            steam="$home/.local/share/Steam"
+            mkdir -p "$steam/logs"
+            printf 'noise\nMILLENNIUM start\n' >"$steam/logs/webhelper.txt"
+            export STEAM="$steam"
+          fi
+          follow_out="$(MILLENNIUM_FOLLOW_MAX_CYCLES=3 bin/millennium diag logs --follow)"
+          echo "$follow_out" | grep -Fi 'millennium'
+          rm -rf "$home"
+
+      - name: Smoke upgrade writable --file install (dual-OS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$(mktemp -d)"
+          export HOME="$home"
+          export USERPROFILE="$home"
+          export LOCALAPPDATA="$home/LocalAppData"
+          export APPDATA="$home/AppData"
+          mkdir -p "$LOCALAPPDATA" "$APPDATA"
+          if [[ "${RUNNER_OS:-}" == "Windows" ]] || [[ "$(uname -s)" == MINGW* ]] || [[ "$(uname -s)" == MSYS* ]]; then
+            steam="$home/Steam"
+            mkdir -p "$steam"
+            export STEAM="$steam"
+            archive="$home/millennium-win.zip"
+            python3 - "$archive" <<'PY'
+          import zipfile, sys
+          z = zipfile.ZipFile(sys.argv[1], "w")
+          z.writestr("millennium/marker", "installed\n")
+          z.writestr("wsock32.dll", "dll-stub\n")
+          z.close()
+          PY
+            if command -v sha256sum >/dev/null 2>&1; then
+              sha="$(sha256sum "$archive" | awk '{print $1}')"
+            else
+              sha="$(openssl dgst -sha256 "$archive" | awk '{print $NF}')"
+            fi
+            bin/millennium upgrade --file "$archive" --sha256 "$sha" --yes
+            test -f "$steam/millennium/version.txt"
+            test -f "$steam/millennium/marker"
+          else
+            lib="$home/lib"
+            steam="$home/.local/share/Steam"
+            mkdir -p "$lib" "$steam/ubuntu12_32" "$steam/ubuntu12_64"
+            export MOCK_LIB_DIR="$lib" MILLENNIUM_LIB_DIR="$lib" STEAM="$steam"
+            stage="$home/stage/usr/lib/millennium"
+            mkdir -p "$stage"
+            for f in libmillennium_bootstrap_x86.so libmillennium_bootstrap_hhx64.so \
+                     libmillennium_x86.so libmillennium_hhx64.so libmillennium_pvs64; do
+              printf 'stub\n' >"$stage/$f"
+            done
+            archive="$home/millennium-v9.9.9-linux-x86_64.tar.gz"
+            tar -czf "$archive" -C "$home/stage" .
+            sha="$(sha256sum "$archive" | awk '{print $1}')"
+            bin/millennium upgrade --file "$archive" --sha256 "$sha" --yes
+            test -f "$lib/millennium/version.txt"
+            test -s "$lib/millennium/version.txt"
+          fi
+          rm -rf "$home"
+
+      - name: Smoke upgrade non-root Linux sudo handoff hint
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$(mktemp -d)"
+          export HOME="$home"
+          mkdir -p "$home/bin" "$home/stage/usr/lib/millennium"
+          printf 'stub\n' >"$home/stage/usr/lib/millennium/libmillennium_bootstrap_x86.so"
+          printf 'stub\n' >"$home/stage/usr/lib/millennium/libmillennium_bootstrap_hhx64.so"
+          printf 'stub\n' >"$home/stage/usr/lib/millennium/libmillennium_x86.so"
+          printf 'stub\n' >"$home/stage/usr/lib/millennium/libmillennium_hhx64.so"
+          printf 'stub\n' >"$home/stage/usr/lib/millennium/libmillennium_pvs64"
+          archive="$home/millennium.tgz"
+          tar -czf "$archive" -C "$home/stage" .
+          sha="$(sha256sum "$archive" | awk '{print $1}')"
+          # Fake sudo fails immediately so elevating cannot hang CI.
+          printf '#!/bin/sh\nexit 1\n' >"$home/bin/sudo"
+          chmod +x "$home/bin/sudo"
+          unset MOCK_LIB_DIR MILLENNIUM_LIB_DIR || true
+          set +e
+          out="$(env -u MOCK_LIB_DIR -u MILLENNIUM_LIB_DIR PATH="$home/bin:$PATH" HOME="$home" bin/millennium upgrade --file "$archive" --sha256 "$sha" --yes 2>&1)"
+          rc=$?
+          set -e
+          test "$rc" -ne 0
+          echo "$out" | grep -F 'requires root'
+          rm -rf "$home"
+
       - name: Smoke repair dry-run + Linux mock hooks (dual-OS)
         shell: bash
         run: |
