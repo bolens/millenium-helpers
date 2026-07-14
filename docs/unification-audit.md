@@ -97,7 +97,7 @@ Tests: Bash behavioral/unit under `tests/` · Pester under `tests/windows/`.
 | `schedule setup` wizard | Y | Y | Legacy (Phase 4+) | Y | Y | Interactive both OSes |
 | `schedule config get/set/list` | Y | Y | **Native Go (Phase 2)** | Y + Go | Y + Go | Config path graduated |
 | `schedule --cron` | Y | — | Linux/macOS only | Y | — | Contract OS-only |
-| `theme` list/install/update/remove | Y | Y | **list native (Phase 2)**; mutate Phase 3 | `test_theme` + Go | `millennium-theme` + Go | install/update/remove still legacy |
+| `theme` list/install/update/remove | Y | Y | **Native Go (list + mutate)** | `test_theme` + Go | `millennium-theme` + Go | zip-slip safe extract; `--yes` on remove |
 | `theme --json` | Y | Y | **Native (Phase 2 list)** | Y + Go | Y + Go | — |
 | `mcp` tools surface | Y | Y | Phase 5 → Go CLI | `test_mcp` | `millennium-mcp` | Stop dual argv maps |
 | Install / uninstall helpers | Y | Y | Native (Phase 4) | `test_install` | `install` | Replace curl/irm payloads |
