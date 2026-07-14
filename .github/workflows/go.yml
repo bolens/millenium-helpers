@@ -141,6 +141,23 @@ jobs:
           bin/millennium theme update LocalSkin | grep -F 'does not have GitHub metadata'
           rm -rf "$skins"
 
+      - name: Smoke schedule status (dual-OS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$(mktemp -d)"
+          export HOME="$home"
+          export XDG_CONFIG_HOME="$home/.config"
+          export LOCALAPPDATA="$home/LocalAppData"
+          export APPDATA="$home/AppData"
+          export MILLENNIUM_CONFIG_DIR="$home/cfg"
+          export MILLENNIUM_CONFIG_FILE="$home/cfg/config.json"
+          mkdir -p "$MILLENNIUM_CONFIG_DIR" "$XDG_CONFIG_HOME" "$LOCALAPPDATA" "$APPDATA"
+          out="$(bin/millennium schedule status)"
+          echo "$out" | grep -F 'Scheduler disabled'
+          echo "$out" | grep -F 'millennium schedule enable'
+          rm -rf "$home"
+
       - name: Smoke legacy help delegate (Linux)
         if: runner.os == 'Linux'
         shell: bash

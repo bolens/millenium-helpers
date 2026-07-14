@@ -161,6 +161,31 @@ func TestNativeThemeList(t *testing.T) {
 	}
 }
 
+func TestNativeScheduleStatus(t *testing.T) {
+	exe := buildMillennium(t)
+	cfg := t.TempDir()
+	cmd := exec.Command(exe, "schedule", "status")
+	cmd.Env = append(os.Environ(),
+		"MILLENNIUM_CONFIG_DIR="+cfg,
+		"MILLENNIUM_CONFIG_FILE="+filepath.Join(cfg, "config.json"),
+		"HOME="+cfg,
+		"XDG_CONFIG_HOME="+filepath.Join(cfg, ".config"),
+		"LOCALAPPDATA="+filepath.Join(cfg, "LocalAppData"),
+		"APPDATA="+filepath.Join(cfg, "AppData"),
+	)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("schedule status: %v\n%s", err, out)
+	}
+	text := string(out)
+	if !strings.Contains(text, "Scheduler disabled") {
+		t.Fatalf("expected disabled status:\n%s", text)
+	}
+	if !strings.Contains(text, "millennium schedule enable") {
+		t.Fatalf("expected enable CTA:\n%s", text)
+	}
+}
+
 func TestNativeThemeMutate(t *testing.T) {
 	// Offline gate only — live install/update hits GitHub (covered by unit mocks).
 	exe := buildMillennium(t)
