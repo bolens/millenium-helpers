@@ -19,6 +19,10 @@ var (
 	readPromptSecret = defaultReadSecret
 )
 
+// Persistent stdin reader so piped multi-line wizard answers are not lost when
+// bufio.Reader buffers ahead of a single prompt.
+var stdinReader = bufio.NewReader(os.Stdin)
+
 func defaultStdinInteractive() bool {
 	if os.Getenv("FORCE_WIZARD") == "true" {
 		return true
@@ -32,8 +36,7 @@ func defaultStdinInteractive() bool {
 
 func defaultReadLine(prompt string) (string, error) {
 	fmt.Fprint(os.Stderr, prompt)
-	r := bufio.NewReader(os.Stdin)
-	line, err := r.ReadString('\n')
+	line, err := stdinReader.ReadString('\n')
 	if err != nil && len(line) == 0 {
 		return "", err
 	}

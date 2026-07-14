@@ -181,14 +181,21 @@ PY
   export CONFIG_UPDATE_CHANNEL="$channel"
   export GITHUB_TOKEN="$github_token"
 
-  # Trigger enablement of schedule if chosen
+  # Trigger enablement of schedule if chosen (Phase 6k: Go peel; do not exec).
   if [[ "$enable_sched" == "true" ]]; then
     echo -e "\n${BLUE}Configuring background update scheduler...${NC}"
-    if [[ "${USE_CRON:-false}" == "true" ]]; then
-      enable_cron "$channel"
-    else
-      enable_timer "$channel"
+    local -a go_args=(schedule enable)
+    if [[ "${DRY_RUN:-false}" == "true" ]]; then
+      go_args+=(--dry-run)
     fi
+    if [[ "${QUIET:-false}" == "true" ]]; then
+      go_args+=(--quiet)
+    fi
+    if [[ "${USE_CRON:-false}" == "true" ]]; then
+      go_args+=(--cron)
+    fi
+    go_args+=("$channel")
+    invoke_millennium_go "${go_args[@]}" || return $?
   fi
 
   echo -e "\n${BLUE}Tip:${NC} tune backup retention anytime with:"

@@ -148,8 +148,6 @@ if ($Version -or $Command -eq "version" -or $Command -eq "--version" -or $Comman
 
 # Feature modules (dot-sourced by this entrypoint — no thin aggregator)
 $script:ScheduleLibDir = Join-Path -Path $ScriptDir -ChildPath 'lib'
-. (Join-Path -Path $script:ScheduleLibDir -ChildPath 'ScheduleEnable.ps1')
-. (Join-Path -Path $script:ScheduleLibDir -ChildPath 'ScheduleDisable.ps1')
 . (Join-Path -Path $script:ScheduleLibDir -ChildPath 'ScheduleWizard.ps1')
 
 function Resolve-MillenniumGo {
@@ -170,23 +168,22 @@ function Resolve-MillenniumGo {
     return $null
 }
 
-function Invoke-ScheduleViaGo {
+# Non-exiting invoke for wizard optional-enable.
+function Invoke-MillenniumGo {
     param(
-        [Parameter(Mandatory = $true)]
-        [string]$Feature,
         [Parameter(Mandatory = $true)]
         [string[]]$GoArgs
     )
     $goBin = Resolve-MillenniumGo
     if (-not $goBin) {
-        Write-Error "schedule $Feature requires the Go millennium dispatcher (not found). Install millennium-helpers or run 'make build'."
-        exit 1
+        Write-Error "schedule requires the Go millennium dispatcher (not found). Install millennium-helpers or run 'make build'."
+        return 1
     }
     $prevLegacy = $env:MILLENNIUM_LEGACY
     $env:MILLENNIUM_LEGACY = '0'
     try {
         & $goBin @GoArgs
-        exit $LASTEXITCODE
+        return $LASTEXITCODE
     } finally {
         if ($null -eq $prevLegacy) {
             Remove-Item Env:MILLENNIUM_LEGACY -ErrorAction SilentlyContinue
@@ -194,6 +191,21 @@ function Invoke-ScheduleViaGo {
             $env:MILLENNIUM_LEGACY = $prevLegacy
         }
     }
+}
+
+function Invoke-ScheduleViaGo {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Feature,
+        [Parameter(Mandatory = $true)]
+        [string[]]$GoArgs
+    )
+    $rc = Invoke-MillenniumGo -GoArgs $GoArgs
+    if ($null -eq $rc) { $rc = 1 }
+    if ($rc -ne 0 -and -not (Resolve-MillenniumGo)) {
+        Write-Error "schedule $Feature requires the Go millennium dispatcher (not found). Install millennium-helpers or run 'make build'."
+    }
+    exit $rc
 }
 
 function Invoke-ScheduleConfigViaGo {
@@ -219,14 +231,33 @@ function Invoke-ScheduleStatusViaGo {
     Invoke-ScheduleViaGo -Feature 'status' -GoArgs @($goArgs.ToArray())
 }
 
+function Invoke-ScheduleEnableViaGo {
+    $goArgs = [System.Collections.Generic.List[string]]::new()
+    [void]$goArgs.Add('schedule')
+    [void]$goArgs.Add('enable')
+    if ($DryRun -or $global:DryRun) { [void]$goArgs.Add('--dry-run') }
+    if ($Quiet) { [void]$goArgs.Add('--quiet') }
+    if ($Channel) { [void]$goArgs.Add([string]$Channel) }
+    Invoke-ScheduleViaGo -Feature 'enable' -GoArgs @($goArgs.ToArray())
+}
+
+function Invoke-ScheduleDisableViaGo {
+    $goArgs = [System.Collections.Generic.List[string]]::new()
+    [void]$goArgs.Add('schedule')
+    [void]$goArgs.Add('disable')
+    if ($DryRun -or $global:DryRun) { [void]$goArgs.Add('--dry-run') }
+    if ($Quiet) { [void]$goArgs.Add('--quiet') }
+    Invoke-ScheduleViaGo -Feature 'disable' -GoArgs @($goArgs.ToArray())
+}
+
 # --- Dispatcher ---
 
 switch ($Command) {
     "enable" {
-        Enable-Task $Channel
+        Invoke-ScheduleEnableViaGo
     }
     "disable" {
-        Disable-Task
+        Invoke-ScheduleDisableViaGo
     }
     "status" {
         Invoke-ScheduleStatusViaGo

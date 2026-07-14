@@ -132,8 +132,8 @@ func newScheduleCmd() *cobra.Command {
 				os.Exit(config.RunCLI(rest))
 				return nil
 			}
-			// Graduated (Phase 6i): status always stays native — ignore MILLENNIUM_LEGACY.
-			if isScheduleStatus(a) {
+			// Graduated peels: config/status/enable/disable always native — ignore MILLENNIUM_LEGACY.
+			if isScheduleStatus(a) || isScheduleEnableDisable(a) {
 				opts, err := schedule.ParseArgs(a)
 				if err != nil {
 					fmt.Fprintln(os.Stderr, err.Error())
@@ -180,6 +180,20 @@ func isScheduleStatus(a []string) bool {
 		}
 	}
 	return hasStatus
+}
+
+// isScheduleEnableDisable reports enable/disable-only schedule invocations.
+func isScheduleEnableDisable(a []string) bool {
+	has := false
+	for _, tok := range a {
+		switch tok {
+		case "enable", "disable":
+			has = true
+		case "config", "status", "setup", "pre-update", "post-update":
+			return false
+		}
+	}
+	return has
 }
 
 // takeConfigArgs returns (argsAfterConfig, true) when the schedule invocation is a config action.

@@ -6,7 +6,7 @@ Describe "Schedule CLI Manager" {
             New-PSDrive -Name HKCU -PSProvider FileSystem -Root ([System.IO.Path]::GetTempPath()) -ErrorAction SilentlyContinue | Out-Null
             New-PSDrive -Name C -PSProvider FileSystem -Root ([System.IO.Path]::GetTempPath()) -ErrorAction SilentlyContinue | Out-Null
         }
-        # Phase 6c/6i: config + status thin-wrap to Go.
+        # Phase 6c/6i/6k: config + status + enable/disable thin-wrap to Go.
         $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
         $binDir = Join-Path $repoRoot "bin"
         New-Item -ItemType Directory -Force -Path $binDir | Out-Null
@@ -164,26 +164,13 @@ Describe "Schedule CLI Manager" {
         }
     }
 
-    Context "enable task action parity" {
-        It "Registers task with -Yes -Quiet, theme update, and updater.log redirect" {
-            Mock Test-Admin { return $true }
-            Mock New-ScheduledTaskAction { return [pscustomobject]@{} }
-            Mock New-ScheduledTaskTrigger {
-                $t = [pscustomobject]@{}
-                $t | Add-Member -NotePropertyName RandomDelay -NotePropertyValue $null -Force
-                return $t
-            }
-            Mock New-ScheduledTaskSettingsSet { return [pscustomobject]@{} }
-            Mock Register-ScheduledTask { return $true }
-
+    Context "enable task dry-run via Go" {
+        It "Dry-run announces Task Scheduler registration for the channel" {
             $scheduleScript = Join-Path -Path $winScriptDir -ChildPath "millennium-schedule.ps1"
             $out = (& $scheduleScript enable beta -DryRun *>&1) | Out-String
-            $out | Should -BeLike "*-Yes*"
-            $out | Should -BeLike "*-Quiet*"
-            $out | Should -BeLike "*updater.log*"
-            $out | Should -BeLike "*millennium-theme.ps1*"
-            $out | Should -BeLike "*update*"
-            $out | Should -BeLike "*-Channel*beta*"
+            $out | Should -BeLike "*DRY RUN*"
+            $out | Should -BeLike "*Would register*"
+            $out | Should -BeLike "*beta*"
         }
     }
 }

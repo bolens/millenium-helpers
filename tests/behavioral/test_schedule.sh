@@ -88,7 +88,8 @@ rc=$?
 assert_success "$rc" "millennium-schedule enable stable --dry-run exits 0"
 assert_contains "$out" "DRY RUN" "millennium-schedule enable --dry-run announces dry-run mode"
 if [[ -d /run/systemd/system ]]; then
-  assert_contains "$out" "systemd user service file" "millennium-schedule enable --dry-run mentions creating the systemd service file"
+  assert_contains "$out" "Would write service" "millennium-schedule enable --dry-run mentions writing the systemd service file"
+  assert_contains "$out" "Would write timer" "millennium-schedule enable --dry-run mentions writing the systemd timer file"
   assert_file_not_exists "${FAKE_XDG_CONFIG}/systemd/user/millennium-update.timer" "millennium-schedule enable --dry-run does not actually write the timer unit file"
   assert_file_not_exists "${FAKE_XDG_CONFIG}/systemd/user/millennium-update.service" "millennium-schedule enable --dry-run does not actually write the service unit file"
 else

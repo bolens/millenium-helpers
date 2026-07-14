@@ -197,10 +197,17 @@ function Run-Setup-Wizard {
         Write-Host "  (other keys such as backup_limit are preserved)"
     }
 
-    # Trigger Scheduled Task enablement if chosen
+    # Trigger Scheduled Task enablement if chosen (Phase 6k: Go peel; do not exit).
     if ($enableSched -eq "true") {
         Write-Host "`nConfiguring background update scheduled task..." -ForegroundColor Blue
-        Enable-Task $channelVal
+        $goArgs = [System.Collections.Generic.List[string]]::new()
+        [void]$goArgs.Add('schedule')
+        [void]$goArgs.Add('enable')
+        if ($DryRun -or $global:DryRun) { [void]$goArgs.Add('--dry-run') }
+        if ($Quiet) { [void]$goArgs.Add('--quiet') }
+        [void]$goArgs.Add([string]$channelVal)
+        $rc = Invoke-MillenniumGo -GoArgs @($goArgs.ToArray())
+        if ($null -ne $rc -and $rc -ne 0) { return }
     }
 
     Write-Host "`nTip: tune backup retention anytime with:" -ForegroundColor Blue

@@ -161,13 +161,9 @@ fi
 
 # Feature modules (sourced by this entrypoint — no thin aggregator)
 _sched_lib="${_COMMON_LIB_DIR:-${SCRIPT_DIR}/lib}"
-if [[ ! -f "${_sched_lib}/schedule_timer.sh" ]]; then
+if [[ ! -f "${_sched_lib}/schedule_hooks.sh" ]]; then
   _sched_lib="${SCRIPT_DIR}/lib"
 fi
-# shellcheck source=lib/schedule_timer.sh
-source "${_sched_lib}/schedule_timer.sh"
-# shellcheck source=lib/schedule_cron.sh
-source "${_sched_lib}/schedule_cron.sh"
 # shellcheck source=lib/schedule_hooks.sh
 source "${_sched_lib}/schedule_hooks.sh"
 # shellcheck source=lib/schedule_wizard.sh
@@ -190,7 +186,19 @@ resolve_millennium_go() {
   return 1
 }
 
-run_schedule_via_go() {
+# Non-exec invoke for wizard optional-enable (must return to the wizard).
+invoke_millennium_go() {
+  local go_bin
+  if ! go_bin="$(resolve_millennium_go)"; then
+    echo -e "${RED}Error: schedule requires the Go millennium dispatcher (not found).${NC}" >&2
+    echo "Install millennium-helpers or run 'make build' from a checkout." >&2
+    return 1
+  fi
+  MILLENNIUM_LEGACY=0 "$go_bin" "$@"
+}
+
+# Exec-style for terminal commands (never returns).
+exec_schedule_via_go() {
   local go_bin
   if ! go_bin="$(resolve_millennium_go)"; then
     echo -e "${RED}Error: schedule ${1} requires the Go millennium dispatcher (not found).${NC}" >&2
@@ -198,7 +206,6 @@ run_schedule_via_go() {
     exit 1
   fi
   shift
-  # Avoid re-entering this long-name helper if MILLENNIUM_LEGACY is set.
   MILLENNIUM_LEGACY=0 exec "$go_bin" "$@"
 }
 
@@ -217,7 +224,7 @@ run_schedule_config_via_go() {
   if [[ -n "${CONFIG_VALUE:-}" ]]; then
     go_args+=("$CONFIG_VALUE")
   fi
-  run_schedule_via_go config "${go_args[@]}"
+  exec_schedule_via_go config "${go_args[@]}"
 }
 
 run_schedule_status_via_go() {
@@ -225,20 +232,43 @@ run_schedule_status_via_go() {
   if [[ "${QUIET:-false}" == "true" ]]; then
     go_args+=(--quiet)
   fi
-  run_schedule_via_go status "${go_args[@]}"
+  exec_schedule_via_go status "${go_args[@]}"
+}
+
+run_schedule_enable_via_go() {
+  local -a go_args=(schedule enable)
+  if [[ "$DRY_RUN" == "true" ]]; then
+    go_args+=(--dry-run)
+  fi
+  if [[ "${QUIET:-false}" == "true" ]]; then
+    go_args+=(--quiet)
+  fi
+  if [[ "$USE_CRON" == "true" ]]; then
+    go_args+=(--cron)
+  fi
+  if [[ -n "$CHANNEL" ]]; then
+    go_args+=("$CHANNEL")
+  fi
+  exec_schedule_via_go enable "${go_args[@]}"
+}
+
+run_schedule_disable_via_go() {
+  local -a go_args=(schedule disable)
+  if [[ "$DRY_RUN" == "true" ]]; then
+    go_args+=(--dry-run)
+  fi
+  if [[ "${QUIET:-false}" == "true" ]]; then
+    go_args+=(--quiet)
+  fi
+  exec_schedule_via_go disable "${go_args[@]}"
 }
 
 case "$COMMAND" in
   enable)
-    if [[ "$USE_CRON" == "true" ]]; then
-      enable_cron "$CHANNEL"
-    else
-      enable_timer "$CHANNEL"
-    fi
+    run_schedule_enable_via_go
     ;;
   disable)
-    disable_timer
-    disable_cron
+    run_schedule_disable_via_go
     ;;
   status)
     run_schedule_status_via_go

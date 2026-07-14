@@ -95,6 +95,7 @@ func TestSetupWizardLivePreserveBackupKeys(t *testing.T) {
 	t.Setenv("USERPROFILE", home)
 	t.Setenv("LOCALAPPDATA", filepath.Join(home, "AppData", "Local"))
 	t.Setenv("MILLENNIUM_CONFIG_DIR", cfgDir)
+	t.Setenv("MILLENNIUM_CONFIG_FILE", "")
 	t.Setenv("FORCE_WIZARD", "true")
 	t.Setenv("MILLENNIUM_STATE_DIR", filepath.Join(home, "state"))
 
