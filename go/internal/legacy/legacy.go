@@ -91,7 +91,11 @@ func dirLooksLikeScripts(dir string) bool {
 		return false
 	}
 	if runtime.GOOS == "windows" {
-		_, err := os.Stat(filepath.Join(dir, "millennium-diag.ps1"))
+		// Accept scripts/windows/ or the parent scripts/ checkout dir.
+		if _, err := os.Stat(filepath.Join(dir, "millennium-diag.ps1")); err == nil {
+			return true
+		}
+		_, err := os.Stat(filepath.Join(dir, "windows", "millennium-diag.ps1"))
 		return err == nil
 	}
 	// Unix entrypoints may be millenium-diag.sh in checkout or millennium-diag installed.

@@ -2,6 +2,8 @@ module github.com/bolens/millenium-helpers
 
 go 1.22
 
+toolchain go1.25.12
+
 require (
 	github.com/spf13/cobra v1.9.1
 	golang.org/x/sys v0.29.0

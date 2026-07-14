@@ -43,6 +43,8 @@ Usage: millennium-schedule.ps1 <Command> [options]
 
 Commands: enable, disable, status, setup, config, pre-update, post-update
 Options: -Channel, -DryRun, -Quiet, -Version, -Help
+
+GNU-style flags (--channel, --dry-run, --quiet) are also accepted.
 "@
     exit 0
 }

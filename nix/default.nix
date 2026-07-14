@@ -28,6 +28,10 @@ stdenv.mkDerivation ({
   buildPhase = lib.optionalString buildGoDispatcher ''
     runHook preBuild
     export CGO_ENABLED=0
+    export HOME="$TMPDIR"
+    export GOCACHE="$TMPDIR/go-cache"
+    export GOPATH="$TMPDIR/gopath"
+    mkdir -p "$GOCACHE" "$GOPATH"
     make build
     runHook postBuild
   '';

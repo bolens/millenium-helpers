@@ -35,7 +35,7 @@ EXPECTED_STATE_FILE="${FAKE_STATE_DIR}/relaunch.env"
 FAKE_XDG_CONFIG=$(mktemp -d)
 export XDG_CONFIG_HOME="$FAKE_XDG_CONFIG"
 
-# Fast stand-ins for helper CLIs (post-update calls `millennium diag`)
+# Fast stand-ins for helper CLIs (post-update prefers millennium-diag, then millennium diag)
 # shellcheck disable=SC2016
 mock_cmd "millennium" '
 case "${1:-}" in
@@ -43,9 +43,11 @@ case "${1:-}" in
   *) exit 0 ;;
 esac
 '
-mock_cmd "millennium-diag" 'exit 0'
 mock_cmd "millennium-theme" 'exit 0'
 mock_cmd "millennium-upgrade" 'exit 0'
+
+# shellcheck disable=SC2016
+mock_cmd "millennium-diag" 'exit "${MILLENNIUM_MOCK_DIAG_RC:-0}"'
 
 run_schedule() {
   bash "$SCHEDULE_SH" "$@"
@@ -81,11 +83,8 @@ rc=$?
 assert_failure "$rc" "millennium-schedule enable rejects an unrecognized channel argument"
 assert_contains "$out" "Unknown channel" "millennium-schedule enable reports the unrecognized channel"
 
-# --- enable (no --cron flag): path depends on whether systemd is actually
-# booted on this machine (millennium-schedule.sh auto-detects via
-# /run/systemd/system and silently falls back to cron otherwise, e.g. inside
-# minimal containers used in CI). Branch on the real environment so the test
-# is accurate either way instead of assuming systemd is always available.
+# --- enable (no --cron flag): path depends on platform/boot detection.
+# Linux with systemd → user/system units; macOS → launchd; else crontab.
 
 out=$(run_schedule enable stable --dry-run 2>&1)
 rc=$?
@@ -96,6 +95,8 @@ if [[ -d /run/systemd/system ]]; then
   assert_contains "$out" "Would write timer" "millennium-schedule enable --dry-run mentions writing the systemd timer file"
   assert_file_not_exists "${FAKE_XDG_CONFIG}/systemd/user/millennium-update.timer" "millennium-schedule enable --dry-run does not actually write the timer unit file"
   assert_file_not_exists "${FAKE_XDG_CONFIG}/systemd/user/millennium-update.service" "millennium-schedule enable --dry-run does not actually write the service unit file"
+elif [[ "$(uname -s)" == "Darwin" ]]; then
+  assert_contains "$out" "LaunchAgent" "millennium-schedule enable --dry-run uses launchd on macOS"
 else
   assert_contains "$out" "crontab" "millennium-schedule enable --dry-run falls back to crontab when systemd is not booted"
 fi
@@ -196,6 +197,7 @@ case "${1:-}" in
   *) exit 0 ;;
 esac
 '
+mock_cmd "millennium-diag" 'exit 1'
 out=$(MILLENNIUM_SCHEDULER=1 run_schedule post-update 2>&1)
 rc=$?
 assert_failure "$rc" "millennium-schedule post-update exits non-zero when diagnostics fail"
@@ -207,6 +209,8 @@ case "${1:-}" in
   *) exit 0 ;;
 esac
 '
+# shellcheck disable=SC2016
+mock_cmd "millennium-diag" 'exit "${MILLENNIUM_MOCK_DIAG_RC:-0}"'
 
 # --- post-update with saved state must not launch host Steam under TEST_SUITE_RUN ---
 mkdir -p "$(dirname "$EXPECTED_STATE_FILE")"

@@ -118,5 +118,8 @@ jobs:
             COMMIT="$(git -C "$WORK" rev-parse HEAD)"
             # Switch source to local file:// of this checkout (pinned commit).
             sed -i "s|git+\${url}.git|git+file://${WORK}#commit=${COMMIT}|" "$PKGBUILD_PATH"
+            # git clone file:// still checks ownership of the source repo.
+            su builduser -c "git config --global --add safe.directory '*'"
+            su builduser -c "git config --global --add safe.directory '${WORK}'"
           fi
           su builduser -c "cd '${PKG_DIR}' && makepkg -s --noconfirm"

@@ -20,29 +20,52 @@ func ResolveThemeDir(skins, component string) (string, error) {
 	if err := SanitizeComponent(component, "theme name"); err != nil {
 		return "", err
 	}
-	candidate := filepath.Join(skins, component)
-	resolved, err := filepath.Abs(candidate)
-	if err != nil {
-		return "", err
-	}
 	skinsAbs, err := filepath.Abs(skins)
 	if err != nil {
 		return "", err
 	}
-	// Prefer EvalSymlinks when paths exist; fall back to abs for not-yet-created theme dirs.
 	if r, e := filepath.EvalSymlinks(skinsAbs); e == nil {
 		skinsAbs = r
 	}
-	if _, e := os.Stat(resolved); e == nil {
-		if r, e2 := filepath.EvalSymlinks(resolved); e2 == nil {
-			resolved = r
+	// Single sanitized segment cannot escape skinsAbs when the target does not exist yet
+	// (avoids macOS /var vs /private/var and Windows 8.3 short-name mismatches).
+	candidate := filepath.Join(skinsAbs, component)
+	if _, err := os.Lstat(candidate); err != nil {
+		if os.IsNotExist(err) {
+			return candidate, nil
 		}
+		return "", err
 	}
-	sep := string(os.PathSeparator)
-	if resolved != skinsAbs && !strings.HasPrefix(resolved, skinsAbs+sep) {
+
+	resolved := candidate
+	if r, e := filepath.EvalSymlinks(candidate); e == nil {
+		resolved = r
+	}
+	if !pathContained(skinsAbs, resolved) {
+		// Windows short vs long paths: SameFile on the parent of the theme dir.
+		if samePath(skinsAbs, filepath.Dir(resolved)) && filepath.Base(resolved) == component {
+			return resolved, nil
+		}
 		return "", fmt.Errorf("Error: Resolved theme path '%s' escapes the skins directory.", resolved)
 	}
 	return resolved, nil
+}
+
+func pathContained(base, target string) bool {
+	rel, err := filepath.Rel(base, target)
+	if err != nil {
+		return false
+	}
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator))
+}
+
+func samePath(a, b string) bool {
+	fa, err1 := os.Stat(a)
+	fb, err2 := os.Stat(b)
+	if err1 != nil || err2 != nil {
+		return false
+	}
+	return os.SameFile(fa, fb)
 }
 
 // ParseOwnerRepo splits owner/repo (Windows backslashes normalized to /).

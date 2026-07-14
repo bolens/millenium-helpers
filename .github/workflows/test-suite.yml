@@ -209,7 +209,7 @@ jobs:
           matrix.suite == 'tests/behavioral/test_install.sh'
         uses: actions/setup-go@v6
         with:
-          go-version-file: go/go.mod
+          go-version: "1.25.x"
           cache-dependency-path: go/go.sum
 
       - name: Create non-root test user
@@ -234,7 +234,7 @@ jobs:
           set -euo pipefail
           ver="$(tr -d '[:space:]' < VERSION)"
           mkdir -p bin
-          (cd go && CGO_ENABLED=0 go build \
+          (cd go && CGO_ENABLED=0 go build -buildvcs=false \
             -ldflags "-X github.com/bolens/millenium-helpers/internal/version.Version=${ver}" \
             -o ../bin/millennium ./cmd/millennium)
           chown testuser:testuser bin/millennium
@@ -280,7 +280,7 @@ jobs:
           matrix.suite == 'tests/windows/millennium-repair.Tests.ps1'
         uses: actions/setup-go@v6
         with:
-          go-version-file: go/go.mod
+          go-version: "1.25.x"
           cache-dependency-path: go/go.sum
 
       - name: Run Pester tests
@@ -336,7 +336,7 @@ jobs:
           matrix.suite == 'tests/behavioral/test_install.sh'
         uses: actions/setup-go@v6
         with:
-          go-version-file: go/go.mod
+          go-version: "1.25.x"
           cache-dependency-path: go/go.sum
 
       - name: Run ${{ matrix.suite }}

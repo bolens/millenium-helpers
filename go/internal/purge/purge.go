@@ -201,7 +201,7 @@ func ParseFlags(args []string) (dryRun, yes, quiet, help, version bool, err erro
 			version = true
 		default:
 			if strings.HasPrefix(a, "-") {
-				return false, false, false, false, false, fmt.Errorf("Error: unknown option %s", a)
+				return false, false, false, false, false, fmt.Errorf("Error: Unknown option %s", a)
 			}
 		}
 	}

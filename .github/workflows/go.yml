@@ -35,7 +35,7 @@ permissions:
   contents: read
 
 env:
-  GO_VERSION: "1.22.x"
+  GO_VERSION: "1.25.x"
 
 jobs:
   quality:
@@ -80,7 +80,7 @@ jobs:
         run: |
           set -euo pipefail
           for pkg in $(go list ./...); do
-            GOOS=windows GOARCH=amd64 go test -c -o /dev/null "$pkg"
+            GOOS=windows GOARCH=amd64 go test -buildvcs=false -c -o /dev/null "$pkg"
           done
 
   test:
@@ -107,7 +107,7 @@ jobs:
         run: |
           set -euo pipefail
           cd go
-          go test ./...
+          go test -buildvcs=false ./...
 
       - name: Build
         shell: bash
@@ -118,7 +118,7 @@ jobs:
           ver="$(tr -d '\n' < VERSION)"
           mkdir -p bin
           cd go
-          go build -ldflags "-X github.com/bolens/millenium-helpers/internal/version.Version=${ver}" \
+          go build -buildvcs=false -ldflags "-X github.com/bolens/millenium-helpers/internal/version.Version=${ver}" \
             -o ../bin/millennium ./cmd/millennium
           ../bin/millennium version
 

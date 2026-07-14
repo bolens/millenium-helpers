@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -30,7 +31,11 @@ func TestCommandFromArgv0(t *testing.T) {
 
 func TestArgv0TwinSmoke(t *testing.T) {
 	exe := buildMillennium(t)
-	twin := filepath.Join(t.TempDir(), "millennium-upgrade")
+	twinName := "millennium-upgrade"
+	if runtime.GOOS == "windows" {
+		twinName += ".exe"
+	}
+	twin := filepath.Join(t.TempDir(), twinName)
 	in, err := os.ReadFile(exe)
 	if err != nil {
 		t.Fatal(err)
@@ -419,13 +424,17 @@ func withEnv(base []string, kv map[string]string) []string {
 func buildMillennium(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
-	exe := filepath.Join(dir, "millennium")
+	name := "millennium"
+	if runtime.GOOS == "windows" {
+		name += ".exe"
+	}
+	exe := filepath.Join(dir, name)
 	repo := repoRoot(t)
 	verFile := filepath.Join(repo, "VERSION")
 	verBytes, _ := os.ReadFile(verFile)
 	ver := strings.TrimSpace(string(verBytes))
 	ld := "-X github.com/bolens/millenium-helpers/internal/version.Version=" + ver
-	cmd := exec.Command("go", "build", "-ldflags", ld, "-o", exe, "./cmd/millennium")
+	cmd := exec.Command("go", "build", "-buildvcs=false", "-ldflags", ld, "-o", exe, "./cmd/millennium")
 	cmd.Dir = filepath.Join(repo, "go")
 	out, err := cmd.CombinedOutput()
 	if err != nil {

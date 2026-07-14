@@ -47,7 +47,7 @@ test-go:
 build:
 	@command -v $(GO) >/dev/null 2>&1 || (echo "go not found; install Go 1.22+ (see CONTRIBUTING.md)." >&2; exit 1)
 	mkdir -p bin
-	cd go && CGO_ENABLED=$(CGO_ENABLED) $(GO) build -ldflags "$(GO_LDFLAGS)" -o ../bin/millennium ./cmd/millennium
+	cd go && CGO_ENABLED=$(CGO_ENABLED) $(GO) build -buildvcs=false -ldflags "$(GO_LDFLAGS)" -o ../bin/millennium ./cmd/millennium
 	@echo "built bin/millennium"
 
 test-debian:

@@ -37,6 +37,12 @@ Usage: millennium-theme COMMAND [ARGUMENTS] [OPTIONS]
 
 Commands: list, install, update, remove
 Options: -Json, -DryRun, -Yes, -Quiet, -Version, -Help
+
+GNU-style flags (--json, --dry-run, --yes, --quiet) are also accepted.
+
+Examples:
+  millennium-theme install SteamClientHomebrew/millennium-steam-skin
+  millennium-theme list -Json
 "@
     exit 0
 }
@@ -68,11 +74,6 @@ $goArgs = [System.Collections.Generic.List[string]]::new()
 [void]$goArgs.Add($Command)
 foreach ($a in @($RemainingArgs)) {
     if ($null -ne $a -and "$a" -ne '') { [void]$goArgs.Add([string]$a) }
-}
-if (Get-Variable -Name args -ErrorAction SilentlyContinue) {
-    foreach ($a in @($args)) {
-        if ($null -ne $a -and "$a" -ne '') { [void]$goArgs.Add([string]$a) }
-    }
 }
 
 $prevLegacy = $env:MILLENNIUM_LEGACY

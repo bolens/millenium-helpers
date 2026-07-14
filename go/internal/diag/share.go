@@ -29,7 +29,16 @@ func defaultHTTPDo(req *http.Request) (*http.Response, error) {
 
 // RedactReport sanitizes user identity and tokens from a report body.
 func RedactReport(body string) string {
-	home, _ := os.UserHomeDir()
+	homes := make([]string, 0, 3)
+	if home, err := os.UserHomeDir(); err == nil && home != "" {
+		homes = append(homes, home)
+	}
+	// Windows UserHomeDir ignores HOME; tests and some shells set it explicitly.
+	for _, key := range []string{"HOME", "USERPROFILE"} {
+		if h := os.Getenv(key); h != "" {
+			homes = append(homes, h)
+		}
+	}
 	uname := os.Getenv("USER")
 	if uname == "" {
 		uname = os.Getenv("USERNAME")
@@ -40,7 +49,7 @@ func RedactReport(body string) string {
 		}
 	}
 	out := body
-	if home != "" {
+	for _, home := range homes {
 		out = strings.ReplaceAll(out, home, "~")
 	}
 	if uname != "" && len(uname) >= 2 {

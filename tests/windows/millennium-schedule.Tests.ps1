@@ -92,7 +92,21 @@ Describe "Schedule CLI Manager" {
             $env:LOCALAPPDATA = $tempConfigDir
             $env:FORCE_WIZARD = "true"
             try {
-                $out = ("1`nn`n`n" | & $scheduleScript setup -DryRun *>&1) | Out-String
+                # Avoid piping into the PS1 wrapper (CmdletBinding rejects pipeline input).
+                $psi = New-Object System.Diagnostics.ProcessStartInfo
+                $psi.FileName = "powershell.exe"
+                $psi.Arguments = "-NoProfile -File `"$scheduleScript`" setup -DryRun"
+                $psi.RedirectStandardInput = $true
+                $psi.RedirectStandardOutput = $true
+                $psi.RedirectStandardError = $true
+                $psi.UseShellExecute = $false
+                $proc = [System.Diagnostics.Process]::Start($psi)
+                $proc.StandardInput.Write("1`nn`n`n")
+                $proc.StandardInput.Close()
+                $stdout = $proc.StandardOutput.ReadToEnd()
+                $stderr = $proc.StandardError.ReadToEnd()
+                $proc.WaitForExit()
+                $out = ($stdout + $stderr)
                 $out | Should -BeLike "*Configuration Wizard*"
                 $out | Should -BeLike "*DRY RUN*"
                 $out | Should -BeLike "*backup_limit*"

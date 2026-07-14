@@ -50,6 +50,9 @@ func TestRunCmdTimeout(t *testing.T) {
 }
 
 func TestRunCmdUsesMockUnderTestSuite(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shebang mock helper is unix-only")
+	}
 	dir := t.TempDir()
 	mock := filepath.Join(dir, "millennium")
 	if err := os.WriteFile(mock, []byte("#!/bin/sh\necho mock-ok\n"), 0o755); err != nil {
