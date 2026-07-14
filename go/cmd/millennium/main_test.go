@@ -10,16 +10,16 @@ import (
 
 func TestCommandFromArgv0(t *testing.T) {
 	cases := map[string]string{
-		"millennium-mcp":            "mcp",
-		"millennium-mcp.exe":        "mcp",
-		"/usr/bin/millennium-upgrade": "upgrade",
+		"millennium-mcp":                 "mcp",
+		"millennium-mcp.exe":             "mcp",
+		"/usr/bin/millennium-upgrade":    "upgrade",
 		`C:\bin\millennium-schedule.exe`: "schedule",
-		"millennium-theme":          "theme",
-		"millennium-diag":           "diag",
-		"millennium-repair":         "repair",
-		"millennium-purge":          "purge",
-		"millennium":                "",
-		"other":                     "",
+		"millennium-theme":               "theme",
+		"millennium-diag":                "diag",
+		"millennium-repair":              "repair",
+		"millennium-purge":               "purge",
+		"millennium":                     "",
+		"other":                          "",
 	}
 	for in, want := range cases {
 		if got := commandFromArgv0(in); got != want {

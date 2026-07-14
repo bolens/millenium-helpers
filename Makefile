@@ -30,12 +30,15 @@ test:
 	bash tests/run_tests.sh
 
 test-windows:
-	@if command -v pwsh >/dev/null 2>&1; then \
-		pwsh -NoProfile -Command "Invoke-Pester -Path tests/windows -Output Detailed"; \
-	else \
+	@if ! command -v pwsh >/dev/null 2>&1; then \
 		echo "pwsh not found; skip Windows Pester suite (install PowerShell 7+)." >&2; \
 		exit 1; \
 	fi
+	@if ! pwsh -NoProfile -Command 'Get-Module -ListAvailable Pester | Select-Object -First 1' 2>/dev/null | grep -q .; then \
+		echo "Pester not installed; skip Windows Pester suite locally (CI Windows job still runs it)." >&2; \
+		exit 0; \
+	fi
+	pwsh -NoProfile -Command "Invoke-Pester -Path tests/windows -Output Detailed"
 
 test-go:
 	@command -v $(GO) >/dev/null 2>&1 || (echo "go not found; install Go 1.22+ (see CONTRIBUTING.md)." >&2; exit 1)
