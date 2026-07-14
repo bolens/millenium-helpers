@@ -236,6 +236,7 @@ jobs:
             scripts/millennium.sh
             scripts/millennium-diag.sh
             scripts/millennium-mcp.py
+            scripts/millennium-mcp.sh
             scripts/millennium-purge.sh
             scripts/millennium-repair.sh
             scripts/millennium-schedule.sh

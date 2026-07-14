@@ -235,6 +235,7 @@ cp "$REPO_ROOT/scripts/common.sh" \
   "$REPO_ROOT/scripts/millennium.sh" \
   "$REPO_ROOT/scripts/millennium-diag.sh" \
   "$REPO_ROOT/scripts/millennium-mcp.py" \
+  "$REPO_ROOT/scripts/millennium-mcp.sh" \
   "$REPO_ROOT/scripts/millennium-purge.sh" \
   "$REPO_ROOT/scripts/millennium-repair.sh" \
   "$REPO_ROOT/scripts/millennium-schedule.sh" \
@@ -481,6 +482,7 @@ cp "$REPO_ROOT/scripts/common.sh" \
   "$REPO_ROOT/scripts/millennium.sh" \
   "$REPO_ROOT/scripts/millennium-diag.sh" \
   "$REPO_ROOT/scripts/millennium-mcp.py" \
+  "$REPO_ROOT/scripts/millennium-mcp.sh" \
   "$REPO_ROOT/scripts/millennium-purge.sh" \
   "$REPO_ROOT/scripts/millennium-repair.sh" \
   "$REPO_ROOT/scripts/millennium-schedule.sh" \
