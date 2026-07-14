@@ -10,9 +10,14 @@ on:
       - 'packaging/scoop/**'
       - 'packaging/winget/**'
       - 'packaging/millennium-helpers/**'
+      - 'packaging/millennium-helpers-bin/**'
+      - 'packaging/deb/**'
+      - 'packaging/rpm/**'
+      - 'packaging/chocolatey/**'
       - 'nix/release-info.nix'
       - 'scripts/ci/check-version-sync.sh'
       - 'scripts/ci/sync-stable-srcinfo.sh'
+      - 'scripts/ci/sync-bin-srcinfo.sh'
       - 'scripts/ci/bump-version.sh'
       - '.github/workflows/version-sync.yml'
   pull_request:
@@ -24,9 +29,14 @@ on:
       - 'packaging/scoop/**'
       - 'packaging/winget/**'
       - 'packaging/millennium-helpers/**'
+      - 'packaging/millennium-helpers-bin/**'
+      - 'packaging/deb/**'
+      - 'packaging/rpm/**'
+      - 'packaging/chocolatey/**'
       - 'nix/release-info.nix'
       - 'scripts/ci/check-version-sync.sh'
       - 'scripts/ci/sync-stable-srcinfo.sh'
+      - 'scripts/ci/sync-bin-srcinfo.sh'
       - 'scripts/ci/bump-version.sh'
       - '.github/workflows/version-sync.yml'
 
@@ -48,7 +58,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.x'
+          python-version: "3.x"
 
       - name: Install dependencies
         run: pip install pyyaml

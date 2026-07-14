@@ -22,6 +22,12 @@ permissions:
 jobs:
   homebrew:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        formula:
+          - millennium-helpers
+          - millennium-helpers-bin
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -32,5 +38,5 @@ jobs:
       - name: Audit Formula
         run: |
           mkdir -p "$(brew --repository)/Library/Taps/local/homebrew-local/Formula"
-          cp Formula/millennium-helpers.rb "$(brew --repository)/Library/Taps/local/homebrew-local/Formula/"
-          brew audit --formula local/local/millennium-helpers
+          cp "Formula/${{ matrix.formula }}.rb" "$(brew --repository)/Library/Taps/local/homebrew-local/Formula/"
+          brew audit --formula "local/local/${{ matrix.formula }}"

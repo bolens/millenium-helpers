@@ -405,24 +405,47 @@ assert_contains "$formula" 'ln_sf "_millennium-helpers", zsh_completion/"_#{cmd}
 assert_contains "$formula" 'share/"nushell/completions"' "Formula installs nushell completions"
 assert_contains "$formula" 'MILLENNIUM-LICENSE.md' "Formula installs vendored Millennium LICENSE"
 assert_contains "$formula" 'assert_path_exists bash_completion/"millennium"' "Formula test checks millennium bash completion"
+assert_contains "$formula" 'archive/refs/tags/' "from-source Formula uses GitHub tag archive"
+assert_contains "$formula" 'depends_on "go" => :build' "from-source Formula builds with Go"
+
+formula_bin=$(cat "${REPO_ROOT}/Formula/millennium-helpers-bin.rb")
+assert_contains "$formula_bin" "millennium-helpers-linux.tar.gz" "bin Formula uses Linux release tarball"
+assert_contains "$formula_bin" 'conflicts_with "millennium-helpers"' "bin Formula conflicts with from-source"
 
 pkgbuild=$(cat "${REPO_ROOT}/packaging/millennium-helpers-git/PKGBUILD")
-assert_contains "$pkgbuild" "/usr/local/bin/millennium " "PKGBUILD prepare mentions bare millennium binary"
-assert_contains "$pkgbuild" "millennium.fish" "PKGBUILD prepare mentions millennium.fish"
+assert_contains "$pkgbuild" "_arch_prepare_manual_conflict_check" "git PKGBUILD sources shared conflict check"
+assert_contains "$pkgbuild" "makedepends=('git' 'go')" "git PKGBUILD builds with Go"
+arch_helper=$(cat "${REPO_ROOT}/packaging/lib/arch-unix-install.sh")
+assert_contains "$arch_helper" "/usr/local/bin/millennium " "Arch install helper mentions bare millennium binary"
+assert_contains "$arch_helper" "millennium.fish" "Arch install helper mentions millennium.fish"
 stable_pkgbuild=$(cat "${REPO_ROOT}/packaging/millennium-helpers/PKGBUILD")
-assert_contains "$stable_pkgbuild" "millennium-helpers-linux.tar.gz" "versioned PKGBUILD uses Linux release tarball"
-assert_contains "$stable_pkgbuild" "conflicts=(" "versioned PKGBUILD declares conflicts"
+assert_contains "$stable_pkgbuild" "archive/refs/tags/" "from-source PKGBUILD uses GitHub tag archive"
+assert_contains "$stable_pkgbuild" "makedepends=('go')" "from-source PKGBUILD builds with Go"
+assert_contains "$stable_pkgbuild" "conflicts=(" "from-source PKGBUILD declares conflicts"
+bin_pkgbuild=$(cat "${REPO_ROOT}/packaging/millennium-helpers-bin/PKGBUILD")
+assert_contains "$bin_pkgbuild" "millennium-helpers-linux.tar.gz" "bin PKGBUILD uses Linux release tarball"
+assert_contains "$bin_pkgbuild" "provides=" "bin PKGBUILD declares provides"
 
 scoop=$(cat "${REPO_ROOT}/packaging/scoop/millennium-helpers.json")
-assert_contains "$scoop" "post_install" "Scoop manifest registers post_install hooks"
-assert_contains "$scoop" "pre_uninstall" "Scoop manifest registers pre_uninstall hooks"
+assert_contains "$scoop" "archive/refs/tags/" "Scoop from-source uses tag archive"
+assert_contains "$scoop" "post_install" "Scoop from-source registers post_install hooks"
+assert_contains "$scoop" "pre_uninstall" "Scoop from-source registers pre_uninstall hooks"
 assert_contains "$scoop" "millennium-helpers.ps1" "Scoop post_install wires PowerShell completions"
 assert_contains "$scoop" "MillenniumUpdate" "Scoop pre_uninstall removes MillenniumUpdate task"
+scoop_bin=$(cat "${REPO_ROOT}/packaging/scoop/millennium-helpers-bin.json")
+assert_contains "$scoop_bin" "millennium-helpers-windows.zip" "Scoop-bin uses Windows release zip"
+assert_contains "$scoop_bin" "post_install" "Scoop-bin registers post_install hooks"
 scoop_git=$(cat "${REPO_ROOT}/packaging/scoop/millennium-helpers-git.json")
 assert_contains "$scoop_git" '"version": "nightly"' "Scoop git manifest uses nightly version"
 assert_contains "$scoop_git" "archive/refs/heads/main.zip" "Scoop git manifest uses main branch archive"
 assert_contains "$scoop_git" "millenium-helpers-main" "Scoop git manifest sets extract_dir for GitHub archive"
 assert_contains "$scoop_git" "post_install" "Scoop git manifest registers post_install hooks"
+
+assert_file_exists "${REPO_ROOT}/packaging/deb/millennium-helpers/DEBIAN/control" "deb from-source control present"
+assert_file_exists "${REPO_ROOT}/packaging/deb/millennium-helpers-bin/DEBIAN/control" "deb bin control present"
+assert_file_exists "${REPO_ROOT}/packaging/rpm/millennium-helpers.spec" "rpm from-source spec present"
+assert_file_exists "${REPO_ROOT}/packaging/rpm/millennium-helpers-bin.spec" "rpm bin spec present"
+assert_file_exists "${REPO_ROOT}/packaging/chocolatey/millennium-helpers/millennium-helpers.nuspec" "Chocolatey nuspec present"
 
 # --- Track flags in help / dry-run ---
 out=$(bash "$INSTALL_SH" install --dry-run --track main --allow-unsigned-main 2>&1)

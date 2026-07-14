@@ -36,14 +36,62 @@ Thumbs.db
 # Local pre-commit cache (only if PRE_COMMIT_HOME is pointed here)
 .pre-commit-home/
 
-# Arch build/packaging artifacts (per-package dirs)
+# --- Packaging build outputs (recipes + .SRCINFO stay tracked) ---
+
+# Arch (makepkg): per-package pkg/src trees and archives
 /packaging/*.pkg.tar.*
 /packaging/pkg/
 /packaging/src/
 /packaging/millennium-helpers/pkg/
 /packaging/millennium-helpers/src/
 /packaging/millennium-helpers/*.pkg.tar.*
+/packaging/millennium-helpers-bin/pkg/
+/packaging/millennium-helpers-bin/src/
+/packaging/millennium-helpers-bin/*.pkg.tar.*
 /packaging/millennium-helpers-git/pkg/
 /packaging/millennium-helpers-git/src/
 /packaging/millennium-helpers-git/*.pkg.tar.*
+# makepkg checkout dir for the -git VCS source
 /packaging/millennium-helpers-git/millennium-helpers/
+# Temporary files from sync-*-srcinfo.sh
+/packaging/**/.SRCINFO.tmp.*
+
+# deb (packaging/deb/build-*.sh → dist/; also ignore local drops beside recipes)
+*.deb
+/packaging/deb/**/debian/tmp/
+/packaging/deb/**/debian/*.debhelper*
+/packaging/deb/**/debian/files
+/packaging/deb/**/debian/*.substvars
+
+# rpm (rpmbuild / mock local trees)
+*.rpm
+*.src.rpm
+/packaging/rpm/BUILD/
+/packaging/rpm/BUILDROOT/
+/packaging/rpm/RPMS/
+/packaging/rpm/SRPMS/
+/packaging/rpm/SOURCES/
+/packaging/rpm/*/BUILD/
+/packaging/rpm/*/BUILDROOT/
+/packaging/rpm/*/RPMS/
+/packaging/rpm/*/SRPMS/
+/packaging/rpm/*/SOURCES/
+
+# Chocolatey nupkg output (nuspec + tools stay tracked)
+*.nupkg
+/packaging/chocolatey/**/bin/
+/packaging/chocolatey/**/obj/
+/packaging/chocolatey/**/package/
+
+# Release CD / local asset smoke drops at repo root
+/millennium-helpers-linux.tar.gz
+/millennium-helpers-windows.zip
+/millennium-helpers-*.tar.gz.sha256
+/millennium-helpers-*.zip.sha256
+/millennium-linux-*
+/millennium-darwin-*
+/millennium-windows-*.exe
+/millennium-*.sha256
+
+# Embedded Windows Go binary from release/local build (not a source file)
+/scripts/windows/millennium.exe

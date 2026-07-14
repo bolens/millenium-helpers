@@ -5,13 +5,18 @@ on:
     branches: [ main ]
     paths:
       - 'packaging/millennium-helpers/**'
+      - 'packaging/millennium-helpers-bin/**'
       - 'packaging/millennium-helpers-git/**'
+      - 'packaging/lib/**'
       - 'scripts/ci/sync-git-srcinfo.sh'
+      - 'scripts/ci/sync-stable-srcinfo.sh'
+      - 'scripts/ci/sync-bin-srcinfo.sh'
       - 'VERSION'
       - 'scripts/millennium*.sh'
       - 'scripts/millennium-mcp.py'
       - 'scripts/common.sh'
       - 'scripts/lib/**'
+      - 'go/**'
       - 'completions/**'
       - 'man/**'
       - '.github/workflows/pkgbuild.yml'
@@ -19,13 +24,18 @@ on:
     branches: [ main ]
     paths:
       - 'packaging/millennium-helpers/**'
+      - 'packaging/millennium-helpers-bin/**'
       - 'packaging/millennium-helpers-git/**'
+      - 'packaging/lib/**'
       - 'scripts/ci/sync-git-srcinfo.sh'
+      - 'scripts/ci/sync-stable-srcinfo.sh'
+      - 'scripts/ci/sync-bin-srcinfo.sh'
       - 'VERSION'
       - 'scripts/millennium*.sh'
       - 'scripts/millennium-mcp.py'
       - 'scripts/common.sh'
       - 'scripts/lib/**'
+      - 'go/**'
       - 'completions/**'
       - 'man/**'
       - '.github/workflows/pkgbuild.yml'
@@ -48,11 +58,12 @@ jobs:
       matrix:
         package:
           - millennium-helpers
+          - millennium-helpers-bin
           - millennium-helpers-git
     steps:
       - name: Install build tooling
         run: |
-          pacman -Syu --noconfirm --quiet base-devel git namcap sudo curl
+          pacman -Syu --noconfirm --quiet base-devel git namcap sudo curl go
 
       - name: Checkout code
         uses: actions/checkout@v7
@@ -62,13 +73,10 @@ jobs:
           cd "packaging/${{ matrix.package }}"
           namcap PKGBUILD
 
-      # makepkg refuses to run as root, so build as an unprivileged user
-      # (mirroring how AUR helpers/makepkg are actually invoked).
       - name: Create build user
         run: |
           useradd -m builduser
           echo "builduser ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
-          # Copy checkout (including parent git dir so git describe works in pkgver)
           cp -r "$GITHUB_WORKSPACE" /home/builduser/millenium-helpers
           chown -R builduser:builduser /home/builduser/millenium-helpers
           su builduser -c 'git config --global --add safe.directory /home/builduser/millenium-helpers'
@@ -87,11 +95,19 @@ jobs:
           set -euo pipefail
           PKG="${{ matrix.package }}"
           PKG_DIR="/home/builduser/millenium-helpers/packaging/${PKG}"
-          if [[ "$PKG" == "millennium-helpers" ]]; then
-            VERSION="$(tr -d '[:space:]' < VERSION)"
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          if [[ "$PKG" == "millennium-helpers-bin" ]]; then
             URL="https://github.com/bolens/millenium-helpers/releases/download/v${VERSION}/millennium-helpers-linux.tar.gz"
             if ! curl -fsI "$URL" >/dev/null 2>&1; then
-              echo "::notice::Release asset not published yet ($URL); skipping makepkg for versioned package"
+              echo "::notice::Release asset not published yet ($URL); skipping makepkg for -bin package"
+              echo "namcap + .SRCINFO checks already passed."
+              exit 0
+            fi
+          fi
+          if [[ "$PKG" == "millennium-helpers" ]]; then
+            URL="https://github.com/bolens/millenium-helpers/archive/refs/tags/v${VERSION}.tar.gz"
+            if ! curl -fsI "$URL" >/dev/null 2>&1; then
+              echo "::notice::Tag archive not published yet ($URL); skipping makepkg for from-source package"
               echo "namcap + .SRCINFO checks already passed."
               exit 0
             fi
