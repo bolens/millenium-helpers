@@ -271,6 +271,8 @@ Manage with `millennium-schedule config list|get|set`. File mode is set to `600`
 | --- | --- |
 | Documentation index | [docs/README.md](docs/README.md) |
 | Licensing (helpers + Millennium) | [docs/licensing.md](docs/licensing.md) |
+| Bash/PS → Go unification audit | [docs/unification-audit.md](docs/unification-audit.md) |
+| Unification roadmap + parity gates | [docs/unification-roadmap.md](docs/unification-roadmap.md) |
 | Dry-run & manual uninstall | [docs/uninstall_dryrun.md](docs/uninstall_dryrun.md) |
 | Release runbook | [docs/release_runbook.md](docs/release_runbook.md) |
 | MCP server setup & tools | [docs/mcp.md](docs/mcp.md) |
@@ -289,14 +291,16 @@ Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) (including **[d
 
 ```bash
 make setup         # install shellcheck + ruff
-make check-all     # lint + full Bash test suite (lint includes check-version)
+make check-all     # lint + full Bash test suite (lint includes check-version + cli-contract)
 make test-windows  # Pester (requires PowerShell 7+ / pwsh)
+make build         # Go strangler CLI → bin/millennium (requires Go)
+make test-go       # Go unit + dispatcher smokes
 # make bump-version VERSION=X.Y.Z   # pre-tag packaging version bump
 # make check-version               # VERSION ↔ packaging manifests
 # make test-all-distros            # optional; requires Docker
 ```
 
-Helpers report version via `--version` / `-V` (from the repo `VERSION` file). A Dev Container (includes `pwsh` + Docker-in-Docker) and a Nix `devShell` (lint tools only) are available for a reproducible environment.
+Helpers report version via `--version` / `-V` (from the repo `VERSION` file). A Dev Container (includes `pwsh` + Docker-in-Docker) and a Nix `devShell` (lint tools only) are available for a reproducible environment. Cross-language unification (Bash/PowerShell → Go): [docs/unification-roadmap.md](docs/unification-roadmap.md).
 
 ---
 
