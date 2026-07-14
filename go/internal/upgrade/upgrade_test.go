@@ -123,7 +123,7 @@ func writeTestTarGz(path string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	gz := gzip.NewWriter(f)
 	tw := tar.NewWriter(gz)
 	add := func(name, body string, mode int64) error {

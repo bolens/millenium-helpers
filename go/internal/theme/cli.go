@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/bolens/millenium-helpers/internal/suggest"
 )
 
 // Options for theme CLI (list handled separately by RunListCLI).
@@ -60,7 +62,12 @@ func ParseArgs(args []string) (Options, error) {
 				o.Arg = a
 				continue
 			}
-			return o, fmt.Errorf("Error: unknown theme argument %s", a)
+			cmds := []string{"list", "install", "update", "remove"}
+			msg := fmt.Sprintf("Error: Unknown command '%s'", a)
+			if s := suggest.Closest(a, cmds); s != "" {
+				msg += fmt.Sprintf("\nDid you mean '%s'?", s)
+			}
+			return o, fmt.Errorf("%s", msg)
 		}
 	}
 	return o, nil
@@ -68,7 +75,7 @@ func ParseArgs(args []string) (Options, error) {
 
 // RunCLI runs list/install/update/remove. Exit code 0 on "Aborted." remove cancel.
 func RunCLI(o Options) int {
-	if o.Help || o.Action == "" {
+	if o.Help {
 		fmt.Print(`Usage: millennium theme <list|install|update|remove> [ARGS] [OPTIONS]
 
 Native: list, install, update, remove (with --dry-run / --yes).
@@ -79,6 +86,18 @@ Native: list, install, update, remove (with --dry-run / --yes).
   remove name [-y|--yes]
 `)
 		return 0
+	}
+	if o.Action == "" {
+		fmt.Print(`Usage: millennium theme <list|install|update|remove> [ARGS] [OPTIONS]
+
+Native: list, install, update, remove (with --dry-run / --yes).
+
+  list [--json]
+  install owner/repo
+  update [name|--all]
+  remove name [-y|--yes]
+`)
+		return 1
 	}
 	if o.DryRun {
 		fmt.Println("=== DRY RUN MODE: No changes will be made ===")

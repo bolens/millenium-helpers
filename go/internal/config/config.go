@@ -160,7 +160,7 @@ func FormatList(data Data) string {
 	b.WriteString("=== Millennium Helpers Configuration ===\n")
 	for _, k := range KnownKeys {
 		v, ok := data[k]
-		valStr := "(not set)"
+		var valStr string
 		if k == "github_token" && ok && v != nil && fmt.Sprint(v) != "" {
 			s := fmt.Sprint(v)
 			if len(s) >= 4 {

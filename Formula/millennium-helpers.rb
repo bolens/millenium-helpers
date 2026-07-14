@@ -1,5 +1,5 @@
 class MillenniumHelpers < Formula
-  desc "Millennium helpers (from source) — Go strangler CLI plus shell helpers/MCP"
+  desc "Go CLI and helpers for managing Millennium Steam mods"
   homepage "https://github.com/bolens/millenium-helpers"
   url "https://github.com/bolens/millenium-helpers/releases/download/v2.6.2/millennium-helpers-v2.6.2-src.tar.gz"
   sha256 "65e4c76384f79f5e75838809a30369e8dd5150d7c61bcb6b093d05544ad2e419"

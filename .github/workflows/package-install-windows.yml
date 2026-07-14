@@ -8,6 +8,7 @@ on:
       - 'packaging/chocolatey/**'
       - 'scripts/windows/**'
       - 'completions/powershell/**'
+      - 'go/**'
       - 'VERSION'
       - '.github/workflows/package-install-windows.yml'
   pull_request:
@@ -17,6 +18,7 @@ on:
       - 'packaging/chocolatey/**'
       - 'scripts/windows/**'
       - 'completions/powershell/**'
+      - 'go/**'
       - 'VERSION'
       - '.github/workflows/package-install-windows.yml'
 
@@ -34,6 +36,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.22.x"
+          cache-dependency-path: go/go.sum
 
       - name: Install Scoop
         shell: powershell
@@ -59,6 +67,17 @@ jobs:
           Copy-Item VERSION, LICENSE, README.md $stage\
           New-Item -ItemType Directory -Force -Path (Join-Path $stage "third_party") | Out-Null
           Copy-Item third_party\MILLENNIUM-LICENSE.md (Join-Path $stage "third_party\MILLENNIUM-LICENSE.md")
+
+          # Build Go dispatcher into the zip (release.yml embeds scripts/windows/millennium.exe).
+          $ver = $version
+          Push-Location go
+          try {
+            go build "-ldflags=-X github.com/bolens/millenium-helpers/internal/version.Version=$ver" `
+              -o (Join-Path $stage "scripts\windows\millennium.exe") .\cmd\millennium
+            if ($LASTEXITCODE -ne 0) { throw "go build millennium.exe failed" }
+          } finally {
+            Pop-Location
+          }
 
           Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zipPath -Force
 

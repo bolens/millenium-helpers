@@ -221,4 +221,4 @@ jobs:
           ls -la dist/millennium-helpers_*.deb
           dpkg-deb -I dist/millennium-helpers_*.deb | tee /tmp/deb-info.txt
           grep -q 'Package: millennium-helpers' /tmp/deb-info.txt
-          dpkg-deb -c dist/millennium-helpers_*.deb | grep -q 'usr/bin/millennium'
+          dpkg-deb -c dist/millennium-helpers_*.deb | grep 'usr/bin/millennium' >/dev/null

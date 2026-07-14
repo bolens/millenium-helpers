@@ -40,9 +40,13 @@ func TestPlanFindsHook(t *testing.T) {
 }
 
 func TestParseFlags(t *testing.T) {
-	d, y, _, h, err := ParseFlags([]string{"--dry-run", "-y"})
-	if err != nil || !d || !y || h {
-		t.Fatalf("dry=%v yes=%v help=%v err=%v", d, y, h, err)
+	d, y, _, h, ver, err := ParseFlags([]string{"--dry-run", "-y"})
+	if err != nil || !d || !y || h || ver {
+		t.Fatalf("dry=%v yes=%v help=%v ver=%v err=%v", d, y, h, ver, err)
+	}
+	_, _, _, _, ver, err = ParseFlags([]string{"-Version"})
+	if err != nil || !ver {
+		t.Fatalf("version err=%v ver=%v", err, ver)
 	}
 }
 

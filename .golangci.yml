@@ -9,6 +9,18 @@ linters:
     - misspell
     - staticcheck
     - unused
+  settings:
+    staticcheck:
+      checks:
+        - all
+        - "-ST1000"
+        - "-ST1005"
+        - "-QF1003"
+  exclusions:
+    rules:
+      # Historical module path spelling (millenium ≠ millennium).
+      - linters: [misspell]
+        text: "millenium"
 
 formatters:
   enable:

@@ -80,7 +80,7 @@ func followFiltered(path string, parts []string, initialTail int) int {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return 1
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	offset, err := f.Seek(0, io.SeekEnd)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)

@@ -38,7 +38,7 @@ func apiGet(url string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
@@ -140,7 +140,7 @@ func FetchFirstFieldSHA(shaURL string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("checksum download failed (HTTP %d)", resp.StatusCode)
 	}
@@ -197,7 +197,7 @@ func Download(url, destPath string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("download failed (HTTP %d)", resp.StatusCode)
 	}
@@ -205,7 +205,7 @@ func Download(url, destPath string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	_, err = io.Copy(f, resp.Body)
 	return err
 }

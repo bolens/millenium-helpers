@@ -335,10 +335,15 @@ func newPurgeCmd() *cobra.Command {
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
 			// Always native — ignore MILLENNIUM_LEGACY.
-			dry, yes, quiet, help, err := purge.ParseFlags(a)
+			dry, yes, quiet, help, ver, err := purge.ParseFlags(a)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err.Error())
 				os.Exit(1)
+				return nil
+			}
+			if ver {
+				version.Print("millennium-purge")
+				os.Exit(0)
 				return nil
 			}
 			if help {
@@ -359,10 +364,15 @@ func newRepairCmd() *cobra.Command {
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
 			// Always native — ignore MILLENNIUM_LEGACY.
-			dry, yes, quiet, skip, help, err := repair.ParseFlags(a)
+			dry, yes, quiet, skip, help, ver, err := repair.ParseFlags(a)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err.Error())
 				os.Exit(1)
+				return nil
+			}
+			if ver {
+				version.Print("millennium-repair")
+				os.Exit(0)
 				return nil
 			}
 			if help {
@@ -413,13 +423,6 @@ func newHelpAliasCmd(root *cobra.Command) *cobra.Command {
 			_ = root.Help()
 		},
 	}
-}
-
-func displayBinary(name string) string {
-	if name == "doctor" {
-		return "diag (doctor)"
-	}
-	return name
 }
 
 func hasVersionOnly(args []string) bool {

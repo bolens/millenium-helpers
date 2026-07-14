@@ -1,7 +1,15 @@
 class MillenniumHelpersBin < Formula
-  desc "Millennium helpers (prebuilt release assets) — scripts/MCP; Go dispatcher when embedded"
+  desc "Prebuilt CLI and helpers for managing Millennium Steam mods"
   homepage "https://github.com/bolens/millenium-helpers"
   license "MIT"
+
+  depends_on "bash"
+  depends_on "curl"
+  depends_on "jq"
+  depends_on "python"
+  depends_on "unzip"
+
+  conflicts_with "millennium-helpers", because: "both install the millennium helper tools"
 
   on_macos do
     on_arm do
@@ -24,14 +32,6 @@ class MillenniumHelpersBin < Formula
       sha256 "c077c3f536e751e776fabb329600b18d7452d455a2e2dd1908491332569f4e55"
     end
   end
-
-  depends_on "bash"
-  depends_on "curl"
-  depends_on "jq"
-  depends_on "python"
-  depends_on "unzip"
-
-  conflicts_with "millennium-helpers", because: "both install the millennium helper tools"
 
   def install
     odie "Release archive missing bin/millennium (Go dispatcher required)" unless (buildpath/"bin/millennium").exist?

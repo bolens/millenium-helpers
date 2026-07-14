@@ -75,7 +75,7 @@ func UploadPasteRS(body string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	b, err := io.ReadAll(io.LimitReader(resp.Body, 4096))
 	if err != nil {
 		return "", err

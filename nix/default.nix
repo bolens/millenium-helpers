@@ -36,8 +36,10 @@ stdenv.mkDerivation ({
     # Shell checkout fallbacks may still mention the packaged common path.
     for f in scripts/millennium-*.sh; do
       [ -f "$f" ] || continue
-      substituteInPlace "$f" \
-        --replace-fail '/usr/lib/millennium-helpers/common.sh' "$out/lib/millennium-helpers/common.sh"
+      if grep -q '/usr/lib/millennium-helpers/common.sh' "$f"; then
+        substituteInPlace "$f" \
+          --replace-fail '/usr/lib/millennium-helpers/common.sh' "$out/lib/millennium-helpers/common.sh"
+      fi
     done
   '';
 

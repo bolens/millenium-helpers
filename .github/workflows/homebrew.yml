@@ -38,5 +38,6 @@ jobs:
       - name: Audit Formula
         run: |
           mkdir -p "$(brew --repository)/Library/Taps/local/homebrew-local/Formula"
-          cp "Formula/${{ matrix.formula }}.rb" "$(brew --repository)/Library/Taps/local/homebrew-local/Formula/"
+          # Both formulas must be present so conflicts_with can resolve locally.
+          cp Formula/*.rb "$(brew --repository)/Library/Taps/local/homebrew-local/Formula/"
           brew audit --formula "local/local/${{ matrix.formula }}"

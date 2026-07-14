@@ -43,7 +43,7 @@ Options: -Json, -DryRun, -Yes, -Quiet, -Version, -Help
 
 $goBin = Resolve-MillenniumGo
 if ($Version -or $Command -eq 'version') {
-    if ($goBin) { & $goBin -V; exit $LASTEXITCODE }
+    if ($goBin) { & $goBin theme -V; exit $LASTEXITCODE }
     $verFile = Join-Path $ScriptDir '..\..\VERSION'
     if (Test-Path -LiteralPath $verFile) {
         Write-Host ("millennium-theme " + ((Get-Content -LiteralPath $verFile -Raw).Trim()))

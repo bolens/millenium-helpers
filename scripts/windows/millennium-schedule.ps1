@@ -54,7 +54,7 @@ if ([string]::IsNullOrWhiteSpace($Command)) {
 
 $goBin = Resolve-MillenniumGo
 if ($Version) {
-    if ($goBin) { & $goBin -V; exit $LASTEXITCODE }
+    if ($goBin) { & $goBin schedule -V; exit $LASTEXITCODE }
     $verFile = Join-Path $ScriptDir '..\..\VERSION'
     if (Test-Path -LiteralPath $verFile) {
         Write-Host ("millennium-schedule " + ((Get-Content -LiteralPath $verFile -Raw).Trim()))

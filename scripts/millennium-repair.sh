@@ -42,7 +42,7 @@ case "${1:-}" in
     ;;
   -V|--version)
     if go_bin="$(resolve_millennium_go)"; then
-      exec "$go_bin" -V
+      exec "$go_bin" repair -V
     fi
     if [[ -f "${SCRIPT_DIR}/../VERSION" ]]; then
       echo "millennium-repair $(tr -d '[:space:]' < "${SCRIPT_DIR}/../VERSION")"

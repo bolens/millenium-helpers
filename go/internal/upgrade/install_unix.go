@@ -20,7 +20,7 @@ func installPlatform(archivePath, version string, o Options) error {
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(tmp)
+	defer func() { _ = os.RemoveAll(tmp) }()
 
 	if err := extractTarGz(archivePath, tmp); err != nil {
 		return err
@@ -76,12 +76,12 @@ func extractTarGz(archivePath, dest string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	gz, err := gzip.NewReader(f)
 	if err != nil {
 		return fmt.Errorf("not a gzip archive: %w", err)
 	}
-	defer gz.Close()
+	defer func() { _ = gz.Close() }()
 	tr := tar.NewReader(gz)
 	destAbs, _ := filepath.Abs(dest)
 	for {
@@ -105,7 +105,7 @@ func extractTarGz(archivePath, dest string) error {
 			if err := os.MkdirAll(target, 0o755); err != nil {
 				return err
 			}
-		case tar.TypeReg, tar.TypeRegA:
+		case tar.TypeReg:
 			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 				return err
 			}
@@ -142,7 +142,7 @@ func copyTreeFiles(src, dst string) error {
 		if err != nil {
 			return err
 		}
-		defer in.Close()
+		defer func() { _ = in.Close() }()
 		mode := info.Mode()
 		if mode&0o111 != 0 {
 			mode = 0o755

@@ -185,8 +185,8 @@ func execCommandReal(name string, arg ...string) *exec.Cmd {
 	return exec.Command(name, arg...)
 }
 
-// ParseFlags returns dryRun/yes/quiet/help from purge argv.
-func ParseFlags(args []string) (dryRun, yes, quiet, help bool, err error) {
+// ParseFlags returns dryRun/yes/quiet/help/version from purge argv.
+func ParseFlags(args []string) (dryRun, yes, quiet, help, version bool, err error) {
 	for _, a := range args {
 		switch a {
 		case "-d", "--dry-run", "-DryRun":
@@ -198,13 +198,14 @@ func ParseFlags(args []string) (dryRun, yes, quiet, help bool, err error) {
 		case "-h", "--help", "-Help":
 			help = true
 		case "-V", "--version", "-Version":
+			version = true
 		default:
 			if strings.HasPrefix(a, "-") {
-				return false, false, false, false, fmt.Errorf("Error: unknown option %s", a)
+				return false, false, false, false, false, fmt.Errorf("Error: unknown option %s", a)
 			}
 		}
 	}
-	return dryRun, yes, quiet, help, nil
+	return dryRun, yes, quiet, help, version, nil
 }
 
 // RunCLI runs dry-run or live native purge (Unix + Windows).

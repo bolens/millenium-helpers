@@ -54,7 +54,7 @@ function Resolve-MillenniumGo {
 $goBin = Resolve-MillenniumGo
 if ($Version) {
     if ($goBin) {
-        & $goBin -V
+        & $goBin upgrade -V
         exit $LASTEXITCODE
     }
     $verFile = Join-Path $ScriptDir '..\..\VERSION'

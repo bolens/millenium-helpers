@@ -33,7 +33,7 @@ func SafeExtractZip(zipPath, destDir string) error {
 	if err != nil {
 		return fmt.Errorf("Error: Invalid zip archive: %w", err)
 	}
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 
 	for _, f := range r.File {
 		if !zipMemberSafe(f.Name, destReal) {
@@ -83,12 +83,12 @@ func extractZipFile(f *zip.File, destReal string) error {
 	if err != nil {
 		return err
 	}
-	defer rc.Close()
+	defer func() { _ = rc.Close() }()
 	out, err := os.OpenFile(target, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, f.Mode())
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	defer func() { _ = out.Close() }()
 	_, err = io.Copy(out, rc)
 	return err
 }

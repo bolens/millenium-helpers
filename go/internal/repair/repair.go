@@ -179,7 +179,7 @@ func forceReinstallWindows(yes bool) error {
 }
 
 // ParseFlags parses repair CLI flags.
-func ParseFlags(args []string) (dryRun, yes, quiet, skipTheme, help bool, err error) {
+func ParseFlags(args []string) (dryRun, yes, quiet, skipTheme, help, version bool, err error) {
 	for _, a := range args {
 		switch a {
 		case "-d", "--dry-run", "-DryRun":
@@ -193,13 +193,14 @@ func ParseFlags(args []string) (dryRun, yes, quiet, skipTheme, help bool, err er
 		case "-h", "--help", "-Help":
 			help = true
 		case "-V", "--version", "-Version":
+			version = true
 		default:
 			if strings.HasPrefix(a, "-") {
-				return false, false, false, false, false, fmt.Errorf("Error: unknown option %s", a)
+				return false, false, false, false, false, false, fmt.Errorf("Error: unknown option %s", a)
 			}
 		}
 	}
-	return dryRun, yes, quiet, skipTheme, help, nil
+	return dryRun, yes, quiet, skipTheme, help, version, nil
 }
 
 // RunCLI runs dry-run or live native repair (hooks/binary + ownership/cache/theme).

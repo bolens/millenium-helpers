@@ -59,9 +59,19 @@ func copyFile(src, dst string) error {
 }
 
 func defaultVerifyDiag() error {
+	// Prefer long-name twin, then dispatcher + diag subcommand.
+	if path, err := exec.LookPath("millennium-diag"); err == nil {
+		cmd := exec.Command(path)
+		cmd.Stdout = nil
+		cmd.Stderr = nil
+		return cmd.Run()
+	}
 	path, err := exec.LookPath("millennium")
 	if err != nil {
 		path = ResolvePackagedHelper("millennium")
+	}
+	if path == "" {
+		return fmt.Errorf("millennium diag not found on PATH")
 	}
 	cmd := exec.Command(path, "diag")
 	cmd.Stdout = nil

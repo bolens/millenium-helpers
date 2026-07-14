@@ -45,7 +45,7 @@ case "${1:-}" in
     ;;
   -V|--version)
     if go_bin="$(resolve_millennium_go)"; then
-      exec "$go_bin" -V
+      exec "$go_bin" upgrade -V
     fi
     if [[ -f "${SCRIPT_DIR}/../VERSION" ]]; then
       echo "millennium-upgrade $(tr -d '[:space:]' < "${SCRIPT_DIR}/../VERSION")"

@@ -54,7 +54,7 @@ Options:
 
 if ($Version) {
     $goBin = Resolve-MillenniumGo
-    if ($goBin) { & $goBin -V; exit $LASTEXITCODE }
+    if ($goBin) { & $goBin diag -V; exit $LASTEXITCODE }
     $verFile = Join-Path $ScriptDir '..\..\VERSION'
     if (Test-Path -LiteralPath $verFile) {
         Write-Host ("{0} {1}" -f ($MyInvocation.MyCommand.Name -replace '\.ps1$',''), ((Get-Content -LiteralPath $verFile -Raw).Trim()))

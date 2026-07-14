@@ -110,4 +110,13 @@ jobs:
               exit 0
             fi
           fi
+          if [[ "$PKG" == "millennium-helpers-git" ]]; then
+            # Makepkg clones github.com main by default; for PRs use this checkout
+            # so we validate the branch under test (pkgbuild + make build).
+            WORK="/home/builduser/millenium-helpers"
+            PKGBUILD_PATH="${PKG_DIR}/PKGBUILD"
+            COMMIT="$(git -C "$WORK" rev-parse HEAD)"
+            # Switch source to local file:// of this checkout (pinned commit).
+            sed -i "s|git+\${url}.git|git+file://${WORK}#commit=${COMMIT}|" "$PKGBUILD_PATH"
+          fi
           su builduser -c "cd '${PKG_DIR}' && makepkg -s --noconfirm"

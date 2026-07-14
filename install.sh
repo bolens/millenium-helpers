@@ -720,7 +720,7 @@ install_scripts() {
       kind="go"
       if [[ "${DRY_RUN:-false}" == "true" && ! -x "${SCRIPT_DIR}/bin/millennium" ]]; then
         printf "Installing: %s... " "$dest_path"
-        echo -e "${YELLOW}[DRY RUN] Would install Go binary as ${dest} (argv0 → command)${NC}"
+        echo -e "${YELLOW}[DRY RUN] Would install Go dispatcher as ${dest} (argv0 → command)${NC}"
         continue
       fi
       if [[ "$dest" == "millennium" ]]; then
