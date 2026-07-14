@@ -199,6 +199,11 @@ func newThemeCmd() *cobra.Command {
 		Short:              "Themes (list/install/update/remove native Go)",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
+			// Graduated (Phase 6e): list always stays native — ignore MILLENNIUM_LEGACY.
+			if rest, ok := takeThemeListArgs(a); ok {
+				os.Exit(theme.RunListCLI(rest))
+				return nil
+			}
 			if useLegacy() {
 				os.Exit(legacy.RunLegacy("theme", a))
 				return nil
@@ -218,6 +223,36 @@ func newThemeCmd() *cobra.Command {
 			return nil
 		},
 	}
+}
+
+// takeThemeListArgs returns (argsAfterList, true) when the theme invocation is list-only.
+func takeThemeListArgs(a []string) ([]string, bool) {
+	idx := -1
+	for i, tok := range a {
+		if tok == "list" {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return nil, false
+	}
+	for i, tok := range a {
+		if i == idx {
+			continue
+		}
+		if tok == "install" || tok == "update" || tok == "remove" {
+			return nil, false
+		}
+	}
+	var out []string
+	for i, tok := range a {
+		if i == idx {
+			continue
+		}
+		out = append(out, tok)
+	}
+	return out, true
 }
 
 func newDiagCmd() *cobra.Command {

@@ -120,6 +120,54 @@ if ($DryRun) {
     $global:DryRun = $true
 }
 
+function Resolve-MillenniumGo {
+    $candidates = @(
+        (Join-Path -Path $ScriptDir -ChildPath 'millennium.exe'),
+        (Join-Path -Path $ScriptDir -ChildPath '..\..\bin\millennium.exe'),
+        (Join-Path -Path $ScriptDir -ChildPath '..\millennium.exe')
+    )
+    foreach ($cand in $candidates) {
+        if (Test-Path -LiteralPath $cand -PathType Leaf) {
+            return (Resolve-Path -LiteralPath $cand).Path
+        }
+    }
+    foreach ($name in @('millennium.exe', 'millennium')) {
+        $cmd = Get-Command -Name $name -ErrorAction SilentlyContinue
+        if ($cmd) { return $cmd.Source }
+    }
+    return $null
+}
+
+function Invoke-ThemeListViaGo {
+    $goBin = Resolve-MillenniumGo
+    if (-not $goBin) {
+        Write-Error "theme list requires the Go millennium dispatcher (not found). Install millennium-helpers or run 'make build'."
+        exit 1
+    }
+    $goArgs = [System.Collections.Generic.List[string]]::new()
+    [void]$goArgs.Add('theme')
+    [void]$goArgs.Add('list')
+    if ($Json) { [void]$goArgs.Add('--json') }
+    if ($Quiet) { [void]$goArgs.Add('--quiet') }
+    $prevLegacy = $env:MILLENNIUM_LEGACY
+    $env:MILLENNIUM_LEGACY = '0'
+    try {
+        & $goBin @($goArgs.ToArray())
+        exit $LASTEXITCODE
+    } finally {
+        if ($null -eq $prevLegacy) {
+            Remove-Item Env:MILLENNIUM_LEGACY -ErrorAction SilentlyContinue
+        } else {
+            $env:MILLENNIUM_LEGACY = $prevLegacy
+        }
+    }
+}
+
+# Phase 6e: list is Go-only (thin-wrap) — before Steam resolve / ThemeOps.
+if ($Command -eq "list") {
+    Invoke-ThemeListViaGo
+}
+
 $SteamPath = Resolve-SteamPath
 if (!$SteamPath) {
     Log-Error "Error: Steam installation path could not be resolved."
@@ -130,78 +178,10 @@ $SkinsDir = Join-Path -Path $SteamPath -ChildPath "steamui\skins"
 $configDir = Join-Path -Path $env:LOCALAPPDATA -ChildPath "millennium-helpers"
 $configFile = Join-Path -Path $configDir -ChildPath "config.json"
 
-
-
-
-
-
 # Feature modules (dot-sourced by this entrypoint — no thin aggregator)
 . (Join-Path -Path $ScriptDir -ChildPath 'lib\ThemeOps.ps1')
 
 # --- Command Handler ---
-
-if ($Command -eq "list") {
-    if (!(Test-Path -Path $SkinsDir)) {
-        if ($Json) {
-            Write-Output "[]"
-        } else {
-            Log-Info "No themes directory found. Install a theme first."
-            Write-Host "Install one with: millennium theme install SteamClientHomebrew/millennium-steam-skin"
-        }
-        exit 0
-    }
-
-    # PSIsContainer (not -Directory) for broader PowerShell compatibility.
-    $themes = @(Get-ChildItem -Path $SkinsDir | Where-Object { $_.PSIsContainer })
-    $list = @()
-    $activeTheme = Get-ActiveThemeName
-    foreach ($t in $themes) {
-        $meta = Get-ThemeMetadata -ThemeDir $t.FullName
-        if ($null -ne $meta) {
-            $list += [ordered]@{
-                "name" = $t.Name;
-                "type" = "github";
-                "owner" = $meta.owner;
-                "repo" = $meta.repo;
-                "commit" = $meta.commit;
-            }
-        } else {
-            $list += [ordered]@{
-                "name" = $t.Name;
-                "type" = "local";
-                "owner" = "";
-                "repo" = "";
-                "commit" = "";
-            }
-        }
-    }
-
-    if ($Json) {
-        if ($list.Count -eq 0) {
-            Write-Output "[]"
-        } else {
-            $list | ConvertTo-Json
-        }
-    } else {
-        $activeTheme = Get-ActiveThemeName
-        Write-Host "=== Installed Millennium Themes ==="
-        if ($list.Count -eq 0) {
-            Write-Host "  (none)"
-            Write-Host "Install one with: millennium theme install SteamClientHomebrew/millennium-steam-skin"
-        } else {
-            foreach ($item in $list) {
-                $state = if ($item.name -eq $activeTheme) { "Active" } else { "Installed" }
-                if ($item.type -eq "github") {
-                    $short = if ($item.commit -and $item.commit.Length -ge 7) { $item.commit.Substring(0,7) } else { $item.commit }
-                    Write-Host "  - $($item.name) [$state] [GitHub: $($item.owner)/$($item.repo) @ $short]"
-                } else {
-                    Write-Host "  - $($item.name) [$state] [Local Theme (untracked)]"
-                }
-            }
-        }
-    }
-    exit 0
-}
 
 if ($Command -eq "install") {
     if (!$Theme) {

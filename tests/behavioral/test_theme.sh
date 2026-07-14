@@ -12,6 +12,16 @@ source "${TEST_DIR}/../lib/assertions.sh"
 source "${TEST_DIR}/../lib/mocks.sh"
 
 THEME_SH="${REPO_ROOT}/scripts/millennium-theme.sh"
+GO_BIN="${REPO_ROOT}/bin/millennium"
+
+# Phase 6e: long-name list thin-wraps to Go — ensure a dispatcher exists.
+if [[ ! -x "$GO_BIN" ]]; then
+  make -C "$REPO_ROOT" build
+fi
+[[ -x "$GO_BIN" ]] || {
+  echo "error: ${GO_BIN} required for theme list tests" >&2
+  exit 1
+}
 
 setup_mock_bin
 trap teardown_mock_bin EXIT
@@ -20,8 +30,14 @@ echo -e "${YELLOW}=== Behavioral tests: millennium-theme.sh ===${NC}"
 
 # Fake HOME with a fake native Steam directory so STEAM_DIR resolution
 # doesn't depend on (or pollute) the real machine's Steam install.
+# Pin MILLENNIUM_SKINS_DIR so the Go list thin-wrap (Phase 6e) matches
+# mutate paths even if the environment inherited another override.
 FAKE_HOME=$(mktemp -d)
-mkdir -p "${FAKE_HOME}/.local/share/Steam/steamui/skins"
+FAKE_SKINS="${FAKE_HOME}/.local/share/Steam/steamui/skins"
+mkdir -p "$FAKE_SKINS"
+export HOME="$FAKE_HOME"
+export STEAM="${FAKE_HOME}/.local/share/Steam"
+export MILLENNIUM_SKINS_DIR="$FAKE_SKINS"
 mock_cmd "getent" "
 if [[ \"\$1\" == 'passwd' ]]; then
   echo 'themetestuser:x:1000:1000::${FAKE_HOME}:/bin/bash'

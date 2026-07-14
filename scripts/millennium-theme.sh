@@ -122,6 +122,45 @@ if [[ "$COMMAND" != "list" && "$COMMAND" != "update" && -z "$ARG" ]]; then
   exit 1
 fi
 
+# Phase 6e: list is Go-only (thin-wrap). Prefer checkout/install binary over PATH
+# mocks used by the test suite.
+resolve_millennium_go() {
+  local cand
+  for cand in \
+    "${SCRIPT_DIR}/../bin/millennium" \
+    "${SCRIPT_DIR}/millennium" \
+    "$(command -v millennium 2>/dev/null || true)"
+  do
+    if [[ -n "$cand" && -x "$cand" ]]; then
+      printf '%s\n' "$cand"
+      return 0
+    fi
+  done
+  return 1
+}
+
+run_theme_list_via_go() {
+  local go_bin
+  if ! go_bin="$(resolve_millennium_go)"; then
+    echo -e "${RED}Error: theme list requires the Go millennium dispatcher (not found).${NC}" >&2
+    echo "Install millennium-helpers or run 'make build' from a checkout." >&2
+    exit 1
+  fi
+  local -a go_args=(theme list)
+  if [[ "$OUTPUT_JSON" == "true" ]]; then
+    go_args+=(--json)
+  fi
+  if [[ "${QUIET:-false}" == "true" ]]; then
+    go_args+=(--quiet)
+  fi
+  # Avoid re-entering this long-name helper if MILLENNIUM_LEGACY is set.
+  MILLENNIUM_LEGACY=0 exec "$go_bin" "${go_args[@]}"
+}
+
+if [[ "$COMMAND" == "list" ]]; then
+  run_theme_list_via_go
+fi
+
 RUNNING_USER="${SUDO_USER:-$(id -un)}"
 USER_HOME="$(get_user_home "$RUNNING_USER")"
 
@@ -176,136 +215,7 @@ unset _feat_lib
 
 # --- Command Execution ---
 
-# 1. LIST COMMAND
-if [[ "$COMMAND" == "list" ]]; then
-  active_theme="Steam"
-  if [[ "$OUTPUT_JSON" == "false" ]]; then
-    echo -e "${BLUE}=== Installed Millennium Themes ===${NC}"
-
-    # Active theme: Millennium config paths vary by XDG, Flatpak Steam, and install layout.
-    user_name="${SUDO_USER:-$(id -un)}"
-    user_home="$(get_user_home "$user_name")"
-    if [[ -z "$user_home" ]]; then
-      user_home="$HOME"
-    fi
-    user_xdg="${XDG_CONFIG_HOME:-$user_home/.config}"
-    steam_path="${STEAM:-$user_home/.local/share/Steam}"
-    config_json=""
-
-    for cand in \
-      "${user_xdg}/millennium/config.json" \
-      "${user_home}/.config/millennium/config.json" \
-      "${user_home}/.var/app/com.valvesoftware.Steam/config/millennium/config.json" \
-      "${user_home}/.var/app/com.valvesoftware.Steam/.config/millennium/config.json" \
-      "${steam_path}/millennium/config.json" \
-      "${steam_path}/ext/config.json"; do
-      if [[ -f "$cand" ]]; then
-        config_json="$cand"
-        break
-      fi
-    done
-
-    if [[ -n "$config_json" ]]; then
-      active_theme=$(python3 -c "
-import json
-try:
-    with open('$config_json') as f:
-        data = json.load(f)
-        print(data.get('themes', {}).get('activeTheme', 'Steam'))
-except Exception:
-    print('Steam')
-" 2>/dev/null || echo "Steam")
-    fi
-  fi
-
-  if [[ ! -d "$SKINS_DIR" ]]; then
-    if [[ "$OUTPUT_JSON" == "true" ]]; then
-      echo "[]"
-    else
-      echo "No themes skins directory found at ${SKINS_DIR}."
-      echo "Install one with: millennium theme install SteamClientHomebrew/millennium-steam-skin"
-    fi
-    exit 0
-  fi
-
-  found=false
-  first=true
-  if [[ "$OUTPUT_JSON" == "true" ]]; then
-    printf "["
-  fi
-
-  for dir in "$SKINS_DIR"/*; do
-    [[ -d "$dir" ]] || continue
-    theme_name=$(basename "$dir")
-    found=true
-
-    owner=""
-    repo=""
-    commit=""
-    type="local"
-
-    # Read metadata if exists
-    meta_file="${dir}/metadata.json"
-    if [[ -f "$meta_file" ]]; then
-      parsed_meta=$(python3 -c "
-import json
-try:
-    with open('$meta_file') as f:
-        d = json.load(f)
-        print(f\"{d.get('owner', '')}:{d.get('repo', '')}:{d.get('commit', '')}\")
-except Exception:
-    print('::')
-" 2>/dev/null || echo "::")
-      owner="${parsed_meta%%:*}"
-      rest="${parsed_meta#*:}"
-      repo="${rest%%:*}"
-      commit="${rest#*:}"
-      if [[ -n "$owner" && -n "$repo" ]]; then
-        type="github"
-      fi
-    fi
-
-    if [[ "$OUTPUT_JSON" == "true" ]]; then
-      if [[ "$first" == "false" ]]; then
-        printf ","
-      fi
-      first=false
-      if [[ "$type" == "github" ]]; then
-        printf '{"name":"%s","owner":"%s","repo":"%s","commit":"%s","type":"github"}' "$theme_name" "$owner" "$repo" "$commit"
-      else
-        printf '{"name":"%s","type":"local"}' "$theme_name"
-      fi
-    else
-      status_flag="[Installed]"
-      status_color="${BLUE}"
-      if [[ "$theme_name" == "$active_theme" ]]; then
-        status_flag="[Active]   "
-        status_color="${GREEN}"
-      fi
-
-      if [[ "$type" == "github" ]]; then
-        printf "  %b%s%b  %-20s - %s/%s @ %s (GitHub)\n" \
-          "$status_color" "$status_flag" "${NC}" \
-          "$theme_name" \
-          "$owner" "$repo" "${commit:0:7}"
-      else
-        printf "  %b%s%b  %-20s - Local / Manual Installation\n" \
-          "$status_color" "$status_flag" "${NC}" \
-          "$theme_name"
-      fi
-    fi
-  done
-
-  if [[ "$OUTPUT_JSON" == "true" ]]; then
-    echo "]"
-  elif [[ "$found" == "false" ]]; then
-    echo "No themes installed."
-    echo "Install one with: millennium theme install SteamClientHomebrew/millennium-steam-skin"
-  fi
-  exit 0
-fi
-
-# 2. INSTALL COMMAND
+# 1. INSTALL COMMAND
 if [[ "$COMMAND" == "install" ]]; then
   if [[ "$ARG" != */* ]]; then
     echo -e "${RED}Error: Theme must be in 'owner/repo' format.${NC}" >&2

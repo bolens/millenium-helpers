@@ -198,10 +198,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
 
-      # Phase 6c / MCP: suites that build or invoke bin/millennium (Go 1.22+).
+      # Suites that build or invoke bin/millennium (Go 1.22+).
       - name: Set up Go
         if: >-
           matrix.suite == 'tests/behavioral/test_schedule.sh' ||
+          matrix.suite == 'tests/behavioral/test_theme.sh' ||
           matrix.suite == 'tests/behavioral/test_mcp.sh'
         uses: actions/setup-go@v6
         with:
@@ -217,6 +218,7 @@ jobs:
       - name: Build Go dispatcher
         if: >-
           matrix.suite == 'tests/behavioral/test_schedule.sh' ||
+          matrix.suite == 'tests/behavioral/test_theme.sh' ||
           matrix.suite == 'tests/behavioral/test_mcp.sh'
         shell: bash
         run: |
@@ -261,9 +263,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
 
-      # Phase 6c: schedule config thin-wraps to Go; Pester builds bin/millennium.exe.
+      # Schedule config / theme list thin-wrap to Go; Pester builds bin/millennium.exe.
       - name: Set up Go
-        if: matrix.suite == 'tests/windows/millennium-schedule.Tests.ps1'
+        if: >-
+          matrix.suite == 'tests/windows/millennium-schedule.Tests.ps1' ||
+          matrix.suite == 'tests/windows/millennium-theme.Tests.ps1'
         uses: actions/setup-go@v6
         with:
           go-version-file: go/go.mod
@@ -311,10 +315,11 @@ jobs:
           "$RUNNER_TEMP/mh-pyyaml/bin/pip" install --quiet pyyaml
           echo "$RUNNER_TEMP/mh-pyyaml/bin" >> "$GITHUB_PATH"
 
-      # Phase 6c / MCP: suites that build or invoke bin/millennium.
+      # Suites that build or invoke bin/millennium.
       - name: Set up Go
         if: >-
           matrix.suite == 'tests/behavioral/test_schedule.sh' ||
+          matrix.suite == 'tests/behavioral/test_theme.sh' ||
           matrix.suite == 'tests/behavioral/test_mcp.sh'
         uses: actions/setup-go@v6
         with:
