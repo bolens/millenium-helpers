@@ -156,16 +156,44 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Resolved tag=$TAG version=$VERSION"
 
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22.x"
+
+      - name: Build Go dispatchers
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.meta.outputs.version }}"
+          LDFLAGS="-X github.com/bolens/millenium-helpers/internal/version.Version=${VERSION}"
+          mkdir -p dist bin
+          build() {
+            local goos="$1" goarch="$2" out="$3"
+            echo "Building $out (GOOS=$goos GOARCH=$goarch)"
+            (cd go && CGO_ENABLED=0 GOOS="$goos" GOARCH="$goarch" go build -ldflags "$LDFLAGS" -o "../dist/$out" ./cmd/millennium)
+          }
+          build linux amd64 millennium-linux-amd64
+          build linux arm64 millennium-linux-arm64
+          build darwin amd64 millennium-darwin-amd64
+          build darwin arm64 millennium-darwin-arm64
+          build windows amd64 millennium-windows-amd64.exe
+          # Embed linux/amd64 for install.sh / Arch-bin / Homebrew-bin / tarball consumers
+          cp dist/millennium-linux-amd64 bin/millennium
+          chmod +x bin/millennium
+          # Windows installer / Scoop look under scripts/windows/
+          cp dist/millennium-windows-amd64.exe scripts/windows/millennium.exe
+
       - name: Create Linux/macOS Release Tarball
         run: |
           set -euo pipefail
-          # Explicit Unix payload only — no Windows scripts, CI, packaging, or Nix.
+          # Explicit Unix payload — scripts + embedded Go dispatcher (bin/millennium).
           tar -czf millennium-helpers-linux.tar.gz \
             install.sh \
             VERSION \
             LICENSE \
             README.md \
             third_party/MILLENNIUM-LICENSE.md \
+            bin/millennium \
             scripts/common.sh \
             scripts/millennium.sh \
             scripts/millennium-diag.sh \
@@ -182,8 +210,8 @@ jobs:
       - name: Create Windows Release Zip
         run: |
           set -euo pipefail
-          # Windows payload — PowerShell scripts plus the shared MCP Python server
-          # (millennium-mcp.ps1 looks for ../millennium-mcp.py next to scripts/windows/).
+          # Windows payload — PowerShell helpers + Go millennium.exe when built.
+          # millennium-mcp.ps1 looks for ../millennium-mcp.py next to scripts/windows/.
           # install.ps1 resolves VERSION via ..\..\VERSION.
           zip -r millennium-helpers-windows.zip \
             scripts/windows/ \
@@ -232,7 +260,13 @@ jobs:
           echo "$LINUX_SHA  millennium-helpers-linux.tar.gz" > millennium-helpers-linux.tar.gz.sha256
           echo "$WINDOWS_SHA  millennium-helpers-windows.zip" > millennium-helpers-windows.zip.sha256
 
-          # Round-trip verify the sidecar checksum files match the archives.
+          # Per-platform Go binary checksums
+          for f in dist/millennium-*; do
+            base="$(basename "$f")"
+            sha256sum "$f" | awk '{print $1"  '"$base"'"}' > "${base}.sha256"
+            sha256sum -c "${base}.sha256"
+          done
+
           sha256sum -c millennium-helpers-linux.tar.gz.sha256
           sha256sum -c millennium-helpers-windows.zip.sha256
 
@@ -245,12 +279,18 @@ jobs:
           body: |
             ## Release Verification & Checksums
 
-            Platform-trimmed archives — used by Homebrew, Scoop, Winget manifests, and the piped installers:
+            Platform-trimmed archives — used by Homebrew, Scoop, Winget, Arch `-bin`, and piped installers:
 
             | Asset | Platform | Contents | SHA256 |
             | :--- | :--- | :--- | :--- |
-            | `millennium-helpers-linux.tar.gz` | Linux/macOS | scripts, completions, man pages | `${{ env.LINUX_SHA }}` |
-            | `millennium-helpers-windows.zip` | Windows | PowerShell scripts | `${{ env.WINDOWS_SHA }}` |
+            | `millennium-helpers-linux.tar.gz` | Linux/macOS | scripts + `bin/millennium` (linux/amd64) | `${{ env.LINUX_SHA }}` |
+            | `millennium-helpers-windows.zip` | Windows | PowerShell scripts + `millennium.exe` | `${{ env.WINDOWS_SHA }}` |
+
+            Standalone Go dispatchers (also embedded in the archives above where noted):
+
+            - `millennium-linux-amd64` / `millennium-linux-arm64`
+            - `millennium-darwin-amd64` / `millennium-darwin-arm64`
+            - `millennium-windows-amd64.exe`
 
             ### Package Verification
             To verify the integrity of the downloaded assets, run:
@@ -268,6 +308,16 @@ jobs:
             millennium-helpers-windows.zip
             millennium-helpers-linux.tar.gz.sha256
             millennium-helpers-windows.zip.sha256
+            dist/millennium-linux-amd64
+            dist/millennium-linux-arm64
+            dist/millennium-darwin-amd64
+            dist/millennium-darwin-arm64
+            dist/millennium-windows-amd64.exe
+            millennium-linux-amd64.sha256
+            millennium-linux-arm64.sha256
+            millennium-darwin-amd64.sha256
+            millennium-darwin-arm64.sha256
+            millennium-windows-amd64.exe.sha256
 
   update-packaging:
     name: Open packaging update PR
@@ -365,22 +415,18 @@ jobs:
             ## Summary
             Automated packaging bump for release **v${{ needs.build-release.outputs.version }}**.
 
-            - Updates `VERSION`, Homebrew Formula, Scoop, Winget, versioned Arch
-              (`packaging/millennium-helpers`), and Nix `nix/release-info.nix` to the trimmed
-              release assets (`millennium-helpers-linux.tar.gz` / `millennium-helpers-windows.zip`)
-            - Hashes come from the draft release assets built by this workflow
-            - Arch `-git`, Scoop `-git`, Winget `bolens.millenniumhelpers.git`, and Nix `#millennium-helpers-git` stay tip-of-main / flake source
-              and are not bumped here
+            - Updates `VERSION` + from-source/`-bin` matrix (Homebrew, Scoop, Arch, Nix,
+              deb, rpm, Chocolatey) and Winget bin manifests from draft release hashes
+            - Tip-of-main (`*-git`, Winget-git, Nix `#millennium-helpers-git`) stay untouched
 
             ## Automation
             If packaging CI passes, the release workflow will squash-merge this PR and publish the draft GitHub release.
             If CI fails, this PR and the draft release are left for manual recovery.
 
             ## Test plan
-            - [ ] Confirm version-sync CI passes
-            - [ ] Confirm Homebrew audit / Scoop / Winget manifest jobs pass
-            - [ ] Confirm Scoop install test passes (trimmed zip layout)
-            - [ ] Confirm PKGBUILD CI passes for versioned + `-git` packages
+            - [ ] Version sync + packaging-manifest matrix jobs pass
+            - [ ] Homebrew audits (`millennium-helpers` + `-bin`) pass
+            - [ ] Arch from-source + `-bin`, Nix, deb build, Scoop-bin install, Chocolatey shape pass
 
   finalize:
     name: Merge packaging PR & publish release
@@ -413,12 +459,22 @@ jobs:
           REPO="${{ github.repository }}"
 
           # Only these jobs gate auto-merge. Ignore CodeQL Analyze / labeler / etc.
+          # Names must match GitHub check names (matrix jobs include the key in parentheses).
           REQUIRED_CHECKS=(
-            "Detect changed packaging paths"
             "VERSION matches packaging manifests"
-            "Validate Scoop / Winget manifests"
-            "Test Scoop Package Install"
-            "homebrew"
+            "Validate packaging manifests"
+            "Validate Scoop matrix shapes"
+            "Validate Winget manifests"
+            "Validate Chocolatey package"
+            "Validate deb / rpm recipes"
+            "Build deb from-source"
+            "Test Scoop-bin Package Install"
+            "Validate Chocolatey install script shape"
+            "homebrew (millennium-helpers)"
+            "homebrew (millennium-helpers-bin)"
+            "Validate AUR packaging (millennium-helpers)"
+            "Validate AUR packaging (millennium-helpers-bin)"
+            "Build Nix Package"
           )
 
           echo "Packaging PR #${PR}: ${PR_URL}"
