@@ -30,16 +30,13 @@ if (Test-Path -LiteralPath $millenniumExe) {
 }
 
 foreach ($pair in @(
-    @{ Name = 'millennium-diag'; File = 'millennium-diag.ps1' },
-    @{ Name = 'millennium-mcp'; File = 'millennium-mcp.ps1' },
-    @{ Name = 'millennium-purge'; File = 'millennium-purge.ps1' },
-    @{ Name = 'millennium-repair'; File = 'millennium-repair.ps1' },
-    @{ Name = 'millennium-schedule'; File = 'millennium-schedule.ps1' },
-    @{ Name = 'millennium-theme'; File = 'millennium-theme.ps1' },
-    @{ Name = 'millennium-upgrade'; File = 'millennium-upgrade.ps1' }
+    @{ Name = 'millennium-diag'; Args = 'diag' },
+    @{ Name = 'millennium-mcp'; Args = 'mcp' },
+    @{ Name = 'millennium-purge'; Args = 'purge' },
+    @{ Name = 'millennium-repair'; Args = 'repair' },
+    @{ Name = 'millennium-schedule'; Args = 'schedule' },
+    @{ Name = 'millennium-theme'; Args = 'theme' },
+    @{ Name = 'millennium-upgrade'; Args = 'upgrade' }
   )) {
-  $p = Join-Path $winScripts $pair.File
-  if (Test-Path -LiteralPath $p) {
-    Install-BinFile -Name $pair.Name -Path $p
-  }
+  Install-BinFile -Name $pair.Name -Path $millenniumExe -Command "$($pair.Args) %*"
 }

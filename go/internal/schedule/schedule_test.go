@@ -88,13 +88,16 @@ func TestBuildEnablePowerShell(t *testing.T) {
 	arg, script := buildEnablePowerShell(
 		"beta",
 		`C:\Users\alice\AppData\Local\millennium-helpers`,
-		`C:\helpers\millennium-upgrade.ps1`,
-		`C:\helpers\millennium-theme.ps1`,
+		`C:\helpers\millennium.exe`,
+		`C:\helpers\millennium.exe`,
 		`C:\helpers\updater.log`,
 		15,
 	)
-	if !strings.Contains(arg, "millennium-upgrade.ps1") || !strings.Contains(arg, "beta") {
+	if !strings.Contains(arg, "millennium.exe") || !strings.Contains(arg, "upgrade") || !strings.Contains(arg, "beta") {
 		t.Fatalf("taskArg=%s", arg)
+	}
+	if !strings.Contains(arg, "theme update") {
+		t.Fatalf("missing theme update: %s", arg)
 	}
 	if !strings.Contains(script, "Register-ScheduledTask") || !strings.Contains(script, WinTaskName) {
 		t.Fatalf("script=%s", script)
@@ -103,7 +106,7 @@ func TestBuildEnablePowerShell(t *testing.T) {
 		t.Fatalf("missing delay: %s", script)
 	}
 	// Single-quote escaping in taskArg (Register script re-escapes via psSingle)
-	arg2, _ := buildEnablePowerShell("stable", `C:\O'Brien`, "u.ps1", "t.ps1", "l.log", 0)
+	arg2, _ := buildEnablePowerShell("stable", `C:\O'Brien`, "u.exe", "u.exe", "l.log", 0)
 	if !strings.Contains(arg2, `O''Brien`) {
 		t.Fatalf("escape failed: %s", arg2)
 	}

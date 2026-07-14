@@ -201,7 +201,8 @@ SUDOERS_FILE="${MOCK_SUDOERS_FILE:-/etc/sudoers.d/millennium-helpers}"
 # shellcheck disable=SC1090
 source "${SCRIPT_DIR}/scripts/common.sh"
 
-# Feature helpers (long names). PATH `millennium` is the Go binary only.
+# Feature helpers (long names). PATH entries are Go dispatcher argv0 twins
+# (same binary as `millennium <cmd>`); shell scripts remain checkout fallbacks.
 SCRIPTS=(
   "scripts/millennium-repair.sh:millennium-repair"
   "scripts/millennium-upgrade.sh:millennium-upgrade"
@@ -209,11 +210,21 @@ SCRIPTS=(
   "scripts/millennium-purge.sh:millennium-purge"
   "scripts/millennium-diag.sh:millennium-diag"
   "scripts/millennium-theme.sh:millennium-theme"
-  # millennium-mcp: Go argv0 twin (same binary as PATH millennium)
   "scripts/millennium-mcp.sh:millennium-mcp"
   # sentinel: install_scripts special-cases dest=millennium → Go binary
   ":millennium"
 )
+
+is_go_argv0_twin() {
+  case "$1" in
+    millennium|millennium-mcp|millennium-repair|millennium-upgrade|millennium-schedule|millennium-purge|millennium-diag|millennium-theme)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
 
 # Ensure Go dispatcher binary exists under bin/millennium.
 ensure_go_dispatcher() {
@@ -692,33 +703,30 @@ install_scripts() {
     local dest_path="${TARGET_DIR}/${dest}"
     local kind="shell"
 
-    if [[ "$dest" == "millennium" ]]; then
-      DISPATCHER_SRC=""
-      if ! resolve_millennium_dispatcher; then
-        die_go_dispatcher_required
+    if [[ "$dest" == "millennium" ]] || is_go_argv0_twin "$dest"; then
+      if [[ "$dest" == "millennium" ]]; then
+        DISPATCHER_SRC=""
+        if ! resolve_millennium_dispatcher; then
+          die_go_dispatcher_required
+        fi
+        src_path="${DISPATCHER_SRC}"
+      else
+        if ensure_go_dispatcher && [[ -x "${SCRIPT_DIR}/bin/millennium" || "${DRY_RUN:-false}" == "true" ]]; then
+          src_path="${SCRIPT_DIR}/bin/millennium"
+        else
+          die_go_dispatcher_required
+        fi
       fi
-      src_path="${DISPATCHER_SRC}"
       kind="go"
       if [[ "${DRY_RUN:-false}" == "true" && ! -x "${SCRIPT_DIR}/bin/millennium" ]]; then
         printf "Installing: %s... " "$dest_path"
-        echo -e "${YELLOW}[DRY RUN] Would build and install Go dispatcher (bin/millennium)${NC}"
+        echo -e "${YELLOW}[DRY RUN] Would install Go binary as ${dest} (argv0 → command)${NC}"
         continue
       fi
-      echo -e "${BLUE}Using Go dispatcher for PATH millennium${NC}"
-    fi
-
-    if [[ "$dest" == "millennium-mcp" ]]; then
-      if ensure_go_dispatcher && [[ -x "${SCRIPT_DIR}/bin/millennium" || "${DRY_RUN:-false}" == "true" ]]; then
-        src_path="${SCRIPT_DIR}/bin/millennium"
-        kind="go"
-        if [[ "${DRY_RUN:-false}" == "true" && ! -x "${SCRIPT_DIR}/bin/millennium" ]]; then
-          printf "Installing: %s... " "$dest_path"
-          echo -e "${YELLOW}[DRY RUN] Would install Go binary as millennium-mcp (argv0 → mcp)${NC}"
-          continue
-        fi
-        echo -e "${BLUE}Using Go dispatcher for PATH millennium-mcp${NC}"
+      if [[ "$dest" == "millennium" ]]; then
+        echo -e "${BLUE}Using Go dispatcher for PATH millennium${NC}"
       else
-        die_go_dispatcher_required
+        echo -e "${BLUE}Using Go dispatcher for PATH ${dest} (argv0 twin)${NC}"
       fi
     fi
 

@@ -11,12 +11,8 @@ import (
 
 func TestRunEnableDisableWindows(t *testing.T) {
 	dir := t.TempDir()
-	upgrade := filepath.Join(dir, "millennium-upgrade.ps1")
-	theme := filepath.Join(dir, "millennium-theme.ps1")
-	if err := os.WriteFile(upgrade, []byte("#"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(theme, []byte("#"), 0o644); err != nil {
+	exe := filepath.Join(dir, "millennium.exe")
+	if err := os.WriteFile(exe, []byte("MZ"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("MILLENNIUM_SCRIPTS_DIR", dir)
@@ -40,6 +36,9 @@ func TestRunEnableDisableWindows(t *testing.T) {
 	}
 	if len(scripts) != 1 || !strings.Contains(scripts[0], "Register-ScheduledTask") {
 		t.Fatalf("scripts=%v", scripts)
+	}
+	if !strings.Contains(scripts[0], "upgrade --channel") {
+		t.Fatalf("expected Go upgrade invoke, got: %s", scripts[0])
 	}
 	scripts = nil
 	if code := runDisable(false, true); code != 0 {

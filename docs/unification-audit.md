@@ -12,11 +12,12 @@ Project: [README](../README.md). Index: [README.md](README.md).
 | Surface | Path | Language |
 | --- | --- | --- |
 | PATH CLI | `bin/millennium` (`go/cmd/millennium`) | Go |
-| Long-name helpers | [`scripts/millennium-*.sh`](../scripts/), [`scripts/windows/*.ps1`](../scripts/windows/) | Thin-wrap → Go |
+| Long-name helpers | [`scripts/millennium-*.sh`](../scripts/), [`scripts/windows/*.ps1`](../scripts/windows/) | Checkout fallbacks; installed PATH names are Go argv0 twins |
 | Shared libs | [`scripts/lib/`](../scripts/lib/), [`scripts/windows/lib/`](../scripts/windows/lib/) | Bash / PowerShell (install-only); Steam, CLI logging, zip extract, GitHub API in Go |
 | Steam | `go/internal/steam` | Go (Unix + Windows) |
 | CLI logging | `go/internal/logging` | Go |
 | Zip extract | `go/internal/archive` | Go (theme + Windows upgrade install) |
+| Long-name argv0 | `go/cmd/millennium` `commandFromArgv0` | Go (`millennium-upgrade` → `upgrade`, …) |
 | MCP | `millennium mcp` / PATH `millennium-mcp` | Go |
 | Completions | [`completions/`](../completions/) | Bash / Zsh / Fish / Nushell / PowerShell |
 | Man pages | [`man/`](../man/) | mandoc |
@@ -93,7 +94,7 @@ Tests: Bash behavioral/unit under `tests/` · Pester under `tests/windows/`.
 
 ## Open gaps (non-contract)
 
-1. Timers / sudoers may still name long-name helpers (`millennium-upgrade`); migrate to `millennium upgrade` with installers.
+1. Timers / sudoers may still name long-name helpers (`millennium-upgrade`); PATH entries are Go twins. Prefer rewriting units to `millennium upgrade` on next enable.
 2. Completions/man/MCP schema still hand-synced with the contract (CI gates help).
 
 ---

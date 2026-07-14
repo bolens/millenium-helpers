@@ -25,14 +25,12 @@ install -d "$DEST/usr/bin" "$DEST/usr/lib/millennium-helpers/lib" \
   "$DEST/usr/share/doc/millennium-helpers" \
   "$DEST/DEBIAN"
 
-install -m755 scripts/millennium-repair.sh "$DEST/usr/bin/millennium-repair"
-install -m755 scripts/millennium-upgrade.sh "$DEST/usr/bin/millennium-upgrade"
-install -m755 scripts/millennium-schedule.sh "$DEST/usr/bin/millennium-schedule"
-install -m755 scripts/millennium-purge.sh "$DEST/usr/bin/millennium-purge"
-install -m755 scripts/millennium-diag.sh "$DEST/usr/bin/millennium-diag"
-install -m755 scripts/millennium-theme.sh "$DEST/usr/bin/millennium-theme"
-install -m755 bin/millennium "$DEST/usr/bin/millennium"
-install -m755 bin/millennium "$DEST/usr/bin/millennium-mcp"
+# Long-name PATH entries are argv0 twins of the Go dispatcher.
+for twin in millennium millennium-mcp millennium-repair millennium-upgrade \
+  millennium-schedule millennium-purge millennium-diag millennium-theme
+do
+  install -m755 bin/millennium "$DEST/usr/bin/$twin"
+done
 
 install -m644 scripts/common.sh "$DEST/usr/lib/millennium-helpers/common.sh"
 install -m644 scripts/lib/*.sh "$DEST/usr/lib/millennium-helpers/lib/"

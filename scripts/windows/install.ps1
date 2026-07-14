@@ -478,16 +478,29 @@ $wrappers = @(
 foreach ($wrapperName in $wrappers) {
     $wrapperPath = Join-Path -Path $binDir -ChildPath "$wrapperName.cmd"
     $hasExe = Test-Path (Join-Path $binDir 'millennium.exe')
-    if ($wrapperName -eq 'millennium' -and $hasExe) {
-        $cmdContent = @"
+    $cmdMap = @{
+        'millennium'           = ''
+        'millennium-mcp'       = 'mcp'
+        'millennium-diag'      = 'diag'
+        'millennium-purge'     = 'purge'
+        'millennium-repair'    = 'repair'
+        'millennium-schedule'  = 'schedule'
+        'millennium-theme'     = 'theme'
+        'millennium-upgrade'   = 'upgrade'
+    }
+    if ($hasExe -and $cmdMap.ContainsKey($wrapperName)) {
+        $sub = $cmdMap[$wrapperName]
+        if ([string]::IsNullOrEmpty($sub)) {
+            $cmdContent = @"
 @echo off
 "%~dp0millennium.exe" %*
 "@
-    } elseif ($wrapperName -eq 'millennium-mcp' -and $hasExe) {
-        $cmdContent = @"
+        } else {
+            $cmdContent = @"
 @echo off
-"%~dp0millennium.exe" mcp %*
+"%~dp0millennium.exe" $sub %*
 "@
+        }
     } else {
         $cmdContent = @"
 @echo off

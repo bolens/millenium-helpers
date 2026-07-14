@@ -33,7 +33,9 @@ stdenv.mkDerivation ({
   '';
 
   postPatch = ''
+    # Shell checkout fallbacks may still mention the packaged common path.
     for f in scripts/millennium-*.sh; do
+      [ -f "$f" ] || continue
       substituteInPlace "$f" \
         --replace-fail '/usr/lib/millennium-helpers/common.sh' "$out/lib/millennium-helpers/common.sh"
     done
@@ -43,28 +45,33 @@ stdenv.mkDerivation ({
     runHook preInstall
 
     mkdir -p $out/bin
-    install -m755 scripts/millennium-repair.sh $out/bin/millennium-repair
-    install -m755 scripts/millennium-upgrade.sh $out/bin/millennium-upgrade
-    install -m755 scripts/millennium-schedule.sh $out/bin/millennium-schedule
-    install -m755 scripts/millennium-purge.sh $out/bin/millennium-purge
-    install -m755 scripts/millennium-diag.sh $out/bin/millennium-diag
-    install -m755 scripts/millennium-theme.sh $out/bin/millennium-theme
-    if [ -x bin/millennium ]; then
-      install -m755 bin/millennium $out/bin/millennium
-      install -m755 bin/millennium $out/bin/millennium-mcp
-    else
+    if [ ! -x bin/millennium ]; then
       echo "error: Go dispatcher bin/millennium is required" >&2
       exit 1
     fi
+    install -m755 bin/millennium $out/bin/millennium
+    # Long-name PATH twins: inject subcommand (Nix wrappers change argv0).
+    for pair in \
+      "millennium-mcp:mcp" \
+      "millennium-repair:repair" \
+      "millennium-upgrade:upgrade" \
+      "millennium-schedule:schedule" \
+      "millennium-purge:purge" \
+      "millennium-diag:diag" \
+      "millennium-theme:theme"
+    do
+      twin="''${pair%%:*}"
+      cmd="''${pair#*:}"
+      makeWrapper $out/bin/millennium $out/bin/$twin \
+        --add-flags "$cmd" \
+        --prefix PATH : ${lib.makeBinPath [ bash python3 curl unzip git ]}
+    done
+    wrapProgram $out/bin/millennium \
+      --prefix PATH : ${lib.makeBinPath [ bash python3 curl unzip git ]}
 
     mkdir -p $out/lib/millennium-helpers/lib
     install -m644 scripts/common.sh $out/lib/millennium-helpers/common.sh
     install -m644 scripts/lib/*.sh $out/lib/millennium-helpers/lib/
-
-    for script in millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp millennium; do
-      wrapProgram $out/bin/$script \
-        --prefix PATH : ${lib.makeBinPath [ bash python3 curl unzip git ]}
-    done
 
     mkdir -p $out/share/bash-completion/completions
     install -m644 completions/bash/millennium-helpers $out/share/bash-completion/completions/millennium-helpers

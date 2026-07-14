@@ -33,14 +33,12 @@ install -d %{buildroot}%{_bindir} \
   %{buildroot}%{_mandir}/man1 \
   %{buildroot}%{_licensedir}/%{name}
 
-install -m755 scripts/millennium-repair.sh %{buildroot}%{_bindir}/millennium-repair
-install -m755 scripts/millennium-upgrade.sh %{buildroot}%{_bindir}/millennium-upgrade
-install -m755 scripts/millennium-schedule.sh %{buildroot}%{_bindir}/millennium-schedule
-install -m755 scripts/millennium-purge.sh %{buildroot}%{_bindir}/millennium-purge
-install -m755 scripts/millennium-diag.sh %{buildroot}%{_bindir}/millennium-diag
-install -m755 scripts/millennium-theme.sh %{buildroot}%{_bindir}/millennium-theme
-install -m755 bin/millennium %{buildroot}%{_bindir}/millennium
-install -m755 bin/millennium %{buildroot}%{_bindir}/millennium-mcp
+# Long-name PATH entries are argv0 twins of the Go dispatcher.
+for twin in millennium millennium-mcp millennium-repair millennium-upgrade \
+  millennium-schedule millennium-purge millennium-diag millennium-theme
+do
+  install -m755 bin/millennium %{buildroot}%{_bindir}/$twin
+done
 install -m644 scripts/common.sh %{buildroot}%{_libdir}/millennium-helpers/common.sh
 install -m644 scripts/lib/*.sh %{buildroot}%{_libdir}/millennium-helpers/lib/
 install -m644 VERSION %{buildroot}%{_libdir}/millennium-helpers/VERSION

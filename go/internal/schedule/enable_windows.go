@@ -94,16 +94,35 @@ if ($null -ne $task) {
 }
 
 func resolveWindowsHelpers() (upgrade, theme string, err error) {
+	exe, err := resolveWindowsMillenniumExe()
+	if err != nil {
+		return "", "", err
+	}
+	return exe, exe, nil
+}
+
+func resolveWindowsMillenniumExe() (string, error) {
 	dir := legacy.ScriptDir()
-	if dir == "" {
-		return "", "", fmt.Errorf("Error: could not locate Windows helper scripts directory (set MILLENNIUM_SCRIPTS_DIR).")
+	candidates := []string{}
+	if dir != "" {
+		candidates = append(candidates,
+			filepath.Join(dir, "millennium.exe"),
+			filepath.Join(dir, "..", "millennium.exe"),
+		)
 	}
-	upgrade = filepath.Join(dir, "millennium-upgrade.ps1")
-	theme = filepath.Join(dir, "millennium-theme.ps1")
-	if _, e := os.Stat(upgrade); e != nil {
-		return "", "", fmt.Errorf("Error: Millennium upgrade script not found at %s", upgrade)
+	for _, c := range candidates {
+		if st, e := os.Stat(c); e == nil && !st.IsDir() {
+			abs, _ := filepath.Abs(c)
+			return abs, nil
+		}
 	}
-	return upgrade, theme, nil
+	if p, e := exec.LookPath("millennium.exe"); e == nil {
+		return p, nil
+	}
+	if p, e := exec.LookPath("millennium"); e == nil {
+		return p, nil
+	}
+	return "", fmt.Errorf("Error: millennium.exe (Go dispatcher) not found (set MILLENNIUM_SCRIPTS_DIR or install helpers).")
 }
 
 func isWindowsAdmin() bool {

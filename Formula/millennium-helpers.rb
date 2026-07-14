@@ -16,15 +16,17 @@ class MillenniumHelpers < Formula
   def install
     system "make", "build"
 
-    bin.install "scripts/millennium-repair.sh" => "millennium-repair"
-    bin.install "scripts/millennium-upgrade.sh" => "millennium-upgrade"
-    bin.install "scripts/millennium-schedule.sh" => "millennium-schedule"
-    bin.install "scripts/millennium-purge.sh" => "millennium-purge"
-    bin.install "scripts/millennium-diag.sh" => "millennium-diag"
-    bin.install "scripts/millennium-theme.sh" => "millennium-theme"
     odie "Go dispatcher bin/millennium missing after make build" unless (buildpath/"bin/millennium").exist?
     bin.install "bin/millennium"
-    bin.install_symlink "millennium" => "millennium-mcp"
+    %w[
+      millennium-mcp
+      millennium-repair
+      millennium-upgrade
+      millennium-schedule
+      millennium-purge
+      millennium-diag
+      millennium-theme
+    ].each { |name| bin.install_symlink "millennium" => name }
 
     (lib/"millennium-helpers").install "scripts/common.sh"
     (lib/"millennium-helpers/lib").install Dir["scripts/lib/*.sh"]

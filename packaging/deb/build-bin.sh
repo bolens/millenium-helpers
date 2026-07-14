@@ -34,19 +34,16 @@ install -d "$DEST/usr/bin" "$DEST/usr/lib/millennium-helpers/lib" \
   "$DEST/usr/share/doc/millennium-helpers-bin" \
   "$DEST/DEBIAN"
 
-install -m755 "$TREE"/scripts/millennium-repair.sh "$DEST/usr/bin/millennium-repair"
-install -m755 "$TREE"/scripts/millennium-upgrade.sh "$DEST/usr/bin/millennium-upgrade"
-install -m755 "$TREE"/scripts/millennium-schedule.sh "$DEST/usr/bin/millennium-schedule"
-install -m755 "$TREE"/scripts/millennium-purge.sh "$DEST/usr/bin/millennium-purge"
-install -m755 "$TREE"/scripts/millennium-diag.sh "$DEST/usr/bin/millennium-diag"
-install -m755 "$TREE"/scripts/millennium-theme.sh "$DEST/usr/bin/millennium-theme"
-if [[ -x "$TREE/bin/millennium" ]]; then
-  install -m755 "$TREE/bin/millennium" "$DEST/usr/bin/millennium"
-  install -m755 "$TREE/bin/millennium" "$DEST/usr/bin/millennium-mcp"
-else
+if [[ ! -x "$TREE/bin/millennium" ]]; then
   echo "error: release tree missing bin/millennium (Go dispatcher required)" >&2
   exit 1
 fi
+# Long-name PATH entries are argv0 twins of the Go dispatcher.
+for twin in millennium millennium-mcp millennium-repair millennium-upgrade \
+  millennium-schedule millennium-purge millennium-diag millennium-theme
+do
+  install -m755 "$TREE/bin/millennium" "$DEST/usr/bin/$twin"
+done
 
 install -m644 "$TREE"/scripts/common.sh "$DEST/usr/lib/millennium-helpers/common.sh"
 install -m644 "$TREE"/scripts/lib/*.sh "$DEST/usr/lib/millennium-helpers/lib/"

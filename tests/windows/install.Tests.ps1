@@ -75,6 +75,8 @@ Describe "Windows Installer" {
                 Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath $wrapper) | Should -Be $true
             }
             (Get-Content -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium.cmd") -Raw) | Should -BeLike "*millennium.exe*"
+            (Get-Content -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium-upgrade.cmd") -Raw) | Should -BeLike "*millennium.exe*upgrade*"
+            (Get-Content -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium-mcp.cmd") -Raw) | Should -BeLike "*millennium.exe*mcp*"
 
             Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium-mcp.ps1") | Should -Be $true
             Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium-mcp.py") | Should -Be $false

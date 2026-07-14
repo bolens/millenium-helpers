@@ -16,13 +16,12 @@ func escSQ(s string) string {
 }
 
 // buildEnablePowerShell builds the scheduled action argument and Register-ScheduledTask script.
-// Quoting matches scripts/windows/lib/ScheduleEnable.ps1: paths use single-quoted literals
-// inside a double-quoted -Command body.
+// upgrade/theme are paths to millennium.exe; commands are invoked as Go dispatcher subcommands.
 func buildEnablePowerShell(channel, configDir, upgrade, theme, logPath string, delayMin int) (taskArg, registerScript string) {
 	inner := strings.Join([]string{
 		fmt.Sprintf("New-Item -ItemType Directory -Force -Path '%s' | Out-Null", escSQ(configDir)),
-		fmt.Sprintf("& '%s' -Channel '%s' -Yes -Quiet *>> '%s'", escSQ(upgrade), escSQ(channel), escSQ(logPath)),
-		fmt.Sprintf("if (Test-Path -LiteralPath '%s') { & '%s' update -Quiet *>> '%s' }", escSQ(theme), escSQ(theme), escSQ(logPath)),
+		fmt.Sprintf("& '%s' upgrade --channel '%s' --yes --quiet *>> '%s'", escSQ(upgrade), escSQ(channel), escSQ(logPath)),
+		fmt.Sprintf("if (Test-Path -LiteralPath '%s') { & '%s' theme update --quiet *>> '%s' }", escSQ(theme), escSQ(theme), escSQ(logPath)),
 	}, "; ")
 	// Escape " so a hostile path cannot break out of -Command "..."
 	cmdBody := strings.ReplaceAll(inner, `"`, "`\"")

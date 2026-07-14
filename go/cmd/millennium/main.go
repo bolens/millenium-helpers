@@ -23,20 +23,38 @@ import (
 
 func main() {
 	args := os.Args[1:]
-	// Packaged PATH name millennium-mcp → same binary as `millennium mcp`.
-	if isMcpArgv0(os.Args[0]) {
-		args = append([]string{"mcp"}, args...)
+	// Packaged long-name PATH twins (same binary as `millennium <cmd>`).
+	if cmd := commandFromArgv0(os.Args[0]); cmd != "" {
+		args = append([]string{cmd}, args...)
 	}
 	os.Exit(run(args))
 }
 
-func isMcpArgv0(arg0 string) bool {
+// commandFromArgv0 maps PATH twins (millennium-upgrade, …) onto dispatcher commands.
+func commandFromArgv0(arg0 string) string {
 	base := strings.ToLower(filepath.Base(arg0))
+	// Windows paths may use '\' when tests run on Unix (filepath.Base won't split).
+	if i := strings.LastIndexAny(base, `/\`); i >= 0 {
+		base = base[i+1:]
+	}
+	base = strings.TrimSuffix(base, ".exe")
 	switch base {
-	case "millennium-mcp", "millennium-mcp.exe":
-		return true
+	case "millennium-mcp":
+		return "mcp"
+	case "millennium-upgrade":
+		return "upgrade"
+	case "millennium-schedule":
+		return "schedule"
+	case "millennium-theme":
+		return "theme"
+	case "millennium-diag":
+		return "diag"
+	case "millennium-repair":
+		return "repair"
+	case "millennium-purge":
+		return "purge"
 	default:
-		return false
+		return ""
 	}
 }
 

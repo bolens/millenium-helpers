@@ -8,6 +8,46 @@ import (
 	"testing"
 )
 
+func TestCommandFromArgv0(t *testing.T) {
+	cases := map[string]string{
+		"millennium-mcp":            "mcp",
+		"millennium-mcp.exe":        "mcp",
+		"/usr/bin/millennium-upgrade": "upgrade",
+		`C:\bin\millennium-schedule.exe`: "schedule",
+		"millennium-theme":          "theme",
+		"millennium-diag":           "diag",
+		"millennium-repair":         "repair",
+		"millennium-purge":          "purge",
+		"millennium":                "",
+		"other":                     "",
+	}
+	for in, want := range cases {
+		if got := commandFromArgv0(in); got != want {
+			t.Fatalf("commandFromArgv0(%q)=%q want %q", in, got, want)
+		}
+	}
+}
+
+func TestArgv0TwinSmoke(t *testing.T) {
+	exe := buildMillennium(t)
+	twin := filepath.Join(t.TempDir(), "millennium-upgrade")
+	in, err := os.ReadFile(exe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(twin, in, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	out, err := exec.Command(twin, "--help").CombinedOutput()
+	if err != nil {
+		t.Fatalf("argv0 twin --help: %v\n%s", err, out)
+	}
+	text := string(out)
+	if !strings.Contains(text, "Usage:") || !strings.Contains(strings.ToLower(text), "channel") {
+		t.Fatalf("expected upgrade help from argv0 twin, got:\n%s", text)
+	}
+}
+
 func TestVersionSmoke(t *testing.T) {
 	exe := buildMillennium(t)
 	for _, args := range [][]string{

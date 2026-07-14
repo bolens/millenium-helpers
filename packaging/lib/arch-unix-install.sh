@@ -18,14 +18,13 @@ _arch_install_unix_helpers() {
   fi
 
   install -d "${pkgdir}/usr/bin"
-  install -m755 scripts/millennium-repair.sh "${pkgdir}/usr/bin/millennium-repair"
-  install -m755 scripts/millennium-upgrade.sh "${pkgdir}/usr/bin/millennium-upgrade"
-  install -m755 scripts/millennium-schedule.sh "${pkgdir}/usr/bin/millennium-schedule"
-  install -m755 scripts/millennium-purge.sh "${pkgdir}/usr/bin/millennium-purge"
-  install -m755 scripts/millennium-diag.sh "${pkgdir}/usr/bin/millennium-diag"
-  install -m755 scripts/millennium-theme.sh "${pkgdir}/usr/bin/millennium-theme"
-  install -m755 "${dispatcher}" "${pkgdir}/usr/bin/millennium"
-  install -m755 "${dispatcher}" "${pkgdir}/usr/bin/millennium-mcp"
+  # Long-name PATH entries are argv0 twins of the Go dispatcher.
+  local twin
+  for twin in millennium millennium-mcp millennium-repair millennium-upgrade \
+    millennium-schedule millennium-purge millennium-diag millennium-theme
+  do
+    install -m755 "${dispatcher}" "${pkgdir}/usr/bin/${twin}"
+  done
 
   install -d "${pkgdir}/usr/lib/millennium-helpers/lib"
   install -m644 scripts/common.sh "${pkgdir}/usr/lib/millennium-helpers/common.sh"
