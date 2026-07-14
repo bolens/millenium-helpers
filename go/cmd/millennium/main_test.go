@@ -227,6 +227,63 @@ func TestNativeScheduleEnableDisableDryRun(t *testing.T) {
 	}
 }
 
+func TestNativeScheduleSetupWizard(t *testing.T) {
+	exe := buildMillennium(t)
+	home := t.TempDir()
+	cfgDir := filepath.Join(home, "cfg")
+	if err := os.MkdirAll(cfgDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	env := withEnv(os.Environ(), map[string]string{
+		"HOME":                   home,
+		"USERPROFILE":            home,
+		"XDG_CONFIG_HOME":        filepath.Join(home, ".config"),
+		"LOCALAPPDATA":           filepath.Join(home, "LocalAppData"),
+		"APPDATA":                filepath.Join(home, "AppData"),
+		"MILLENNIUM_CONFIG_DIR":  cfgDir,
+		"MILLENNIUM_CONFIG_FILE": filepath.Join(cfgDir, "config.json"),
+		"FORCE_WIZARD":           "true",
+	})
+	cmd := exec.Command(exe, "schedule", "setup", "--dry-run")
+	cmd.Env = env
+	cmd.Stdin = strings.NewReader("1\nn\n\n")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("setup --dry-run: %v\n%s", err, out)
+	}
+	text := string(out)
+	for _, want := range []string{"Configuration Wizard", "[DRY RUN] Would write config", "update_channel: stable"} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("setup missing %q:\n%s", want, text)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(cfgDir, "config.json")); err == nil {
+		t.Fatal("dry-run must not write config.json")
+	}
+}
+
+func TestNativeScheduleHooksGate(t *testing.T) {
+	if testing.Short() {
+		t.Skip("hooks smoke")
+	}
+	exe := buildMillennium(t)
+	home := t.TempDir()
+	env := append(os.Environ(),
+		"HOME="+home,
+		"MILLENNIUM_STATE_DIR="+filepath.Join(home, "state"),
+		"MILLENNIUM_SCHEDULER=",
+	)
+	cmd := exec.Command(exe, "schedule", "pre-update")
+	cmd.Env = env
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		t.Fatalf("expected gate failure, got:\n%s", out)
+	}
+	if !strings.Contains(string(out), "only for the scheduler") && !strings.Contains(string(out), "not used on Windows") {
+		t.Fatalf("unexpected gate output:\n%s", out)
+	}
+}
+
 func TestNativeThemeMutate(t *testing.T) {
 	// Offline gate only — live install/update hits GitHub (covered by unit mocks).
 	exe := buildMillennium(t)
@@ -292,6 +349,31 @@ func TestNativePurgeDryRun(t *testing.T) {
 	if !strings.Contains(string(out), "DRY RUN") {
 		t.Fatalf("%s", out)
 	}
+}
+
+// withEnv returns base env with keys replaced (or added). Empty values unset.
+func withEnv(base []string, kv map[string]string) []string {
+	drop := make(map[string]struct{}, len(kv))
+	for k := range kv {
+		drop[k] = struct{}{}
+	}
+	out := make([]string, 0, len(base)+len(kv))
+	for _, e := range base {
+		k, _, ok := strings.Cut(e, "=")
+		if ok {
+			if _, skip := drop[k]; skip {
+				continue
+			}
+		}
+		out = append(out, e)
+	}
+	for k, v := range kv {
+		if v == "" {
+			continue
+		}
+		out = append(out, k+"="+v)
+	}
+	return out
 }
 
 func buildMillennium(t *testing.T) string {

@@ -180,6 +180,58 @@ jobs:
           test ! -e "$XDG_CONFIG_HOME/systemd/user/millennium-update.timer"
           rm -rf "$home"
 
+      - name: Smoke schedule setup wizard (dual-OS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$(mktemp -d)"
+          export HOME="$home"
+          export USERPROFILE="$home"
+          export XDG_CONFIG_HOME="$home/.config"
+          export LOCALAPPDATA="$home/LocalAppData"
+          export APPDATA="$home/AppData"
+          export MILLENNIUM_CONFIG_DIR="$home/cfg"
+          export MILLENNIUM_CONFIG_FILE="$home/cfg/config.json"
+          export FORCE_WIZARD=true
+          mkdir -p "$MILLENNIUM_CONFIG_DIR" "$XDG_CONFIG_HOME" "$LOCALAPPDATA" "$APPDATA"
+          # Channel 1 (stable), decline enable, skip PAT.
+          out="$(printf '1\nn\n\n' | bin/millennium schedule setup --dry-run)"
+          echo "$out" | grep -F 'Configuration Wizard'
+          echo "$out" | grep -F '[DRY RUN] Would write config'
+          echo "$out" | grep -F 'update_channel: stable'
+          test ! -e "$MILLENNIUM_CONFIG_FILE"
+          rm -rf "$home"
+
+      - name: Smoke schedule pre/post-update hooks (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$(mktemp -d)"
+          export HOME="$home"
+          export MILLENNIUM_STATE_DIR="$home/state"
+          mkdir -p "$home/state" "$home/empty-proc" "$home/bin"
+          # Without scheduler gate → refuse.
+          set +e
+          gate_out="$(bin/millennium schedule pre-update 2>&1)"
+          gate_rc=$?
+          set -e
+          test "$gate_rc" -ne 0
+          echo "$gate_out" | grep -F 'only for the scheduler'
+          # With gate + no Steam → success.
+          printf '%s\n' '#!/bin/sh' 'exit 1' >"$home/bin/pgrep"
+          chmod +x "$home/bin/pgrep"
+          export PATH="$home/bin:$PATH"
+          export MOCK_PROC="$home/empty-proc"
+          export MILLENNIUM_SCHEDULER=1
+          bin/millennium schedule pre-update
+          # post-update with diag stubbed via missing state is ok (no relaunch).
+          # Prefer a fake diag on PATH that succeeds.
+          printf '%s\n' '#!/bin/sh' 'exit 0' >"$home/bin/millennium-diag"
+          chmod +x "$home/bin/millennium-diag"
+          bin/millennium schedule post-update
+          rm -rf "$home"
+
       - name: Smoke legacy help delegate (Linux)
         if: runner.os == 'Linux'
         shell: bash
