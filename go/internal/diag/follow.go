@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -40,6 +41,11 @@ func lineMatchesFilter(line string, parts []string) bool {
 
 // FollowLogs prints updater tail once, then filter-tails the newest Steam log.
 func FollowLogs() int {
+	if v := strings.TrimSpace(os.Getenv("MILLENNIUM_FOLLOW_MAX_CYCLES")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			followMaxCycles = n
+		}
+	}
 	state := schedule.LogPath()
 	if st, err := os.Stat(state); err == nil && st.Mode().IsRegular() {
 		fmt.Println("=== Millennium Background Auto-Updater Logs ===")

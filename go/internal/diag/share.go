@@ -61,7 +61,11 @@ func RedactReport(body string) string {
 
 // UploadPasteRS POSTs text/plain body and returns the paste URL.
 func UploadPasteRS(body string) (string, error) {
-	req, err := http.NewRequest(http.MethodPost, pasteEndpoint, strings.NewReader(body))
+	endpoint := pasteEndpoint
+	if u := strings.TrimSpace(os.Getenv("MILLENNIUM_PASTE_URL")); u != "" {
+		endpoint = u
+	}
+	req, err := http.NewRequest(http.MethodPost, endpoint, strings.NewReader(body))
 	if err != nil {
 		return "", err
 	}

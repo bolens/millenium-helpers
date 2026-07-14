@@ -127,6 +127,12 @@ func Collect() Report {
 		r.BinariesOK = true
 		r.HooksOK = true
 		r.FlatpakOK = true
+		r.SudoersOK = true
+		r.LingerOK = true
+		r.PermissionsOK = true
+		r.SkinsDirOK = true
+		r.TimerActive = true
+		r.TaskScheduled = true
 		r.UpdateChannel = resolveChannel()
 		r.Version = version.Resolve()
 		return r
