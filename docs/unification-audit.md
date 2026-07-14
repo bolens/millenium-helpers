@@ -102,7 +102,7 @@ Tests: Bash behavioral/unit under `tests/` · Pester under `tests/windows/`.
 | `theme` list/install/update/remove | Y | Y | **Native Go (list + mutate)** | `test_theme` + Go | `millennium-theme` + Go | zip-slip safe extract; `--yes` on remove |
 | `theme --json` | Y | Y | **Native (Phase 2 list)** | Y + Go | Y + Go | — |
 | `mcp` tools surface | Y | Y | Phase 5 → Go CLI | `test_mcp` | `millennium-mcp` | Stop dual argv maps |
-| Install / uninstall helpers | Y | Y | Native (Phase 4) | `test_install` | `install` | Replace curl/irm payloads |
+| Install / uninstall helpers | Y | Y | **Unix Go-first** PATH `millennium`; Windows/pkg still shell/PS | `test_install` | `install` | Win exe + release assets; long-names remain |
 | Install track / doctor sync | Y | Y | Native | `test_install_track` | `InstallTrack` | Shared meta JSON |
 | Completions | Y | Y | Generated from contract | `test_completions` | `completions` | Codegen later |
 | Man pages | Y | — | Generated / kept | `check-man` | — | Keep shipping on Unix |

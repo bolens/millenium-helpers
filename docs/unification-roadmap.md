@@ -20,13 +20,13 @@ and test parity** on Linux, macOS, and Windows.
 | **1 — MVP strangler** | Done | `go/` Cobra dispatcher + legacy exec |
 | **2 — Config + read-mostly** | Done | `schedule config`, `theme list`, bare diag |
 | **3 — Mutating core** | Done | Upgrade/repair/purge/diag (incl. follow) native |
-| **4 — Schedule + installers** | In progress | System+user systemd native; setup + installers pending |
+| **4 — Schedule + installers** | In progress | Schedule native; Unix install Go-first; Windows/pkg pending |
 | **5 — MCP + cleanup** | Not started | MCP still Python; dual libs still required |
 
 Force any native path back to shell/PS: `MILLENNIUM_LEGACY=1`.
 
-Experimental: `make build` → `bin/millennium`. Packaging still installs shell
-dispatchers by default.
+`make build` → `bin/millennium`. Unix `install.sh` prefers that Go binary for
+PATH `millennium` (shell fallback). Packaging / Windows still shell/PS by default.
 
 ---
 
@@ -49,7 +49,7 @@ are strangler progress, not automatic permission to delete `.sh` / `.ps1`.
 
 Work through this queue; check items off as PRs land and update this list.
 
-1. [ ] **Installers → Go binary** — `install.sh` / Windows / packaging ship `millennium` first
+1. [ ] **Windows + packaging Go-first** — `install.ps1` / release assets / Formula/PKGBUILD
 2. [ ] **MCP → Go CLI** — Phase 5; retire Python dispatcher
 3. [ ] **Graduate commands** — dual-OS CI + delete dual libs per [graduation rule](#command-graduation-rule)
 
@@ -123,7 +123,7 @@ Work through this queue; check items off as PRs land and update this list.
 | Surface | Status | Notes |
 | --- | --- | --- |
 | MCP server | Legacy | `scripts/millennium-mcp.py` |
-| Installers ship Go binary first | Legacy | Still shell/PS dispatchers |
+| Installers ship Go binary first | Partial | Unix `install.sh` Go-first (+ shell fallback); Windows/pkg still shell/PS |
 | Dual `.sh` / `.ps1` libs removed | Not started | Only after graduation |
 
 ---
@@ -168,7 +168,8 @@ with `MILLENNIUM_LEGACY=1` only as escape hatch.
 - [x] Windows schedule enable/disable live (Task Scheduler)
 - [x] `pre-update` / `post-update` (Unix/macOS; Steam capture/close/relaunch + diag)
 - [x] `schedule setup` wizard → native enable (honors `--system` / `--user` / `--cron`)
-- [ ] Go-first install/uninstall packaging smokes (both OSes)
+- [x] Unix `install.sh` Go-first PATH `millennium` (`make build` / prebuilt; shell fallback)
+- [ ] Windows `install.ps1` + release/packaging ship Go binary
 - [ ] Doctor / purge / uninstall: clean both systemd scopes (when still on legacy paths)
 
 ### Systemd system vs user

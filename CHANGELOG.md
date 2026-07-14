@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Phase 4i diag logs --follow:** native filter-tail of newest Steam log (Millennium keywords; Ctrl+C); updater log headline; Phase 3 mutating core complete
 - **Phase 4j schedule hooks:** native `pre-update` / `post-update` (Unix/macOS): `MILLENNIUM_SCHEDULER=1` gate, log rotate, game abort (75), Steam capture/close/relaunch, diag verify; setup wizard still legacy
 - **Phase 4k schedule setup:** native interactive wizard (channel/timer/PAT); merges config preserving `backup_*`; optional enable via native path (`--system`/`--user`/`--cron`); `FORCE_WIZARD` + dry-run
+- **Phase 4l Unix install Go-first:** `install.sh` installs `bin/millennium` (build via `make build` when needed) as PATH `millennium`; long-name helpers unchanged; Bash dispatcher fallback; `MILLENNIUM_INSTALL_DISPATCHER=shell` escape
 - **Phase 3c diag:** native `--json`, `logs` (non-follow), richer report probes, `doctor --dry-run` plan; live doctor / `--share` / `--follow` still legacy
 - **Phase 3d diag share:** native `--share` (home/user/token redaction + paste.rs upload); `--follow` and live doctor still legacy
 - **Phase 3e upgrade install:** native tar/zip extract + atomic install when writable (root / `MILLENNIUM_LIB_DIR` / Windows Steam); non-root Linux system path and rollback apply still legacy
