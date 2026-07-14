@@ -32,7 +32,7 @@ packages for Millennium itself do not always ship a license file inside the arch
 helpers supply the vendored text (or fetch upstream, or use an embedded fallback).
 
 Implementation: `scripts/lib/millennium_license.sh` and
-`Install-MillenniumLicense` in `scripts/windows/common.ps1`. The vendored file is
+`Install-MillenniumLicense` in `scripts/windows/lib/License.ps1`. The vendored file is
 installed beside the helpers (e.g. `/usr/lib/millennium-helpers/MILLENNIUM-LICENSE.md`)
 via `install.sh`, Homebrew, Nix, Arch PKGBUILDs, and the Windows installer.
 

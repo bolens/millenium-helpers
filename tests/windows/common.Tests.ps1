@@ -2,6 +2,8 @@ Describe "Common Helpers" {
     BeforeAll {
         $winScriptDir = Join-Path -Path $PSScriptRoot -ChildPath "..\..\scripts\windows"
         $global:DryRun = $true
+        $global:Quiet = $false
+        Remove-Item Env:MILLENNIUM_QUIET -ErrorAction SilentlyContinue
         function Stop-Process { }
         if (!$IsWindows) {
             New-PSDrive -Name HKCU -PSProvider FileSystem -Root ([System.IO.Path]::GetTempPath()) -ErrorAction SilentlyContinue | Out-Null

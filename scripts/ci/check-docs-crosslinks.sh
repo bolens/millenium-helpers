@@ -267,7 +267,7 @@ need_contains ".github/workflows/release.yml" "third_party/MILLENNIUM-LICENSE.md
 
 need_contains "scripts/lib/millennium_license.sh" "docs/licensing.md" \
   "scripts/lib/millennium_license.sh must reference docs/licensing.md"
-need_contains "scripts/windows/common.ps1" "docs/licensing.md" \
-  "scripts/windows/common.ps1 must reference docs/licensing.md"
+need_contains "scripts/windows/lib/License.ps1" "docs/licensing.md" \
+  "scripts/windows/lib/License.ps1 must reference docs/licensing.md"
 
 echo "Documentation cross-links OK."
