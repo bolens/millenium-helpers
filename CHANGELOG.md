@@ -8,65 +8,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Go Steam + logging:** Windows Steam lifecycle + `ConfirmClose` / `FindDir` in `go/internal/steam`; shared `go/internal/logging` (quiet Info/Warn/Error + upgrade failure tips); deleted `steam.sh` / `Steam.ps1`
+- **Go CI quality gates:** Linux `go vet` / `gofmt`, golangci-lint, govulncheck on `go.yml`; `actions/setup-go@v6` + shared `GO_VERSION`
 - Packaging three-variant matrix (from-source / `-bin` / `-git`) for Arch, Homebrew, Scoop, Nix; plus deb, rpm, and Chocolatey recipes ([packaging/README.md](packaging/README.md))
 - Release CD builds standalone Go dispatchers and embeds `bin/millennium` / `millennium.exe` in trimmed archives
 - Windows `install.ps1` prefers `millennium.exe` when present (Go-first PATH layout)
-- Go strangler CLI under `go/` (`make build` → `bin/millennium`): native version/help/suggestions; feature commands exec legacy Bash/PowerShell ([docs/unification-roadmap.md](docs/unification-roadmap.md))
-- **Phase 2 native paths:** `millennium schedule config` get/set/list, `millennium theme list` (`--json`), read-only `millennium diag` summary (doctor/json/share still legacy; `MILLENNIUM_LEGACY=1` forces legacy)
-- **Phase 3 hybrid mutate paths:** `upgrade --rollback list` + remote download/SHA + local `--file` verify / dry-run; `purge` Unix live + `--dry-run`; `repair` user-path live + `--dry-run`; extract/install/rollback apply and Windows live purge still legacy
-- **Phase 4a schedule:** `schedule status`, `enable`/`disable --dry-run`, Unix live systemd/launchd/cron enable/disable; Windows live enable/disable and setup still legacy
-- **Phase 4b themes:** native `theme install` / `update` / `remove` (zip-slip safe; `--dry-run` / `--yes`)
-- **Phase 4c schedule Windows:** native Task Scheduler `enable`/`disable` (admin; quoting parity with `ScheduleEnable.ps1`); setup / pre-post still legacy
-- **Phase 4d upgrade rollback:** native `--rollback <id>` apply when writable (Unix `millennium.bak_*` swap; Windows `millennium_backups` restore + Steam/-Yes); dry-run; non-root `/usr/lib` still legacy
-- **Phase 4e schedule systemd scopes:** Linux enable/disable/status support **system** and **user** units; auto prefers system when writable; `--system` / `--user`; migrates the other scope; MCP/completions/man updated
-- **Phase 4f upgrade sudo handoff:** non-root Linux download+verify then re-exec via `sudo` for install/rollback (keeps verified `--file`/`--sha256`); writability-based install gate
-- **Phase 4g purge Windows:** native live purge (Steam millennium/wsock/backups, helper config, MillenniumUpdate task; schedule disable; Steam/-Yes)
-- **Phase 4h diag doctor live:** native live repairs (upgrade --force, hooks, flatpak, schedule enable, skins, linger, permissions); `--yes` to stop Steam; package/completions cleanup remains advisory
-- **Phase 4i diag logs --follow:** native filter-tail of newest Steam log (Millennium keywords; Ctrl+C); updater log headline; Phase 3 mutating core complete
-- **Phase 4j schedule hooks:** native `pre-update` / `post-update` (Unix/macOS): `MILLENNIUM_SCHEDULER=1` gate, log rotate, game abort (75), Steam capture/close/relaunch, diag verify; setup wizard still legacy
-- **Phase 4k schedule setup:** native interactive wizard (channel/timer/PAT); merges config preserving `backup_*`; optional enable via native path (`--system`/`--user`/`--cron`); `FORCE_WIZARD` + dry-run
-- **Phase 4l Unix install Go-first:** `install.sh` installs `bin/millennium` (build via `make build` when needed) as PATH `millennium`; long-name helpers unchanged; Bash dispatcher fallback; `MILLENNIUM_INSTALL_DISPATCHER=shell` escape
-- **Phase 4m dual systemd scopes (legacy):** Bash `schedule disable` / enable migration, purge, doctor, and `install.sh` uninstall clear **system and user** `millennium-update` units (no `runuser` drop before disable); diag detects system timers
-- **Phase 5a MCP → Go (non-elevate):** `millennium-mcp` prefers `millennium diag|theme|schedule …` when the Go dispatcher is available; doctor/upgrade/repair/purge stay on long-name helpers for sudoers; `MILLENNIUM_MCP_LONGNAMES=1` forces the old path
-- **Parallel:** upgrade install/rollback fully native (no shell/PS handoff); delete upgrade dual libs; retire MCP Python hatch (`millennium-mcp.py` / `MILLENNIUM_MCP_PYTHON`)
-- **Post-Parallel:** native `millennium doctor` alias; always-native schedule; trim upgrade/diag/repair/mcp long-name suite overlap
-- **Phase 5b MCP elevate + sudoers:** installer/Arch allowlist Go `millennium {upgrade,diag,repair,purge}`; MCP elevates via Go dispatcher (Windows RunAs for `.exe`); long-name helpers remain for timers / legacy
-- **Phase 5c.1 native Go MCP:** `millennium mcp` serves stdio JSON-RPC + tools; Python `millennium-mcp` prefer-execs Go (keeps `--register`); `MILLENNIUM_MCP_PYTHON=1` forces Python; `test_mcp` covers `MCP_IMPL=python|go|both`
-- **Phase 5c Go MCP register + PATH entry:** native `--register`; install/packaging ship Go (or shim) as `millennium-mcp` argv0 twin; Python moves to lib escape hatch; Windows `millennium-mcp.cmd` → `millennium.exe mcp`
-- **Phase 6a graduation gate:** `make check-all` includes `test-go`; `go.yml` dual-OS dispatcher smokes for version/help/suggest; meta surface marked graduated (no dual-lib deletion)
-- **Phase 6b schedule config graduated:** dual-OS `go.yml` smoke for `millennium schedule config` set/get/list; Bash/PS config dual libs retained until peel
-- **Phase 6c schedule config peel:** long-name `millennium-schedule config` thin-wraps to Go; removed `schedule_config.sh` / `ScheduleConfig.ps1`; CI builds Go for schedule/MCP behavioral suites
-- **Phase 6d theme list graduated:** dual-OS `go.yml` smoke for `millennium theme list` / `--json`; Bash/PS theme dual libs retained until peel
-- **Phase 6e theme list peel:** long-name `millennium-theme list` thin-wraps to Go; mutate stays on `theme_ops` / ThemeOps; CI builds Go for theme behavioral/Pester suites
-- **Phase 6f theme mutate graduated:** dual-OS offline `go.yml` smoke for `theme install`/`update`/`remove` validation paths; Bash/PS theme dual libs retained until peel
-- **Phase 6g theme peel:** long-name `millennium-theme` thin-wraps all commands to Go; removed `theme_ops.sh` / `ThemeOps.ps1`; offline seam `MILLENNIUM_THEME_MOCK_COMMIT` for behavioral tests
-- **Phase 6h schedule status graduated:** dual-OS `go.yml` smoke for disabled `millennium schedule status`; status dual libs retained until peel
-- **Phase 6i schedule status peel:** long-name `status` thin-wraps to Go; removed `schedule_status.sh` / `ScheduleStatus.ps1`; `rotate_logs` moved into `schedule_hooks.sh`
-- **Phase 6j schedule enable/disable dry-run graduated:** dual-OS `go.yml` smoke for `enable`/`disable --dry-run`; enable/disable dual libs retained until peel
-- **Phase 6k schedule enable/disable peel:** long-name `enable`/`disable` thin-wrap to Go; removed `schedule_timer.sh` / `schedule_cron.sh` / `ScheduleEnable.ps1` / `ScheduleDisable.ps1`; setup wizard optional-enable invokes Go without exec/exit
-- **Phase 6l schedule setup graduated:** dual-OS `go.yml` smoke for `schedule setup --dry-run` under `FORCE_WIZARD`; wizard dual libs retained until peel
-- **Phase 6m schedule hooks graduated:** Linux `go.yml` smoke for `pre-update`/`post-update` (`MILLENNIUM_SCHEDULER=1`); hooks dual lib retained until peel
-- **Phase 6n schedule setup peel:** long-name `setup` thin-wraps to Go; removed `schedule_wizard.sh` / `ScheduleWizard.ps1`; `install.sh` wizard builds and invokes `bin/millennium schedule setup`
-- **Phase 6o schedule hooks peel:** long-name `pre-update`/`post-update` thin-wraps to Go; removed `schedule_hooks.sh` (schedule feature dual libs fully peeled)
-- **Phase 6p purge dry-run graduated:** dual-OS `go.yml` smoke for `millennium purge --dry-run`; purge dual libs retained until peel
-- **Phase 6q upgrade rollback list graduated:** dual-OS `go.yml` smoke for `millennium upgrade --rollback list`; upgrade dual libs retained until peel
-- **Roadmap hygiene:** glance/Next-up renamed through 6aa+endgame; audit matrix collapsed; `schedule.NeedsLegacy` always false after peel
-- **Phase 6r purge peel:** long-name `millennium-purge` thin-wraps to Go; removed `purge_ops.sh` / `PurgeOps.ps1`; TTY confirm uses `term.IsTerminal`
-- **Phase 6s–6u upgrade graduate:** dual-OS `go.yml` smokes for `--file`+SHA dry-run, SHA fail-closed/pass, writable rollback-apply
-- **Phase 6v upgrade thin-wrap:** long-name prefers Go; `legacy.RunLegacy` sets `MILLENNIUM_LEGACY=1` so upgrade dual libs remain for install handoff
-- **Phase 6w–6z diag graduate + peel:** dual-OS report/`--json`/doctor dry-run/logs smokes; long-name thin-wrap; removed `diag_*.sh` / `Diag*.ps1`
-- **Phase 6aa MCP stdio graduated:** dual-OS `initialize` smoke; Python hatch retained
-- **Phase 6ab–6ad repair:** native hooks/force-upgrade + Steam life + themes; dual-OS graduate; peel `repair_ops` / RepairOps; Endgame A–C queued next
-- **Endgame A:** installers hard-require Go dispatcher (`bin/millennium` / `millennium.exe`); no silent shell/PS PATH fallback; `MILLENNIUM_INSTALL_DISPATCHER=shell` escape until Endgame B
-- **Endgame B:** delete `dispatcher.sh` / `Dispatcher.ps1` / `millennium.sh` / `millennium.ps1`; remove install shell escape; packaging/Scoop/Formula/Nix/deb/rpm/Chocolatey Go-only for PATH millennium; retire dispatcher test suites
-- **Endgame C:** dual-OS smokes for `diag --share`, doctor live (healthy), `logs --follow`, writable `--file` install, Linux non-root sudo hint; Done→Graduated in progress tables; long-name Bash/Pester suites retained as thin-wrap residual
-- **Phase 3c diag:** native `--json`, `logs` (incl. follow), richer report probes, doctor dry-run + live (Endgame C graduated)
-- **Phase 3d diag share:** native `--share` (home/user/token redaction + paste.rs upload); `--follow` and live doctor still legacy
-- **Phase 3e upgrade install:** native tar/zip extract + atomic install when writable (root / `MILLENNIUM_LIB_DIR` / Windows Steam); non-root Linux system path and rollback apply still legacy
+- Go CLI under `go/` (`make build` → `bin/millennium`): version/help/suggestions plus feature commands ([docs/unification-roadmap.md](docs/unification-roadmap.md))
+- **native paths:** `millennium schedule config` get/set/list, `millennium theme list` (`--json`), read-only `millennium diag` summary (doctor/json/share still legacy; `MILLENNIUM_LEGACY=1` forces legacy)
+- **hybrid mutate paths:** `upgrade --rollback list` + remote download/SHA + local `--file` verify / dry-run; `purge` Unix live + `--dry-run`; `repair` user-path live + `--dry-run`; extract/install/rollback apply and Windows live purge still legacy
+- **schedule:** `schedule status`, `enable`/`disable --dry-run`, Unix live systemd/launchd/cron enable/disable; Windows live enable/disable and setup still legacy
+- **themes:** native `theme install` / `update` / `remove` (zip-slip safe; `--dry-run` / `--yes`)
+- **schedule Windows:** native Task Scheduler `enable`/`disable` (admin; quoting parity with `ScheduleEnable.ps1`); setup / pre-post still legacy
+- **upgrade rollback:** native `--rollback <id>` apply when writable (Unix `millennium.bak_*` swap; Windows `millennium_backups` restore + Steam/-Yes); dry-run; non-root `/usr/lib` still legacy
+- **schedule systemd scopes:** Linux enable/disable/status support **system** and **user** units; auto prefers system when writable; `--system` / `--user`; migrates the other scope; MCP/completions/man updated
+- **upgrade sudo handoff:** non-root Linux download+verify then re-exec via `sudo` for install/rollback (keeps verified `--file`/`--sha256`); writability-based install gate
+- **purge Windows:** native live purge (Steam millennium/wsock/backups, helper config, MillenniumUpdate task; schedule disable; Steam/-Yes)
+- **diag doctor live:** native live repairs (upgrade --force, hooks, flatpak, schedule enable, skins, linger, permissions); `--yes` to stop Steam; package/completions cleanup remains advisory
+- **diag logs --follow:** native filter-tail of newest Steam log (Millennium keywords; Ctrl+C); updater log headline; mutating core complete
+- **schedule hooks:** native `pre-update` / `post-update` (Unix/macOS): `MILLENNIUM_SCHEDULER=1` gate, log rotate, game abort (75), Steam capture/close/relaunch, diag verify; setup wizard still legacy
+- **schedule setup:** native interactive wizard (channel/timer/PAT); merges config preserving `backup_*`; optional enable via native path (`--system`/`--user`/`--cron`); `FORCE_WIZARD` + dry-run
+- **Unix install Go-first:** `install.sh` installs `bin/millennium` (build via `make build` when needed) as PATH `millennium`; long-name helpers unchanged; Bash dispatcher fallback; `MILLENNIUM_INSTALL_DISPATCHER=shell` escape
+- **dual systemd scopes (legacy):** Bash `schedule disable` / enable migration, purge, doctor, and `install.sh` uninstall clear **system and user** `millennium-update` units (no `runuser` drop before disable); diag detects system timers
+- **MCP → Go (non-elevate):** `millennium-mcp` prefers `millennium diag|theme|schedule …` when the Go dispatcher is available; doctor/upgrade/repair/purge stay on long-name helpers for sudoers; `MILLENNIUM_MCP_LONGNAMES=1` forces the old path
+- **upgrade dual-lib removal + MCP hatch retirement:** upgrade install/rollback fully native (no shell/PS handoff); delete upgrade dual libs; retire MCP Python hatch (`millennium-mcp.py` / `MILLENNIUM_MCP_PYTHON`)
+- **doctor alias + suite trim:** native `millennium doctor` alias; always-native schedule; trim upgrade/diag/repair/mcp long-name suite overlap
+- **MCP elevate + sudoers:** installer/Arch allowlist Go `millennium {upgrade,diag,repair,purge}`; MCP elevates via Go dispatcher (Windows RunAs for `.exe`); long-name helpers remain for timers / legacy
+- **native Go MCP:** `millennium mcp` serves stdio JSON-RPC + tools; Python `millennium-mcp` prefer-execs Go (keeps `--register`); `MILLENNIUM_MCP_PYTHON=1` forces Python; `test_mcp` covers `MCP_IMPL=python|go|both`
+- **Go MCP register + PATH entry:** native `--register`; install/packaging ship Go (or shim) as `millennium-mcp` argv0 twin; Python moves to lib fallback; Windows `millennium-mcp.cmd` → `millennium.exe mcp`
+- **dual-OS Go CI gate:** `make check-all` includes `test-go`; `go.yml` dual-OS dispatcher smokes for version/help/suggest; meta surface covered by dual-OS go.yml (no dual-lib deletion)
+- **schedule config:** dual-OS `go.yml` smoke for `millennium schedule config` set/get/list; Bash/PS config dual libs later removed
+- **schedule config:** long-name `millennium-schedule config` thin-wraps to Go; removed `schedule_config.sh` / `ScheduleConfig.ps1`; CI builds Go for schedule/MCP behavioral suites
+- **theme list:** dual-OS `go.yml` smoke for `millennium theme list` / `--json`; Bash/PS theme dual libs later removed
+- **theme list:** long-name `millennium-theme list` thin-wraps to Go; mutate stays on `theme_ops` / ThemeOps; CI builds Go for theme behavioral/Pester suites
+- **theme mutate:** dual-OS offline `go.yml` smoke for `theme install`/`update`/`remove` validation paths; Bash/PS theme dual libs later removed
+- **theme:** long-name `millennium-theme` thin-wraps all commands to Go; removed `theme_ops.sh` / `ThemeOps.ps1`; offline seam `MILLENNIUM_THEME_MOCK_COMMIT` for behavioral tests
+- **schedule status:** dual-OS `go.yml` smoke for disabled `millennium schedule status`; status dual libs later removed
+- **schedule status:** long-name `status` thin-wraps to Go; removed `schedule_status.sh` / `ScheduleStatus.ps1`; `rotate_logs` moved into `schedule_hooks.sh`
+- **schedule enable/disable dry-run:** dual-OS `go.yml` smoke for `enable`/`disable --dry-run`; enable/disable dual libs later removed
+- **schedule enable/disable:** long-name `enable`/`disable` thin-wrap to Go; removed `schedule_timer.sh` / `schedule_cron.sh` / `ScheduleEnable.ps1` / `ScheduleDisable.ps1`; setup wizard optional-enable invokes Go without exec/exit
+- **schedule setup:** dual-OS `go.yml` smoke for `schedule setup --dry-run` under `FORCE_WIZARD`; wizard dual libs later removed
+- **schedule hooks:** Linux `go.yml` smoke for `pre-update`/`post-update` (`MILLENNIUM_SCHEDULER=1`); hooks dual lib later removed
+- **schedule setup:** long-name `setup` thin-wraps to Go; removed `schedule_wizard.sh` / `ScheduleWizard.ps1`; `install.sh` wizard builds and invokes `bin/millennium schedule setup`
+- **schedule hooks:** long-name `pre-update`/`post-update` thin-wraps to Go; removed `schedule_hooks.sh` (schedule feature dual libs removed)
+- **purge dry-run:** dual-OS `go.yml` smoke for `millennium purge --dry-run`; purge dual libs later removed
+- **upgrade rollback list:** dual-OS `go.yml` smoke for `millennium upgrade --rollback list`; upgrade dual libs later removed
+- **Roadmap hygiene:** progress tables condensed; audit matrix collapsed; `schedule.NeedsLegacy` always false
+- **purge:** long-name `millennium-purge` thin-wraps to Go; removed `purge_ops.sh` / `PurgeOps.ps1`; TTY confirm uses `term.IsTerminal`
+- **upgrade:** dual-OS `go.yml` smokes for `--file`+SHA dry-run, SHA fail-closed/pass, writable rollback-apply
+- **upgrade thin-wrap:** long-name prefers Go; `legacy.RunLegacy` sets `MILLENNIUM_LEGACY=1` so upgrade dual libs remain for install handoff
+- **diag +:** dual-OS report/`--json`/doctor dry-run/logs smokes; long-name thin-wrap; removed `diag_*.sh` / `Diag*.ps1`
+- **MCP stdio:** dual-OS `initialize` smoke; Python MCP later removed
+- **repair:** native hooks/force-upgrade + Steam life + themes; dual-OS CI; remove `repair_ops` / RepairOps
+- **Go unification:** installers hard-require Go dispatcher (`bin/millennium` / `millennium.exe`); no silent shell/PS PATH fallback; `MILLENNIUM_INSTALL_DISPATCHER=shell` temporary shell escape later removed
+- **Go unification:** delete `dispatcher.sh` / `Dispatcher.ps1` / `millennium.sh` / `millennium.ps1`; remove install shell escape; packaging/Scoop/Formula/Nix/deb/rpm/Chocolatey Go-only for PATH millennium; retire dispatcher test suites
+- **Go unification:** dual-OS smokes for `diag --share`, doctor live (healthy), `logs --follow`, writable `--file` install, Linux non-root sudo hint; long-name Bash/Pester suites retained as thin-wrap residual
+- **diag:** native `--json`, `logs` (incl. follow), richer report probes, doctor dry-run + live (dual-OS CI)
+- **diag share:** native `--share` (home/user/token redaction + paste.rs upload); `--follow` and live doctor still legacy
+- **upgrade install:** native tar/zip extract + atomic install when writable (root / `MILLENNIUM_LIB_DIR` / Windows Steam); non-root Linux system path and rollback apply still legacy
 - Machine-readable CLI contract [`spec/cli-contract.yaml`](spec/cli-contract.yaml) + `make check-cli-contract` (MCP / man / bash completions drift gate)
-- Unification audit + roadmap docs with feature×OS×test parity matrix and command graduation rule
+- Unification audit + roadmap docs with feature×OS×test parity matrix
 
 ### Changed
+- Long-name Bash/PowerShell helpers thin-wrap to Go without sourcing `common.sh` / `common.ps1`
 - Release CD waits for a broader green CI set (tests, Go, linters, version-sync, manifests, man pages) on the tag SHA before building assets; `skip_ci_gate` is allowed only for `v-draft`
 - Release assets are versioned and OS/arch-split (`millennium-helpers-v{VER}-{os}-{arch}…`); from-source packaging uses controlled `-src.tar.gz` / `-src.zip` (no GitHub autoarchive URLs; no legacy unversioned aliases)
 - AUR-standard naming: plain `millennium-helpers` = tagged from-source; `millennium-helpers-bin` = release assets; Nix default package is from-source

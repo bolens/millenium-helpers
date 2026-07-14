@@ -1,8 +1,7 @@
 # Unification audit (Bash / PowerShell → Go)
 
-Inventory of the dual-shell Millennium Helpers surface and a **parity matrix**
-for the migration to a single Go runtime. Maintainer guide — see also
-[unification-roadmap.md](unification-roadmap.md).
+Inventory of the helper surface and a **parity matrix** for the single Go
+runtime. Maintainer guide — see also [unification-roadmap.md](unification-roadmap.md).
 
 Project: [README](../README.md). Index: [README.md](README.md).
 
@@ -12,25 +11,26 @@ Project: [README](../README.md). Index: [README.md](README.md).
 
 | Surface | Path | Language |
 | --- | --- | --- |
-| Linux/macOS CLI | [`scripts/*.sh`](../scripts/) + [`scripts/lib/`](../scripts/lib/) | Bash |
-| Windows CLI | [`scripts/windows/*.ps1`](../scripts/windows/) + [`lib/`](../scripts/windows/lib/) | PowerShell |
-| MCP | Go `millennium mcp` / PATH `millennium-mcp` | Go |
+| PATH CLI | `bin/millennium` (`go/cmd/millennium`) | Go |
+| Long-name helpers | [`scripts/millennium-*.sh`](../scripts/), [`scripts/windows/*.ps1`](../scripts/windows/) | Thin-wrap → Go |
+| Shared libs | [`scripts/lib/`](../scripts/lib/), [`scripts/windows/lib/`](../scripts/windows/lib/) | Bash / PowerShell (install helpers); Steam+CLI logging in Go |
+| Steam | `go/internal/steam` | Go (Unix + Windows) |
+| CLI logging | `go/internal/logging` | Go |
+| MCP | `millennium mcp` / PATH `millennium-mcp` | Go |
 | Completions | [`completions/`](../completions/) | Bash / Zsh / Fish / Nushell / PowerShell |
 | Man pages | [`man/`](../man/) | mandoc |
 | Packaging | Formula, Nix, Arch, Scoop/Winget, deb/rpm/Chocolatey | various |
 
-Rough size: ~9 Bash shared lib modules, ~7 PowerShell shared lib modules (all feature dual
-libs peeled); Go owns PATH `millennium`, MCP stdio, 8 man pages, 12
-completion files. CLI surface is gated by
-[`spec/cli-contract.yaml`](../spec/cli-contract.yaml); remaining dual-shell
-parity gaps are tracked in the matrix below
+Rough size: ~8 Bash shared lib modules, ~6 PowerShell shared lib modules; Go owns
+PATH `millennium`, Steam lifecycle, CLI logging, MCP stdio, man pages, and completions wiring. CLI surface is
+gated by [`spec/cli-contract.yaml`](../spec/cli-contract.yaml)
 ([CONTRIBUTING](../CONTRIBUTING.md#linux--windows-parity)).
 
 ---
 
 ## Logic buckets
 
-### Shared (portable — first Go packages)
+### Shared (portable — Go packages)
 
 - `config.json` keys: `update_channel`, `github_token`, `backup_limit`, `backup_max_age_days`
 - Helpers **track** (`release` / `main` / `tag`) vs client **channel** (`stable` / `beta` / `main`)
@@ -38,27 +38,18 @@ parity gaps are tracked in the matrix below
 - Backup rotate / rollback list
 - Dispatcher command set + typo suggestion
 - Theme list / install / update / remove semantics
-- Version reporting from `VERSION`
-- Global conventions: `--help` exit 0, unknown flags non-zero, `--dry-run` / `--yes` / `--quiet`
 
-### Linux-shaped
+### OS-shaped (same intent, different mechanism)
 
-- `/etc/sudoers.d/` drop-in; systemd timers (**prefer system**, fallback `systemd --user`); crontab (`--cron`)
-- Flatpak / Steam Deck path overrides ([steam_deck.md](steam_deck.md))
-- `--all-users` bootstrap linking (upgrade)
-- Man / shell completion install paths (`install.sh`)
+- Steam find / close / relaunch
+- Schedule: systemd (system + user) / launchd / cron / Task Scheduler
+- Install roots (`/usr/lib` vs Steam `millennium\`)
+- Elevation (`sudo` / UAC)
 
-### Windows-shaped
-
-- UAC / `RunAs`; Task Scheduler
-- `.cmd` wrappers under `~/.millennium-helpers/bin`
-- `%LOCALAPPDATA%\millennium-helpers` config root
-- PascalCase flag aliases (`-Share`, `-DryRun`, …)
-
-### Façade-only (should collapse)
+### Façade-only
 
 - Dual help / completions / man / MCP schema maintained by hand (thin long-name wrappers remain)
-- MCP argv mapping onto platform CLIs (Go-only after Parallel)
+- MCP argv mapping onto platform CLIs
 
 ---
 
@@ -72,7 +63,7 @@ Not unpaid feature debt — kept in [`spec/cli-contract.yaml`](../spec/cli-contr
 | `schedule --system` / `--user` | linux | Force systemd scope; default auto prefers system |
 | `upgrade --all-users` | linux, darwin | Multi-UID Steam tree hooks |
 | MCP `cron` | linux (documented) | Same as schedule `--cron` |
-| Flag casing | windows legacy | Pascal aliases until PowerShell paths graduate |
+| Flag casing | windows | Pascal aliases on PowerShell thin-wraps |
 
 ---
 
@@ -81,34 +72,27 @@ Not unpaid feature debt — kept in [`spec/cli-contract.yaml`](../spec/cli-contr
 Legend: **Y** = present · **P** = partial · **—** = N/A (contract OS-only) ·
 Tests: Bash behavioral/unit under `tests/` · Pester under `tests/windows/`.
 
-| Capability | Linux | Windows | Go end-state | Bash tests | Pester | Gap |
+| Capability | Linux | Windows | Go | Bash tests | Pester | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| Dispatcher `millennium <cmd>` + suggestions | Y | Y | **Graduated/peeled** (Phase 6a + Endgame B) | Go `main_test` + `go.yml` dual-OS | Go `main_test` + `go.yml` | Shell/PS entrypoints + dispatcher dual libs removed |
-| `version` / `-V` / root help | Y | Y | **Graduated** (Phase 6a) | Go + `go.yml` dual-OS | Go + `go.yml` | No dual libs to delete for meta |
-| `diag` (health report) | Y | Y | **Graduated** (6w smoke + 6z peel) | `test_diag` + Go thin-wrap | Go thin-wrap | Dual libs removed |
-| `diag doctor` / `--fix` | Y | Y | **Graduated** (6x dry-run + Endgame C live healthy) | `test_diag` + Go | Go thin-wrap | Completions/package cleanup still advisory |
-| `diag --json` / `--share` / `--follow` | Y | Y | **Graduated** (6w JSON; Endgame C share/follow) | Go | Go | Redact + paste stub; capped follow |
-| `diag logs` | Y | Y | **Graduated** (6y) | Go + thin-wrap | Go | No-logs path OK |
-| `upgrade` download/verify/install | Y | Y | **Graduated/peeled** (Endgame C smoke + Parallel peel) | `test_upgrade` + Go | Go thin-wrap | Dual libs removed; Linux sudo handoff |
-| `upgrade --rollback` apply | Y | Y | **Graduated** when writable (6u); list Graduated 6q | `test_upgrade` + Go | Go | Sudo handoff when unwritable |
-| `upgrade --file` / `--sha256` | Y | Y | **Graduated** verify (6t) + dry-run (6s) | Y + Go | Y | Fail-closed SHA before install |
-| `repair` | Y | Y | **Graduated/peeled** (6ab–6ad) | `test_repair` + Go thin-wrap | Go thin-wrap | Dual libs removed |
-| `purge` | Y | Y | **Graduated/peeled** (6p smoke + 6r peel) | `test_purge` + Go thin-wrap | Go thin-wrap | Dual libs removed |
-| `upgrade --all-users` | Y | — | Linux/macOS only | P | — | Keep contract-marked |
-| `schedule` (all commands) | Y | Y* | **Graduated/peeled** (6c–6o) | Go + thin-wrap | Go + thin-wrap | *hooks Unix-only |
+| Dispatcher `millennium <cmd>` + suggestions | Y | Y | Native | `main_test` + `go.yml` | `go.yml` | Shell/PS PATH dispatchers removed |
+| `version` / `-V` / root help | Y | Y | Native | Go + `go.yml` | Go + `go.yml` | |
+| `diag` report / `--json` / `--share` / logs / `--follow` / doctor | Y | Y | Native | thin-wrap help | thin-wrap help | Dual-OS smokes in `go.yml`; live doctor under `DIAG_TEST_BYPASS_CHECKS` |
+| `upgrade` download/verify/install/rollback | Y | Y | Native (+ Linux sudo handoff) | thin-wrap help | thin-wrap help | Dual-OS smokes in `go.yml` |
+| `upgrade --all-users` | Y | — | Linux/macOS only | P | — | Contract-marked |
+| `repair` | Y | Y | Native | thin-wrap help | thin-wrap help | Dual-OS smokes in `go.yml` |
+| `purge` | Y | Y | Native | unique refuse/`--yes` seams | unique seams | Dry-run smoked in `go.yml` |
+| `schedule` (all commands) | Y | Y* | Native | unique cron/wizard/Steam seams | thin-wrap help | *hooks Unix-only |
 | `schedule --cron` | Y | — | Linux/macOS only | Y | — | Contract OS-only |
-| `theme` list/install/update/remove | Y | Y | **Graduated** (Phase 6g peel) | `TestNativeTheme*` + `go.yml`; Bash/Pester via thin-wrap | Go + `go.yml` | Dual libs removed |
-| `theme list --json` | Y | Y | **Graduated** (Phase 6g peel) | Go + `go.yml` dual-OS; Bash/Pester via thin-wrap | Go + `go.yml` | Long-name theme thin-wrap |
-| `upgrade --rollback list` | Y | Y | **Graduated** (Phase 6q) | `TestNativeUpgradeRollbackList` + dual-OS `go.yml` | Go + `go.yml` | Dual libs removed (Parallel) |
-| `mcp` tools surface | Y | Y | **Graduated** (6aa + Parallel hatch retirement) | `test_mcp` (Go-only) | Go thin-wrap | Python hatch deleted |
-| Install / uninstall helpers | Y | Y | **Go required** PATH `millennium` / `.exe` (Endgame A–B) | `test_install` | `install` | No shell/PS PATH dispatcher; uninstall clears both systemd scopes |
-| Install track / doctor sync | Y | Y | Native | `test_install_track` | `InstallTrack` | Shared meta JSON |
-| Completions | Y | Y | Generated from contract | `test_completions` | `completions` | Codegen later |
-| Man pages | Y | — | Generated / kept | `check-man` | — | Keep shipping on Unix |
+| `theme` list/install/update/remove | Y | Y | Native | zip-slip + canaries | thin-wrap help | Dual-OS smokes in `go.yml` |
+| `mcp` tools surface | Y | Y | Native | `test_mcp` | Go wrap | Dual-OS `initialize` smoke |
+| Install / uninstall helpers | Y | Y | Requires Go PATH binary | `test_install` | `install` | Uninstall clears both systemd scopes |
 
-**Graduation:** a row turns fully green only when Go implements the capability per
-contract **and** dual-OS automated tests pass. See
-[unification-roadmap.md](unification-roadmap.md#command-graduation-rule).
+---
+
+## Open gaps (non-contract)
+
+1. Timers / sudoers may still name long-name helpers (`millennium-upgrade`); migrate to `millennium upgrade` with installers.
+2. Completions/man/MCP schema still hand-synced with the contract (CI gates help).
 
 ---
 
