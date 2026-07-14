@@ -85,9 +85,12 @@ Guide index: **[docs/README.md](docs/README.md)**. When adding or renaming a gui
 | Path | Role |
 | --- | --- |
 | `install.sh` | Linux/macOS installer / uninstall |
-| `scripts/*.sh` | Linux/macOS user-facing commands |
-| `scripts/lib/` | Shared Bash libraries (logging, Steam, GitHub, backups) |
-| `scripts/windows/*.ps1` | Windows PowerShell counterparts |
+| `scripts/*.sh` | Linux/macOS user-facing command entrypoints |
+| `scripts/common.sh` | Shared Bash entry (locale + sources `scripts/lib/*`) |
+| `scripts/lib/` | Shared + feature libraries (`logging`, `steam`, `diag_*`, `schedule_*`, `theme_ops`, `upgrade_*`, `repair_ops`, `purge_ops`, `dispatcher`, …) |
+| `scripts/windows/*.ps1` | Windows PowerShell command entrypoints |
+| `scripts/windows/common.ps1` | Shared PowerShell entry (culture/colors + sources `scripts/windows/lib/*`) |
+| `scripts/windows/lib/` | Shared + feature libraries (`Logging`, `Steam`, `Diag*`, `Schedule*`, `ThemeOps`, `PurgeOps`, `Dispatcher`, …) |
 | `scripts/millennium-mcp.py` | MCP server for AI assistants |
 | `man/` | Manual pages (`millennium-*.1`) for every user-facing command |
 | `docs/` | User/maintainer guides (index: [`docs/README.md`](docs/README.md)) |
@@ -95,6 +98,8 @@ Guide index: **[docs/README.md](docs/README.md)**. When adding or renaming a gui
 | `completions/` | Bash / Zsh / Fish / Nushell / PowerShell completions |
 | `tests/` | Unit + behavioral suites (`tests/run_tests.sh`) |
 | `tests/windows/` | Pester tests for PowerShell scripts (`make test-windows`) |
+
+**No thin aggregators.** Feature modules are sourced (or dot-sourced) directly by the command entrypoint or by `common.sh` / `common.ps1`. Do not add pass-through-only loader files that only re-source other modules.
 
 ## Adding or changing a command
 
