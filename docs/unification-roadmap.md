@@ -21,7 +21,7 @@ and test parity** on Linux, macOS, and Windows.
 | **2 — Config + read-mostly** | Done | `schedule config`, `theme list`, bare diag |
 | **3 — Mutating core** | Done | Upgrade/repair/purge/diag (incl. follow) native |
 | **4 — Schedule + installers** | Done | Schedule + installers Go-first; legacy dual-scope systemd cleanup (4m) |
-| **5 — MCP + cleanup** | Not started | MCP still Python; dual libs still required |
+| **5 — MCP + cleanup** | In progress | 5a: non-elevate prefers Go CLI; elevate/Python still required |
 
 Force any native path back to shell/PS: `MILLENNIUM_LEGACY=1`.
 
@@ -53,8 +53,9 @@ Work through this queue; check items off as PRs land and update this list.
 
 1. [x] **Windows + packaging Go-first** — `install.ps1` prefers `.exe`; versioned OS/arch release assets; from-source / `-bin` / `-git` matrix (+ deb/rpm/Chocolatey); release CD gated on green CI
 2. [x] **Doctor / purge / uninstall: dual systemd scopes** — Phase 4m; legacy Bash + `install.sh` clean system **and** user units
-3. [ ] **MCP → Go CLI** — Phase 5; retire Python dispatcher
-4. [ ] **Graduate commands** — dual-OS CI + delete dual libs per [graduation rule](#command-graduation-rule)
+3. [x] **MCP prefer Go for non-elevate** — Phase 5a; Python façade → `millennium <cmd>` when present
+4. [ ] **MCP elevate via Go + native server** — Phase 5b+; sudoers / native `millennium mcp`; retire Python
+5. [ ] **Graduate commands** — dual-OS CI + delete dual libs per [graduation rule](#command-graduation-rule)
 
 ---
 
@@ -125,7 +126,7 @@ Work through this queue; check items off as PRs land and update this list.
 
 | Surface | Status | Notes |
 | --- | --- | --- |
-| MCP server | Legacy | `scripts/millennium-mcp.py` |
+| MCP server | Partial | Python JSON-RPC; non-elevate → Go `millennium`; elevate → long-name + sudoers |
 | Installers ship Go binary first | Done | Unix `install.sh` + Windows `install.ps1`; release embeds `millennium` / `millennium.exe` in versioned OS/arch archives; shell/PS fallback remains |
 | Dual `.sh` / `.ps1` libs removed | Not started | Only after graduation |
 
@@ -194,17 +195,18 @@ Shipped behavior:
 5. **Legacy Bash:** `disable` / enable-migration / uninstall clear both scopes; Bash enable still writes user units until graduated.
 6. **macOS / Windows / cron:** unchanged.
 
-### Phase 5 — MCP + cleanup — Not started
+### Phase 5 — MCP + cleanup — In progress
 
-**Definition of done:**
-
+- [x] **Phase 5a:** Python MCP prefers Go `millennium <feature>` for non-elevating tools (`diag` report, `theme`, `schedule`); elevate stays on long-name helpers (sudoers); `MILLENNIUM_MCP_LONGNAMES=1` escape
+- [ ] Prefer Go for elevate once sudoers / Arch wheel allow PATH `millennium` (or equivalent)
+- [ ] Native Go MCP server (`millennium mcp`); Python becomes thin shim or removed
 - [ ] Every contract feature implemented **once** in Go
 - [ ] Every [parity matrix](unification-audit.md#parity-matrix) row green
 - [ ] Bash / Pester suites retired only after Go dual-OS suite supersedes them
 - [ ] CONTRIBUTING “Linux / Windows parity” checklist → contract + Go CI
 - [ ] `make check-all` includes contract check, `go test ./...`, and dual-OS
       behavioral jobs against the Go binary
-- [ ] MCP invokes Go CLI (or Go-native tools); dual libs removable
+- [ ] Dual libs removable after graduation
 
 ---
 

@@ -9,6 +9,14 @@ Exposes Millennium helper commands as MCP tools for AI assistants
 (Claude Desktop, Cursor, Windsurf, and similar clients).
 .P
 With no options, runs as a stdio JSON-RPC MCP server.
+When the Go
+.B millennium
+dispatcher is installed, non-elevating tools invoke it
+.RB ( millennium " " diag / theme / schedule );
+elevating tools still call the long-name helpers allowed by sudoers.
+Set
+.B MILLENNIUM_MCP_LONGNAMES=1
+to force the long-name path.
 .SH OPTIONS
 .TP
 .BR \-r ", " \-\-register
