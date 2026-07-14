@@ -8,6 +8,7 @@ import (
 	"github.com/bolens/millenium-helpers/internal/config"
 	"github.com/bolens/millenium-helpers/internal/diag"
 	"github.com/bolens/millenium-helpers/internal/legacy"
+	"github.com/bolens/millenium-helpers/internal/mcp"
 	"github.com/bolens/millenium-helpers/internal/purge"
 	"github.com/bolens/millenium-helpers/internal/repair"
 	"github.com/bolens/millenium-helpers/internal/schedule"
@@ -31,7 +32,8 @@ func run(args []string) int {
 Native: version/help, schedule (config/status/enable/disable/setup/pre/post),
 theme mutate, diag report/--json/--share/logs(--follow)/doctor, upgrade
 download+SHA+install (+ sudo handoff on Linux) and --rollback when writable,
-purge (Unix+Windows), repair user-path (see docs/unification-roadmap.md).
+purge (Unix+Windows), repair user-path, mcp JSON-RPC server
+(see docs/unification-roadmap.md).
 
 Force legacy for a native path: MILLENNIUM_LEGACY=1`,
 		SilenceUsage:  true,
@@ -61,19 +63,17 @@ Force legacy for a native path: MILLENNIUM_LEGACY=1`,
 	root.AddCommand(newUpgradeCmd())
 	root.AddCommand(newPurgeCmd())
 	root.AddCommand(newRepairCmd())
+	root.AddCommand(newMcpCmd())
 
-	for _, name := range []string{"doctor", "mcp"} {
-		n := name
-		root.AddCommand(&cobra.Command{
-			Use:                n,
-			Short:              "Delegate to legacy millennium-" + displayBinary(n),
-			DisableFlagParsing: true,
-			RunE: func(cmd *cobra.Command, a []string) error {
-				os.Exit(legacy.RunLegacy(n, a))
-				return nil
-			},
-		})
-	}
+	root.AddCommand(&cobra.Command{
+		Use:                "doctor",
+		Short:              "Delegate to legacy millennium-diag doctor",
+		DisableFlagParsing: true,
+		RunE: func(cmd *cobra.Command, a []string) error {
+			os.Exit(legacy.RunLegacy("doctor", a))
+			return nil
+		},
+	})
 
 	if err := root.Execute(); err != nil {
 		msg := err.Error()
@@ -384,6 +384,35 @@ func newRepairCmd() *cobra.Command {
 				return nil
 			}
 			os.Exit(repair.RunCLI(dry, skip, quiet))
+			return nil
+		},
+	}
+}
+
+func newMcpCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:                "mcp",
+		Short:              "MCP JSON-RPC server (native Go; --register via Python)",
+		DisableFlagParsing: true,
+		RunE: func(cmd *cobra.Command, a []string) error {
+			if useLegacy() {
+				_ = os.Setenv("MILLENNIUM_MCP_PYTHON", "1")
+				os.Exit(legacy.RunLegacy("mcp", a))
+				return nil
+			}
+			opts, err := mcp.ParseArgs(a)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err.Error())
+				os.Exit(2)
+				return nil
+			}
+			if opts.Register {
+				// Phase 5c.1: registration stays in Python until 5c later.
+				_ = os.Setenv("MILLENNIUM_MCP_PYTHON", "1")
+				os.Exit(legacy.RunLegacy("mcp", a))
+				return nil
+			}
+			os.Exit(mcp.RunCLI(opts))
 			return nil
 		},
 	}

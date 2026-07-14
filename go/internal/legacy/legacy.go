@@ -109,6 +109,9 @@ func ResolveCommand(shortName string, args []string) (*exec.Cmd, error) {
 	if shortName == "doctor" {
 		return ResolveCommand("diag", append([]string{"doctor"}, args...))
 	}
+	if shortName == "mcp" {
+		return resolveMcp(args)
+	}
 
 	target := "millennium-" + shortName
 	scriptDir := ScriptDir()
@@ -117,6 +120,43 @@ func ResolveCommand(shortName string, args []string) (*exec.Cmd, error) {
 		return resolveWindows(target, shortName, scriptDir, args)
 	}
 	return resolveUnix(target, shortName, scriptDir, args)
+}
+
+// resolveMcp finds millennium-mcp (installed shim) or millennium-mcp.py.
+func resolveMcp(args []string) (*exec.Cmd, error) {
+	if runtime.GOOS == "windows" {
+		return resolveWindows("millennium-mcp", "mcp", ScriptDir(), args)
+	}
+	if path, err := exec.LookPath("millennium-mcp"); err == nil {
+		return exec.Command(path, args...), nil
+	}
+	scriptDir := ScriptDir()
+	candidates := []string{}
+	if scriptDir != "" {
+		candidates = append(candidates,
+			filepath.Join(scriptDir, "millennium-mcp.py"),
+			filepath.Join(scriptDir, "millennium-mcp"),
+			filepath.Join(filepath.Dir(scriptDir), "millennium-mcp.py"),
+		)
+	}
+	for _, p := range candidates {
+		st, err := os.Stat(p)
+		if err != nil || st.IsDir() {
+			continue
+		}
+		if strings.HasSuffix(p, ".py") {
+			python, err := exec.LookPath("python3")
+			if err != nil {
+				python, err = exec.LookPath("python")
+			}
+			if err != nil {
+				return nil, fmt.Errorf("Error: python3 required to run %q", p)
+			}
+			return exec.Command(python, append([]string{p}, args...)...), nil
+		}
+		return exec.Command(p, args...), nil
+	}
+	return nil, fmt.Errorf("Error: %q not found on PATH or in scripts dir", "millennium-mcp")
 }
 
 func resolveUnix(target, shortName, scriptDir string, args []string) (*exec.Cmd, error) {

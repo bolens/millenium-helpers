@@ -22,7 +22,7 @@ see [security_troubleshooting.md](security_troubleshooting.md). Licensing:
 
 **Helpers track vs client channel:** MCP `channel` arguments always mean the Millennium **client** `update_channel` (`stable` / `beta` / `main`). Helpers install track (`release` / `main` / `tag`) is chosen at install time (`install.sh --track`, `install.ps1 -Track`) and is not an MCP tool parameter.
 
-**Go dispatcher (Phase 5b):** When the Go `millennium` binary is on `PATH` (or installed beside the scripts), MCP tools invoke `millennium <feature> …`, including elevating doctor/upgrade/repair/purge (wrapped in `sudo -n` / UAC). Installer and Arch sudoers allowlist those Go verbs plus the long-name helpers (timers / older installs). Force the old path with `MILLENNIUM_MCP_LONGNAMES=1` (or `MILLENNIUM_LEGACY=1`). Re-run the installer (or refresh Arch) so the drop-in allows `millennium upgrade|diag|repair|purge`.
+**Go MCP server (Phase 5c.1):** `millennium mcp` is the native stdio JSON-RPC server. The `millennium-mcp` Python entry prefer-execs into it when the dispatcher is available (not under `TEST_SUITE_RUN`, and not when `MILLENNIUM_MCP_PYTHON=1` / `MILLENNIUM_LEGACY=1`). Tool calls self-exec `millennium <feature> …`, including elevating doctor/upgrade/repair/purge (`sudo -n` / UAC). `--register` remains Python for now. Force long-name helpers with `MILLENNIUM_MCP_LONGNAMES=1`. Re-run the installer (or refresh Arch) so sudoers allow `millennium upgrade|diag|repair|purge`.
 
 **Safety gates (server-side):**
 - `action` / `channel` values are allow-listed independently of the JSON schema (clients can send arbitrary strings)

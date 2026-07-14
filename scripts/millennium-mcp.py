@@ -11,7 +11,7 @@ import shutil
 import os
 import argparse
 import base64
-from typing import TypedDict
+from typing import Optional, TypedDict
 
 # Hard upper bound on how long any single underlying millennium-* command is
 # allowed to run. The server processes one JSON-RPC request at a time on a
@@ -773,6 +773,27 @@ def register_mcp():
         sys.exit(0)
 
 
+def prefer_go_mcp_server() -> Optional[str]:
+    """Return the Go dispatcher path when this process should re-exec into it.
+
+    Phase 5c.1: production stdio/version/help prefer ``millennium mcp``.
+    Skip when forced to Python, under TEST_SUITE_RUN (mocks shadow ``millennium``),
+    or for ``--register`` (still Python-only).
+    """
+    if _env_truthy("MILLENNIUM_MCP_PYTHON") or _env_truthy("MILLENNIUM_LEGACY"):
+        return None
+    if _env_truthy("TEST_SUITE_RUN"):
+        return None
+    return find_go_dispatcher()
+
+
+def maybe_exec_go_mcp(extra_argv: list[str]) -> None:
+    go = prefer_go_mcp_server()
+    if not go:
+        return
+    os.execv(go, [go, "mcp", *extra_argv])
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Model Context Protocol (MCP) server for Millennium Helpers."
@@ -788,12 +809,18 @@ def main():
     )
     args = parser.parse_args()
 
-    if args.version:
-        print(f"millennium-mcp {get_helpers_version()}")
-        return
-
     if args.register:
         register_mcp()
+        return
+
+    # Prefer native Go MCP for stdio / --version / --help (argparse already ate flags).
+    go_argv: list[str] = []
+    if args.version:
+        go_argv.append("--version")
+    maybe_exec_go_mcp(go_argv)
+
+    if args.version:
+        print(f"millennium-mcp {get_helpers_version()}")
         return
 
     log("Millennium Helpers MCP server started.")

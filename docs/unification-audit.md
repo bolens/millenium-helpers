@@ -104,7 +104,7 @@ Tests: Bash behavioral/unit under `tests/` · Pester under `tests/windows/`.
 | `schedule --cron` | Y | — | Linux/macOS only | Y | — | Contract OS-only |
 | `theme` list/install/update/remove | Y | Y | **Native Go (list + mutate)** | `test_theme` + Go | `millennium-theme` + Go | zip-slip safe extract; `--yes` on remove |
 | `theme --json` | Y | Y | **Native (Phase 2 list)** | Y + Go | Y + Go | — |
-| `mcp` tools surface | Y | Y | **Partial:** all tools → Go `millennium` when present (elevate + sudoers) | `test_mcp` | `millennium-mcp` | Native Go MCP server still open |
+| `mcp` tools surface | Y | Y | **Partial:** Go owns stdio MCP (`millennium mcp`); tools self-exec Go; `--register` still Python | `test_mcp` (`MCP_IMPL`) | `millennium` / `millennium-mcp` | Retire Python façade / register still open |
 | Install / uninstall helpers | Y | Y | **Go-first** PATH `millennium` / `.exe`; versioned OS/arch release archives | `test_install` | `install` | Long-name helpers + shell/PS fallback remain; uninstall clears both systemd scopes |
 | Install track / doctor sync | Y | Y | Native | `test_install_track` | `InstallTrack` | Shared meta JSON |
 | Completions | Y | Y | Generated from contract | `test_completions` | `completions` | Codegen later |
