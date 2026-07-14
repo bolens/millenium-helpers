@@ -59,8 +59,10 @@ class MillenniumHelpers < Formula
     # Install VERSION for --version lookups
     (lib/"millennium-helpers").install "VERSION"
 
-    # Vendored Millennium client license (installed next to the client on upgrade)
-    (lib/"millennium-helpers").install "third_party/MILLENNIUM-LICENSE.md"
+    # Vendored Millennium client license (installed next to the client on upgrade).
+    # Optional so packaging still works against older bottles/tarballs without third_party/.
+    license_md = "third_party/MILLENNIUM-LICENSE.md"
+    (lib/"millennium-helpers").install license_md if File.exist?(license_md)
   end
 
   def caveats
