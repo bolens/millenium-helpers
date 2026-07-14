@@ -81,6 +81,11 @@ Keep Bash + Pester green for unmigrated commands. Supersede suites
 | --- | --- |
 | `millennium version` / help / suggestions | Native |
 | `millennium schedule config …` | Native (`internal/config`) |
+| `millennium schedule status` | Native (`internal/schedule`) |
+| `millennium schedule enable\|disable --dry-run` | Native |
+| `millennium schedule enable\|disable` (Unix) | Native user systemd / launchd / cron |
+| `millennium schedule enable\|disable` (Windows live) | Legacy (admin Task Scheduler) |
+| `millennium schedule setup` / pre\|post-update | Legacy |
 | `millennium theme list` [`--json`] | Native (`internal/theme`) |
 | `millennium diag` (bare / quiet) | Native read-only summary (`internal/diag`) |
 | `millennium diag doctor\|--fix\|--json\|--share\|…` | Legacy |
@@ -92,7 +97,7 @@ Keep Bash + Pester green for unmigrated commands. Supersede suites
 | `millennium purge` (live, Unix) | Native (confirm / `--yes`); Windows → legacy |
 | `millennium repair --dry-run` | Native plan (`internal/repair`) |
 | `millennium repair` (live) | Native user-path chown/htmlcache (theme/hooks → legacy as needed) |
-| Other schedule / theme mutate / mcp | Legacy |
+| Other theme mutate / mcp | Legacy |
 
 Force legacy for a native path: `MILLENNIUM_LEGACY=1`.
 

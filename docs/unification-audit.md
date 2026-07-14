@@ -93,9 +93,9 @@ Tests: Bash behavioral/unit under `tests/` · Pester under `tests/windows/`.
 | `repair` | Y | Y | **Dry-run + live user-path native** | `test_repair` + Go | `millennium-repair` + Go | Hook reinstall still legacy as needed |
 | `purge` (+ `--yes` / dry-run) | Y | Y | **Dry-run + live Unix native**; Windows live legacy | `test_purge` + Go | `millennium-purge` | Windows Task Scheduler / paths still PS |
 | `upgrade --all-users` | Y | — | Linux/macOS only | P | — | Keep contract-marked |
-| `schedule enable/disable/status` | Y | Y | Native (Phase 4) | `test_schedule` | `millennium-schedule` | systemd vs Task Scheduler |
-| `schedule setup` wizard | Y | Y | Native (Phase 4) | Y | Y | Interactive both OSes |
-| `schedule config get/set/list` | Y | Y | **Native Go (Phase 2)** | Y + Go | Y + Go | Config path graduated; timer actions still legacy |
+| `schedule enable/disable/status` | Y | Y | **status + dry-run + Unix live native**; Windows live enable/disable legacy | `test_schedule` + Go | `millennium-schedule` | Task Scheduler still admin/legacy |
+| `schedule setup` wizard | Y | Y | Legacy (Phase 4+) | Y | Y | Interactive both OSes |
+| `schedule config get/set/list` | Y | Y | **Native Go (Phase 2)** | Y + Go | Y + Go | Config path graduated |
 | `schedule --cron` | Y | — | Linux/macOS only | Y | — | Contract OS-only |
 | `theme` list/install/update/remove | Y | Y | **list native (Phase 2)**; mutate Phase 3 | `test_theme` + Go | `millennium-theme` + Go | install/update/remove still legacy |
 | `theme --json` | Y | Y | **Native (Phase 2 list)** | Y + Go | Y + Go | — |

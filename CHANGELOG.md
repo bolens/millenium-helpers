@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Go strangler CLI under `go/` (`make build` → `bin/millennium`): native version/help/suggestions; feature commands exec legacy Bash/PowerShell ([docs/unification-roadmap.md](docs/unification-roadmap.md))
 - **Phase 2 native paths:** `millennium schedule config` get/set/list, `millennium theme list` (`--json`), read-only `millennium diag` summary (doctor/json/share still legacy; `MILLENNIUM_LEGACY=1` forces legacy)
 - **Phase 3 hybrid mutate paths:** `upgrade --rollback list` + remote download/SHA + local `--file` verify / dry-run; `purge` Unix live + `--dry-run`; `repair` user-path live + `--dry-run`; extract/install/rollback apply and Windows live purge still legacy
+- **Phase 4a schedule:** `schedule status`, `enable`/`disable --dry-run`, Unix live systemd/launchd/cron enable/disable; Windows live enable/disable and setup still legacy
 - Machine-readable CLI contract [`spec/cli-contract.yaml`](spec/cli-contract.yaml) + `make check-cli-contract` (MCP / man / bash completions drift gate)
 - Unification audit + roadmap docs with feature×OS×test parity matrix and command graduation rule
 
