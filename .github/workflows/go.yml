@@ -232,6 +232,36 @@ jobs:
           bin/millennium schedule post-update
           rm -rf "$home"
 
+      - name: Smoke purge dry-run (dual-OS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$(mktemp -d)"
+          export HOME="$home"
+          export USERPROFILE="$home"
+          export LOCALAPPDATA="$home/LocalAppData"
+          export APPDATA="$home/AppData"
+          mkdir -p "$LOCALAPPDATA" "$APPDATA"
+          out="$(bin/millennium purge --dry-run)"
+          echo "$out" | grep -F 'DRY RUN'
+          rm -rf "$home"
+
+      - name: Smoke upgrade rollback list (dual-OS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$(mktemp -d)"
+          lib="$home/lib"
+          mkdir -p "$lib/millennium.bak_smoke"
+          export HOME="$home"
+          export USERPROFILE="$home"
+          export LOCALAPPDATA="$home/LocalAppData"
+          export MOCK_LIB_DIR="$lib"
+          out="$(bin/millennium upgrade --rollback list)"
+          echo "$out" | grep -F 'Available Backups'
+          echo "$out" | grep -F 'smoke'
+          rm -rf "$home"
+
       - name: Smoke legacy help delegate (Linux)
         if: runner.os == 'Linux'
         shell: bash
