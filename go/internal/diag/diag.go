@@ -3,8 +3,6 @@ package diag
 import (
 	"fmt"
 	"os"
-	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/bolens/millenium-helpers/internal/config"
@@ -12,23 +10,23 @@ import (
 	"github.com/bolens/millenium-helpers/internal/version"
 )
 
-// Result is one read-only check line.
+// Result is one read-only check line (summary helper).
 type Result struct {
-	OK      bool
-	Label   string
-	Detail  string
+	OK     bool
+	Label  string
+	Detail string
 }
 
-// RunReadOnly performs non-elevating health checks (Phase 2 subset).
+// RunReadOnly performs non-elevating health checks (summary subset).
 func RunReadOnly() []Result {
 	var out []Result
 
 	ver := version.Resolve()
-	out = append(out, Result{OK: ver != "" && ver != "dev", Label: "Helpers Version", Detail: ver})
+	detail := ver
 	if ver == "dev" {
-		out[len(out)-1].OK = true // ok in checkout
-		out[len(out)-1].Detail = ver + " (dev / unreleased)"
+		detail = ver + " (dev / unreleased)"
 	}
+	out = append(out, Result{OK: true, Label: "Helpers Version", Detail: detail})
 
 	cfgPath := config.Path()
 	data, err := config.Load()
@@ -44,35 +42,22 @@ func RunReadOnly() []Result {
 		out = append(out, Result{OK: true, Label: "Helpers Config", Detail: fmt.Sprintf("%s — channel %s", cfgPath, ch)})
 	}
 
-	steam := theme.FindSteamDir()
-	if steam == "" {
-		out = append(out, Result{OK: false, Label: "Steam Directory", Detail: "not found"})
-	} else {
+	rep := Collect()
+	out = append(out, Result{OK: true, Label: "Steam Client", Detail: rep.SteamDetail})
+	out = append(out, Result{OK: rep.BinariesOK, Label: "Millennium Binaries", Detail: rep.BinariesDetail})
+	if steam := theme.FindSteamDir(); steam != "" {
 		out = append(out, Result{OK: true, Label: "Steam Directory", Detail: steam})
-		skins := filepath.Join(steam, "steamui", "skins")
-		if st, err := os.Stat(skins); err == nil && st.IsDir() {
-			entries, _ := os.ReadDir(skins)
-			n := 0
-			for _, e := range entries {
-				if e.IsDir() {
-					n++
-				}
-			}
-			out = append(out, Result{OK: true, Label: "Themes (skins)", Detail: fmt.Sprintf("%d installed under %s", n, skins)})
-		} else {
-			out = append(out, Result{OK: true, Label: "Themes (skins)", Detail: "skins directory not present yet"})
-		}
+	} else {
+		out = append(out, Result{OK: false, Label: "Steam Directory", Detail: "not found"})
 	}
-
-	out = append(out, Result{OK: true, Label: "Platform", Detail: runtime.GOOS + "/" + runtime.GOARCH})
+	out = append(out, Result{OK: rep.SkinsDirOK, Label: "Themes (skins)", Detail: fmt.Sprintf("ok=%v", rep.SkinsDirOK)})
 	return out
 }
 
-// FormatReport renders a diag-style table.
+// FormatReport renders a diag-style table from Result rows.
 func FormatReport(results []Result) string {
 	var b strings.Builder
-	b.WriteString("=== Millennium Helpers Diagnostics (native read-only) ===\n")
-	b.WriteString("Note: hook/binary doctor checks still use the legacy diag via --fix / doctor.\n")
+	b.WriteString("=== Millennium Helpers Diagnostics (native) ===\n")
 	for _, r := range results {
 		mark := "[✔]"
 		if !r.OK {
@@ -83,31 +68,66 @@ func FormatReport(results []Result) string {
 	return b.String()
 }
 
-// NeedsLegacy reports whether args require the full Bash/PS diag.
-func NeedsLegacy(args []string) bool {
-	for _, a := range args {
-		switch strings.ToLower(a) {
-		case "doctor", "logs", "--fix", "-f", "-fix", "--force", "-force",
-			"--json", "-json", "--share", "-s", "-share", "--follow", "-l", "-follow":
-			return true
+// FormatReportFromCollect renders a fuller human report from Collect().
+func FormatReportFromCollect(r Report) string {
+	var b strings.Builder
+	b.WriteString("=== Millennium Diagnostics Report ===\n\n")
+	row := func(ok bool, label, detail string, warn bool) {
+		mark := "[✔]"
+		if warn {
+			mark = "[!]"
+		} else if !ok {
+			mark = "[✘]"
 		}
+		b.WriteString(fmt.Sprintf("  %s %-40s : %s\n", mark, label, detail))
 	}
-	return false
+	row(true, "Steam Client", r.SteamDetail, !r.SteamRunning)
+	row(r.BinariesOK, "Millennium Binary Version", r.BinariesDetail, false)
+	row(r.SkinsDirOK, "Skins Directory", fmt.Sprintf("present=%v", r.SkinsDirOK), false)
+	schedOK := r.TimerActive || r.TaskScheduled
+	if schedOK {
+		row(true, "Scheduler", "configured", false)
+	} else {
+		row(false, "Scheduler", "not configured", false)
+	}
+	b.WriteString(fmt.Sprintf("\n  Update channel : %s\n", r.UpdateChannel))
+	b.WriteString("\nTip: millennium diag --json for machine-readable output; doctor --dry-run for a repair plan.\n")
+	return b.String()
 }
 
-// RunCLI prints the native read-only report (exit 0 unless --help only).
+// RunCLI runs native diag modes.
 func RunCLI(args []string) int {
-	for _, a := range args {
-		switch a {
-		case "-h", "--help", "-Help":
-			fmt.Print(`Usage: millennium diag [OPTIONS]
-
-Native read-only summary (version, config, Steam/themes layout).
-Use doctor / --fix / --json / --share for the full legacy diagnostic suite.
-`)
-			return 0
-		}
+	o, err := ParseArgs(args)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		return 1
 	}
-	fmt.Print(FormatReport(RunReadOnly()))
+	if o.Help {
+		fmt.Print(`Usage: millennium diag [doctor|logs] [OPTIONS]
+
+Native: default report, --json, logs (no --follow), doctor --dry-run.
+Live doctor / --share / --follow still use legacy helpers.
+
+  --json          Structured JSON report
+  doctor|--fix   Auto-repair (live → legacy; --dry-run native)
+  logs            Recent updater + Steam WebHelper lines
+  -d, --dry-run   Simulate doctor plan
+  -h, --help
+`)
+		return 0
+	}
+	if o.Logs {
+		return PrintLogs()
+	}
+	rep := Collect()
+	if o.JSON {
+		fmt.Print(FormatJSON(rep))
+		return 0
+	}
+	if o.Doctor && o.DryRun {
+		fmt.Print(FormatDoctorDryRun(rep, o.Force))
+		return 0
+	}
+	fmt.Print(FormatReportFromCollect(rep))
 	return 0
 }
