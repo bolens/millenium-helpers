@@ -27,8 +27,7 @@ Environment: MILLENNIUM_HELPERS_TRACK, MILLENNIUM_HELPERS_TAG,
   MILLENNIUM_HELPERS_RELEASE_URL, MILLENNIUM_HELPERS_RELEASE_SHA_URL,
   MILLENNIUM_HELPERS_ALLOW_UNSIGNED_MAIN=1
 
-Install requires millennium.exe (Go dispatcher) on PATH. Temporary escape:
-MILLENNIUM_INSTALL_DISPATCHER=shell (PowerShell dispatcher until retirement).
+Install requires millennium.exe (Go dispatcher) on PATH.
 
 Release checksums are same-origin GitHub TOFU, not independent signing.
 
@@ -297,11 +296,11 @@ Log-Info "Starting installation of Millennium Helpers..."
 if ($DryRun) {
     Log-Warn "DRY RUN: no files will be written"
     Log-Info "Would install to $binDir (track=$Track$(if ($Tag) { ", tag=$Tag" } else { '' }))"
-    Log-Info "Would require millennium.exe (Go dispatcher) unless MILLENNIUM_INSTALL_DISPATCHER=shell"
+    Log-Info "Would require millennium.exe (Go dispatcher)"
     return
 }
 
-$existingDispatch = (Test-Path (Join-Path $binDir 'millennium.ps1')) -or (Test-Path (Join-Path $binDir 'millennium.exe'))
+$existingDispatch = Test-Path (Join-Path $binDir 'millennium.exe')
 if ((Test-Path -Path $binDir) -and -not $Force -and $existingDispatch) {
     Log-Warn "Existing installation found at $binDir. Re-run with -Force to overwrite."
 }
@@ -329,7 +328,6 @@ if (!(Test-Path -Path $binDir)) {
 # Copy scripts
 $scriptsToCopy = @(
     "common.ps1",
-    "millennium.ps1",
     "millennium-diag.ps1",
     "millennium-mcp.ps1",
     "millennium-purge.ps1",
@@ -346,14 +344,13 @@ foreach ($script in $scriptsToCopy) {
     Log-Info "Installed: $script"
 }
 
-# Require Go dispatcher when a release/checkout ships or can build millennium.exe.
+# Require Go dispatcher (millennium.exe) — no PowerShell PATH dispatcher.
 $exeCandidates = @(
     (Join-Path -Path $srcDir -ChildPath 'millennium.exe'),
     (Join-Path -Path $srcDir -ChildPath '..\..\bin\millennium.exe'),
     (Join-Path -Path $srcDir -ChildPath 'bin\millennium.exe')
 )
 $installedExe = $false
-$allowShellDispatcher = ($env:MILLENNIUM_INSTALL_DISPATCHER -eq 'shell')
 foreach ($exeSrc in $exeCandidates) {
     if (Test-Path -LiteralPath $exeSrc -PathType Leaf) {
         Copy-Item -Path $exeSrc -Destination (Join-Path -Path $binDir -ChildPath 'millennium.exe') -Force
@@ -362,7 +359,7 @@ foreach ($exeSrc in $exeCandidates) {
         break
     }
 }
-if (-not $installedExe -and -not $allowShellDispatcher) {
+if (-not $installedExe) {
     $repoRoot = (Resolve-Path (Join-Path -Path $srcDir -ChildPath '..\..')).Path
     $goCmd = Get-Command go -ErrorAction SilentlyContinue
     $goMain = Join-Path -Path $repoRoot -ChildPath 'go\cmd\millennium'
@@ -387,14 +384,10 @@ if (-not $installedExe -and -not $allowShellDispatcher) {
         }
     }
 }
-if (-not $installedExe -and -not $allowShellDispatcher) {
+if (-not $installedExe) {
     Log-Error "Go dispatcher (millennium.exe) is required to install PATH millennium."
     Log-Error "Place bin\millennium.exe (release archive / make build), or install a Go toolchain and re-run."
-    Log-Error "Temporary escape (until dispatcher retirement): MILLENNIUM_INSTALL_DISPATCHER=shell"
     exit 1
-}
-if (-not $installedExe -and $allowShellDispatcher) {
-    Log-Info "MILLENNIUM_INSTALL_DISPATCHER=shell: PATH millennium uses the PowerShell dispatcher."
 }
 
 # Install lib/*.ps1 modules (required by millennium-diag.ps1)

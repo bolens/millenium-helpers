@@ -233,7 +233,6 @@ mkdir -p "$MOCK_PAYLOAD/scripts" "$MOCK_PAYLOAD/completions" "$MOCK_PAYLOAD/man"
 cp "$REPO_ROOT/install.sh" "$REPO_ROOT/VERSION" "$REPO_ROOT/LICENSE" "$MOCK_PAYLOAD/"
 cp "$REPO_ROOT/README.md" "$MOCK_PAYLOAD/" 2>/dev/null || true
 cp "$REPO_ROOT/scripts/common.sh" \
-  "$REPO_ROOT/scripts/millennium.sh" \
   "$REPO_ROOT/scripts/millennium-diag.sh" \
   "$REPO_ROOT/scripts/millennium-mcp.py" \
   "$REPO_ROOT/scripts/millennium-mcp.sh" \
@@ -370,7 +369,7 @@ rc=$?
 assert_success "$rc" "installed millennium-diag --help works against prefix lib"
 assert_contains "$out" "Usage:" "installed millennium-diag --help prints usage"
 
-# Go dispatcher required for PATH millennium (Endgame A)
+# Go dispatcher required for PATH millennium (Endgame A/B)
 if command -v go >/dev/null 2>&1 && [[ -d "${REPO_ROOT}/go/cmd/millennium" ]]; then
   first_line=$(head -n 1 "${PREFIX_BIN}/millennium" 2>/dev/null || true)
   assert_not_contains "$first_line" "#!" "isolated install places Go binary as millennium (not shell shebang)"
@@ -383,36 +382,12 @@ else
   assert_not_contains "$first_line" "#!" "isolated install uses prebuilt Go millennium when toolchain absent"
 fi
 
-# Explicit shell escape still installs Bash dispatcher (temporary until Endgame B)
-PREFIX_SHELL=$(mktemp -d)
-mkdir -p "${PREFIX_SHELL}/bin" "${PREFIX_SHELL}/bash" "${PREFIX_SHELL}/zsh" "${PREFIX_SHELL}/fish" "${PREFIX_SHELL}/nu" "${PREFIX_SHELL}/man" "${PREFIX_SHELL}/sudoers.d"
-out=$(
-  TARGET_DIR="${PREFIX_SHELL}/bin" \
-  MILLENNIUM_LIB_DIR="${PREFIX_SHELL}/lib" \
-  MILLENNIUM_BASH_COMPLETION_DIR="${PREFIX_SHELL}/bash" \
-  MILLENNIUM_ZSH_COMPLETION_DIR="${PREFIX_SHELL}/zsh" \
-  MILLENNIUM_FISH_COMPLETION_DIR="${PREFIX_SHELL}/fish" \
-  MILLENNIUM_NUSHELL_COMPLETION_DIR="${PREFIX_SHELL}/nu" \
-  MILLENNIUM_MAN_DIR="${PREFIX_SHELL}/man" \
-  MOCK_SUDOERS_FILE="${PREFIX_SHELL}/sudoers.d/millennium-helpers" \
-  SUDO_USER="installtestuser" \
-  FORCE_WIZARD=false \
-  MILLENNIUM_INSTALL_DISPATCHER=shell \
-  bash "$INSTALL_SH" install 2>&1
-)
-rc=$?
-assert_success "$rc" "install.sh with MILLENNIUM_INSTALL_DISPATCHER=shell exits 0"
-assert_contains "$out" "MILLENNIUM_INSTALL_DISPATCHER=shell" "shell escape announces itself"
-first_line=$(head -n 1 "${PREFIX_SHELL}/bin/millennium" 2>/dev/null || true)
-assert_contains "$first_line" "#!" "shell escape installs Bash millennium.sh"
-rm -rf "$PREFIX_SHELL"
-
 # Hard-require: no Go on PATH and no prebuilt binary → install fails (no silent fallback)
 PREFIX_FAIL=$(mktemp -d)
 mkdir -p "${PREFIX_FAIL}/bin" "${PREFIX_FAIL}/bash" "${PREFIX_FAIL}/zsh" "${PREFIX_FAIL}/fish" "${PREFIX_FAIL}/nu" "${PREFIX_FAIL}/man" "${PREFIX_FAIL}/sudoers.d"
 GO_HIDE=""
 if [[ -x "${REPO_ROOT}/bin/millennium" ]]; then
-  GO_HIDE="${REPO_ROOT}/bin/millennium.endgame_a_hide"
+  GO_HIDE="${REPO_ROOT}/bin/millennium.endgame_b_hide"
   mv "${REPO_ROOT}/bin/millennium" "$GO_HIDE"
 fi
 mock_cmd "go" "echo 'go: mocked unavailable' >&2; exit 127"
@@ -506,14 +481,18 @@ assert_contains "$bin_pkgbuild" "provides=" "bin PKGBUILD declares provides"
 scoop=$(cat "${REPO_ROOT}/packaging/scoop/millennium-helpers.json")
 assert_contains "$scoop" "-src.zip" "Scoop from-source uses versioned -src.zip"
 assert_contains "$scoop" "post_install" "Scoop from-source registers post_install hooks"
+assert_contains "$scoop" "pre_install" "Scoop from-source builds Go dispatcher in pre_install"
 assert_contains "$scoop" "pre_uninstall" "Scoop from-source registers pre_uninstall hooks"
 assert_contains "$scoop" "millennium-helpers.ps1" "Scoop post_install wires PowerShell completions"
+assert_contains "$scoop" "millennium.exe" "Scoop from-source PATH millennium is Go exe"
 assert_contains "$scoop" "MillenniumUpdate" "Scoop pre_uninstall removes MillenniumUpdate task"
 scoop_bin=$(cat "${REPO_ROOT}/packaging/scoop/millennium-helpers-bin.json")
 assert_contains "$scoop_bin" "windows-amd64.zip" "Scoop-bin uses windows-amd64 release zip"
 assert_contains "$scoop_bin" "post_install" "Scoop-bin registers post_install hooks"
+assert_contains "$scoop_bin" "millennium.exe" "Scoop-bin PATH millennium is Go exe"
 scoop_git=$(cat "${REPO_ROOT}/packaging/scoop/millennium-helpers-git.json")
 assert_contains "$scoop_git" '"version": "nightly"' "Scoop git manifest uses nightly version"
+assert_contains "$scoop_git" "millennium.exe" "Scoop git PATH millennium is Go exe"
 assert_contains "$scoop_git" "archive/refs/heads/main.zip" "Scoop git manifest uses main branch archive"
 assert_contains "$scoop_git" "millenium-helpers-main" "Scoop git manifest sets extract_dir for GitHub archive"
 assert_contains "$scoop_git" "post_install" "Scoop git manifest registers post_install hooks"
@@ -542,7 +521,6 @@ MAIN_PAYLOAD="${STANDALONE_MAIN}/src/millenium-helpers-main"
 mkdir -p "$MAIN_PAYLOAD/scripts" "$MAIN_PAYLOAD/completions" "$MAIN_PAYLOAD/man" "$MAIN_PAYLOAD/go/cmd/millennium"
 cp "$REPO_ROOT/install.sh" "$REPO_ROOT/VERSION" "$REPO_ROOT/LICENSE" "$MAIN_PAYLOAD/"
 cp "$REPO_ROOT/scripts/common.sh" \
-  "$REPO_ROOT/scripts/millennium.sh" \
   "$REPO_ROOT/scripts/millennium-diag.sh" \
   "$REPO_ROOT/scripts/millennium-mcp.py" \
   "$REPO_ROOT/scripts/millennium-mcp.sh" \

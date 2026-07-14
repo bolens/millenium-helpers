@@ -50,7 +50,6 @@ Describe "Windows Installer" {
 
             $expectedScripts = @(
                 "common.ps1",
-                "millennium.ps1",
                 "millennium-diag.ps1",
                 "millennium-purge.ps1",
                 "millennium-repair.ps1",
