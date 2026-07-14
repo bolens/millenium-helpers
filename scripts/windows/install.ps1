@@ -291,7 +291,8 @@ if ($DryRun) {
     return
 }
 
-if ((Test-Path -Path $binDir) -and -not $Force -and (Test-Path (Join-Path $binDir 'millennium.ps1'))) {
+$existingDispatch = (Test-Path (Join-Path $binDir 'millennium.ps1')) -or (Test-Path (Join-Path $binDir 'millennium.exe'))
+if ((Test-Path -Path $binDir) -and -not $Force -and $existingDispatch) {
     Log-Warn "Existing installation found at $binDir. Re-run with -Force to overwrite."
 }
 
@@ -333,6 +334,25 @@ foreach ($script in $scriptsToCopy) {
     $destFile = Join-Path -Path $binDir -ChildPath $script
     Copy-Item -Path $srcFile -Destination $destFile -Force
     Log-Info "Installed: $script"
+}
+
+# Prefer Go dispatcher when a release/checkout ships millennium.exe (Go-first on Windows).
+$exeCandidates = @(
+    (Join-Path -Path $srcDir -ChildPath 'millennium.exe'),
+    (Join-Path -Path $srcDir -ChildPath '..\..\bin\millennium.exe'),
+    (Join-Path -Path $srcDir -ChildPath 'bin\millennium.exe')
+)
+$installedExe = $false
+foreach ($exeSrc in $exeCandidates) {
+    if (Test-Path -LiteralPath $exeSrc -PathType Leaf) {
+        Copy-Item -Path $exeSrc -Destination (Join-Path -Path $binDir -ChildPath 'millennium.exe') -Force
+        Log-Info "Installed: millennium.exe (Go dispatcher)"
+        $installedExe = $true
+        break
+    }
+}
+if (-not $installedExe) {
+    Log-Info "No millennium.exe found; PATH millennium uses the PowerShell dispatcher."
 }
 
 # Install lib/*.ps1 modules (required by millennium-diag.ps1)
@@ -432,7 +452,13 @@ $wrappers = @(
 
 foreach ($wrapperName in $wrappers) {
     $wrapperPath = Join-Path -Path $binDir -ChildPath "$wrapperName.cmd"
-    $cmdContent = @"
+    if ($wrapperName -eq 'millennium' -and (Test-Path (Join-Path $binDir 'millennium.exe'))) {
+        $cmdContent = @"
+@echo off
+"%~dp0millennium.exe" %*
+"@
+    } else {
+        $cmdContent = @"
 @echo off
 where pwsh >nul 2>nul
 if %ERRORLEVEL% equ 0 (
@@ -441,6 +467,7 @@ if %ERRORLEVEL% equ 0 (
   powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0$wrapperName.ps1" %*
 )
 "@
+    }
     Set-Content -Path $wrapperPath -Value $cmdContent -Encoding ASCII
     Log-Info "Created wrapper command: $wrapperName"
 }
