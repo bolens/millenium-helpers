@@ -19,8 +19,8 @@ Project: [README](../README.md). Index: [README.md](README.md).
 | Man pages | [`man/`](../man/) | mandoc |
 | Packaging | Formula, Nix, Arch, Scoop/Winget, deb/rpm/Chocolatey | various |
 
-Rough size: ~12 Bash lib modules, ~11 PowerShell lib modules (schedule/theme/purge/diag/repair
-feature libs peeled; upgrade/shared + dispatcher remain); Go owns MCP stdio (~Python escape hatch), 8 man pages, 12
+Rough size: ~11 Bash lib modules, ~10 PowerShell lib modules (schedule/theme/purge/diag/repair/dispatcher
+feature libs peeled; upgrade/shared remain); Go owns PATH `millennium`, MCP stdio (~Python escape hatch), 8 man pages, 12
 completion files. CLI surface is gated by
 [`spec/cli-contract.yaml`](../spec/cli-contract.yaml); remaining dual-shell
 parity gaps are tracked in the matrix below
@@ -57,11 +57,9 @@ parity gaps are tracked in the matrix below
 
 ### Façade-only (should collapse)
 
-- Duplicated suggestion algorithms:
-  [`dispatcher.sh`](../scripts/lib/dispatcher.sh) /
-  [`Dispatcher.ps1`](../scripts/windows/lib/Dispatcher.ps1)
-- Dual help / completions / man / MCP schema maintained by hand
-- MCP argv mapping onto platform CLIs
+- Dual help / completions / man / MCP schema maintained by hand (command suites until Endgame C)
+- MCP argv mapping onto platform CLIs; Python hatch until Parallel retirement
+- Upgrade dual libs kept for `NeedsLegacy` install handoff (Parallel)
 
 ---
 
@@ -86,7 +84,7 @@ Tests: Bash behavioral/unit under `tests/` · Pester under `tests/windows/`.
 
 | Capability | Linux | Windows | Go end-state | Bash tests | Pester | Gap |
 | --- | --- | --- | --- | --- | --- | --- |
-| Dispatcher `millennium <cmd>` + suggestions | Y | Y | **Graduated** (Phase 6a) | Go `main_test` + `go.yml` dual-OS | Go `main_test` + `go.yml` | Bash/Pester dispatcher suites remain until peel-off |
+| Dispatcher `millennium <cmd>` + suggestions | Y | Y | **Graduated/peeled** (Phase 6a + Endgame B) | Go `main_test` + `go.yml` dual-OS | Go `main_test` + `go.yml` | Shell/PS entrypoints + dispatcher dual libs removed |
 | `version` / `-V` / root help | Y | Y | **Graduated** (Phase 6a) | Go + `go.yml` dual-OS | Go + `go.yml` | No dual libs to delete for meta |
 | `diag` (health report) | Y | Y | **Graduated** (6w smoke + 6z peel) | `test_diag` + Go thin-wrap | Go thin-wrap | Dual libs removed |
 | `diag doctor` / `--fix` | Y | Y | **Dry-run Graduated (6x)**; live Done | `test_diag` + Go | Go thin-wrap | Completions/package cleanup still advisory |
@@ -104,7 +102,7 @@ Tests: Bash behavioral/unit under `tests/` · Pester under `tests/windows/`.
 | `theme list --json` | Y | Y | **Graduated** (Phase 6g peel) | Go + `go.yml` dual-OS; Bash/Pester via thin-wrap | Go + `go.yml` | Long-name theme thin-wrap |
 | `upgrade --rollback list` | Y | Y | **Graduated** (Phase 6q) | `TestNativeUpgradeRollbackList` + dual-OS `go.yml` | Go + `go.yml` | Dual libs retained for install handoff |
 | `mcp` tools surface | Y | Y | **Graduated** (6aa `initialize` smoke); Python hatch retained | `test_mcp` | `millennium` / `millennium-mcp` | Hatch until explicit retirement |
-| Install / uninstall helpers | Y | Y | **Go required** PATH `millennium` / `.exe` (Endgame A) | `test_install` | `install` | `MILLENNIUM_INSTALL_DISPATCHER=shell` escape; uninstall clears both systemd scopes |
+| Install / uninstall helpers | Y | Y | **Go required** PATH `millennium` / `.exe` (Endgame A–B) | `test_install` | `install` | No shell/PS PATH dispatcher; uninstall clears both systemd scopes |
 | Install track / doctor sync | Y | Y | Native | `test_install_track` | `InstallTrack` | Shared meta JSON |
 | Completions | Y | Y | Generated from contract | `test_completions` | `completions` | Codegen later |
 | Man pages | Y | — | Generated / kept | `check-man` | — | Keep shipping on Unix |

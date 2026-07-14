@@ -22,15 +22,15 @@ and test parity** on Linux, macOS, and Windows.
 | **3 — Mutating core** | Done | Upgrade/repair/purge/diag (incl. follow) native |
 | **4 — Schedule + installers** | Done | Schedule + installers Go-first; legacy dual-scope systemd cleanup (4m) |
 | **5 — MCP + cleanup** | Done | Native Go MCP + `--register` + PATH twin; Python escape hatch remains |
-| **6 — Graduation** | In progress | Through **Endgame A**: installers hard-require Go; repair/meta/schedule/theme/purge/diag peeled; upgrade long-name thin-wrap; MCP graduated; **Endgame B–C** next |
+| **6 — Graduation** | In progress | Through **Endgame B**: shell/PS dispatcher entrypoints deleted; installers Go-only; repair/meta/schedule/theme/purge/diag peeled; upgrade dual libs + MCP hatch remain (**Endgame C** / Parallel next) |
 
 Force any native path back to shell/PS: `MILLENNIUM_LEGACY=1`.
 
 `make build` → `bin/millennium`. Unix `install.sh` and Windows `install.ps1`
-require that Go binary for PATH `millennium` / `millennium.exe` (explicit
-`MILLENNIUM_INSTALL_DISPATCHER=shell` escape only until Endgame B). Release CD
-embeds per-OS/arch Go binaries and versioned archives; builds wait on a green
-required-CI gate before packaging assets.
+require that Go binary for PATH `millennium` / `millennium.exe` (no shell/PS
+PATH dispatcher after Endgame B). Release CD embeds per-OS/arch Go binaries
+and versioned archives; builds wait on a green required-CI gate before
+packaging assets.
 
 ---
 
@@ -89,7 +89,7 @@ Work through this queue; check items off as PRs land and update this list.
 33. [x] **Phase 6aa MCP stdio graduated** — dual-OS `initialize` smoke; Python hatch retained until explicit retirement
 34. [x] **Phase 6ab–6ad repair** — native hooks/force-upgrade + Steam life + themes; dual-OS graduate; peel `repair_ops` / RepairOps
 35. [x] **Endgame A** — installer hard-require Go (no silent shell/PS PATH fallback)
-36. [ ] **Endgame B** — delete `dispatcher.sh` / `Dispatcher.ps1` + shell `millennium` entrypoints
+36. [x] **Endgame B** — delete `dispatcher.sh` / `Dispatcher.ps1` + shell `millennium` entrypoints
 37. [ ] **Endgame C** — suite retirement command-by-command
 38. [ ] **Parallel** — collapse upgrade `NeedsLegacy` install handoff; MCP Python hatch retirement
 
@@ -161,8 +161,8 @@ Work through this queue; check items off as PRs land and update this list.
 | Surface | Status | Notes |
 | --- | --- | --- |
 | MCP server | Graduated | dual-OS `initialize` smoke (Phase 6aa); Python hatch (`MILLENNIUM_MCP_PYTHON=1`) retained until explicit retirement |
-| Installers ship Go binary first | Done | Unix `install.sh` + Windows `install.ps1` hard-require Go (**Endgame A**); `MILLENNIUM_INSTALL_DISPATCHER=shell` escape until Endgame B |
-| Dual `.sh` / `.ps1` libs removed | Partial | Schedule + theme + purge + diag + repair feature libs deleted; upgrade/shared + dispatcher remain until install handoff / Endgame B |
+| Installers ship Go binary first | Done | Unix `install.sh` + Windows `install.ps1` hard-require Go (**Endgame A–B**); no shell/PS PATH dispatcher |
+| Dual `.sh` / `.ps1` libs removed | Partial | Schedule + theme + purge + diag + repair + dispatcher feature libs deleted; upgrade/shared remain until Parallel / Endgame C |
 
 ---
 
@@ -269,8 +269,8 @@ Shipped behavior:
 - [x] **Phase 6ac:** `repair --dry-run` (+ Linux mock live hooks) dual-OS Go smoke + graduated mark
 - [x] **Phase 6ad:** Peel repair — long-name → Go; delete `repair_ops.sh` / `RepairOps.ps1`
 - [x] **Endgame A:** installer hard-require Go (drop silent shell/PS PATH fallback)
-- [ ] **Endgame B:** delete `dispatcher.sh` / `Dispatcher.ps1` + shell `millennium` entrypoints
-- [ ] **Endgame C:** suite retirement command-by-command
+- [x] **Endgame B:** delete `dispatcher.sh` / `Dispatcher.ps1` + shell `millennium` / `millennium.ps1` entrypoints; packaging/install Go-only
+- [ ] **Endgame C:** suite retirement command-by-command (Done→Graduated smokes; retire Bash/Pester where Go supersedes)
 - [ ] Collapse upgrade `NeedsLegacy` install handoff; MCP Python hatch retirement (parallel)
 - [ ] Every contract feature implemented **once** in Go
 - [ ] Every [parity matrix](unification-audit.md#parity-matrix) row green / graduated

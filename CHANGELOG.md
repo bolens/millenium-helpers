@@ -56,6 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Phase 6aa MCP stdio graduated:** dual-OS `initialize` smoke; Python hatch retained
 - **Phase 6ab–6ad repair:** native hooks/force-upgrade + Steam life + themes; dual-OS graduate; peel `repair_ops` / RepairOps; Endgame A–C queued next
 - **Endgame A:** installers hard-require Go dispatcher (`bin/millennium` / `millennium.exe`); no silent shell/PS PATH fallback; `MILLENNIUM_INSTALL_DISPATCHER=shell` escape until Endgame B
+- **Endgame B:** delete `dispatcher.sh` / `Dispatcher.ps1` / `millennium.sh` / `millennium.ps1`; remove install shell escape; packaging/Scoop/Formula/Nix/deb/rpm/Chocolatey Go-only for PATH millennium; retire dispatcher test suites
 - **Phase 3c diag:** native `--json`, `logs` (non-follow), richer report probes, `doctor --dry-run` plan; live doctor / `--share` / `--follow` still legacy
 - **Phase 3d diag share:** native `--share` (home/user/token redaction + paste.rs upload); `--follow` and live doctor still legacy
 - **Phase 3e upgrade install:** native tar/zip extract + atomic install when writable (root / `MILLENNIUM_LIB_DIR` / Windows Steam); non-root Linux system path and rollback apply still legacy
