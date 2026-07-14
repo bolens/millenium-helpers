@@ -95,7 +95,7 @@ func dirLooksLikeScripts(dir string) bool {
 		return err == nil
 	}
 	// Unix entrypoints may be millenium-diag.sh in checkout or millennium-diag installed.
-	for _, name := range []string{"millennium-diag.sh", "millennium-diag", "millennium.sh"} {
+	for _, name := range []string{"millennium-diag.sh", "millennium-diag", "millennium-upgrade.sh"} {
 		if _, err := os.Stat(filepath.Join(dir, name)); err == nil {
 			return true
 		}

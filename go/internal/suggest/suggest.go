@@ -1,6 +1,6 @@
 package suggest
 
-// Closest mirrors scripts/lib/dispatcher.sh suggest_command scoring:
+// Closest mirrors historic scripts/lib/dispatcher.sh suggest_command scoring:
 // 4=prefix, 3=substring, else shared leading chars; subsequence scores 3−|len gap| (floor 2).
 // Returns "" when best_score < 2.
 func Closest(input string, cmds []string) string {

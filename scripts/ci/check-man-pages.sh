@@ -15,7 +15,8 @@ fail() {
 [[ -d scripts ]] || fail "scripts/ directory is missing"
 
 missing=0
-# Bash commands: scripts/millennium.sh and scripts/millennium-*.sh → matching man/*.1
+# Long-name Bash commands: scripts/millennium-*.sh → matching man/*.1
+# PATH millennium is the Go binary (man/millennium.1 required separately).
 while IFS= read -r -d '' script; do
   base="$(basename "$script" .sh)"
   page="man/${base}.1"
@@ -27,11 +28,16 @@ while IFS= read -r -d '' script; do
     echo "OK  $script → $page"
   fi
 done < <(
-  {
-    find scripts -maxdepth 1 -type f -name 'millennium.sh' -print0
-    find scripts -maxdepth 1 -type f -name 'millennium-*.sh' -print0
-  } | sort -z
+  find scripts -maxdepth 1 -type f -name 'millennium-*.sh' -print0 | sort -z
 )
+
+if [[ ! -f man/millennium.1 ]]; then
+  echo "::error file=man/millennium.1::missing man page for Go PATH dispatcher"
+  echo "error: missing man/millennium.1 for Go PATH dispatcher" >&2
+  missing=1
+else
+  echo "OK  bin/millennium → man/millennium.1"
+fi
 
 # MCP is a Python entrypoint with its own man page
 if [[ -f scripts/millennium-mcp.py ]]; then
@@ -47,6 +53,10 @@ fi
 # Orphan man pages (no matching script) — warn but do not fail
 while IFS= read -r -d '' page; do
   base="$(basename "$page" .1)"
+  # Go PATH dispatcher has no scripts/millennium.sh after Endgame B.
+  if [[ "$base" == "millennium" ]]; then
+    continue
+  fi
   if [[ ! -f "scripts/${base}.sh" && ! -f "scripts/${base}.py" ]]; then
     echo "::warning file=$page::orphan man page (no scripts/${base}.sh or .py)"
     echo "warning: orphan man page $page" >&2
