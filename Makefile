@@ -1,6 +1,6 @@
 # Makefile for Millennium Helpers local development automation
 
-.PHONY: setup test test-windows test-go build lint format check-all check-version check-man check-docs check-licensing check-winget check-packaging check-completions check-cli-contract sync-git-srcinfo sync-stable-srcinfo sync-bin-srcinfo bump-version test-debian test-ubuntu test-fedora test-all-distros
+.PHONY: setup test test-windows test-go build lint lint-go format check-all check-version check-man check-docs check-licensing check-winget check-packaging check-completions check-cli-contract sync-git-srcinfo sync-stable-srcinfo sync-bin-srcinfo bump-version test-debian test-ubuntu test-fedora test-all-distros
 
 GO ?= go
 CGO_ENABLED ?= 0
@@ -102,6 +102,14 @@ bump-version:
 	@test -n "$(VERSION)" || (echo "usage: make bump-version VERSION=X.Y.Z" >&2; exit 2)
 	bash scripts/ci/bump-version.sh "$(VERSION)"
 
+
+lint-go:
+	@command -v $(GO) >/dev/null 2>&1 || (echo "go not found; install Go 1.22+ (see CONTRIBUTING.md)." >&2; exit 1)
+	cd go && $(GO) vet ./...
+	@out="$$(cd go && find . -name '*.go' -print0 | xargs -0 gofmt -l)"; \
+		if [ -n "$$out" ]; then printf 'gofmt needed:\n%s\n' "$$out" >&2; exit 1; fi
+	bash scripts/ci/check-govulncheck.sh
+
 lint:
 	shellcheck *.sh scripts/*.sh scripts/lib/*.sh scripts/ci/*.sh tests/*.sh tests/lib/*.sh tests/unit/*.sh tests/behavioral/*.sh
 	ruff check scripts/ci/check-cli-contract.py
@@ -111,6 +119,7 @@ lint:
 	@$(MAKE) check-docs
 	@$(MAKE) check-completions
 	@$(MAKE) check-cli-contract
+	@$(MAKE) lint-go
 
 format:
 	ruff format scripts/ci/check-cli-contract.py

@@ -197,7 +197,7 @@ jobs:
           echo "Resolved tag=$TAG version=$VERSION"
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: "1.22.x"
 
