@@ -85,9 +85,9 @@ function Get-DiagObsoleteStatus {
             (Join-Path -Path $script:SteamPath -ChildPath 'millennium-upgrade-stable.ps1'),
             (Join-Path -Path $script:SteamPath -ChildPath 'millennium-upgrade-beta.ps1')
         )
-        # Leftover loader from pre-Diag.ps1 rename
+        # Leftover thin loader from pre-DiagReport.ps1 split
         if ($script:ScriptDir) {
-            $rawList += (Join-Path -Path $script:ScriptDir -ChildPath 'lib\DiagReport.ps1')
+            $rawList += (Join-Path -Path $script:ScriptDir -ChildPath 'lib\Diag.ps1')
         }
     }
 

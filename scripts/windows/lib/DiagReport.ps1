@@ -1,6 +1,6 @@
-# Diag.ps1 - Loader: dot-sources all diag modules and exposes the top-level API.
+# DiagReport.ps1 - Top-level diagnostic report API (checks, human output, JSON).
 #
-# Callers MUST set before sourcing or before calling Invoke-DiagnosticsChecks:
+# Callers MUST set before calling Invoke-DiagnosticsChecks:
 #   $script:DiagLibDir    - directory containing the lib/*.ps1 files
 #   $script:SteamPath     - resolved Steam installation path
 #   $script:MillenniumDir - SteamPath\millennium
@@ -9,35 +9,8 @@
 #   $script:Channel       - update channel (stable / beta)
 #   $script:VersionStr    - installed Millennium version string (or 'Not Installed')
 #   $script:ScriptDir     - directory containing the top-level *.ps1 scripts
-
-# Initialize shared path state with safe defaults.
-# $script:DiagLibDir must be set by the caller BEFORE sourcing this file.
-# The other path variables are set by the caller AFTER sourcing; initialize
-# them to empty defaults here so StrictMode doesn't throw in module-level code.
-$script:SteamPath     = ''
-$script:MillenniumDir = ''
-$script:WsockDll      = ''
-$script:SkinsDir      = ''
-$script:Channel       = 'stable'
-$script:VersionStr    = 'Not Installed'
-$script:ScriptDir     = ''
-
-# Dot-source all modules (order matters: dependencies first)
-. (Join-Path -Path $script:DiagLibDir -ChildPath 'DiagUi.ps1')
-. (Join-Path -Path $script:DiagLibDir -ChildPath 'DiagSteam.ps1')
-. (Join-Path -Path $script:DiagLibDir -ChildPath 'DiagEnv.ps1')
-. (Join-Path -Path $script:DiagLibDir -ChildPath 'DiagCompletions.ps1')
-. (Join-Path -Path $script:DiagLibDir -ChildPath 'DiagInstall.ps1')
-. (Join-Path -Path $script:DiagLibDir -ChildPath 'DiagRelease.ps1')
-. (Join-Path -Path $script:DiagLibDir -ChildPath 'DiagUpdates.ps1')
-. (Join-Path -Path $script:DiagLibDir -ChildPath 'DiagNextSteps.ps1')
-. (Join-Path -Path $script:DiagLibDir -ChildPath 'DiagDoctorCleanup.ps1')
-. (Join-Path -Path $script:DiagLibDir -ChildPath 'DiagDoctorRepair.ps1')
-. (Join-Path -Path $script:DiagLibDir -ChildPath 'DiagDoctor.ps1')
-
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
+#
+# Prerequisite Diag*.ps1 modules must already be dot-sourced by the caller.
 
 function Invoke-DiagnosticsChecks {
     # Populate all $script: state; no console output.

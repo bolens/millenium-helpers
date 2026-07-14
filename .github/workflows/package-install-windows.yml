@@ -93,9 +93,9 @@ jobs:
           $ErrorActionPreference = "Stop"
           $env:PATH += ";$HOME\scoop\shims"
           $prefix = scoop prefix millennium-helpers
-          $diagLib = Join-Path $prefix "scripts\windows\lib\Diag.ps1"
+          $diagLib = Join-Path $prefix "scripts\windows\lib\DiagReport.ps1"
           if (-not (Test-Path $diagLib)) {
-            throw "Missing modular diag library at $diagLib (scripts/windows/lib not packaged)"
+            throw "Missing modular diag report library at $diagLib (scripts/windows/lib not packaged)"
           }
           Write-Host "Diag lib OK: $diagLib"
           # Parse-check diag modules under Windows PowerShell 5.1 (catches UTF-8/ANSI issues).

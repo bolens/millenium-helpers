@@ -371,8 +371,10 @@ mock_cmd "steam" 'exit 0'
 
 # --- print_diag_next_steps() ---
 
-# shellcheck source=../../scripts/lib/diag.sh
-source "${REPO_ROOT}/scripts/lib/diag.sh"
+# shellcheck source=../../scripts/lib/diag_ui.sh
+source "${REPO_ROOT}/scripts/lib/diag_ui.sh"
+# shellcheck source=../../scripts/lib/diag_next_steps.sh
+source "${REPO_ROOT}/scripts/lib/diag_next_steps.sh"
 
 # Flags are read as globals inside print_diag_next_steps (not lexical locals).
 next_out=$(
@@ -638,13 +640,13 @@ force_color_out=$(
 )
 assert_not_equals "" "$force_color_out" "FORCE_COLOR enables ANSI color variables in logging.sh"
 
-# --- print_diag_item (diag.sh) ---
+# --- print_diag_item (diag_ui.sh) ---
 
 # shellcheck disable=SC2016
 diag_out=$(
   NO_COLOR=1 bash -c '
     source "'"${REPO_ROOT}"'/scripts/lib/logging.sh"
-    source "'"${REPO_ROOT}"'/scripts/lib/diag.sh"
+    source "'"${REPO_ROOT}"'/scripts/lib/diag_ui.sh"
     print_diag_item "ok" "Steam Client" "Running"
     print_diag_item "warn" "Hooks" "Missing"
     print_diag_item "error" "Binaries" "Corrupted"
@@ -661,7 +663,7 @@ assert_contains "$diag_out" "✘" "print_diag_item error uses the cross mark"
 diag_ascii=$(
   NO_COLOR=1 NO_UNICODE=1 bash -c '
     source "'"${REPO_ROOT}"'/scripts/lib/logging.sh"
-    source "'"${REPO_ROOT}"'/scripts/lib/diag.sh"
+    source "'"${REPO_ROOT}"'/scripts/lib/diag_ui.sh"
     print_diag_item "ok" "Steam Client" "Running"
     print_diag_item "warn" "Hooks" "Missing"
     print_diag_item "error" "Binaries" "Corrupted"
