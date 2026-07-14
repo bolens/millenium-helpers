@@ -33,11 +33,11 @@ test-windows:
 	@if ! command -v pwsh >/dev/null 2>&1; then \
 		echo "pwsh not found; skip Windows Pester suite (install PowerShell 7+)." >&2; \
 		exit 1; \
-	fi
-	@if ! pwsh -NoProfile -Command 'Get-Module -ListAvailable Pester | Select-Object -First 1' 2>/dev/null | grep -q .; then \
+	fi; \
+	if ! pwsh -NoProfile -Command 'if (Get-Command Invoke-Pester -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }'; then \
 		echo "Pester not installed; skip Windows Pester suite locally (CI Windows job still runs it)." >&2; \
 		exit 0; \
-	fi
+	fi; \
 	pwsh -NoProfile -Command "Invoke-Pester -Path tests/windows -Output Detailed"
 
 test-go:
