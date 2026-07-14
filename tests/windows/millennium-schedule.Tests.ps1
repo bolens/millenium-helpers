@@ -185,7 +185,7 @@ Describe "Schedule CLI Manager" {
             $out | Should -BeLike "*updater.log*"
             $out | Should -BeLike "*millennium-theme.ps1*"
             $out | Should -BeLike "*update*"
-            $out | Should -BeLike "*-Channel beta*"
+            $out | Should -BeLike "*-Channel*beta*"
         }
     }
 }

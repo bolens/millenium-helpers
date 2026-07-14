@@ -189,19 +189,24 @@ if [[ "$DRY_RUN" == "false" ]] && [[ "$ROLLBACK_TARGET" != "list" ]] && [[ "$(id
   exit 1
 fi
 
+
+# Feature modules (sourced by this entrypoint — no thin aggregator)
+_feat_lib="${_COMMON_LIB_DIR:-${SCRIPT_DIR}/lib}"
+if [[ ! -f "${_feat_lib}/upgrade_failure.sh" || ! -f "${_feat_lib}/upgrade_network.sh" ]]; then
+  _feat_lib="${SCRIPT_DIR}/lib"
+fi
+# shellcheck source=lib/upgrade_failure.sh
+source "${_feat_lib}/upgrade_failure.sh"
+# shellcheck source=lib/upgrade_network.sh
+source "${_feat_lib}/upgrade_network.sh"
+unset _feat_lib
+
 # --- Rollback Execution ---
 if [[ "$ROLLBACK" == "true" ]]; then
   perform_rollback "$ROLLBACK_TARGET"
   exit 0
 fi
 
-failure_handler() {
-  local exit_code=$?
-  if [[ "$DRY_RUN" == "false" ]]; then
-    send_notification "Millennium Update Failed" "An error occurred during the update process (exit code: $exit_code)."
-    print_upgrade_failure_tips "$exit_code"
-  fi
-}
 trap 'failure_handler' ERR
 
 RUNNING_USER="${SUDO_USER:-$(id -un)}"
@@ -239,22 +244,6 @@ if [[ -n "$LOCAL_FILE" ]]; then
   VER=$(tar -xOzf "$LOCAL_FILE" usr/lib/millennium/version.txt 2>/dev/null || echo "local")
   echo "Using local file: ${LOCAL_FILE} (Version: ${VER})"
 else
-  check_network() {
-    local retries=5
-    local wait_sec="${MOCK_NETWORK_WAIT_SEC:-10}"
-    echo "Checking network connectivity..."
-    for ((i=1; i<=retries; i++)); do
-      if curl -sIk "https://github.com" &>/dev/null; then
-        return 0
-      fi
-      echo "Network offline, retrying in ${wait_sec}s ($i/$retries)..." >&2
-      if [[ "$wait_sec" -gt 0 ]]; then
-        sleep "$wait_sec"
-      fi
-    done
-    echo "Error: Network is offline. Aborting." >&2
-    exit 1
-  }
   check_network
 
   if [[ "$CHANNEL" == "beta" ]]; then

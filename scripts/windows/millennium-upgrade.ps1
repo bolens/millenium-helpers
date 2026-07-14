@@ -143,73 +143,15 @@ try {
     exit 1
 }
 
-# --- Rollback logic ---
+# Feature modules (dot-sourced by this entrypoint — no thin aggregator)
+. (Join-Path -Path $ScriptDir -ChildPath 'lib\UpgradeRollback.ps1')
+
+# --- Rollback Execution ---
 if ($Rollback) {
-    if ($Rollback -eq "list") {
-        Log-Info "Available backups for rollback:"
-        if (Test-Path -Path $BackupDir) {
-            $backups = Get-ChildItem -Path $BackupDir -Directory | Sort-Object CreationTime -Descending
-            if ($backups.Count -eq 0) {
-                Write-Host "  No backups found."
-            } else {
-                foreach ($b in $backups) {
-                    Write-Host "  - $($b.Name) (Created: $($b.CreationTime))"
-                }
-            }
-        } else {
-            Write-Host "  No backups directory exists."
-        }
-        Write-Host ""
-        Write-Host "Apply one with: millennium upgrade -Rollback <id>"
-        exit 0
-    }
-
-    # Perform actual rollback
-    $targetBackup = Join-Path -Path $BackupDir -ChildPath $Rollback
-    if (!(Test-Path -Path $targetBackup)) {
-        Log-Error "Error: Backup '$Rollback' not found."
-        exit 1
-    }
-
-    if (Is-GameRunning) {
-        Log-Error "Error: A Steam game is currently running. Rollback aborted."
-        Write-Host "Close the running game, then re-run. Use -Yes to skip the Steam close prompt."
-        exit 1
-    }
-
-    # Gracefully close Steam
-    $steamRunning = $null -ne (Get-Process -Name "steam" -ErrorAction SilentlyContinue)
-    if ($steamRunning) {
-        Capture-SteamEnv
-        if (-not (Confirm-CloseSteam)) {
-            exit 1
-        }
-    }
-
-    Log-Info "Rolling back Millennium installation to $Rollback..."
-    Execute-Cmd -ScriptBlock {
-        # Delete current millennium folder and wsock32.dll
-        if (Test-Path -Path $MillenniumDir) {
-            Remove-Item -Path $MillenniumDir -Recurse -Force
-        }
-        if (Test-Path -Path $WsockDll) {
-            Remove-Item -Path $WsockDll -Force
-        }
-
-        # Restore from backup
-        Copy-Item -Path (Join-Path -Path $targetBackup -ChildPath "millennium") -Destination $MillenniumDir -Recurse -Force
-        Copy-Item -Path (Join-Path -Path $targetBackup -ChildPath "wsock32.dll") -Destination $WsockDll -Force
-
-        # Remove backup directory after successful rollback
-        Remove-Item -Path $targetBackup -Recurse -Force
-    } -Description "Rollback using backup $targetBackup"
-
-    Log-Info "Rollback completed successfully."
-    if ($steamRunning) {
-        Relaunch-Steam
-        Write-Host -ForegroundColor Green "Steam relaunched."
-    }
-    exit 0
+    $rb = Invoke-UpgradeRollback -RollbackTarget $Rollback -BackupDirArg $BackupDir `
+        -MillenniumDirArg $MillenniumDir -WsockDllArg $WsockDll
+    if ($rb -eq 'list' -or $rb -eq 'ok') { exit 0 }
+    exit 1
 }
 
 # --- Version Tag Resolution ---
