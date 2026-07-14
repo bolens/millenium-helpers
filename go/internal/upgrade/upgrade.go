@@ -243,8 +243,8 @@ Options:
 
 Native: --rollback list|apply (when writable), --dry-run (resolve/verify/rollback),
 remote download+SHA, --file SHA pre-check, live extract/install when writable
-(root / MILLENNIUM_LIB_DIR / Windows Steam path). Non-root Linux system install
-uses legacy (MILLENNIUM_LEGACY=1 forces all legacy).
+(root / MILLENNIUM_LIB_DIR / Windows Steam). On Linux, non-root downloads verify
+then re-exec via sudo for install/rollback (MILLENNIUM_LEGACY=1 forces legacy).
 `)
 		return true, 0
 	}

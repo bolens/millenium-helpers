@@ -42,10 +42,18 @@ func CanNativeInstall() bool {
 	if runtime.GOOS == "windows" {
 		return theme.FindSteamDir() != ""
 	}
-	if os.Getenv("MOCK_LIB_DIR") != "" || os.Getenv("MILLENNIUM_LIB_DIR") != "" {
-		return true
+	lib := LibDir()
+	if err := os.MkdirAll(lib, 0o755); err != nil {
+		return false
 	}
-	return os.Geteuid() == 0
+	f, err := os.CreateTemp(lib, ".millennium-writetest-*")
+	if err != nil {
+		return false
+	}
+	name := f.Name()
+	_ = f.Close()
+	_ = os.Remove(name)
+	return true
 }
 
 // InstallRoot returns the millenium directory that receives binaries.

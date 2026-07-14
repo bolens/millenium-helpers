@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -32,8 +31,8 @@ func run(args []string) int {
 
 Native: version/help, schedule config/status/enable/disable, theme mutate,
 diag report/--json/--share/logs/doctor --dry-run, upgrade download+SHA+install
-when writable + --rollback apply when writable, purge (Unix live), repair user-path.
-Non-root Linux system install, live doctor, schedule setup, --follow still legacy
+(+ sudo handoff on Linux) and --rollback when writable, purge (Unix live),
+repair user-path. Live doctor, schedule setup, --follow still legacy
 (see docs/unification-roadmap.md).
 
 Force legacy for a native path: MILLENNIUM_LEGACY=1`,
@@ -236,7 +235,7 @@ func newDiagCmd() *cobra.Command {
 func newUpgradeCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:                "upgrade",
-		Short:              "Upgrade Millennium (download+SHA+install+rollback when writable)",
+		Short:              "Upgrade Millennium (download+SHA+install+rollback; Linux sudo handoff)",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
 			if useLegacy() {
@@ -259,9 +258,18 @@ func newUpgradeCmd() *cobra.Command {
 				os.Exit(code)
 				return nil
 			}
+			if opts.Rollback {
+				if handled, code := upgrade.TrySudoRollbackHandoff(opts); handled {
+					os.Exit(code)
+					return nil
+				}
+				os.Exit(legacy.RunLegacy("upgrade", a))
+				return nil
+			}
 			archivePath := opts.LocalFile
 			ver := ""
-			if !opts.Rollback && opts.LocalFile == "" {
+			removeArchive := false
+			if opts.LocalFile == "" {
 				path, sha, tag, err := upgrade.FetchRemoteArchive(opts)
 				if err != nil {
 					fmt.Fprintln(os.Stderr, err.Error())
@@ -272,16 +280,23 @@ func newUpgradeCmd() *cobra.Command {
 					os.Exit(0)
 					return nil
 				}
-				defer os.Remove(path)
 				archivePath = path
 				ver = strings.TrimPrefix(tag, "v")
 				opts.LocalFile = path
 				opts.LocalSHA = sha
-				if !opts.Quiet && !upgrade.CanNativeInstall() {
-					fmt.Printf("Downloaded and verified %s; handing off to legacy installer…\n", filepath.Base(path))
-				}
+				removeArchive = true
 			}
 			if handled, code := upgrade.TryNativeInstall(opts, archivePath, ver); handled {
+				if removeArchive {
+					_ = os.Remove(archivePath)
+				}
+				os.Exit(code)
+				return nil
+			}
+			if handled, code := upgrade.TrySudoInstallHandoff(opts, archivePath, opts.LocalSHA); handled {
+				if removeArchive {
+					_ = os.Remove(archivePath)
+				}
 				os.Exit(code)
 				return nil
 			}
@@ -290,12 +305,15 @@ func newUpgradeCmd() *cobra.Command {
 				legacyArgs = upgrade.ArgsForLocalFile(a, archivePath, opts.LocalSHA)
 			} else if archivePath != "" && opts.InsecureSkipVerify {
 				legacyArgs = upgrade.ArgsForLocalFile(a, archivePath, opts.LocalSHA)
-				// ArgsForLocalFile always adds sha — if empty still need insecure
 				if opts.LocalSHA == "" {
 					legacyArgs = append(filterFileArgs(a), "--file", archivePath, "--insecure-skip-verify")
 				}
 			}
-			os.Exit(legacy.RunLegacy("upgrade", legacyArgs))
+			code = legacy.RunLegacy("upgrade", legacyArgs)
+			if removeArchive {
+				_ = os.Remove(archivePath)
+			}
+			os.Exit(code)
 			return nil
 		},
 	}
