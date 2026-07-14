@@ -308,7 +308,6 @@ SHARED_MODULES=(
   "lib/repair_ops.sh:scripts/lib/repair_ops.sh"
   "lib/schedule_cron.sh:scripts/lib/schedule_cron.sh"
   "lib/schedule_hooks.sh:scripts/lib/schedule_hooks.sh"
-  "lib/schedule_status.sh:scripts/lib/schedule_status.sh"
   "lib/schedule_timer.sh:scripts/lib/schedule_timer.sh"
   "lib/schedule_wizard.sh:scripts/lib/schedule_wizard.sh"
   "lib/steam.sh:scripts/lib/steam.sh"

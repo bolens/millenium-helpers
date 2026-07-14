@@ -150,7 +150,6 @@ if ($Version -or $Command -eq "version" -or $Command -eq "--version" -or $Comman
 $script:ScheduleLibDir = Join-Path -Path $ScriptDir -ChildPath 'lib'
 . (Join-Path -Path $script:ScheduleLibDir -ChildPath 'ScheduleEnable.ps1')
 . (Join-Path -Path $script:ScheduleLibDir -ChildPath 'ScheduleDisable.ps1')
-. (Join-Path -Path $script:ScheduleLibDir -ChildPath 'ScheduleStatus.ps1')
 . (Join-Path -Path $script:ScheduleLibDir -ChildPath 'ScheduleWizard.ps1')
 
 function Resolve-MillenniumGo {
@@ -171,12 +170,33 @@ function Resolve-MillenniumGo {
     return $null
 }
 
-function Invoke-ScheduleConfigViaGo {
+function Invoke-ScheduleViaGo {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Feature,
+        [Parameter(Mandatory = $true)]
+        [string[]]$GoArgs
+    )
     $goBin = Resolve-MillenniumGo
     if (-not $goBin) {
-        Write-Error "schedule config requires the Go millennium dispatcher (not found). Install millennium-helpers or run 'make build'."
+        Write-Error "schedule $Feature requires the Go millennium dispatcher (not found). Install millennium-helpers or run 'make build'."
         exit 1
     }
+    $prevLegacy = $env:MILLENNIUM_LEGACY
+    $env:MILLENNIUM_LEGACY = '0'
+    try {
+        & $goBin @GoArgs
+        exit $LASTEXITCODE
+    } finally {
+        if ($null -eq $prevLegacy) {
+            Remove-Item Env:MILLENNIUM_LEGACY -ErrorAction SilentlyContinue
+        } else {
+            $env:MILLENNIUM_LEGACY = $prevLegacy
+        }
+    }
+}
+
+function Invoke-ScheduleConfigViaGo {
     $goArgs = [System.Collections.Generic.List[string]]::new()
     [void]$goArgs.Add('schedule')
     [void]$goArgs.Add('config')
@@ -188,18 +208,15 @@ function Invoke-ScheduleConfigViaGo {
     if ($goArgs.Count -eq 2) {
         [void]$goArgs.Add('list')
     }
-    $prevLegacy = $env:MILLENNIUM_LEGACY
-    $env:MILLENNIUM_LEGACY = '0'
-    try {
-        & $goBin @($goArgs.ToArray())
-        exit $LASTEXITCODE
-    } finally {
-        if ($null -eq $prevLegacy) {
-            Remove-Item Env:MILLENNIUM_LEGACY -ErrorAction SilentlyContinue
-        } else {
-            $env:MILLENNIUM_LEGACY = $prevLegacy
-        }
-    }
+    Invoke-ScheduleViaGo -Feature 'config' -GoArgs @($goArgs.ToArray())
+}
+
+function Invoke-ScheduleStatusViaGo {
+    $goArgs = [System.Collections.Generic.List[string]]::new()
+    [void]$goArgs.Add('schedule')
+    [void]$goArgs.Add('status')
+    if ($Quiet) { [void]$goArgs.Add('--quiet') }
+    Invoke-ScheduleViaGo -Feature 'status' -GoArgs @($goArgs.ToArray())
 }
 
 # --- Dispatcher ---
@@ -212,7 +229,7 @@ switch ($Command) {
         Disable-Task
     }
     "status" {
-        Show-Status
+        Invoke-ScheduleStatusViaGo
     }
     "setup" {
         Run-Setup-Wizard

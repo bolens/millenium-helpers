@@ -466,6 +466,8 @@ assert_file_exists "${REPO_ROOT}/scripts/windows/lib/DiagReport.ps1" "scripts/wi
 assert_file_exists "${REPO_ROOT}/scripts/windows/lib/DiagInstall.ps1" "scripts/windows/lib/DiagInstall.ps1 exists for release packaging"
 assert_file_exists "${REPO_ROOT}/scripts/windows/lib/Logging.ps1" "scripts/windows/lib/Logging.ps1 exists for release packaging"
 assert_file_exists "${REPO_ROOT}/scripts/windows/lib/ScheduleEnable.ps1" "scripts/windows/lib/ScheduleEnable.ps1 exists for release packaging"
+assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/ScheduleStatus.ps1" "ScheduleStatus.ps1 peeled (status thin-wraps to Go)"
+assert_file_not_exists "${REPO_ROOT}/scripts/lib/schedule_status.sh" "schedule_status.sh peeled (status thin-wraps to Go)"
 assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/ThemeOps.ps1" "ThemeOps.ps1 peeled (theme thin-wraps to Go)"
 assert_file_exists "${REPO_ROOT}/scripts/windows/lib/UpgradeRollback.ps1" "scripts/windows/lib/UpgradeRollback.ps1 exists for release packaging"
 assert_file_exists "${REPO_ROOT}/scripts/windows/lib/RepairOps.ps1" "scripts/windows/lib/RepairOps.ps1 exists for release packaging"

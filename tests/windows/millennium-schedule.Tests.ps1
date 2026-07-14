@@ -6,6 +6,26 @@ Describe "Schedule CLI Manager" {
             New-PSDrive -Name HKCU -PSProvider FileSystem -Root ([System.IO.Path]::GetTempPath()) -ErrorAction SilentlyContinue | Out-Null
             New-PSDrive -Name C -PSProvider FileSystem -Root ([System.IO.Path]::GetTempPath()) -ErrorAction SilentlyContinue | Out-Null
         }
+        # Phase 6c/6i: config + status thin-wrap to Go.
+        $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
+        $binDir = Join-Path $repoRoot "bin"
+        New-Item -ItemType Directory -Force -Path $binDir | Out-Null
+        $outExe = Join-Path $binDir "millennium.exe"
+        if (-not (Test-Path -LiteralPath $outExe)) {
+            $go = Get-Command go -ErrorAction SilentlyContinue
+            if (-not $go) {
+                throw "Go toolchain required for schedule config/status thin-wrap tests"
+            }
+            $ver = [System.IO.File]::ReadAllText((Join-Path $repoRoot "VERSION")).Trim()
+            Push-Location (Join-Path $repoRoot "go")
+            try {
+                & go build "-ldflags=-X github.com/bolens/millenium-helpers/internal/version.Version=$ver" `
+                    -o $outExe ./cmd/millennium
+                if ($LASTEXITCODE -ne 0) { throw "go build failed for millennium.exe" }
+            } finally {
+                Pop-Location
+            }
+        }
         function Register-ScheduledTask { }
         function Get-ScheduledTask { }
         function New-ScheduledTaskAction { }
@@ -56,21 +76,12 @@ Describe "Schedule CLI Manager" {
         }
     }
 
-    Context "status when registered" {
-        It "Prints scheduler summary with disable CTA" {
-            Mock Get-ScheduledTask {
-                return [pscustomobject]@{
-                    TaskName = "MillenniumUpdate"
-                    TaskPath = "\"
-                    State = "Ready"
-                    Actions = @([pscustomobject]@{ Execute = "powershell.exe"; Arguments = "-File upgrade.ps1 -Channel beta" })
-                }
-            }
+    Context "status via Go thin-wrap" {
+        It "Reports disabled scheduler when MillenniumUpdate task is absent" {
             $scheduleScript = Join-Path -Path $winScriptDir -ChildPath "millennium-schedule.ps1"
             $out = (& $scheduleScript status *>&1) | Out-String
-            $out | Should -BeLike "*Scheduler summary*"
-            $out | Should -BeLike "*millennium schedule disable*"
-            $out | Should -BeLike "*Channel*"
+            $out | Should -BeLike "*Scheduler disabled*"
+            $out | Should -BeLike "*millennium schedule enable*"
         }
     }
 
@@ -109,42 +120,7 @@ Describe "Schedule CLI Manager" {
         }
     }
 
-    Context "Status CTA" {
-        BeforeAll {
-            Mock Get-ScheduledTask { return $null }
-        }
-
-        It "Prints enable command when task is not registered" {
-            $scheduleScript = Join-Path -Path $winScriptDir -ChildPath "millennium-schedule.ps1"
-            $out = (& $scheduleScript status *>&1) | Out-String
-            $out | Should -BeLike "*Scheduler disabled*"
-            $out | Should -BeLike "*millennium schedule enable*"
-        }
-    }
-
     Context "config get/set/list" {
-        BeforeAll {
-            # Phase 6c: config thin-wraps to Go millennium.exe.
-            $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
-            $binDir = Join-Path $repoRoot "bin"
-            New-Item -ItemType Directory -Force -Path $binDir | Out-Null
-            $outExe = Join-Path $binDir "millennium.exe"
-            if (-not (Test-Path -LiteralPath $outExe)) {
-                $go = Get-Command go -ErrorAction SilentlyContinue
-                if (-not $go) {
-                    throw "Go toolchain required for schedule config thin-wrap tests"
-                }
-                $ver = (Get-Content -LiteralPath (Join-Path $repoRoot "VERSION") -Raw).Trim()
-                Push-Location (Join-Path $repoRoot "go")
-                try {
-                    & go build "-ldflags=-X github.com/bolens/millenium-helpers/internal/version.Version=$ver" `
-                        -o $outExe ./cmd/millennium
-                    if ($LASTEXITCODE -ne 0) { throw "go build failed for millennium.exe" }
-                } finally {
-                    Pop-Location
-                }
-            }
-        }
         BeforeEach {
             $script:tempConfigDir = Join-Path ([System.IO.Path]::GetTempPath()) ("mh_sched_cfg_" + [guid]::NewGuid().ToString("n"))
             $env:LOCALAPPDATA = $script:tempConfigDir

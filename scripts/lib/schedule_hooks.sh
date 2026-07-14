@@ -1,6 +1,25 @@
 # shellcheck shell=bash
 # Schedule helpers for millennium-schedule.sh (schedule_hooks.sh)
 
+# Moved from schedule_status.sh (Phase 6i peel) — pre-update still needs this.
+rotate_logs() {
+  local state_dir="${XDG_STATE_HOME:-$USER_HOME/.local/state}/millennium-helpers"
+  local log_file="${state_dir}/updater.log"
+  [[ -f "$log_file" ]] || return 0
+
+  local max_size=$((5 * 1024 * 1024)) # 5MB
+  local file_size
+  file_size=$(get_file_size "$log_file")
+
+  if [[ "$file_size" -gt "$max_size" ]]; then
+    [[ -f "${log_file}.2" ]] && mv -f "${log_file}.2" "${log_file}.3"
+    [[ -f "${log_file}.1" ]] && mv -f "${log_file}.1" "${log_file}.2"
+    cp -p "$log_file" "${log_file}.1"
+    : > "$log_file"
+    echo "Log file rotated (exceeded 5MB limit)." > "$log_file"
+  fi
+}
+
 pre_update() {
   if [[ "${MILLENNIUM_SCHEDULER:-}" != "1" ]]; then
     echo -e "${RED}Error: pre-update is only for the scheduler. Do not invoke it manually.${NC}" >&2

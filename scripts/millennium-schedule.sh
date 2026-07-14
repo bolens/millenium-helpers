@@ -168,16 +168,13 @@ fi
 source "${_sched_lib}/schedule_timer.sh"
 # shellcheck source=lib/schedule_cron.sh
 source "${_sched_lib}/schedule_cron.sh"
-# shellcheck source=lib/schedule_status.sh
-source "${_sched_lib}/schedule_status.sh"
 # shellcheck source=lib/schedule_hooks.sh
 source "${_sched_lib}/schedule_hooks.sh"
 # shellcheck source=lib/schedule_wizard.sh
 source "${_sched_lib}/schedule_wizard.sh"
 unset _sched_lib
 
-# Phase 6c: config is Go-only (thin-wrap). Prefer checkout/install binary over PATH
-# mocks used by the test suite.
+# Prefer checkout/install binary over PATH mocks used by the test suite.
 resolve_millennium_go() {
   local cand
   for cand in \
@@ -193,13 +190,19 @@ resolve_millennium_go() {
   return 1
 }
 
-run_schedule_config_via_go() {
+run_schedule_via_go() {
   local go_bin
   if ! go_bin="$(resolve_millennium_go)"; then
-    echo -e "${RED}Error: schedule config requires the Go millennium dispatcher (not found).${NC}" >&2
+    echo -e "${RED}Error: schedule ${1} requires the Go millennium dispatcher (not found).${NC}" >&2
     echo "Install millennium-helpers or run 'make build' from a checkout." >&2
     exit 1
   fi
+  shift
+  # Avoid re-entering this long-name helper if MILLENNIUM_LEGACY is set.
+  MILLENNIUM_LEGACY=0 exec "$go_bin" "$@"
+}
+
+run_schedule_config_via_go() {
   local -a go_args=(schedule config)
   if [[ "$DRY_RUN" == "true" ]]; then
     go_args+=(--dry-run)
@@ -214,8 +217,15 @@ run_schedule_config_via_go() {
   if [[ -n "${CONFIG_VALUE:-}" ]]; then
     go_args+=("$CONFIG_VALUE")
   fi
-  # Avoid re-entering this long-name helper if MILLENNIUM_LEGACY is set.
-  MILLENNIUM_LEGACY=0 exec "$go_bin" "${go_args[@]}"
+  run_schedule_via_go config "${go_args[@]}"
+}
+
+run_schedule_status_via_go() {
+  local -a go_args=(schedule status)
+  if [[ "${QUIET:-false}" == "true" ]]; then
+    go_args+=(--quiet)
+  fi
+  run_schedule_via_go status "${go_args[@]}"
 }
 
 case "$COMMAND" in
@@ -231,7 +241,7 @@ case "$COMMAND" in
     disable_cron
     ;;
   status)
-    show_status
+    run_schedule_status_via_go
     ;;
   setup)
     run_setup_wizard

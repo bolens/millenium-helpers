@@ -132,6 +132,17 @@ func newScheduleCmd() *cobra.Command {
 				os.Exit(config.RunCLI(rest))
 				return nil
 			}
+			// Graduated (Phase 6i): status always stays native — ignore MILLENNIUM_LEGACY.
+			if isScheduleStatus(a) {
+				opts, err := schedule.ParseArgs(a)
+				if err != nil {
+					fmt.Fprintln(os.Stderr, err.Error())
+					os.Exit(1)
+					return nil
+				}
+				os.Exit(schedule.RunCLI(opts))
+				return nil
+			}
 			if useLegacy() {
 				os.Exit(legacy.RunLegacy("schedule", a))
 				return nil
@@ -155,6 +166,20 @@ func newScheduleCmd() *cobra.Command {
 			return nil
 		},
 	}
+}
+
+// isScheduleStatus reports whether argv is a status-only schedule invocation.
+func isScheduleStatus(a []string) bool {
+	hasStatus := false
+	for _, tok := range a {
+		switch tok {
+		case "status":
+			hasStatus = true
+		case "config", "enable", "disable", "setup", "pre-update", "post-update":
+			return false
+		}
+	}
+	return hasStatus
 }
 
 // takeConfigArgs returns (argsAfterConfig, true) when the schedule invocation is a config action.
