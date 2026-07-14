@@ -51,7 +51,7 @@ fi
 # Orphan man pages (no matching script) — warn but do not fail
 while IFS= read -r -d '' page; do
   base="$(basename "$page" .1)"
-  # Go PATH dispatcher has no scripts/millennium.sh after Endgame B.
+  # PATH millennium is the Go binary (no scripts/millennium.sh).
   if [[ "$base" == "millennium" ]]; then
     continue
   fi

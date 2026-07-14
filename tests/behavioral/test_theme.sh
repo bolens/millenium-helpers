@@ -14,7 +14,7 @@ source "${TEST_DIR}/../lib/mocks.sh"
 THEME_SH="${REPO_ROOT}/scripts/millennium-theme.sh"
 GO_BIN="${REPO_ROOT}/bin/millennium"
 
-# Phase 6e: long-name list thin-wraps to Go — ensure a dispatcher exists.
+# Long-name list thin-wraps to Go — ensure a dispatcher exists.
 if [[ ! -x "$GO_BIN" ]]; then
   make -C "$REPO_ROOT" build
 fi
@@ -30,7 +30,7 @@ echo -e "${YELLOW}=== Behavioral tests: millennium-theme.sh ===${NC}"
 
 # Fake HOME with a fake native Steam directory so STEAM_DIR resolution
 # doesn't depend on (or pollute) the real machine's Steam install.
-# Pin MILLENNIUM_SKINS_DIR so the Go list thin-wrap (Phase 6e) matches
+# Pin MILLENNIUM_SKINS_DIR so the Go list thin-wrap matches
 # mutate paths even if the environment inherited another override.
 FAKE_HOME=$(mktemp -d)
 FAKE_SKINS="${FAKE_HOME}/.local/share/Steam/steamui/skins"

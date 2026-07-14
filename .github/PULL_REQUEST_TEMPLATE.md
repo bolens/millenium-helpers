@@ -10,10 +10,10 @@
 - [ ] Docs updated if user-facing (keep [docs/README.md](docs/README.md) + Related footers in sync; `make check-docs`)
 - [ ] Packaging manifests touched only when intentional (Formula / Scoop / Winget / Nix / PKGBUILD)
 
-### Graduating a command to Go (if applicable)
+### Moving a command fully to Go (if applicable)
 - [ ] Dual-OS automated tests pass for the Go path
 - [ ] Parity matrix row updated in [docs/unification-audit.md](docs/unification-audit.md)
-- [ ] Graduation rule satisfied ([docs/unification-roadmap.md](docs/unification-roadmap.md))
+- [ ] Definition of done satisfied ([docs/unification-roadmap.md](docs/unification-roadmap.md))
 
 ## Intentional platform gaps
 <!-- Delete if none. Only contract-marked OS-only knobs (e.g. schedule --cron). -->

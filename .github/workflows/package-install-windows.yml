@@ -99,7 +99,7 @@ jobs:
           }
           Write-Host "Shared lib OK: $loggingLib"
           if (Test-Path (Join-Path $prefix "scripts\windows\lib\UpgradeRollback.ps1")) {
-            throw "UpgradeRollback.ps1 should be peeled from packaging"
+            throw "UpgradeRollback.ps1 must not ship in packaging"
           }
           Get-ChildItem (Join-Path $prefix "scripts\windows\lib\*.ps1") | ForEach-Object {
             $errs = $null

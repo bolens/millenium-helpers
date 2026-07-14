@@ -245,7 +245,7 @@ cp "$REPO_ROOT/scripts/common.sh" \
 cp -r "$REPO_ROOT/scripts/lib" "$MOCK_PAYLOAD/scripts/"
 cp -r "$REPO_ROOT/completions/." "$MOCK_PAYLOAD/completions/" 2>/dev/null || true
 cp -r "$REPO_ROOT/man/." "$MOCK_PAYLOAD/man/" 2>/dev/null || true
-# Endgame A: release archives ship bin/millennium
+# Release archives ship bin/millennium
 if [[ -x "${REPO_ROOT}/bin/millennium" ]]; then
   cp "${REPO_ROOT}/bin/millennium" "$MOCK_PAYLOAD/bin/millennium"
 else
@@ -369,7 +369,7 @@ rc=$?
 assert_success "$rc" "installed millennium-diag --help works against prefix lib"
 assert_contains "$out" "Usage:" "installed millennium-diag --help prints usage"
 
-# Go dispatcher required for PATH millennium (Endgame A/B)
+# Go dispatcher required for PATH millennium
 if command -v go >/dev/null 2>&1 && [[ -d "${REPO_ROOT}/go/cmd/millennium" ]]; then
   first_line=$(head -n 1 "${PREFIX_BIN}/millennium" 2>/dev/null || true)
   assert_not_contains "$first_line" "#!" "isolated install places Go binary as millennium (not shell shebang)"

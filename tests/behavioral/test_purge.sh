@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Behavioral tests for scripts/millennium-purge.sh (thin-wrap → Go, Phase 6r)
+# Behavioral tests for scripts/millennium-purge.sh (thin-wrap → Go)
 set -uo pipefail
 
 TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -34,7 +34,7 @@ make setup
 # ShellCheck + ruff + VERSION/man/completions gates
 make lint
 
-# Go strangler unit tests + dispatcher smokes (also in check-all)
+# Go unit tests + dispatcher smokes (also in check-all)
 make test-go
 
 # Full local Bash unit + behavioral suite

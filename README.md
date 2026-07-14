@@ -293,7 +293,7 @@ Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) (including **[d
 make setup         # install shellcheck + ruff
 make check-all     # lint + full Bash test suite (lint includes check-version + cli-contract)
 make test-windows  # Pester (requires PowerShell 7+ / pwsh)
-make build         # Go strangler CLI → bin/millennium (requires Go)
+make build         # Go CLI → bin/millennium (requires Go)
 make test-go       # Go unit + dispatcher smokes
 # make bump-version VERSION=X.Y.Z   # pre-tag packaging version bump
 # make check-version               # VERSION ↔ packaging manifests
