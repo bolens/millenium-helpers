@@ -215,7 +215,7 @@ SCRIPTS=(
 )
 
 # Ensure Go dispatcher binary exists under bin/millennium when possible.
-# MILLENNIUM_INSTALL_DISPATCHER=shell forces the Bash millenium.sh fallback.
+# MILLENNIUM_INSTALL_DISPATCHER=shell forces the Bash millenium.sh escape (explicit only).
 ensure_go_dispatcher() {
   local out="${SCRIPT_DIR}/bin/millennium"
   if [[ "${MILLENNIUM_INSTALL_DISPATCHER:-}" == "shell" ]]; then
@@ -241,23 +241,29 @@ ensure_go_dispatcher() {
   return 1
 }
 
-# Prints absolute path of file to install as TARGET_DIR/millennium, and sets
-# DISPATCHER_KIND to "go" or "shell".
+die_go_dispatcher_required() {
+  echo -e "${RED}Error: Go dispatcher (bin/millennium) is required to install PATH millennium.${NC}" >&2
+  echo -e "Install a Go toolchain and re-run, or use a release archive that ships bin/millennium." >&2
+  echo -e "Temporary escape (until dispatcher retirement): MILLENNIUM_INSTALL_DISPATCHER=shell" >&2
+  exit 1
+}
+
+# Sets DISPATCHER_KIND + DISPATCHER_SRC for TARGET_DIR/millennium.
+# Returns 1 when Go is required but missing.
 resolve_millennium_dispatcher() {
   local go_bin="${SCRIPT_DIR}/bin/millennium"
   local shell_src="${SCRIPT_DIR}/scripts/millennium.sh"
   if [[ "${MILLENNIUM_INSTALL_DISPATCHER:-}" == "shell" ]]; then
     DISPATCHER_KIND="shell"
-    echo "$shell_src"
+    DISPATCHER_SRC="$shell_src"
     return 0
   fi
   if ensure_go_dispatcher && { [[ -x "$go_bin" ]] || [[ "${DRY_RUN:-false}" == "true" ]]; }; then
     DISPATCHER_KIND="go"
-    echo "$go_bin"
+    DISPATCHER_SRC="$go_bin"
     return 0
   fi
-  DISPATCHER_KIND="shell"
-  echo "$shell_src"
+  return 1
 }
 
 show_help() {
@@ -291,10 +297,9 @@ same release), not independent signing. Prefer package managers when available.
 Note: Millennium client update channel (stable|beta|main) is separate; configure
 via 'millennium schedule' / 'millennium upgrade --channel'.
 
-Note: When a Go toolchain (or prebuilt bin/millennium) is available, install
-places the Go strangler as PATH 'millennium' and still installs long-name
-shell helpers for MCP, timers, and sudoers. Set MILLENNIUM_INSTALL_DISPATCHER=shell
-to force the Bash dispatcher.
+Note: Install requires the Go dispatcher (prebuilt bin/millennium or build via
+make build). Long-name shell helpers remain for MCP, timers, and sudoers until
+dispatcher retirement. Temporary escape: MILLENNIUM_INSTALL_DISPATCHER=shell.
 EOF
 }
 
@@ -704,7 +709,11 @@ install_scripts() {
 
     if [[ "$dest" == "millennium" ]]; then
       DISPATCHER_KIND=""
-      src_path="$(resolve_millennium_dispatcher)"
+      DISPATCHER_SRC=""
+      if ! resolve_millennium_dispatcher; then
+        die_go_dispatcher_required
+      fi
+      src_path="${DISPATCHER_SRC}"
       kind="${DISPATCHER_KIND:-shell}"
       if [[ "$kind" == "go" && "${DRY_RUN:-false}" == "true" && ! -x "${SCRIPT_DIR}/bin/millennium" ]]; then
         printf "Installing: %s... " "$dest_path"
@@ -714,14 +723,18 @@ install_scripts() {
       if [[ "$kind" == "go" ]]; then
         echo -e "${BLUE}Using Go dispatcher for PATH millennium${NC}"
       else
-        echo -e "${YELLOW}Go dispatcher unavailable; installing Bash millennium.sh fallback${NC}"
+        echo -e "${YELLOW}MILLENNIUM_INSTALL_DISPATCHER=shell: installing Bash millennium.sh${NC}"
       fi
     fi
 
     if [[ "$dest" == "millennium-mcp" ]]; then
       DISPATCHER_KIND=""
       # Prefer installing the same Go binary under the MCP client PATH name.
-      if [[ "${MILLENNIUM_INSTALL_DISPATCHER:-}" != "shell" ]] && ensure_go_dispatcher && [[ -x "${SCRIPT_DIR}/bin/millennium" || "${DRY_RUN:-false}" == "true" ]]; then
+      if [[ "${MILLENNIUM_INSTALL_DISPATCHER:-}" == "shell" ]]; then
+        src_path="${SCRIPT_DIR}/scripts/millennium-mcp.sh"
+        kind="shell"
+        echo -e "${YELLOW}MILLENNIUM_INSTALL_DISPATCHER=shell: installing millennium-mcp.sh shim${NC}"
+      elif ensure_go_dispatcher && [[ -x "${SCRIPT_DIR}/bin/millennium" || "${DRY_RUN:-false}" == "true" ]]; then
         src_path="${SCRIPT_DIR}/bin/millennium"
         kind="go"
         if [[ "${DRY_RUN:-false}" == "true" && ! -x "${SCRIPT_DIR}/bin/millennium" ]]; then
@@ -731,9 +744,7 @@ install_scripts() {
         fi
         echo -e "${BLUE}Using Go dispatcher for PATH millennium-mcp${NC}"
       else
-        src_path="${SCRIPT_DIR}/scripts/millennium-mcp.sh"
-        kind="shell"
-        echo -e "${YELLOW}Go dispatcher unavailable; installing millennium-mcp.sh shim${NC}"
+        die_go_dispatcher_required
       fi
     fi
 

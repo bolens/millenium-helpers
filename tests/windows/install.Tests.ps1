@@ -1,8 +1,31 @@
 Describe "Windows Installer" {
     BeforeAll {
         $winScriptDir = Join-Path -Path $PSScriptRoot -ChildPath "..\..\scripts\windows"
+        $repoRoot = Join-Path -Path $PSScriptRoot -ChildPath "..\.."
         $global:DryRun = $true
         $env:PSTESTS = "true"
+
+        # Endgame A: installer requires millennium.exe (stub or build for the suite).
+        $binDir = Join-Path -Path $repoRoot -ChildPath "bin"
+        if (!(Test-Path -LiteralPath $binDir)) {
+            New-Item -ItemType Directory -Force -Path $binDir | Out-Null
+        }
+        $outExe = Join-Path -Path $binDir -ChildPath "millennium.exe"
+        if (!(Test-Path -LiteralPath $outExe -PathType Leaf)) {
+            $goCmd = Get-Command go -ErrorAction SilentlyContinue
+            $goMain = Join-Path -Path $repoRoot -ChildPath "go\cmd\millennium"
+            if ($goCmd -and (Test-Path -LiteralPath $goMain)) {
+                Push-Location (Join-Path -Path $repoRoot -ChildPath "go")
+                try {
+                    & go build -o $outExe ./cmd/millennium
+                    if ($LASTEXITCODE -ne 0) { throw "go build failed for millennium.exe" }
+                } finally {
+                    Pop-Location
+                }
+            } else {
+                Set-Content -Path $outExe -Value "millennium-stub" -Encoding ASCII
+            }
+        }
     }
 
     It "Successfully runs installation and uninstallation routines" {
@@ -22,6 +45,8 @@ Describe "Windows Installer" {
             $expectedBinDir = Join-Path -Path $expectedInstallDir -ChildPath "bin"
 
             Test-Path -Path $expectedBinDir | Should -Be $true
+            Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium.exe") | Should -Be $true
+            $installOut | Should -BeLike "*millennium.exe (Go dispatcher)*"
 
             $expectedScripts = @(
                 "common.ps1",
@@ -50,17 +75,19 @@ Describe "Windows Installer" {
             foreach ($wrapper in $expectedWrappers) {
                 Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath $wrapper) | Should -Be $true
             }
+            (Get-Content -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium.cmd") -Raw) | Should -BeLike "*millennium.exe*"
 
             Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium-mcp.ps1") | Should -Be $true
             Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium-mcp.py") | Should -Be $true
             Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium-helpers.completion.ps1") | Should -Be $true
 
-            # Shared Windows libs remain for upgrade/repair handoff (diag peeled).
+            # Shared Windows libs remain for upgrade handoff (schedule/theme/purge/diag/repair peeled).
             $expectedLibDir = Join-Path -Path $expectedBinDir -ChildPath "lib"
             Test-Path -Path $expectedLibDir | Should -Be $true
             Test-Path -Path (Join-Path -Path $expectedLibDir -ChildPath "UpgradeRollback.ps1") | Should -Be $true
             Test-Path -Path (Join-Path -Path $expectedLibDir -ChildPath "Logging.ps1") | Should -Be $true
             Test-Path -Path (Join-Path -Path $expectedLibDir -ChildPath "DiagReport.ps1") | Should -Be $false
+            Test-Path -Path (Join-Path -Path $expectedLibDir -ChildPath "RepairOps.ps1") | Should -Be $false
 
             $pwshProfile = Join-Path -Path $tempHome -ChildPath "Documents\PowerShell\Microsoft.PowerShell_profile.ps1"
             $winProfile = Join-Path -Path $tempHome -ChildPath "Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1"

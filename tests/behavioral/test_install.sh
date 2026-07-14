@@ -37,6 +37,7 @@ assert_contains "$out" "install" "install.sh --help documents the install comman
 assert_contains "$out" "uninstall" "install.sh --help documents the uninstall command"
 assert_contains "$out" "--track" "install.sh --help documents --track"
 assert_contains "$out" "--tag" "install.sh --help documents --tag"
+assert_contains "$out" "Go dispatcher" "install.sh --help documents Go dispatcher requirement"
 
 out=$(bash "$INSTALL_SH" --version 2>&1)
 rc=$?
@@ -225,10 +226,10 @@ STANDALONE_DIR=$(mktemp -d)
 # Copy install.sh to the temp directory WITHOUT any other files
 cp "$INSTALL_SH" "$STANDALONE_DIR/install.sh"
 
-# Build a trimmed-layout mock tarball (matches release.yml Linux payload)
+# Build a trimmed-layout mock tarball (matches release.yml Linux payload + Go binary)
 MOCK_TARBALL="${STANDALONE_DIR}/mock_repo.tar.gz"
 MOCK_PAYLOAD="${STANDALONE_DIR}/payload"
-mkdir -p "$MOCK_PAYLOAD/scripts" "$MOCK_PAYLOAD/completions" "$MOCK_PAYLOAD/man"
+mkdir -p "$MOCK_PAYLOAD/scripts" "$MOCK_PAYLOAD/completions" "$MOCK_PAYLOAD/man" "$MOCK_PAYLOAD/bin"
 cp "$REPO_ROOT/install.sh" "$REPO_ROOT/VERSION" "$REPO_ROOT/LICENSE" "$MOCK_PAYLOAD/"
 cp "$REPO_ROOT/README.md" "$MOCK_PAYLOAD/" 2>/dev/null || true
 cp "$REPO_ROOT/scripts/common.sh" \
@@ -245,6 +246,13 @@ cp "$REPO_ROOT/scripts/common.sh" \
 cp -r "$REPO_ROOT/scripts/lib" "$MOCK_PAYLOAD/scripts/"
 cp -r "$REPO_ROOT/completions/." "$MOCK_PAYLOAD/completions/" 2>/dev/null || true
 cp -r "$REPO_ROOT/man/." "$MOCK_PAYLOAD/man/" 2>/dev/null || true
+# Endgame A: release archives ship bin/millennium
+if [[ -x "${REPO_ROOT}/bin/millennium" ]]; then
+  cp "${REPO_ROOT}/bin/millennium" "$MOCK_PAYLOAD/bin/millennium"
+else
+  printf '#!/bin/sh\necho millennium stub\n' >"$MOCK_PAYLOAD/bin/millennium"
+  chmod +x "$MOCK_PAYLOAD/bin/millennium"
+fi
 tar -czf "$MOCK_TARBALL" -C "$MOCK_PAYLOAD" .
 
 # Mock curl: GitHub latest-release API, archive, or .sha256 sidecar
@@ -362,7 +370,7 @@ rc=$?
 assert_success "$rc" "installed millennium-diag --help works against prefix lib"
 assert_contains "$out" "Usage:" "installed millennium-diag --help prints usage"
 
-# Go-first dispatcher when toolchain or prebuilt binary is available
+# Go dispatcher required for PATH millennium (Endgame A)
 if command -v go >/dev/null 2>&1 && [[ -d "${REPO_ROOT}/go/cmd/millennium" ]]; then
   first_line=$(head -n 1 "${PREFIX_BIN}/millennium" 2>/dev/null || true)
   assert_not_contains "$first_line" "#!" "isolated install places Go binary as millennium (not shell shebang)"
@@ -372,8 +380,63 @@ if command -v go >/dev/null 2>&1 && [[ -d "${REPO_ROOT}/go/cmd/millennium" ]]; t
   assert_contains "$out" "millennium" "installed Go millennium version mentions millennium"
 else
   first_line=$(head -n 1 "${PREFIX_BIN}/millennium" 2>/dev/null || true)
-  assert_contains "$first_line" "#!" "without Go toolchain, millenium.sh fallback is installed"
+  assert_not_contains "$first_line" "#!" "isolated install uses prebuilt Go millennium when toolchain absent"
 fi
+
+# Explicit shell escape still installs Bash dispatcher (temporary until Endgame B)
+PREFIX_SHELL=$(mktemp -d)
+mkdir -p "${PREFIX_SHELL}/bin" "${PREFIX_SHELL}/bash" "${PREFIX_SHELL}/zsh" "${PREFIX_SHELL}/fish" "${PREFIX_SHELL}/nu" "${PREFIX_SHELL}/man" "${PREFIX_SHELL}/sudoers.d"
+out=$(
+  TARGET_DIR="${PREFIX_SHELL}/bin" \
+  MILLENNIUM_LIB_DIR="${PREFIX_SHELL}/lib" \
+  MILLENNIUM_BASH_COMPLETION_DIR="${PREFIX_SHELL}/bash" \
+  MILLENNIUM_ZSH_COMPLETION_DIR="${PREFIX_SHELL}/zsh" \
+  MILLENNIUM_FISH_COMPLETION_DIR="${PREFIX_SHELL}/fish" \
+  MILLENNIUM_NUSHELL_COMPLETION_DIR="${PREFIX_SHELL}/nu" \
+  MILLENNIUM_MAN_DIR="${PREFIX_SHELL}/man" \
+  MOCK_SUDOERS_FILE="${PREFIX_SHELL}/sudoers.d/millennium-helpers" \
+  SUDO_USER="installtestuser" \
+  FORCE_WIZARD=false \
+  MILLENNIUM_INSTALL_DISPATCHER=shell \
+  bash "$INSTALL_SH" install 2>&1
+)
+rc=$?
+assert_success "$rc" "install.sh with MILLENNIUM_INSTALL_DISPATCHER=shell exits 0"
+assert_contains "$out" "MILLENNIUM_INSTALL_DISPATCHER=shell" "shell escape announces itself"
+first_line=$(head -n 1 "${PREFIX_SHELL}/bin/millennium" 2>/dev/null || true)
+assert_contains "$first_line" "#!" "shell escape installs Bash millennium.sh"
+rm -rf "$PREFIX_SHELL"
+
+# Hard-require: no Go on PATH and no prebuilt binary → install fails (no silent fallback)
+PREFIX_FAIL=$(mktemp -d)
+mkdir -p "${PREFIX_FAIL}/bin" "${PREFIX_FAIL}/bash" "${PREFIX_FAIL}/zsh" "${PREFIX_FAIL}/fish" "${PREFIX_FAIL}/nu" "${PREFIX_FAIL}/man" "${PREFIX_FAIL}/sudoers.d"
+GO_HIDE=""
+if [[ -x "${REPO_ROOT}/bin/millennium" ]]; then
+  GO_HIDE="${REPO_ROOT}/bin/millennium.endgame_a_hide"
+  mv "${REPO_ROOT}/bin/millennium" "$GO_HIDE"
+fi
+mock_cmd "go" "echo 'go: mocked unavailable' >&2; exit 127"
+out=$(
+  TARGET_DIR="${PREFIX_FAIL}/bin" \
+  MILLENNIUM_LIB_DIR="${PREFIX_FAIL}/lib" \
+  MILLENNIUM_BASH_COMPLETION_DIR="${PREFIX_FAIL}/bash" \
+  MILLENNIUM_ZSH_COMPLETION_DIR="${PREFIX_FAIL}/zsh" \
+  MILLENNIUM_FISH_COMPLETION_DIR="${PREFIX_FAIL}/fish" \
+  MILLENNIUM_NUSHELL_COMPLETION_DIR="${PREFIX_FAIL}/nu" \
+  MILLENNIUM_MAN_DIR="${PREFIX_FAIL}/man" \
+  MOCK_SUDOERS_FILE="${PREFIX_FAIL}/sudoers.d/millennium-helpers" \
+  SUDO_USER="installtestuser" \
+  FORCE_WIZARD=false \
+  bash "$INSTALL_SH" install 2>&1
+)
+rc=$?
+rm -f "${MOCK_BIN}/go"
+if [[ -n "$GO_HIDE" ]]; then
+  mv "$GO_HIDE" "${REPO_ROOT}/bin/millennium"
+fi
+assert_failure "$rc" "install.sh without Go toolchain or bin/millennium exits non-zero"
+assert_contains "$out" "Go dispatcher" "hard-require error names Go dispatcher"
+rm -rf "$PREFIX_FAIL"
 
 out=$(
   TARGET_DIR="$PREFIX_BIN" \
@@ -474,9 +537,9 @@ assert_success "$rc" "install.sh install --dry-run --tag v2.5.0 exits 0"
 STANDALONE_MAIN=$(mktemp -d)
 cp "$INSTALL_SH" "$STANDALONE_MAIN/install.sh"
 MOCK_MAIN_TGZ="${STANDALONE_MAIN}/main.tar.gz"
-# Source-archive layout: top-level millenium-helpers-main/
+# Source-archive layout: top-level millenium-helpers-main/ (tip-of-main builds Go)
 MAIN_PAYLOAD="${STANDALONE_MAIN}/src/millenium-helpers-main"
-mkdir -p "$MAIN_PAYLOAD/scripts" "$MAIN_PAYLOAD/completions" "$MAIN_PAYLOAD/man"
+mkdir -p "$MAIN_PAYLOAD/scripts" "$MAIN_PAYLOAD/completions" "$MAIN_PAYLOAD/man" "$MAIN_PAYLOAD/go/cmd/millennium"
 cp "$REPO_ROOT/install.sh" "$REPO_ROOT/VERSION" "$REPO_ROOT/LICENSE" "$MAIN_PAYLOAD/"
 cp "$REPO_ROOT/scripts/common.sh" \
   "$REPO_ROOT/scripts/millennium.sh" \
@@ -492,6 +555,8 @@ cp "$REPO_ROOT/scripts/common.sh" \
 cp -r "$REPO_ROOT/scripts/lib" "$MAIN_PAYLOAD/scripts/"
 cp -r "$REPO_ROOT/completions/." "$MAIN_PAYLOAD/completions/" 2>/dev/null || true
 cp -r "$REPO_ROOT/man/." "$MAIN_PAYLOAD/man/" 2>/dev/null || true
+# Dry-run treats presence of go/cmd/millennium + host go as buildable
+: >"$MAIN_PAYLOAD/go/cmd/millennium/.keep"
 tar -czf "$MOCK_MAIN_TGZ" -C "${STANDALONE_MAIN}/src" millenium-helpers-main
 
 # shellcheck disable=SC2016
