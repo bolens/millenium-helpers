@@ -49,10 +49,9 @@ are strangler progress, not automatic permission to delete `.sh` / `.ps1`.
 
 Work through this queue; check items off as PRs land and update this list.
 
-1. [ ] **`schedule setup`** — interactive wizard → native enable (honor system-vs-user / `--cron`)
-2. [ ] **Installers → Go binary** — `install.sh` / Windows / packaging ship `millennium` first
-3. [ ] **MCP → Go CLI** — Phase 5; retire Python dispatcher
-4. [ ] **Graduate commands** — dual-OS CI + delete dual libs per [graduation rule](#command-graduation-rule)
+1. [ ] **Installers → Go binary** — `install.sh` / Windows / packaging ship `millennium` first
+2. [ ] **MCP → Go CLI** — Phase 5; retire Python dispatcher
+3. [ ] **Graduate commands** — dual-OS CI + delete dual libs per [graduation rule](#command-graduation-rule)
 
 ---
 
@@ -75,7 +74,7 @@ Work through this queue; check items off as PRs land and update this list.
 | `enable\|disable` live (Linux systemd) | Done | Prefers **system**; `--system` / `--user`; migrates other scope — see [policy](#systemd-system-vs-user) |
 | `enable\|disable` live (macOS / cron) | Done | launchd / crontab |
 | `enable\|disable` live (Windows) | Done | Admin Task Scheduler via PowerShell register/unregister |
-| `setup` | Legacy | Interactive wizard; should honor system-vs-user policy |
+| `setup` | Done | Interactive wizard; writes config; optional native enable (`--system`/`--user`/`--cron`) |
 | `pre-update` / `post-update` | Done | Unix/macOS only; `MILLENNIUM_SCHEDULER=1` gate; Steam close/relaunch + diag verify |
 
 ### `theme`
@@ -168,7 +167,7 @@ with `MILLENNIUM_LEGACY=1` only as escape hatch.
 - [x] Theme install/update/remove (companion slice)
 - [x] Windows schedule enable/disable live (Task Scheduler)
 - [x] `pre-update` / `post-update` (Unix/macOS; Steam capture/close/relaunch + diag)
-- [ ] `schedule setup` wizard → native enable (honor system-vs-user / `--cron`)
+- [x] `schedule setup` wizard → native enable (honors `--system` / `--user` / `--cron`)
 - [ ] Go-first install/uninstall packaging smokes (both OSes)
 - [ ] Doctor / purge / uninstall: clean both systemd scopes (when still on legacy paths)
 
