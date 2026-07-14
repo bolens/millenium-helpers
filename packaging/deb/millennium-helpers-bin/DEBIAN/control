@@ -1,0 +1,13 @@
+Package: millennium-helpers-bin
+Version: 2.6.2
+Section: utils
+Priority: optional
+Architecture: amd64
+Depends: bash, curl, unzip, python3
+Maintainer: bolens <https://github.com/bolens>
+Homepage: https://github.com/bolens/millenium-helpers
+Description: Millennium helpers (prebuilt release assets)
+ Scripts/MCP from the published Linux release tarball; installs
+ bin/millennium when the Go dispatcher is embedded in the asset.
+Provides: millennium-helpers
+Conflicts: millennium-helpers, millennium-helpers-git

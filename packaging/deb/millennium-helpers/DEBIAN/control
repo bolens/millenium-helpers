@@ -1,0 +1,13 @@
+Package: millennium-helpers
+Version: 2.6.2
+Section: utils
+Priority: optional
+Architecture: amd64
+Depends: bash, curl, unzip, python3
+Build-Depends: golang-go | golang, make
+Maintainer: bolens <https://github.com/bolens>
+Homepage: https://github.com/bolens/millenium-helpers
+Description: Millennium helpers (from source)
+ Go strangler CLI plus shell helpers and MCP for managing Millennium.
+ Built from the tagged source tree (make build).
+Conflicts: millennium-helpers-bin, millennium-helpers-git
