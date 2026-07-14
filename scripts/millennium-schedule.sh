@@ -30,7 +30,7 @@ fi
 USER_HOME="$(get_user_home "$RUNNING_USER")"
 
 
-# Vars below are consumed by sourced schedule_* / repair_ops feature modules.
+# Vars below kept for install/doctor status probes that source this entrypoint.
 # shellcheck disable=SC2034
 SERVICE_NAME="millennium-update.service"
 # shellcheck disable=SC2034
@@ -159,17 +159,6 @@ if [[ "$DRY_RUN" == "true" ]]; then
   echo -e "${YELLOW}=== DRY RUN MODE: No changes will be made ===${NC}"
 fi
 
-# Feature modules (sourced by this entrypoint — no thin aggregator)
-_sched_lib="${_COMMON_LIB_DIR:-${SCRIPT_DIR}/lib}"
-if [[ ! -f "${_sched_lib}/schedule_hooks.sh" ]]; then
-  _sched_lib="${SCRIPT_DIR}/lib"
-fi
-# shellcheck source=lib/schedule_hooks.sh
-source "${_sched_lib}/schedule_hooks.sh"
-# shellcheck source=lib/schedule_wizard.sh
-source "${_sched_lib}/schedule_wizard.sh"
-unset _sched_lib
-
 # Prefer checkout/install binary over PATH mocks used by the test suite.
 resolve_millennium_go() {
   local cand
@@ -184,17 +173,6 @@ resolve_millennium_go() {
     fi
   done
   return 1
-}
-
-# Non-exec invoke for wizard optional-enable (must return to the wizard).
-invoke_millennium_go() {
-  local go_bin
-  if ! go_bin="$(resolve_millennium_go)"; then
-    echo -e "${RED}Error: schedule requires the Go millennium dispatcher (not found).${NC}" >&2
-    echo "Install millennium-helpers or run 'make build' from a checkout." >&2
-    return 1
-  fi
-  MILLENNIUM_LEGACY=0 "$go_bin" "$@"
 }
 
 # Exec-style for terminal commands (never returns).
@@ -263,6 +241,29 @@ run_schedule_disable_via_go() {
   exec_schedule_via_go disable "${go_args[@]}"
 }
 
+run_schedule_setup_via_go() {
+  local -a go_args=(schedule setup)
+  if [[ "$DRY_RUN" == "true" ]]; then
+    go_args+=(--dry-run)
+  fi
+  if [[ "${QUIET:-false}" == "true" ]]; then
+    go_args+=(--quiet)
+  fi
+  if [[ "$USE_CRON" == "true" ]]; then
+    go_args+=(--cron)
+  fi
+  exec_schedule_via_go setup "${go_args[@]}"
+}
+
+run_schedule_hooks_via_go() {
+  local action="$1"
+  local -a go_args=(schedule "$action")
+  if [[ "${QUIET:-false}" == "true" ]]; then
+    go_args+=(--quiet)
+  fi
+  exec_schedule_via_go "$action" "${go_args[@]}"
+}
+
 case "$COMMAND" in
   enable)
     run_schedule_enable_via_go
@@ -274,13 +275,13 @@ case "$COMMAND" in
     run_schedule_status_via_go
     ;;
   setup)
-    run_setup_wizard
+    run_schedule_setup_via_go
     ;;
   pre-update)
-    pre_update
+    run_schedule_hooks_via_go pre-update
     ;;
   post-update)
-    post_update
+    run_schedule_hooks_via_go post-update
     ;;
   config)
     run_schedule_config_via_go

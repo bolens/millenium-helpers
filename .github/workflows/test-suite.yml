@@ -202,7 +202,8 @@ jobs:
         if: >-
           matrix.suite == 'tests/behavioral/test_schedule.sh' ||
           matrix.suite == 'tests/behavioral/test_theme.sh' ||
-          matrix.suite == 'tests/behavioral/test_mcp.sh'
+          matrix.suite == 'tests/behavioral/test_mcp.sh' ||
+          matrix.suite == 'tests/behavioral/test_install.sh'
         uses: actions/setup-go@v6
         with:
           go-version-file: go/go.mod
@@ -218,7 +219,8 @@ jobs:
         if: >-
           matrix.suite == 'tests/behavioral/test_schedule.sh' ||
           matrix.suite == 'tests/behavioral/test_theme.sh' ||
-          matrix.suite == 'tests/behavioral/test_mcp.sh'
+          matrix.suite == 'tests/behavioral/test_mcp.sh' ||
+          matrix.suite == 'tests/behavioral/test_install.sh'
         shell: bash
         run: |
           set -euo pipefail
@@ -318,7 +320,8 @@ jobs:
         if: >-
           matrix.suite == 'tests/behavioral/test_schedule.sh' ||
           matrix.suite == 'tests/behavioral/test_theme.sh' ||
-          matrix.suite == 'tests/behavioral/test_mcp.sh'
+          matrix.suite == 'tests/behavioral/test_mcp.sh' ||
+          matrix.suite == 'tests/behavioral/test_install.sh'
         uses: actions/setup-go@v6
         with:
           go-version-file: go/go.mod

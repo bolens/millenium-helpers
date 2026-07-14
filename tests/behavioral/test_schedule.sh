@@ -26,17 +26,14 @@ fi
 setup_mock_bin
 trap teardown_mock_bin EXIT
 
+# Isolate Steam relaunch state under MILLENNIUM_STATE_DIR (Go ignores getent home).
+FAKE_STATE_DIR=$(mktemp -d)
+export MILLENNIUM_STATE_DIR="$FAKE_STATE_DIR"
+EXPECTED_STATE_FILE="${FAKE_STATE_DIR}/relaunch.env"
+
 # Isolate systemd user unit files and state dir in a throwaway HOME/XDG dir
 FAKE_XDG_CONFIG=$(mktemp -d)
 export XDG_CONFIG_HOME="$FAKE_XDG_CONFIG"
-
-# millennium-schedule.sh stores the Steam relaunch state file under the
-# running user's home directory (resolved via getent), not /tmp. Point
-# getent's reported home at a throwaway temp dir so post-update tests don't
-# read/write the real developer $HOME.
-FAKE_RELAUNCH_HOME=$(mktemp -d)
-mock_cmd "getent" 'echo "faketestuser:x:1000:1000::'"${FAKE_RELAUNCH_HOME}"':/bin/bash"'
-EXPECTED_STATE_FILE="${FAKE_RELAUNCH_HOME}/.local/state/millennium-helpers/relaunch.env"
 
 # Fast stand-ins for the other helper scripts (avoid invoking real, slow tools)
 mock_cmd "millennium-diag" 'exit 0'
@@ -193,11 +190,6 @@ assert_contains "$out" "failed verification" "millennium-schedule post-update ex
 mock_cmd "millennium-diag" 'exit 0'
 
 # --- post-update with saved state must not launch host Steam under TEST_SUITE_RUN ---
-# Ownership checks require the state file owner to match RUNNING_USER (the
-# invoking user). Point getent's home at the fake dir while keeping the
-# username as the real user so _is_safe_relaunch_state_file accepts it.
-real_user="$(id -un)"
-mock_cmd "getent" 'echo "'"${real_user}"':x:1000:1000::'"${FAKE_RELAUNCH_HOME}"':/bin/bash"'
 mkdir -p "$(dirname "$EXPECTED_STATE_FILE")"
 cat > "$EXPECTED_STATE_FILE" << EOF
 export DISPLAY=':1'
@@ -312,11 +304,9 @@ assert_equals "14" "$val_age" "setup wizard preserves backup_max_age_days when r
 
 rm -f "${MOCK_BIN}/systemctl"
 rm -rf "${TEST_CONFIG_DIR}"
-unset XDG_CONFIG_HOME
-
-unset XDG_CONFIG_HOME
+unset XDG_CONFIG_HOME MILLENNIUM_STATE_DIR
 
 rm -rf "$FAKE_XDG_CONFIG"
-rm -rf "$FAKE_RELAUNCH_HOME"
+rm -rf "$FAKE_STATE_DIR"
 
 print_summary

@@ -146,9 +146,7 @@ if ($Version -or $Command -eq "version" -or $Command -eq "--version" -or $Comman
     exit 0
 }
 
-# Feature modules (dot-sourced by this entrypoint — no thin aggregator)
-$script:ScheduleLibDir = Join-Path -Path $ScriptDir -ChildPath 'lib'
-. (Join-Path -Path $script:ScheduleLibDir -ChildPath 'ScheduleWizard.ps1')
+# Phase 6n/6o: all schedule commands thin-wrap to Go (no feature dual libs).
 
 function Resolve-MillenniumGo {
     $candidates = @(
@@ -168,7 +166,6 @@ function Resolve-MillenniumGo {
     return $null
 }
 
-# Non-exiting invoke for wizard optional-enable.
 function Invoke-MillenniumGo {
     param(
         [Parameter(Mandatory = $true)]
@@ -250,6 +247,15 @@ function Invoke-ScheduleDisableViaGo {
     Invoke-ScheduleViaGo -Feature 'disable' -GoArgs @($goArgs.ToArray())
 }
 
+function Invoke-ScheduleSetupViaGo {
+    $goArgs = [System.Collections.Generic.List[string]]::new()
+    [void]$goArgs.Add('schedule')
+    [void]$goArgs.Add('setup')
+    if ($DryRun -or $global:DryRun) { [void]$goArgs.Add('--dry-run') }
+    if ($Quiet) { [void]$goArgs.Add('--quiet') }
+    Invoke-ScheduleViaGo -Feature 'setup' -GoArgs @($goArgs.ToArray())
+}
+
 # --- Dispatcher ---
 
 switch ($Command) {
@@ -263,7 +269,7 @@ switch ($Command) {
         Invoke-ScheduleStatusViaGo
     }
     "setup" {
-        Run-Setup-Wizard
+        Invoke-ScheduleSetupViaGo
     }
     "config" {
         Invoke-ScheduleConfigViaGo

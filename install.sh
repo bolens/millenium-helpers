@@ -647,8 +647,8 @@ uninstall_man_pages() {
 
 run_wizard() {
   local user_name="${SUDO_USER:-$(id -un)}"
-  local dry_flag=""
-  [[ "${DRY_RUN}" == "true" ]] && dry_flag="-d"
+  local -a setup_args=()
+  [[ "${DRY_RUN}" == "true" ]] && setup_args+=(--dry-run)
 
   # Normal installs skip the wizard when the effective user is root (no real
   # desktop user to configure). Tests and FORCE_WIZARD=true still run it.
@@ -656,10 +656,28 @@ run_wizard() {
     return 0
   fi
 
+  # Phase 6n: setup is Go-native — build dispatcher when missing (even under dry-run).
+  local go_bin="${SCRIPT_DIR}/bin/millennium"
+  if [[ ! -x "$go_bin" ]] && [[ "${MILLENNIUM_INSTALL_DISPATCHER:-}" != "shell" ]] \
+    && [[ -d "${SCRIPT_DIR}/go/cmd/millennium" ]] && command -v go >/dev/null 2>&1; then
+    echo -e "${BLUE}Building Go dispatcher for setup wizard (bin/millennium)...${NC}"
+    make -C "$SCRIPT_DIR" build >/dev/null || true
+  fi
+
+  if [[ -x "$go_bin" ]]; then
+    if [[ "$user_name" != "root" && "$(id -u)" -eq 0 ]]; then
+      runuser -l "$user_name" -c "FORCE_WIZARD=true MILLENNIUM_LEGACY=0 $(printf '%q' "$go_bin") schedule setup $(printf '%q ' "${setup_args[@]}")"
+    else
+      FORCE_WIZARD=true MILLENNIUM_LEGACY=0 "$go_bin" schedule setup "${setup_args[@]}"
+    fi
+    return $?
+  fi
+
+  # Fallback long-name helper (also requires Go after Phase 6n peel).
   if [[ "$user_name" != "root" && "$(id -u)" -eq 0 ]]; then
-    runuser -l "$user_name" -c "FORCE_WIZARD=true bash ${SCRIPT_DIR}/scripts/millennium-schedule.sh setup ${dry_flag}"
+    runuser -l "$user_name" -c "FORCE_WIZARD=true bash ${SCRIPT_DIR}/scripts/millennium-schedule.sh setup ${setup_args[*]}"
   else
-    FORCE_WIZARD=true bash "${SCRIPT_DIR}/scripts/millennium-schedule.sh" setup ${dry_flag}
+    FORCE_WIZARD=true bash "${SCRIPT_DIR}/scripts/millennium-schedule.sh" setup "${setup_args[@]}"
   fi
 }
 

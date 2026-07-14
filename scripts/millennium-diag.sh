@@ -306,8 +306,6 @@ SHARED_MODULES=(
   "lib/millennium_license.sh:scripts/lib/millennium_license.sh"
   "lib/purge_ops.sh:scripts/lib/purge_ops.sh"
   "lib/repair_ops.sh:scripts/lib/repair_ops.sh"
-  "lib/schedule_hooks.sh:scripts/lib/schedule_hooks.sh"
-  "lib/schedule_wizard.sh:scripts/lib/schedule_wizard.sh"
   "lib/steam.sh:scripts/lib/steam.sh"
   "lib/upgrade_failure.sh:scripts/lib/upgrade_failure.sh"
   "lib/upgrade_network.sh:scripts/lib/upgrade_network.sh"

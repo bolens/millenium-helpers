@@ -132,8 +132,8 @@ func newScheduleCmd() *cobra.Command {
 				os.Exit(config.RunCLI(rest))
 				return nil
 			}
-			// Graduated peels: config/status/enable/disable always native — ignore MILLENNIUM_LEGACY.
-			if isScheduleStatus(a) || isScheduleEnableDisable(a) {
+			// Graduated peels: ignore MILLENNIUM_LEGACY for peeled schedule actions.
+			if isSchedulePeeled(a) {
 				opts, err := schedule.ParseArgs(a)
 				if err != nil {
 					fmt.Fprintln(os.Stderr, err.Error())
@@ -168,28 +168,14 @@ func newScheduleCmd() *cobra.Command {
 	}
 }
 
-// isScheduleStatus reports whether argv is a status-only schedule invocation.
-func isScheduleStatus(a []string) bool {
-	hasStatus := false
-	for _, tok := range a {
-		switch tok {
-		case "status":
-			hasStatus = true
-		case "config", "enable", "disable", "setup", "pre-update", "post-update":
-			return false
-		}
-	}
-	return hasStatus
-}
-
-// isScheduleEnableDisable reports enable/disable-only schedule invocations.
-func isScheduleEnableDisable(a []string) bool {
+// isSchedulePeeled reports peeled schedule actions that must stay native.
+func isSchedulePeeled(a []string) bool {
 	has := false
 	for _, tok := range a {
 		switch tok {
-		case "enable", "disable":
+		case "status", "enable", "disable", "setup", "pre-update", "post-update":
 			has = true
-		case "config", "status", "setup", "pre-update", "post-update":
+		case "config":
 			return false
 		}
 	}
