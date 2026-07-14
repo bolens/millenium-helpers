@@ -20,7 +20,7 @@ and test parity** on Linux, macOS, and Windows.
 | **1 — MVP strangler** | Done | `go/` Cobra dispatcher + legacy exec |
 | **2 — Config + read-mostly** | Done | `schedule config`, `theme list`, bare diag |
 | **3 — Mutating core** | In progress | Most mutate paths native; gaps below |
-| **4 — Schedule + installers** | In progress | Unix + Windows enable/disable native; setup + installers pending |
+| **4 — Schedule + installers** | In progress | System+user systemd native; setup + installers pending |
 | **5 — MCP + cleanup** | Not started | MCP still Python; dual libs still required |
 
 Force any native path back to shell/PS: `MILLENNIUM_LEGACY=1`.
@@ -53,7 +53,7 @@ Work through this queue; check items off as PRs land and update this list.
 2. [ ] **`purge` Windows live** — multi-path + Task Scheduler cleanup
 3. [ ] **`diag doctor` live** — elevated repairs; dry-run already native
 4. [ ] **`diag logs --follow`** — long-running tail
-5. [ ] **`schedule setup` + pre/post-update** — wizard + scheduler job body
+5. [ ] **`schedule setup` + pre/post-update** — wizard + scheduler job body (honor system-vs-user choice)
 6. [ ] **Installers → Go binary** — `install.sh` / Windows / packaging ship `millennium` first
 7. [ ] **MCP → Go CLI** — Phase 5; retire Python dispatcher
 8. [ ] **Graduate commands** — dual-OS CI + delete dual libs per [graduation rule](#command-graduation-rule)
@@ -74,11 +74,12 @@ Work through this queue; check items off as PRs land and update this list.
 | Surface | Status | Notes |
 | --- | --- | --- |
 | `config get\|set\|list` | Done | `internal/config` |
-| `status` | Done | `internal/schedule` |
-| `enable\|disable --dry-run` | Done | All OSes |
-| `enable\|disable` live (Unix) | Done | systemd / launchd / cron |
+| `status` | Done | Reports system and user scopes |
+| `enable\|disable --dry-run` | Done | Shows chosen scope |
+| `enable\|disable` live (Linux systemd) | Done | Prefers **system**; `--system` / `--user`; migrates other scope — see [policy](#systemd-system-vs-user) |
+| `enable\|disable` live (macOS / cron) | Done | launchd / crontab |
 | `enable\|disable` live (Windows) | Done | Admin Task Scheduler via PowerShell register/unregister |
-| `setup` | Legacy | Interactive wizard |
+| `setup` | Legacy | Interactive wizard; should honor system-vs-user policy |
 | `pre-update` / `post-update` | Legacy | Scheduler job hooks |
 
 ### `theme`
@@ -169,10 +170,30 @@ with `MILLENNIUM_LEGACY=1` only as escape hatch.
 ### Phase 4 — Schedule + installers — In progress
 
 - [x] Schedule status + Unix enable/disable (+ dry-run everywhere)
+- [x] Linux **system** + **user** systemd service/timer (prefer system; `--system` / `--user`; migrate other scope)
 - [x] Theme install/update/remove (companion slice)
 - [x] Windows schedule enable/disable live (Task Scheduler)
-- [ ] `schedule setup` / pre-post update
+- [ ] `schedule setup` / pre-post update (honor system-vs-user policy)
 - [ ] Go-first install/uninstall packaging smokes (both OSes)
+- [ ] Doctor / purge / uninstall: clean both systemd scopes (when still on legacy paths)
+
+### Systemd system vs user
+
+Linux when systemd is available (non-`--cron`):
+
+| Preference | When |
+| --- | --- |
+| **System** (`/etc/systemd/system`, `systemctl` without `--user`) | Preferred when this process can write system units (typically root). Avoids linger for headless updates. |
+| **User** (`~/.config/systemd/user`, `systemctl --user`) | Fallback when system units are unavailable. Linger tip still printed. |
+
+Shipped behavior:
+
+1. **Selection:** auto prefers system; `--system` / `--user` force; mutual exclusion.
+2. **Units:** `millennium-update.service` / `.timer`; system scope sets `User=` / `Group=` / `HOME=` from `SUDO_USER` (or current user).
+3. **Status / disable:** probe and clear both scopes (system skip if unprivileged).
+4. **Enable:** removes the other scope when possible before writing.
+5. **Legacy Bash:** still user-only until graduated.
+6. **macOS / Windows / cron:** unchanged.
 
 ### Phase 5 — MCP + cleanup — Not started
 

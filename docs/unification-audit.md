@@ -40,7 +40,7 @@ Rough size: ~30 Bash lib modules, ~30 PowerShell lib modules, ~725 LOC MCP,
 
 ### Linux-shaped
 
-- `/etc/sudoers.d/` drop-in; `systemd --user` timers; crontab (`--cron`)
+- `/etc/sudoers.d/` drop-in; systemd timers (**prefer system**, fallback `systemd --user`); crontab (`--cron`)
 - Flatpak / Steam Deck path overrides ([steam_deck.md](steam_deck.md))
 - `--all-users` bootstrap linking (upgrade)
 - Man / shell completion install paths (`install.sh`)
@@ -69,6 +69,7 @@ Not unpaid feature debt — kept in [`spec/cli-contract.yaml`](../spec/cli-contr
 | Knob | Platforms | Notes |
 | --- | --- | --- |
 | `schedule --cron` | linux, darwin | Force crontab vs systemd |
+| `schedule --system` / `--user` | linux | Force systemd scope; default auto prefers system |
 | `upgrade --all-users` | linux, darwin | Multi-UID Steam tree hooks |
 | MCP `cron` | linux (documented) | Same as schedule `--cron` |
 | Flag casing | windows legacy | Pascal aliases until PowerShell paths graduate |
@@ -93,7 +94,7 @@ Tests: Bash behavioral/unit under `tests/` · Pester under `tests/windows/`.
 | `repair` | Y | Y | **Dry-run + live user-path native** | `test_repair` + Go | `millennium-repair` + Go | Hook reinstall still legacy as needed |
 | `purge` (+ `--yes` / dry-run) | Y | Y | **Dry-run + live Unix native**; Windows live legacy | `test_purge` + Go | `millennium-purge` | Windows Task Scheduler / paths still PS |
 | `upgrade --all-users` | Y | — | Linux/macOS only | P | — | Keep contract-marked |
-| `schedule enable/disable/status` | Y | Y | **status + dry-run + Unix/Windows live native** | `test_schedule` + Go | `millennium-schedule` | setup / pre-post still legacy |
+| `schedule enable/disable/status` | Y | Y | **Native**; Linux systemd prefers **system**, else user | `test_schedule` + Go | `millennium-schedule` | setup / pre-post still legacy; Bash path user-only |
 | `schedule setup` wizard | Y | Y | Legacy (Phase 4+) | Y | Y | Interactive both OSes |
 | `schedule config get/set/list` | Y | Y | **Native Go (Phase 2)** | Y + Go | Y + Go | Config path graduated |
 | `schedule --cron` | Y | — | Linux/macOS only | Y | — | Contract OS-only |
