@@ -20,7 +20,7 @@ and test parity** on Linux, macOS, and Windows.
 | **1 — MVP strangler** | Done | `go/` Cobra dispatcher + legacy exec |
 | **2 — Config + read-mostly** | Done | `schedule config`, `theme list`, bare diag |
 | **3 — Mutating core** | Done | Upgrade/repair/purge/diag (incl. follow) native |
-| **4 — Schedule + installers** | In progress | Schedule native; Unix install Go-first; Windows/pkg pending |
+| **4 — Schedule + installers** | In progress | Schedule native; Unix install Go-first; packaging matrix + Windows exe prep |
 | **5 — MCP + cleanup** | Not started | MCP still Python; dual libs still required |
 
 Force any native path back to shell/PS: `MILLENNIUM_LEGACY=1`.
@@ -49,7 +49,7 @@ are strangler progress, not automatic permission to delete `.sh` / `.ps1`.
 
 Work through this queue; check items off as PRs land and update this list.
 
-1. [ ] **Windows + packaging Go-first** — `install.ps1` / release assets / Formula/PKGBUILD
+1. [x] **Windows + packaging Go-first** — `install.ps1` prefers `.exe`; release/homebrew/arch/scoop/nix matrix; deb/rpm/Chocolatey recipes (next tag ships embedded binaries)
 2. [ ] **MCP → Go CLI** — Phase 5; retire Python dispatcher
 3. [ ] **Graduate commands** — dual-OS CI + delete dual libs per [graduation rule](#command-graduation-rule)
 
@@ -123,7 +123,7 @@ Work through this queue; check items off as PRs land and update this list.
 | Surface | Status | Notes |
 | --- | --- | --- |
 | MCP server | Legacy | `scripts/millennium-mcp.py` |
-| Installers ship Go binary first | Partial | Unix `install.sh` Go-first (+ shell fallback); Windows/pkg still shell/PS |
+| Installers ship Go binary first | Partial | Unix `install.sh` + Arch/brew/nix from-source Go-first; Windows/bin packages prefer `.exe` when release embeds it |
 | Dual `.sh` / `.ps1` libs removed | Not started | Only after graduation |
 
 ---
@@ -169,7 +169,8 @@ with `MILLENNIUM_LEGACY=1` only as escape hatch.
 - [x] `pre-update` / `post-update` (Unix/macOS; Steam capture/close/relaunch + diag)
 - [x] `schedule setup` wizard → native enable (honors `--system` / `--user` / `--cron`)
 - [x] Unix `install.sh` Go-first PATH `millennium` (`make build` / prebuilt; shell fallback)
-- [ ] Windows `install.ps1` + release/packaging ship Go binary
+- [x] Windows `install.ps1` prefers `millennium.exe`; release CD embeds Go in archives (from next tag)
+- [x] Packaging matrix: from-source / `-bin` / `-git` (+ deb/rpm/Chocolatey recipes)
 - [ ] Doctor / purge / uninstall: clean both systemd scopes (when still on legacy paths)
 
 ### Systemd system vs user

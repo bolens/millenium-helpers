@@ -100,7 +100,8 @@ Guide index: **[docs/README.md](docs/README.md)**. When adding or renaming a gui
 | `go/` | Go strangler module (`cmd/millennium`); native version/help; other cmds exec legacy |
 | `man/` | Manual pages (`millennium-*.1`) for every user-facing command |
 | `docs/` | User/maintainer guides (index: [`docs/README.md`](docs/README.md)) |
-| `Formula/` | Homebrew formula (`millennium-helpers.rb`) |
+| `Formula/` | Homebrew formulas (`millennium-helpers.rb` from-source + `head`; `millennium-helpers-bin.rb`) |
+| `packaging/` | Arch / Scoop / Winget / deb / rpm / Chocolatey — see [`packaging/README.md`](packaging/README.md) |
 | `completions/` | Bash / Zsh / Fish / Nushell / PowerShell completions |
 | `tests/` | Unit + behavioral suites (`tests/run_tests.sh`) |
 | `tests/windows/` | Pester tests for PowerShell scripts (`make test-windows`) |
@@ -154,9 +155,14 @@ make test-all-distros  # local + Debian/Ubuntu/Fedora via Docker (requires Docke
 ## Versioning
 
 `VERSION` at the repo root is the helpers package version (aligned with Scoop, Winget,
-Homebrew, versioned Arch, Nix release package, and `pyproject.toml`). Installers copy it
-next to the shared libraries so `--version` / `-Version` work after install. Prefer git
-tags `vX.Y.Z` that match `VERSION`.
+Homebrew, Arch from-source/`-bin`, Nix, deb/rpm/Chocolatey, and `pyproject.toml`).
+Installers copy it next to the shared libraries so `--version` / `-Version` work after
+install. Prefer git tags `vX.Y.Z` that match `VERSION`.
+
+**Packaging matrix** (AUR-standard naming): plain `millennium-helpers` = tagged
+**from-source**; `millennium-helpers-bin` = published **release assets**;
+`millennium-helpers-git` = tip of `main`. Winget and Chocolatey are **bin** only
+(plus Winget git). Details: [`packaging/README.md`](packaging/README.md).
 
 Tip-of-main packages (`packaging/millennium-helpers-git`, Scoop `millennium-helpers-git`,
 Winget `bolens.millenniumhelpers.git`, Nix `#millennium-helpers-git`) are **not** tied to
@@ -175,13 +181,15 @@ Doctor syncs helpers against the recorded track (pinned tags stay pinned). Legac
 
 | Target | Script | Purpose |
 | --- | --- | --- |
-| `make bump-version VERSION=X.Y.Z` | `scripts/ci/bump-version.sh` | Pre-tag bump: write `VERSION` + packaging **versions/URLs**; **keep existing hashes**; regenerate stable Arch `.SRCINFO`; run `check-version` |
-| `make check-version` | `scripts/ci/check-version-sync.sh` | Assert packaging version strings + release-asset URL shape match `VERSION` (also runs inside `make lint`) |
-| `make sync-stable-srcinfo` | `scripts/ci/sync-stable-srcinfo.sh` | Regenerate `packaging/millennium-helpers/.SRCINFO` from `PKGBUILD` (`--check` fails if stale) |
+| `make bump-version VERSION=X.Y.Z` | `scripts/ci/bump-version.sh` | Pre-tag bump: write `VERSION` + packaging **versions/URLs**; **keep existing hashes**; regenerate Arch from-source + `-bin` `.SRCINFO`; run `check-version` |
+| `make check-version` | `scripts/ci/check-version-sync.sh` | Assert packaging version strings + URL shape match `VERSION` (also runs inside `make lint`) |
+| `make check-packaging` | `scripts/ci/check-packaging-manifests.sh` | Structural checks for Scoop/Winget/Chocolatey/deb/rpm/Formula matrix |
+| `make sync-stable-srcinfo` | `scripts/ci/sync-stable-srcinfo.sh` | Regenerate from-source Arch `.SRCINFO` from `PKGBUILD` (`--check` fails if stale) |
+| `make sync-bin-srcinfo` | `scripts/ci/sync-bin-srcinfo.sh` | Regenerate `-bin` Arch `.SRCINFO` from `PKGBUILD` |
 | `make sync-git-srcinfo` | `scripts/ci/sync-git-srcinfo.sh` | Regenerate Arch `-git` `.SRCINFO` when the recipe changes (`pkgver` drift ignored; `pkgver()` owns the version at build time) |
 
-Post-tag (release CD only): `scripts/ci/update-packaging-versions.sh <ver> <linux_sha> <windows_sha>`
-fills real SHA256s / SRI hashes for Formula, Scoop, Winget, versioned Arch, and Nix.
+Post-tag (release CD only): `scripts/ci/update-packaging-versions.sh <ver> <linux_sha> <windows_sha> [repo] [tag_tar_sha] [tag_zip_sha]`
+fills real SHA256s / SRI hashes for from-source + bin Formula/Scoop/Arch/Nix/deb/rpm/Chocolatey and Winget.
 
 ### Pre-tag bump (preferred)
 
@@ -194,25 +202,28 @@ make check-version   # already run by bump-version; safe to re-run
 `bump-version` updates:
 
 - `VERSION`, `pyproject.toml`
-- Formula / Scoop / Winget release URLs + version fields (`ReleaseDate` on Winget installer)
-- `packaging/millennium-helpers/PKGBUILD` (`pkgver`, `pkgrel=1`) and `.SRCINFO`
-- `nix/release-info.nix` **version only** (`srcHash` unchanged until assets exist)
+- Formula from-source (tag archive) + Formula-bin (Linux tarball) URLs
+- Scoop from-source (tag zip) + Scoop-bin (Windows zip) versions/URLs
+- Winget installer URL + `PackageVersion` / `ReleaseDate`
+- Arch from-source + `-bin` `pkgver`/`pkgrel` and both `.SRCINFO` files
+- deb control / rpm `.spec` / Chocolatey nuspec + install script versions
+- `nix/release-info.nix` **version only** (hashes unchanged until assets exist)
 
 It does **not** edit `CHANGELOG.md`. Do **not** hand-edit `.SRCINFO` — use `bump-version` or
-`make sync-stable-srcinfo`.
+`make sync-stable-srcinfo` / `make sync-bin-srcinfo`.
 
-Before the tag exists, Nix/Arch CI may **skip** building the release tarball package (asset
-404); that is expected. Tip-of-main / `-git` builds still run.
+Before the tag exists, Nix/Arch CI may **skip** building the `-bin` release-tarball package
+(asset 404); that is expected. Tip-of-main / `-git` builds still run.
 
 ### What `check-version` validates
 
 - `pyproject.toml` `version`
-- Scoop release manifest `version` + Windows zip URL shape
+- Scoop from-source + `-bin` versions and URL shapes
 - Winget `PackageVersion` on all three manifests + installer URL shape
-- Homebrew Formula version (from URL or explicit `version`) + Linux tarball URL shape
-- Versioned Arch `PKGBUILD` `pkgver` + Linux tarball URL shape
-- Versioned Arch `.SRCINFO` in sync with `PKGBUILD` (via `sync-stable-srcinfo --check`)
+- Homebrew from-source + `-bin` Formula versions/URL shapes
+- Arch from-source + `-bin` `pkgver` + `.SRCINFO` sync
 - `nix/release-info.nix` `version`
+- deb / rpm / Chocolatey version fields
 
 Placeholder / previous-release checksums are allowed; version strings and URL **shape** must
 match. Tip-of-main / `-git` packages are excluded.
@@ -226,8 +237,8 @@ ShellCheck and the test suite pass locally and on `main`.
 Tagging `vX.Y.Z` runs the release workflow:
 
 1. Wait for **Test Suite + ShellCheck + Completions** on that commit
-2. Draft a GitHub release with platform-trimmed assets (`millennium-helpers-linux.tar.gz`, `millennium-helpers-windows.zip`) plus checksum sidecars
-3. Open a packaging PR that points Formula / Scoop / Winget at those release assets and fills SHA256s from the draft upload
+2. Draft a GitHub release with platform-trimmed assets (`millennium-helpers-linux.tar.gz` embeds `bin/millennium`, `millennium-helpers-windows.zip` embeds `millennium.exe` when built), standalone Go binaries, plus checksum sidecars
+3. Open a packaging PR that bumps from-source + bin packaging (and Winget/Chocolatey) and fills SHA256s from the draft upload
 4. **If packaging CI passes:** squash-merge the PR and publish the draft release automatically
 5. **If packaging CI fails (or never starts):** leave the draft release and packaging PR for manual recovery (fix, merge, then publish)
 
@@ -239,7 +250,8 @@ Local checks:
 ```bash
 make check-version         # VERSION ↔ packaging (see Versioning above)
 make bump-version VERSION=X.Y.Z   # pre-tag bump (then edit CHANGELOG)
-make sync-stable-srcinfo   # regenerate versioned Arch .SRCINFO only
+make sync-stable-srcinfo   # regenerate from-source Arch .SRCINFO only
+make sync-bin-srcinfo      # regenerate -bin Arch .SRCINFO only
 make sync-git-srcinfo      # regenerate -git .SRCINFO after recipe edits
 make check-man             # every command has a man page
 make check-docs            # docs index / Related footers / man / licensing cross-links
@@ -255,7 +267,7 @@ pre-commit install
 pre-commit install --hook-type pre-push
 ```
 
-**pre-commit** runs: remote [pre-commit-hooks](https://github.com/pre-commit/pre-commit-hooks) sanity checks (private keys, merge conflicts, large files, symlinks, trailing whitespace, EOF newlines, LF line endings), plus local shellcheck, ruff check + format `--check`, VERSION presence, versioned Arch `.SRCINFO` sync, Arch `-git` `.SRCINFO` sync when that recipe changes, packaging version sync, winget manifests, completions tests (when `completions/` changes), man-page coverage, docs cross-links (guides + licensing), actionlint (workflows; skipped if not installed), and gitleaks on staged changes (skipped if not installed).
+**pre-commit** runs: remote [pre-commit-hooks](https://github.com/pre-commit/pre-commit-hooks) sanity checks (private keys, merge conflicts, large files, symlinks, trailing whitespace, EOF newlines, LF line endings), plus local shellcheck, ruff check + format `--check`, VERSION presence, Arch from-source/`-bin`/`-git` `.SRCINFO` sync when those recipes change, packaging version sync, winget manifests, completions tests (when `completions/` changes), man-page coverage, docs cross-links (guides + licensing), actionlint (workflows; skipped if not installed), and gitleaks on staged changes (skipped if not installed).
 
 **pre-push** runs: `make lint`, and `make test-windows` when the push range touches `scripts/windows/`, `tests/windows/`, or `completions/powershell/` (skipped if `pwsh` is missing).
 
@@ -265,24 +277,26 @@ pre-commit install --hook-type pre-push
 - macOS ships Bash 3.2: under `set -u`, empty `"${arr[@]}"` / `"${arr[*]}"` is unbound. Prefer `${arr[@]+"${arr[@]}"}` (or a length guard) when an array may be empty. Avoid `"${arr[@]:-}"` (it iterates once with an empty value).
 - Honor `NO_COLOR` (and `FORCE_COLOR` when forcing color).
 - PowerShell: `Set-StrictMode -Version Latest`; gate debug noise behind `MILLENNIUM_DEBUG` or `-Verbose`.
-- Do not commit packaging build artifacts (`packaging/*.pkg.tar.zst`, etc.).
+- Do not commit packaging build artifacts (makepkg `pkg/`/`src/`/`*.pkg.tar.*`, `*.deb`/`*.rpm`/`*.nupkg`, release tarballs, `scripts/windows/millennium.exe`). See `.gitignore`.
 - Do **not** bump Arch `-git` `pkgver` on every commit ([AUR VCS policy](https://wiki.archlinux.org/title/AUR_submission_guidelines)). `pkgver()` recalculates at `makepkg` time; regenerate `.SRCINFO` only when the `-git` recipe changes (`make sync-git-srcinfo`).
-- Keep versioned Arch `.SRCINFO` current with `make sync-stable-srcinfo` (or `make bump-version`). Pre-commit regenerates it when the stable PKGBUILD changes.
+- Keep Arch from-source/`-bin` `.SRCINFO` current with `make sync-stable-srcinfo` /
+  `make sync-bin-srcinfo` (or `make bump-version`). Pre-commit regenerates them when those
+  PKGBUILDs change.
 
 ## Packaging notes
 
-- Homebrew / Scoop (release) / Winget / Nix `millennium-helpers` consume the **trimmed GitHub Release assets**, not the auto-generated source archives.
-- Homebrew Formula version is taken from the `releases/download/vX.Y.Z/…` URL. Do **not** add a redundant `version "X.Y.Z"` line — `brew audit` rejects it. Keep `license "MIT"`.
-- Scoop is the supported multi-command Windows install path (`millennium`, `millennium-mcp`, and the individual commands).
-- Scoop `millennium-helpers-git` is a nightly tip-of-`main` install (GitHub archive); it is outside the versioned release bump.
-- Nix `packages.millennium-helpers` uses the Linux release tarball (`nix/release-info.nix`); `packages.millennium-helpers-git` builds from the flake source (commit in the version string). Default package is the release build.
-- Winget release manifests track the Windows zip URL/hash for documentation only. Tip-of-main manifests are under `packaging/winget-git/` and are not VERSION-gated. WinGet portable nested files allow `.exe` only, so these PowerShell scripts cannot pass `winget validate` as a multi-command portable package.
-- `scripts/ci/bump-version.sh` — pre-tag version/URL bump (keeps hashes); prefer `make bump-version VERSION=X.Y.Z`.
-- `scripts/ci/check-version-sync.sh` — packaging ↔ `VERSION` gate; prefer `make check-version` (also part of `make lint`).
-- `scripts/ci/sync-stable-srcinfo.sh` — regenerate or `--check` versioned Arch `.SRCINFO`; prefer `make sync-stable-srcinfo`.
-- `scripts/ci/sync-git-srcinfo.sh` — regenerate or `--check` Arch `-git` `.SRCINFO` (ignores `pkgver` drift); prefer `make sync-git-srcinfo`.
-- `scripts/ci/update-packaging-versions.sh` — post-tag: Formula / Scoop release / Winget / versioned Arch / Nix release-info from a release tag + asset hashes (release CD).
-- Versioned Arch (`packaging/millennium-helpers`) is bumped with Formula / Scoop / Winget on release (Linux tarball URL + sha256). Arch `-git` stays tip-of-main and is outside that bump; do not commit mere `-git` `pkgver` bumps.
+- See [`packaging/README.md`](packaging/README.md) for the full from-source / bin / git matrix.
+- **bin** packages consume trimmed GitHub Release assets (`millennium-helpers-linux.tar.gz` /
+  `…-windows.zip`), which embed the Go dispatcher when release CD builds it.
+- **from-source** packages use the GitHub tag archive + `make build` (or PS scripts only on Scoop).
+- Homebrew: do **not** add a redundant `version "X.Y.Z"` when the URL encodes the tag —
+  `brew audit` rejects it. Keep `license "MIT"`.
+- Scoop is the supported multi-command Windows install path; Scoop `-git` is tip-of-`main`.
+- Nix default `packages.millennium-helpers` is from-source; `-bin` / `-git` are separate outputs.
+- Winget is git + bin only (docs-only until a single `.exe` installer); Chocolatey is bin-only.
+- deb: `packaging/deb/build-from-source.sh` / `build-bin.sh`. rpm: `.spec` files under `packaging/rpm/`.
+- `scripts/ci/update-packaging-versions.sh` — post-tag hash fill for the whole VERSION-tied matrix (release CD).
+- Arch `-git` stays tip-of-main; do not commit mere `-git` `pkgver` bumps.
 - Man-page CI (`scripts/ci/check-man-pages.sh`) fails on mandoc `ERROR`/`FATAL` only; `WARNING`/`STYLE` are printed as notes.
 - Docs CI (`scripts/ci/check-docs-crosslinks.sh`) — docs index, Related footers, man→guide links, and licensing attribution; prefer `make check-docs` (`make check-licensing` is an alias).
 - Release Linux/Windows assets **must** include `third_party/MILLENNIUM-LICENSE.md` (see [docs/licensing.md](docs/licensing.md) and `make check-docs`).

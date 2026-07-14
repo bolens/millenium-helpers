@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Packaging three-variant matrix (from-source / `-bin` / `-git`) for Arch, Homebrew, Scoop, Nix; plus deb, rpm, and Chocolatey recipes ([packaging/README.md](packaging/README.md))
+- Release CD builds standalone Go dispatchers and embeds `bin/millennium` / `millennium.exe` in trimmed archives
+- Windows `install.ps1` prefers `millennium.exe` when present (Go-first PATH layout)
 - Go strangler CLI under `go/` (`make build` → `bin/millennium`): native version/help/suggestions; feature commands exec legacy Bash/PowerShell ([docs/unification-roadmap.md](docs/unification-roadmap.md))
 - **Phase 2 native paths:** `millennium schedule config` get/set/list, `millennium theme list` (`--json`), read-only `millennium diag` summary (doctor/json/share still legacy; `MILLENNIUM_LEGACY=1` forces legacy)
 - **Phase 3 hybrid mutate paths:** `upgrade --rollback list` + remote download/SHA + local `--file` verify / dry-run; `purge` Unix live + `--dry-run`; `repair` user-path live + `--dry-run`; extract/install/rollback apply and Windows live purge still legacy
@@ -30,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Unification audit + roadmap docs with feature×OS×test parity matrix and command graduation rule
 
 ### Changed
+- AUR-standard naming: plain `millennium-helpers` = tagged from-source; `millennium-helpers-bin` = release assets; Nix default package is from-source
 - Modularization: feature libraries for schedule/theme/upgrade/repair/purge and the top-level `millennium` dispatcher on Linux and Windows; Windows `common.ps1` split into `scripts/windows/lib/*.ps1` (sourced by retained `common.ps1`)
 - Removed thin diag aggregators (`scripts/lib/diag.sh`, `scripts/windows/lib/Diag.ps1`); orchestration lives in `millennium-diag` entrypoints; report API is `DiagReport.ps1`
 - Bash upgrade completions include `--sha256`, `--insecure-skip-verify`, and `--all-users`

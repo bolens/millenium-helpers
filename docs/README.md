@@ -23,6 +23,7 @@ the project [README](../README.md) **Further reading** table, and each guide’s
 | --- | --- |
 | [README.md](../README.md) | Install, commands, config, further reading |
 | [CONTRIBUTING.md](../CONTRIBUTING.md) | Dev requirements, layout, versioning, packaging, licensing |
+| [packaging/README.md](../packaging/README.md) | from-source / bin / git packaging matrix (Arch, brew, Scoop, Nix, deb, rpm, Chocolatey) |
 | [SECURITY.md](../SECURITY.md) | Vulnerability reporting and security design overview |
 | [CHANGELOG.md](../CHANGELOG.md) | Release notes |
 | [LICENSE](../LICENSE) | Millennium Helpers MIT license |

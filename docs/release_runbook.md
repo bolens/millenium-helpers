@@ -50,7 +50,8 @@ make test-all-distros
 Extra packaging gates (also covered by some CI workflows):
 
 ```bash
-make check-version         # VERSION ↔ Scoop / Winget / Homebrew / Arch / Nix / pyproject / .SRCINFO
+make check-version         # VERSION ↔ Scoop / Winget / Homebrew / Arch / Nix / deb / rpm / Chocolatey / .SRCINFO
+make check-packaging       # Scoop/Winget/Chocolatey/deb/rpm/Formula structural matrix
 make check-man             # every command has a man page
 make check-docs            # docs index / Related footers / man / licensing cross-links
 make check-licensing       # alias for check-docs
@@ -62,11 +63,12 @@ Arch packaging helpers (also run via pre-commit when relevant):
 
 ```bash
 make sync-git-srcinfo      # -git .SRCINFO from PKGBUILD (recipe changes only)
-make sync-stable-srcinfo   # versioned package .SRCINFO from PKGBUILD
+make sync-stable-srcinfo   # from-source package .SRCINFO from PKGBUILD
+make sync-bin-srcinfo      # -bin package .SRCINFO from PKGBUILD
 ```
 
-With `pre-commit install` + `pre-commit install --hook-type pre-push`, stable `.SRCINFO`
-(and `-git` `.SRCINFO` when that recipe changes) sync on commit, and `make lint`
+With `pre-commit install` + `pre-commit install --hook-type pre-push`, from-source/`-bin`
+`.SRCINFO` (and `-git` when that recipe changes) sync on commit, and `make lint`
 (includes `check-version`) runs on every push (see [CONTRIBUTING.md § Versioning](../CONTRIBUTING.md#versioning)).
 Do **not** bump Arch `-git` `pkgver` on every commit — `pkgver()` is authoritative at `makepkg` time.
 
@@ -90,16 +92,20 @@ Details (what each file gets, hash timing, tip-of-main exclusions):
 | `VERSION` | `X.Y.Z` (via `bump-version`) |
 | `pyproject.toml` | `version = "X.Y.Z"` (via `bump-version`) |
 | `CHANGELOG.md` | Move notes under `## [X.Y.Z] - YYYY-MM-DD` (**manual**) |
-| `Formula/millennium-helpers.rb` | release asset URL (sha256 later via packaging PR) |
-| `packaging/scoop/millennium-helpers.json` | `version` + Windows zip URL |
+| `Formula/millennium-helpers.rb` | tag archive URL (sha256 later via packaging PR) |
+| `Formula/millennium-helpers-bin.rb` | Linux release tarball URL (sha256 later) |
+| `packaging/scoop/millennium-helpers.json` | `version` + tag zip URL |
+| `packaging/scoop/millennium-helpers-bin.json` | `version` + Windows zip URL |
 | `packaging/winget/*.yaml` | `PackageVersion` + installer URL / `ReleaseDate` |
 | `packaging/winget-git/*.yaml` | Tip-of-main only (`0.0.0-git`); **not** bumped with `VERSION` |
-| `packaging/millennium-helpers/{PKGBUILD,.SRCINFO}` | `pkgver` + expanded source URL |
-| `nix/release-info.nix` | `version` (srcHash later via packaging PR) |
+| `packaging/millennium-helpers/{PKGBUILD,.SRCINFO}` | from-source `pkgver` + tag archive |
+| `packaging/millennium-helpers-bin/{PKGBUILD,.SRCINFO}` | `-bin` `pkgver` + Linux tarball |
+| `packaging/deb/**`, `packaging/rpm/**`, `packaging/chocolatey/**` | package versions (hashes later where pinned) |
+| `nix/release-info.nix` | `version` (`srcAssetHash` / `srcGitHash` later via packaging PR) |
 
 Hashes stay on the previous release until the tag’s packaging PR runs
 `update-packaging-versions.sh`. Nix/Arch CI may notice “Release asset not published yet” and
-skip the release-tarball build until after the tag — that is expected.
+skip the `-bin` tarball build until after the tag — that is expected.
 
 ---
 
