@@ -63,7 +63,8 @@ Work through this queue; check items off as PRs land and update this list.
 8. [x] **Phase 6b schedule config graduated** — dual-OS `go.yml` set/get/list smoke; dual libs kept until peel
 9. [x] **Phase 6c schedule config peel** — long-name `config` thin-wraps to Go; `schedule_config.sh` / `ScheduleConfig.ps1` removed
 10. [x] **Phase 6d theme list graduated** — dual-OS `go.yml` list/`--json` smoke; dual libs kept until peel
-11. [ ] **Graduate remaining commands** — dual-OS Go coverage + delete dual libs per [graduation rule](#command-graduation-rule), command-by-command
+11. [x] **Phase 6e theme list peel** — long-name `list` thin-wraps to Go; mutate stays on `theme_ops` / ThemeOps
+12. [ ] **Graduate remaining commands** — dual-OS Go coverage + delete dual libs per [graduation rule](#command-graduation-rule), command-by-command
 
 ---
 
@@ -93,7 +94,7 @@ Work through this queue; check items off as PRs land and update this list.
 
 | Surface | Status | Notes |
 | --- | --- | --- |
-| `list` [`--json`] | Graduated | `internal/theme`; dual-OS `go.yml` smoke; long-name list body retained until peel |
+| `list` [`--json`] | Graduated | `internal/theme`; dual-OS `go.yml` smoke; long-name helpers thin-wrap to Go (Phase 6e peel) |
 | `install` / `update` / `remove` | Done | Zip-slip safe; `--dry-run` / `--yes` |
 
 ### `diag`
@@ -216,7 +217,7 @@ Shipped behavior:
 - [x] **Phase 6b:** `schedule config` get/set/list dual-OS Go smoke + graduated mark; `schedule_config.sh` / `ScheduleConfig.ps1` kept for long-name helpers until peel
 - [x] **Phase 6c:** Peel schedule-config dual libs — long-name `config` → `millennium schedule config` (`MILLENNIUM_LEGACY=0`); delete Bash/PS config libs; CI builds Go for schedule/MCP suites
 - [x] **Phase 6d:** `theme list` (+ `--json`) dual-OS Go smoke + graduated mark; `theme_ops` / long-name list bodies kept until peel
-- [ ] Peel theme list (thin-wrap long-name `list` → Go; leave mutate dual libs)
+- [x] **Phase 6e:** Peel theme list — long-name `list` → `millennium theme list` (`MILLENNIUM_LEGACY=0`); mutate dual libs retained
 - [ ] Graduate remaining commands command-by-command (dual-OS Go coverage, then peel dual libs)
 - [ ] Every contract feature implemented **once** in Go
 - [ ] Every [parity matrix](unification-audit.md#parity-matrix) row green / graduated
