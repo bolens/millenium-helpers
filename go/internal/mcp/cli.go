@@ -44,7 +44,7 @@ func RunCLI(opts Options) int {
 Model Context Protocol (MCP) server for Millennium Helpers.
 
 Options:
-  -r, --register   Register with Claude Desktop / Windsurf / Cursor (delegates to Python)
+  -r, --register   Register with Claude Desktop / Windsurf / Cursor
   -V, --version    Show version information
   -h, --help       Show this help message
 `)
@@ -55,9 +55,7 @@ Options:
 		return 0
 	}
 	if opts.Register {
-		// Caller should divert --register to Python (see newMcpCmd).
-		fmt.Fprintln(os.Stderr, "Error: --register must be handled by the Python millennium-mcp entrypoint.")
-		return 1
+		return RunRegister()
 	}
 	if err := ServeStdio(os.Stdin, os.Stdout); err != nil {
 		logf("Error: %v", err)

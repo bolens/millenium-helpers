@@ -49,16 +49,18 @@ stdenv.mkDerivation ({
     install -m755 scripts/millennium-purge.sh $out/bin/millennium-purge
     install -m755 scripts/millennium-diag.sh $out/bin/millennium-diag
     install -m755 scripts/millennium-theme.sh $out/bin/millennium-theme
-    install -m755 scripts/millennium-mcp.py $out/bin/millennium-mcp
     if [ -x bin/millennium ]; then
       install -m755 bin/millennium $out/bin/millennium
+      install -m755 bin/millennium $out/bin/millennium-mcp
     else
       install -m755 scripts/millennium.sh $out/bin/millennium
+      install -m755 scripts/millennium-mcp.sh $out/bin/millennium-mcp
     fi
 
     mkdir -p $out/lib/millennium-helpers/lib
     install -m644 scripts/common.sh $out/lib/millennium-helpers/common.sh
     install -m644 scripts/lib/*.sh $out/lib/millennium-helpers/lib/
+    install -m644 scripts/millennium-mcp.py $out/lib/millennium-helpers/millennium-mcp.py
 
     for script in millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp millennium; do
       wrapProgram $out/bin/$script \

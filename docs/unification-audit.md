@@ -14,7 +14,7 @@ Project: [README](../README.md). Index: [README.md](README.md).
 | --- | --- | --- |
 | Linux/macOS CLI | [`scripts/*.sh`](../scripts/) + [`scripts/lib/`](../scripts/lib/) | Bash |
 | Windows CLI | [`scripts/windows/*.ps1`](../scripts/windows/) + [`lib/`](../scripts/windows/lib/) | PowerShell |
-| MCP | [`scripts/millennium-mcp.py`](../scripts/millennium-mcp.py) | Python 3 |
+| MCP | Go `millennium mcp` / PATH `millennium-mcp`; Python escape hatch | Go (+ optional Python 3) |
 | Completions | [`completions/`](../completions/) | Bash / Zsh / Fish / Nushell / PowerShell |
 | Man pages | [`man/`](../man/) | mandoc |
 | Packaging | Formula, Nix, Arch, Scoop/Winget, deb/rpm/Chocolatey | various |
@@ -104,7 +104,7 @@ Tests: Bash behavioral/unit under `tests/` · Pester under `tests/windows/`.
 | `schedule --cron` | Y | — | Linux/macOS only | Y | — | Contract OS-only |
 | `theme` list/install/update/remove | Y | Y | **Native Go (list + mutate)** | `test_theme` + Go | `millennium-theme` + Go | zip-slip safe extract; `--yes` on remove |
 | `theme --json` | Y | Y | **Native (Phase 2 list)** | Y + Go | Y + Go | — |
-| `mcp` tools surface | Y | Y | **Partial:** Go owns stdio MCP (`millennium mcp`); tools self-exec Go; `--register` still Python | `test_mcp` (`MCP_IMPL`) | `millennium` / `millennium-mcp` | Retire Python façade / register still open |
+| `mcp` tools surface | Y | Y | **Done:** Go owns stdio + `--register`; PATH twin; Python opt-in escape | `test_mcp` (`MCP_IMPL`) | `millennium` / `millennium-mcp` | Python suite retained until graduation |
 | Install / uninstall helpers | Y | Y | **Go-first** PATH `millennium` / `.exe`; versioned OS/arch release archives | `test_install` | `install` | Long-name helpers + shell/PS fallback remain; uninstall clears both systemd scopes |
 | Install track / doctor sync | Y | Y | Native | `test_install_track` | `InstallTrack` | Shared meta JSON |
 | Completions | Y | Y | Generated from contract | `test_completions` | `completions` | Codegen later |

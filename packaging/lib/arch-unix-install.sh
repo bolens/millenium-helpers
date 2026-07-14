@@ -23,12 +23,18 @@ _arch_install_unix_helpers() {
   install -m755 scripts/millennium-purge.sh "${pkgdir}/usr/bin/millennium-purge"
   install -m755 scripts/millennium-diag.sh "${pkgdir}/usr/bin/millennium-diag"
   install -m755 scripts/millennium-theme.sh "${pkgdir}/usr/bin/millennium-theme"
-  install -m755 scripts/millennium-mcp.py "${pkgdir}/usr/bin/millennium-mcp"
   install -m755 "${dispatcher}" "${pkgdir}/usr/bin/millennium"
+  # MCP client PATH name: Go argv0 twin, or thin shim when only Bash dispatcher.
+  if [[ "${dispatcher}" == scripts/millennium.sh ]]; then
+    install -m755 scripts/millennium-mcp.sh "${pkgdir}/usr/bin/millennium-mcp"
+  else
+    install -m755 "${dispatcher}" "${pkgdir}/usr/bin/millennium-mcp"
+  fi
 
   install -d "${pkgdir}/usr/lib/millennium-helpers/lib"
   install -m644 scripts/common.sh "${pkgdir}/usr/lib/millennium-helpers/common.sh"
   install -m644 scripts/lib/*.sh "${pkgdir}/usr/lib/millennium-helpers/lib/"
+  install -m644 scripts/millennium-mcp.py "${pkgdir}/usr/lib/millennium-helpers/millennium-mcp.py"
 
   install -Dm644 completions/bash/millennium-helpers "${pkgdir}/usr/share/bash-completion/completions/millennium-helpers"
   local script

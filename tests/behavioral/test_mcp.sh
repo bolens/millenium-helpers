@@ -294,34 +294,49 @@ assert_equals "True" "$timeout_is_error" "run_cmd() reports isError=True when th
 assert_contains "$timeout_msg" "timed out" "run_cmd()'s timeout error message explains the command timed out"
 rm -f "${MOCK_BIN}/mcp-hang-test"
 
-# --- Python-only: --register ---
-FAKE_HOME_MCP=$(mktemp -d)
-mkdir -p "${FAKE_HOME_MCP}/.config/Claude"
-mkdir -p "${FAKE_HOME_MCP}/.codeium/windsurf"
-mkdir -p "${FAKE_HOME_MCP}/.cursor"
+# --- --register (Go native + Python escape hatch) ---
+run_register_suite() {
+  local label="$1"
+  local -a cmd=("${@:2}")
+  local fake
+  fake=$(mktemp -d)
+  mkdir -p "${fake}/.config/Claude" "${fake}/.codeium/windsurf" "${fake}/.cursor"
+  echo "{}" > "${fake}/.config/Claude/claude_desktop_config.json"
 
-echo "{}" > "${FAKE_HOME_MCP}/.config/Claude/claude_desktop_config.json"
+  out=$(HOME="$fake" "${cmd[@]}" 2>&1)
+  rc=$?
+  assert_success "$rc" "${label} --register exits 0 when config directories exist"
+  assert_contains "$out" "Registering" "${label} --register output contains registration message"
+  assert_contains "$out" "Successfully registered in Claude Desktop" "${label} --register confirms Claude Desktop"
+  assert_contains "$out" "Successfully registered in Cursor" "${label} --register confirms Cursor"
+  assert_contains "$out" "Manual config snippet" "${label} --register prints a manual config snippet"
+  assert_contains "$out" '"mcpServers"' "${label} --register snippet includes mcpServers"
+  assert_contains "$out" "Restart" "${label} --register tips restarting AI clients"
 
-out=$(HOME="$FAKE_HOME_MCP" MILLENNIUM_MCP_PYTHON=1 python3 "$MCP_PY" --register 2>&1)
-rc=$?
-assert_success "$rc" "millennium-mcp --register exits 0 when config directories exist"
-assert_contains "$out" "Registering" "millennium-mcp --register output contains registration message"
-assert_contains "$out" "Successfully registered in Claude Desktop" "millennium-mcp --register output confirms Claude Desktop registration"
-assert_contains "$out" "Successfully registered in Cursor" "millennium-mcp --register output confirms Cursor registration"
-assert_contains "$out" "Manual config snippet" "millennium-mcp --register prints a manual config snippet"
-assert_contains "$out" '"mcpServers"' "millennium-mcp --register snippet includes mcpServers"
-assert_contains "$out" "Restart" "millennium-mcp --register tips restarting AI clients"
+  assert_file_exists "${fake}/.config/Claude/claude_desktop_config.json" "${label} claude_desktop_config.json exists"
+  config_contents=$(cat "${fake}/.config/Claude/claude_desktop_config.json")
+  assert_contains "$config_contents" "millennium-helpers" "${label} claude config contains millennium-helpers"
+  assert_contains "$config_contents" "millennium-mcp" "${label} claude config command is millennium-mcp"
 
-assert_file_exists "${FAKE_HOME_MCP}/.config/Claude/claude_desktop_config.json" "claude_desktop_config.json exists"
-config_contents=$(cat "${FAKE_HOME_MCP}/.config/Claude/claude_desktop_config.json")
-assert_contains "$config_contents" "millennium-helpers" "claude_desktop_config.json contains the millennium-helpers key"
-assert_contains "$config_contents" "millennium-mcp" "claude_desktop_config.json contains the millennium-mcp command"
+  assert_file_exists "${fake}/.cursor/mcp.json" "${label} Cursor mcp.json exists after --register"
+  cursor_contents=$(cat "${fake}/.cursor/mcp.json")
+  assert_contains "$cursor_contents" "millennium-helpers" "${label} Cursor mcp.json contains millennium-helpers"
+  rm -rf "$fake"
+}
 
-assert_file_exists "${FAKE_HOME_MCP}/.cursor/mcp.json" "Cursor mcp.json exists after --register"
-cursor_contents=$(cat "${FAKE_HOME_MCP}/.cursor/mcp.json")
-assert_contains "$cursor_contents" "millennium-helpers" "Cursor mcp.json contains the millennium-helpers key"
-
-rm -rf "$FAKE_HOME_MCP"
+if [[ -x "${GO_BIN}" ]]; then
+  run_register_suite "millennium mcp" "$GO_BIN" mcp --register
+  # argv0 twin: copy/symlink as millennium-mcp
+  MCP_ARGV0=$(mktemp)
+  cp -f "$GO_BIN" "$MCP_ARGV0"
+  chmod +x "$MCP_ARGV0"
+  # basename must be millennium-mcp for argv0 routing
+  MCP_NAMED="$(dirname "$MCP_ARGV0")/millennium-mcp"
+  mv -f "$MCP_ARGV0" "$MCP_NAMED"
+  run_register_suite "millennium-mcp argv0" "$MCP_NAMED" --register
+  rm -f "$MCP_NAMED"
+fi
+run_register_suite "python millennium-mcp" env MILLENNIUM_MCP_PYTHON=1 python3 "$MCP_PY" --register
 
 # --- Python-only: argparse help / invalid / TypedDict ---
 out=$(MILLENNIUM_MCP_PYTHON=1 python3 "$MCP_PY" --help 2>&1)

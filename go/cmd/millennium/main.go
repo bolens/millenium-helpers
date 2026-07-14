@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/bolens/millenium-helpers/internal/config"
@@ -20,7 +21,22 @@ import (
 )
 
 func main() {
-	os.Exit(run(os.Args[1:]))
+	args := os.Args[1:]
+	// Packaged PATH name millennium-mcp → same binary as `millennium mcp`.
+	if isMcpArgv0(os.Args[0]) {
+		args = append([]string{"mcp"}, args...)
+	}
+	os.Exit(run(args))
+}
+
+func isMcpArgv0(arg0 string) bool {
+	base := strings.ToLower(filepath.Base(arg0))
+	switch base {
+	case "millennium-mcp", "millennium-mcp.exe":
+		return true
+	default:
+		return false
+	}
 }
 
 func run(args []string) int {
@@ -392,7 +408,7 @@ func newRepairCmd() *cobra.Command {
 func newMcpCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:                "mcp",
-		Short:              "MCP JSON-RPC server (native Go; --register via Python)",
+		Short:              "MCP JSON-RPC server (stdio + --register)",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
 			if useLegacy() {
@@ -404,12 +420,6 @@ func newMcpCmd() *cobra.Command {
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err.Error())
 				os.Exit(2)
-				return nil
-			}
-			if opts.Register {
-				// Phase 5c.1: registration stays in Python until 5c later.
-				_ = os.Setenv("MILLENNIUM_MCP_PYTHON", "1")
-				os.Exit(legacy.RunLegacy("mcp", a))
 				return nil
 			}
 			os.Exit(mcp.RunCLI(opts))

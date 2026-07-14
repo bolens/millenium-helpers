@@ -209,7 +209,8 @@ SCRIPTS=(
   "scripts/millennium-purge.sh:millennium-purge"
   "scripts/millennium-diag.sh:millennium-diag"
   "scripts/millennium-theme.sh:millennium-theme"
-  "scripts/millennium-mcp.py:millennium-mcp"
+  # millennium-mcp: Go argv0 twin when available; else thin shim → millennium mcp / Python
+  "scripts/millennium-mcp.sh:millennium-mcp"
   "scripts/millennium.sh:millennium"
 )
 
@@ -699,6 +700,25 @@ install_scripts() {
       fi
     fi
 
+    if [[ "$dest" == "millennium-mcp" ]]; then
+      DISPATCHER_KIND=""
+      # Prefer installing the same Go binary under the MCP client PATH name.
+      if [[ "${MILLENNIUM_INSTALL_DISPATCHER:-}" != "shell" ]] && ensure_go_dispatcher && [[ -x "${SCRIPT_DIR}/bin/millennium" || "${DRY_RUN:-false}" == "true" ]]; then
+        src_path="${SCRIPT_DIR}/bin/millennium"
+        kind="go"
+        if [[ "${DRY_RUN:-false}" == "true" && ! -x "${SCRIPT_DIR}/bin/millennium" ]]; then
+          printf "Installing: %s... " "$dest_path"
+          echo -e "${YELLOW}[DRY RUN] Would install Go binary as millennium-mcp (argv0 → mcp)${NC}"
+          continue
+        fi
+        echo -e "${BLUE}Using Go dispatcher for PATH millennium-mcp${NC}"
+      else
+        src_path="${SCRIPT_DIR}/scripts/millennium-mcp.sh"
+        kind="shell"
+        echo -e "${YELLOW}Go dispatcher unavailable; installing millennium-mcp.sh shim${NC}"
+      fi
+    fi
+
     if [[ ! -f "$src_path" && ! ( "$kind" == "go" && "${DRY_RUN:-false}" == "true" ) ]]; then
       echo -e "${RED}Error: Source script not found: ${src_path}${NC}" >&2
       exit 1
@@ -717,6 +737,17 @@ install_scripts() {
       exit 1
     fi
   done
+
+  # Keep Python MCP as lib escape hatch (MILLENNIUM_MCP_PYTHON=1 / legacy).
+  printf "Installing Python MCP escape hatch to %s... " "${LIB_DIR}/millennium-mcp.py"
+  if execute mkdir -p "${LIB_DIR}" && \
+     execute cp -f "${SCRIPT_DIR}/scripts/millennium-mcp.py" "${LIB_DIR}/millennium-mcp.py" && \
+     change_owner "${LIB_DIR}/millennium-mcp.py" && \
+     execute chmod 644 "${LIB_DIR}/millennium-mcp.py"; then
+    echo -e "${GREEN}OK${NC}"
+  else
+    echo -e "${YELLOW}WARN${NC}"
+  fi
 
   # Copy shared helper library and its modules
   local lib_dir="$LIB_DIR"

@@ -1,4 +1,4 @@
-# Millennium MCP server wrapper for Windows (invokes millennium-mcp.py)
+# Millennium MCP server wrapper — prefer Go dispatcher, Python escape hatch.
 param(
     [Alias("r")]
     [switch]$Register = $false,
@@ -12,6 +12,32 @@ param(
 set-strictmode -version Latest
 
 $ScriptDir = $PSScriptRoot
+$forcePython = $env:MILLENNIUM_MCP_PYTHON -in @('1', 'true', 'yes') -or $env:MILLENNIUM_LEGACY -in @('1', 'true', 'yes')
+
+$exeCandidates = @(
+    (Join-Path -Path $ScriptDir -ChildPath 'millennium.exe'),
+    (Join-Path -Path $ScriptDir -ChildPath 'windows\millennium.exe')
+)
+$exe = $null
+foreach ($cand in $exeCandidates) {
+    if (Test-Path -LiteralPath $cand -PathType Leaf) {
+        $exe = $cand
+        break
+    }
+}
+
+$mcpArgs = @()
+if ($Help) { $mcpArgs += '--help' }
+if ($Version) { $mcpArgs += '--version' }
+if ($Register) { $mcpArgs += '--register' }
+if ($Rest) { $mcpArgs += $Rest }
+
+if (-not $forcePython -and $exe) {
+    $goArgs = @('mcp') + $mcpArgs
+    & $exe @goArgs
+    exit $LASTEXITCODE
+}
+
 $PyCandidates = @(
     (Join-Path -Path $ScriptDir -ChildPath "millennium-mcp.py"),
     (Join-Path -Path $ScriptDir -ChildPath "..\millennium-mcp.py")
@@ -26,7 +52,7 @@ foreach ($cand in $PyCandidates) {
 }
 
 if (-not $pyScript) {
-    Write-Error "Error: millennium-mcp.py not found next to this wrapper. Re-run install.ps1."
+    Write-Error "Error: millennium.exe / millennium-mcp.py not found next to this wrapper. Re-run install.ps1."
     exit 1
 }
 
@@ -39,15 +65,10 @@ foreach ($name in @("python3", "python", "py")) {
     }
 }
 if (-not $python) {
-    Write-Error "Error: Python 3 is required to run millennium-mcp. Install Python and retry."
+    Write-Error "Error: Python 3 is required for the MCP Python escape hatch. Install Python or place millennium.exe beside this wrapper."
     exit 1
 }
 
-$argList = @($pyScript)
-if ($Help) { $argList += "--help" }
-if ($Version) { $argList += "--version" }
-if ($Register) { $argList += "--register" }
-if ($Rest) { $argList += $Rest }
-
-& $python @argList
+$pyArgs = @($pyScript) + $mcpArgs
+& $python @pyArgs
 exit $LASTEXITCODE

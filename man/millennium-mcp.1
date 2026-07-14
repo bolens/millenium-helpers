@@ -8,17 +8,18 @@ millennium-mcp \- Model Context Protocol server for Millennium Helpers
 Exposes Millennium helper commands as MCP tools for AI assistants
 (Claude Desktop, Cursor, Windsurf, and similar clients).
 .P
-With no options, runs as a stdio JSON-RPC MCP server.
-When the Go
-.B millennium
-dispatcher is installed, this entry prefer\-execs
-.B millennium mcp
-(native server). Tools self\-exec
+With no options, runs as a stdio JSON-RPC MCP server
+(native Go; PATH name is an argv0 twin of
+.BR millennium ).
+.B \-\-register
+writes client configs using command
+.BR millennium-mcp .
+Tools self\-exec
 .RB ( millennium " " diag / theme / schedule / upgrade / repair / purge ),
 with elevating calls wrapped in passwordless sudo / UAC.
 Set
 .B MILLENNIUM_MCP_PYTHON=1
-to force the Python server;
+to force the Python escape hatch;
 .B MILLENNIUM_MCP_LONGNAMES=1
 forces the long-name helper path for tool argv.
 .SH OPTIONS

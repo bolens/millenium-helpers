@@ -21,7 +21,7 @@ and test parity** on Linux, macOS, and Windows.
 | **2 — Config + read-mostly** | Done | `schedule config`, `theme list`, bare diag |
 | **3 — Mutating core** | Done | Upgrade/repair/purge/diag (incl. follow) native |
 | **4 — Schedule + installers** | Done | Schedule + installers Go-first; legacy dual-scope systemd cleanup (4m) |
-| **5 — MCP + cleanup** | In progress | 5a–5c.1: native Go MCP stdio; Python keeps `--register` + prefer-exec shim |
+| **5 — MCP + cleanup** | In progress | 5a–5c: native Go MCP + `--register` + PATH `millennium-mcp` twin; Python escape hatch |
 
 Force any native path back to shell/PS: `MILLENNIUM_LEGACY=1`.
 
@@ -56,7 +56,7 @@ Work through this queue; check items off as PRs land and update this list.
 3. [x] **MCP prefer Go for non-elevate** — Phase 5a; Python façade → `millennium <cmd>` when present
 4. [x] **MCP elevate via Go + sudoers** — Phase 5b; verb-restricted sudoers; MCP elevates Go dispatcher
 5. [x] **Native Go MCP server (5c.1)** — `millennium mcp` owns stdio JSON-RPC; Python prefer-exec + `--register`
-6. [ ] **Retire Python MCP façade** — Phase 5c later; move `--register` / packaging entry to Go
+6. [x] **Go MCP `--register` + packaging entry** — Phase 5c; PATH `millennium-mcp` = Go argv0 twin; Python lib escape hatch
 7. [ ] **Graduate commands** — dual-OS CI + delete dual libs per [graduation rule](#command-graduation-rule)
 
 ---
@@ -128,7 +128,7 @@ Work through this queue; check items off as PRs land and update this list.
 
 | Surface | Status | Notes |
 | --- | --- | --- |
-| MCP server | Partial | Go `millennium mcp` owns stdio; Python prefer-exec + `--register`; tools self-exec Go |
+| MCP server | Done (escape hatch remains) | Go `millennium mcp` / PATH `millennium-mcp`; `--register` native; Python opt-in |
 | Installers ship Go binary first | Done | Unix `install.sh` + Windows `install.ps1`; release embeds `millennium` / `millennium.exe` in versioned OS/arch archives; shell/PS fallback remains |
 | Dual `.sh` / `.ps1` libs removed | Not started | Only after graduation |
 
@@ -201,8 +201,8 @@ Shipped behavior:
 
 - [x] **Phase 5a:** Python MCP prefers Go `millennium <feature>` for non-elevating tools; `MILLENNIUM_MCP_LONGNAMES=1` escape
 - [x] **Phase 5b:** Sudoers (install.sh + Arch) allowlist Go `millennium {upgrade,diag,repair,purge}[ *]` plus long-names; MCP elevates via Go; Windows RunAs for `.exe`
-- [x] **Phase 5c.1:** Native Go MCP stdio (`millennium mcp`); Python `millennium-mcp` prefer-execs Go (skip under `TEST_SUITE_RUN` / `MILLENNIUM_MCP_PYTHON=1`); `--register` still Python
-- [ ] Native Go MCP finish: `--register` in Go; retire Python façade / Windows packaging cutover
+- [x] **Phase 5c.1:** Native Go MCP stdio (`millennium mcp`); Python prefer-execs Go (skip under `TEST_SUITE_RUN` / `MILLENNIUM_MCP_PYTHON=1`)
+- [x] **Phase 5c:** Go `--register`; PATH `millennium-mcp` installs Go argv0 twin (shim fallback); Python kept as lib escape hatch; Windows `.cmd` → `millennium.exe mcp`
 - [ ] Every contract feature implemented **once** in Go
 - [ ] Every [parity matrix](unification-audit.md#parity-matrix) row green
 - [ ] Bash / Pester suites retired only after Go dual-OS suite supersedes them

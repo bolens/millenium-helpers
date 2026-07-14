@@ -458,10 +458,16 @@ $wrappers = @(
 
 foreach ($wrapperName in $wrappers) {
     $wrapperPath = Join-Path -Path $binDir -ChildPath "$wrapperName.cmd"
-    if ($wrapperName -eq 'millennium' -and (Test-Path (Join-Path $binDir 'millennium.exe'))) {
+    $hasExe = Test-Path (Join-Path $binDir 'millennium.exe')
+    if ($wrapperName -eq 'millennium' -and $hasExe) {
         $cmdContent = @"
 @echo off
 "%~dp0millennium.exe" %*
+"@
+    } elseif ($wrapperName -eq 'millennium-mcp' -and $hasExe) {
+        $cmdContent = @"
+@echo off
+"%~dp0millennium.exe" mcp %*
 "@
     } else {
         $cmdContent = @"

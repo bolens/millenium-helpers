@@ -40,15 +40,17 @@ install -m755 "$TREE"/scripts/millennium-schedule.sh "$DEST/usr/bin/millennium-s
 install -m755 "$TREE"/scripts/millennium-purge.sh "$DEST/usr/bin/millennium-purge"
 install -m755 "$TREE"/scripts/millennium-diag.sh "$DEST/usr/bin/millennium-diag"
 install -m755 "$TREE"/scripts/millennium-theme.sh "$DEST/usr/bin/millennium-theme"
-install -m755 "$TREE"/scripts/millennium-mcp.py "$DEST/usr/bin/millennium-mcp"
 if [[ -x "$TREE/bin/millennium" ]]; then
   install -m755 "$TREE/bin/millennium" "$DEST/usr/bin/millennium"
+  install -m755 "$TREE/bin/millennium" "$DEST/usr/bin/millennium-mcp"
 else
   install -m755 "$TREE/scripts/millennium.sh" "$DEST/usr/bin/millennium"
+  install -m755 "$TREE/scripts/millennium-mcp.sh" "$DEST/usr/bin/millennium-mcp"
 fi
 
 install -m644 "$TREE"/scripts/common.sh "$DEST/usr/lib/millennium-helpers/common.sh"
 install -m644 "$TREE"/scripts/lib/*.sh "$DEST/usr/lib/millennium-helpers/lib/"
+install -m644 "$TREE"/scripts/millennium-mcp.py "$DEST/usr/lib/millennium-helpers/millennium-mcp.py"
 install -m644 "$TREE"/VERSION "$DEST/usr/lib/millennium-helpers/VERSION"
 install -m644 "$TREE"/completions/bash/millennium-helpers "$DEST/usr/share/bash-completion/completions/millennium-helpers"
 for s in millennium millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp; do

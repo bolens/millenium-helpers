@@ -809,15 +809,17 @@ def main():
     )
     args = parser.parse_args()
 
+    # Prefer native Go MCP for stdio / --version / --register (argparse already ate flags).
+    go_argv: list[str] = []
+    if args.register:
+        go_argv.append("--register")
+    elif args.version:
+        go_argv.append("--version")
+    maybe_exec_go_mcp(go_argv)
+
     if args.register:
         register_mcp()
         return
-
-    # Prefer native Go MCP for stdio / --version / --help (argparse already ate flags).
-    go_argv: list[str] = []
-    if args.version:
-        go_argv.append("--version")
-    maybe_exec_go_mcp(go_argv)
 
     if args.version:
         print(f"millennium-mcp {get_helpers_version()}")

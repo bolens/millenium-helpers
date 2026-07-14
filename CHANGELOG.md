@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Phase 5a MCP → Go (non-elevate):** `millennium-mcp` prefers `millennium diag|theme|schedule …` when the Go dispatcher is available; doctor/upgrade/repair/purge stay on long-name helpers for sudoers; `MILLENNIUM_MCP_LONGNAMES=1` forces the old path
 - **Phase 5b MCP elevate + sudoers:** installer/Arch allowlist Go `millennium {upgrade,diag,repair,purge}`; MCP elevates via Go dispatcher (Windows RunAs for `.exe`); long-name helpers remain for timers / legacy
 - **Phase 5c.1 native Go MCP:** `millennium mcp` serves stdio JSON-RPC + tools; Python `millennium-mcp` prefer-execs Go (keeps `--register`); `MILLENNIUM_MCP_PYTHON=1` forces Python; `test_mcp` covers `MCP_IMPL=python|go|both`
+- **Phase 5c Go MCP register + PATH entry:** native `--register`; install/packaging ship Go (or shim) as `millennium-mcp` argv0 twin; Python moves to lib escape hatch; Windows `millennium-mcp.cmd` → `millennium.exe mcp`
 - **Phase 3c diag:** native `--json`, `logs` (non-follow), richer report probes, `doctor --dry-run` plan; live doctor / `--share` / `--follow` still legacy
 - **Phase 3d diag share:** native `--share` (home/user/token redaction + paste.rs upload); `--follow` and live doctor still legacy
 - **Phase 3e upgrade install:** native tar/zip extract + atomic install when writable (root / `MILLENNIUM_LIB_DIR` / Windows Steam); non-root Linux system path and rollback apply still legacy

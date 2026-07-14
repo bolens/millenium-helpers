@@ -139,6 +139,10 @@ func resolveMcp(args []string) (*exec.Cmd, error) {
 			filepath.Join(filepath.Dir(scriptDir), "millennium-mcp.py"),
 		)
 	}
+	candidates = append(candidates,
+		"/usr/lib/millennium-helpers/millennium-mcp.py",
+		filepath.Join(os.Getenv("MILLENNIUM_LIB_DIR"), "millennium-mcp.py"),
+	)
 	for _, p := range candidates {
 		st, err := os.Stat(p)
 		if err != nil || st.IsDir() {
