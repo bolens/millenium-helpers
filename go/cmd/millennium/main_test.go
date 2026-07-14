@@ -105,6 +105,62 @@ func TestNativeConfig(t *testing.T) {
 	}
 }
 
+func TestNativeThemeList(t *testing.T) {
+	exe := buildMillennium(t)
+	skins := t.TempDir()
+	env := append(os.Environ(), "MILLENNIUM_SKINS_DIR="+skins)
+
+	empty := exec.Command(exe, "theme", "list", "--json")
+	empty.Env = env
+	emptyOut, err := empty.CombinedOutput()
+	if err != nil {
+		t.Fatalf("theme list --json empty: %v\n%s", err, emptyOut)
+	}
+	if got := strings.TrimSpace(string(emptyOut)); got != "[]" {
+		t.Fatalf("empty json: got %q", got)
+	}
+
+	localDir := filepath.Join(skins, "LocalSkin")
+	if err := os.MkdirAll(localDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	ghDir := filepath.Join(skins, "DemoTheme")
+	if err := os.MkdirAll(ghDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	meta := `{"owner":"acme","repo":"DemoTheme","commit":"abcdef123456"}`
+	if err := os.WriteFile(filepath.Join(ghDir, "metadata.json"), []byte(meta), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	prose := exec.Command(exe, "theme", "list")
+	prose.Env = env
+	proseOut, err := prose.CombinedOutput()
+	if err != nil {
+		t.Fatalf("theme list: %v\n%s", err, proseOut)
+	}
+	text := string(proseOut)
+	if !strings.Contains(text, "LocalSkin") || !strings.Contains(text, "Local / Manual") {
+		t.Fatalf("missing local theme prose:\n%s", text)
+	}
+	if !strings.Contains(text, "DemoTheme") || !strings.Contains(text, "acme/DemoTheme") {
+		t.Fatalf("missing github theme prose:\n%s", text)
+	}
+
+	js := exec.Command(exe, "theme", "list", "--json")
+	js.Env = env
+	jsOut, err := js.CombinedOutput()
+	if err != nil {
+		t.Fatalf("theme list --json: %v\n%s", err, jsOut)
+	}
+	raw := string(jsOut)
+	for _, want := range []string{`"name":"LocalSkin"`, `"type":"local"`, `"name":"DemoTheme"`, `"owner":"acme"`, `"type":"github"`} {
+		if !strings.Contains(raw, want) {
+			t.Fatalf("json missing %s:\n%s", want, raw)
+		}
+	}
+}
+
 func TestNativeUpgradeRollbackList(t *testing.T) {
 	exe := buildMillennium(t)
 	lib := t.TempDir()

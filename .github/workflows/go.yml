@@ -98,6 +98,27 @@ jobs:
           bin/millennium schedule config list | grep -F 'beta'
           rm -rf "$cfg_dir"
 
+      - name: Smoke theme list (dual-OS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          skins="$(mktemp -d)"
+          export MILLENNIUM_SKINS_DIR="$skins"
+          test "$(bin/millennium theme list --json | tr -d '[:space:]')" = "[]"
+          mkdir -p "$skins/LocalSkin" "$skins/DemoTheme"
+          printf '%s\n' '{"owner":"acme","repo":"DemoTheme","commit":"abcdef123456"}' \
+            > "$skins/DemoTheme/metadata.json"
+          bin/millennium theme list | grep -F 'LocalSkin'
+          bin/millennium theme list | grep -F 'DemoTheme'
+          bin/millennium theme list | grep -F 'acme/DemoTheme'
+          json="$(bin/millennium theme list --json)"
+          echo "$json" | grep -F '"name":"LocalSkin"'
+          echo "$json" | grep -F '"type":"local"'
+          echo "$json" | grep -F '"name":"DemoTheme"'
+          echo "$json" | grep -F '"owner":"acme"'
+          echo "$json" | grep -F '"type":"github"'
+          rm -rf "$skins"
+
       - name: Smoke legacy help delegate (Linux)
         if: runner.os == 'Linux'
         shell: bash
