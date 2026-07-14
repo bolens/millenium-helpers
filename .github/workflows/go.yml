@@ -368,6 +368,37 @@ jobs:
           fi
           rm -rf "$home"
 
+      - name: Smoke repair dry-run + Linux mock hooks (dual-OS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$(mktemp -d)"
+          export HOME="$home"
+          export USERPROFILE="$home"
+          export LOCALAPPDATA="$home/LocalAppData"
+          export APPDATA="$home/AppData"
+          mkdir -p "$LOCALAPPDATA" "$APPDATA"
+          out="$(bin/millennium repair --dry-run --skip-theme)"
+          echo "$out" | grep -F 'DRY RUN'
+          echo "$out" | grep -F 'Skipping theme'
+          if [[ "${RUNNER_OS:-}" == "Windows" ]] || [[ "$(uname -s)" == MINGW* ]] || [[ "$(uname -s)" == MSYS* ]]; then
+            echo "$out" | grep -F 'upgrade --force'
+          else
+            lib="$home/lib"
+            steam="$home/.local/share/Steam"
+            mkdir -p "$lib/millennium" "$steam/ubuntu12_32" "$steam/ubuntu12_64"
+            printf 'stub\n' >"$lib/millennium/libmillennium_bootstrap_x86.so"
+            printf 'stub\n' >"$lib/millennium/libmillennium_bootstrap_hhx64.so"
+            export STEAM="$steam"
+            export MOCK_LIB_DIR="$lib"
+            dry2="$(bin/millennium repair --dry-run --skip-theme)"
+            echo "$dry2" | grep -F 'Would link hook'
+            bin/millennium repair --yes --skip-theme
+            test -L "$steam/ubuntu12_32/libXtst.so.6"
+            test -L "$steam/ubuntu12_64/libXtst.so.6"
+          fi
+          rm -rf "$home"
+
       - name: Smoke MCP initialize (dual-OS)
         shell: bash
         run: |
