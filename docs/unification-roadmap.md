@@ -64,7 +64,8 @@ Work through this queue; check items off as PRs land and update this list.
 9. [x] **Phase 6c schedule config peel** — long-name `config` thin-wraps to Go; `schedule_config.sh` / `ScheduleConfig.ps1` removed
 10. [x] **Phase 6d theme list graduated** — dual-OS `go.yml` list/`--json` smoke; dual libs kept until peel
 11. [x] **Phase 6e theme list peel** — long-name `list` thin-wraps to Go; mutate stays on `theme_ops` / ThemeOps
-12. [ ] **Graduate remaining commands** — dual-OS Go coverage + delete dual libs per [graduation rule](#command-graduation-rule), command-by-command
+12. [x] **Phase 6f theme mutate graduated** — dual-OS offline `go.yml` install/update/remove smoke; dual libs kept until peel
+13. [ ] **Graduate remaining commands** — dual-OS Go coverage + delete dual libs per [graduation rule](#command-graduation-rule), command-by-command
 
 ---
 
@@ -95,7 +96,7 @@ Work through this queue; check items off as PRs land and update this list.
 | Surface | Status | Notes |
 | --- | --- | --- |
 | `list` [`--json`] | Graduated | `internal/theme`; dual-OS `go.yml` smoke; long-name helpers thin-wrap to Go (Phase 6e peel) |
-| `install` / `update` / `remove` | Done | Zip-slip safe; `--dry-run` / `--yes` |
+| `install` / `update` / `remove` | Graduated | Zip-slip safe; dual-OS offline `go.yml` smoke; `theme_ops` / ThemeOps retained until peel |
 
 ### `diag`
 
@@ -218,6 +219,8 @@ Shipped behavior:
 - [x] **Phase 6c:** Peel schedule-config dual libs — long-name `config` → `millennium schedule config` (`MILLENNIUM_LEGACY=0`); delete Bash/PS config libs; CI builds Go for schedule/MCP suites
 - [x] **Phase 6d:** `theme list` (+ `--json`) dual-OS Go smoke + graduated mark; `theme_ops` / long-name list bodies kept until peel
 - [x] **Phase 6e:** Peel theme list — long-name `list` → `millennium theme list` (`MILLENNIUM_LEGACY=0`); mutate dual libs retained
+- [x] **Phase 6f:** `theme install` / `update` / `remove` dual-OS offline Go smoke + graduated mark; dual libs kept until peel
+- [ ] Peel theme mutate (thin-wrap long-name install/update/remove → Go; delete `theme_ops` / ThemeOps)
 - [ ] Graduate remaining commands command-by-command (dual-OS Go coverage, then peel dual libs)
 - [ ] Every contract feature implemented **once** in Go
 - [ ] Every [parity matrix](unification-audit.md#parity-matrix) row green / graduated
