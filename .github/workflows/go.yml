@@ -546,13 +546,15 @@ jobs:
           echo "$out" | grep -F '2024-11-05'
           echo "$out" | grep -F 'millennium-helpers-mcp'
 
-      - name: Smoke legacy help delegate (Linux)
+      - name: Smoke native upgrade/diag/doctor help (Linux)
         if: runner.os == 'Linux'
         shell: bash
         run: |
           set -euo pipefail
-          MILLENNIUM_SCRIPTS_DIR="$PWD/scripts" bin/millennium upgrade --help | grep -F 'Usage:'
-          MILLENNIUM_SCRIPTS_DIR="$PWD/scripts" bin/millennium diag --help | grep -F 'Usage:'
+          bin/millennium upgrade --help | grep -F 'Usage:'
+          bin/millennium diag --help | grep -F 'Usage:'
+          bin/millennium doctor --help | grep -F 'Usage:'
+          bin/millennium doctor --dry-run | grep -F 'DRY RUN'
 
   contract:
     name: CLI contract

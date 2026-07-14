@@ -52,7 +52,7 @@ download+SHA+install (+ sudo handoff on Linux) and --rollback when writable,
 purge (Unix+Windows), repair user-path, mcp JSON-RPC server
 (see docs/unification-roadmap.md).
 
-Force legacy for a native path: MILLENNIUM_LEGACY=1`,
+MILLENNIUM_LEGACY=1 is obsolete for peeled commands (they stay native).`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Args:          cobra.ArbitraryArgs,
@@ -84,10 +84,10 @@ Force legacy for a native path: MILLENNIUM_LEGACY=1`,
 
 	root.AddCommand(&cobra.Command{
 		Use:                "doctor",
-		Short:              "Delegate to legacy millennium-diag doctor",
+		Short:              "Alias for millennium diag doctor",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
-			os.Exit(legacy.RunLegacy("doctor", a))
+			os.Exit(diag.RunCLI(append([]string{"doctor"}, a...)))
 			return nil
 		},
 	})
@@ -117,35 +117,15 @@ Force legacy for a native path: MILLENNIUM_LEGACY=1`,
 	return 0
 }
 
-func useLegacy() bool {
-	v := strings.TrimSpace(os.Getenv("MILLENNIUM_LEGACY"))
-	return v == "1" || strings.EqualFold(v, "true") || strings.EqualFold(v, "yes")
-}
-
 func newScheduleCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:                "schedule",
 		Short:              "Scheduler (config/status/enable/disable/setup/pre/post native)",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
-			// Graduated (Phase 6c): config always stays native — ignore MILLENNIUM_LEGACY.
+			// Graduated peel: always native — ignore MILLENNIUM_LEGACY.
 			if rest, ok := takeConfigArgs(a); ok {
 				os.Exit(config.RunCLI(rest))
-				return nil
-			}
-			// Graduated peels: ignore MILLENNIUM_LEGACY for peeled schedule actions.
-			if isSchedulePeeled(a) {
-				opts, err := schedule.ParseArgs(a)
-				if err != nil {
-					fmt.Fprintln(os.Stderr, err.Error())
-					os.Exit(1)
-					return nil
-				}
-				os.Exit(schedule.RunCLI(opts))
-				return nil
-			}
-			if useLegacy() {
-				os.Exit(legacy.RunLegacy("schedule", a))
 				return nil
 			}
 			opts, err := schedule.ParseArgs(a)
@@ -159,28 +139,10 @@ func newScheduleCmd() *cobra.Command {
 				os.Exit(0)
 				return nil
 			}
-			if schedule.NeedsLegacy(opts) {
-				os.Exit(legacy.RunLegacy("schedule", a))
-				return nil
-			}
 			os.Exit(schedule.RunCLI(opts))
 			return nil
 		},
 	}
-}
-
-// isSchedulePeeled reports peeled schedule actions that must stay native.
-func isSchedulePeeled(a []string) bool {
-	has := false
-	for _, tok := range a {
-		switch tok {
-		case "status", "enable", "disable", "setup", "pre-update", "post-update":
-			has = true
-		case "config":
-			return false
-		}
-	}
-	return has
 }
 
 // takeConfigArgs returns (argsAfterConfig, true) when the schedule invocation is a config action.
