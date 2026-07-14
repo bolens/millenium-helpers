@@ -187,7 +187,7 @@ SUDOERS_FILE="${MOCK_SUDOERS_FILE:-/etc/sudoers.d/millennium-helpers}"
 # shellcheck disable=SC1090
 source "${SCRIPT_DIR}/scripts/common.sh"
 
-# Define scripts to manage (format: "source_filename:target_command_name")
+# Feature helpers (long names). PATH `millennium` is handled separately (Go-first).
 SCRIPTS=(
   "scripts/millennium-repair.sh:millennium-repair"
   "scripts/millennium-upgrade.sh:millennium-upgrade"
@@ -199,13 +199,59 @@ SCRIPTS=(
   "scripts/millennium.sh:millennium"
 )
 
+# Ensure Go dispatcher binary exists under bin/millennium when possible.
+# MILLENNIUM_INSTALL_DISPATCHER=shell forces the Bash millenium.sh fallback.
+ensure_go_dispatcher() {
+  local out="${SCRIPT_DIR}/bin/millennium"
+  if [[ "${MILLENNIUM_INSTALL_DISPATCHER:-}" == "shell" ]]; then
+    return 1
+  fi
+  if [[ -x "$out" ]]; then
+    return 0
+  fi
+  if [[ ! -d "${SCRIPT_DIR}/go/cmd/millennium" ]]; then
+    return 1
+  fi
+  if ! command -v go >/dev/null 2>&1; then
+    return 1
+  fi
+  if [[ "${DRY_RUN:-false}" == "true" ]]; then
+    return 0
+  fi
+  echo -e "${BLUE}Building Go dispatcher (bin/millennium)...${NC}"
+  if make -C "$SCRIPT_DIR" build >/dev/null; then
+    [[ -x "$out" ]]
+    return $?
+  fi
+  return 1
+}
+
+# Prints absolute path of file to install as TARGET_DIR/millennium, and sets
+# DISPATCHER_KIND to "go" or "shell".
+resolve_millennium_dispatcher() {
+  local go_bin="${SCRIPT_DIR}/bin/millennium"
+  local shell_src="${SCRIPT_DIR}/scripts/millennium.sh"
+  if [[ "${MILLENNIUM_INSTALL_DISPATCHER:-}" == "shell" ]]; then
+    DISPATCHER_KIND="shell"
+    echo "$shell_src"
+    return 0
+  fi
+  if ensure_go_dispatcher && { [[ -x "$go_bin" ]] || [[ "${DRY_RUN:-false}" == "true" ]]; }; then
+    DISPATCHER_KIND="go"
+    echo "$go_bin"
+    return 0
+  fi
+  DISPATCHER_KIND="shell"
+  echo "$shell_src"
+}
+
 show_help() {
   cat << EOF
 Usage: $(basename "$0") [OPTIONS] [COMMAND]
 
 Commands:
-  install      Install scripts to ${TARGET_DIR} (default, requires sudo)
-  uninstall    Remove scripts from ${TARGET_DIR} (requires sudo)
+  install      Install helper tools to ${TARGET_DIR} (default, requires sudo)
+  uninstall    Remove helper tools from ${TARGET_DIR} (requires sudo)
 
 Options:
   -d, --dry-run      Perform dry-run without copying files or configuring sudoers
@@ -229,6 +275,11 @@ same release), not independent signing. Prefer package managers when available.
 
 Note: Millennium client update channel (stable|beta|main) is separate; configure
 via 'millennium schedule' / 'millennium upgrade --channel'.
+
+Note: When a Go toolchain (or prebuilt bin/millennium) is available, install
+places the Go strangler as PATH 'millennium' and still installs long-name
+shell helpers for MCP, timers, and sudoers. Set MILLENNIUM_INSTALL_DISPATCHER=shell
+to force the Bash dispatcher.
 EOF
 }
 
@@ -609,20 +660,37 @@ install_scripts() {
     fi
   done
 
-  echo -e "${BLUE}Installing Millennium helper scripts to ${TARGET_DIR}...${NC}"
+  echo -e "${BLUE}Installing Millennium helper tools to ${TARGET_DIR}...${NC}"
 
   for item in "${SCRIPTS[@]}"; do
     local src="${item%%:*}"
     local dest="${item#*:}"
     local src_path="${SCRIPT_DIR}/${src}"
     local dest_path="${TARGET_DIR}/${dest}"
+    local kind="shell"
 
-    if [[ ! -f "$src_path" ]]; then
+    if [[ "$dest" == "millennium" ]]; then
+      DISPATCHER_KIND=""
+      src_path="$(resolve_millennium_dispatcher)"
+      kind="${DISPATCHER_KIND:-shell}"
+      if [[ "$kind" == "go" && "${DRY_RUN:-false}" == "true" && ! -x "${SCRIPT_DIR}/bin/millennium" ]]; then
+        printf "Installing: %s... " "$dest_path"
+        echo -e "${YELLOW}[DRY RUN] Would build and install Go dispatcher (bin/millennium)${NC}"
+        continue
+      fi
+      if [[ "$kind" == "go" ]]; then
+        echo -e "${BLUE}Using Go dispatcher for PATH millennium${NC}"
+      else
+        echo -e "${YELLOW}Go dispatcher unavailable; installing Bash millennium.sh fallback${NC}"
+      fi
+    fi
+
+    if [[ ! -f "$src_path" && ! ( "$kind" == "go" && "${DRY_RUN:-false}" == "true" ) ]]; then
       echo -e "${RED}Error: Source script not found: ${src_path}${NC}" >&2
       exit 1
     fi
 
-    # Copy script, set ownership to root, and make executable (755)
+    # Copy binary/script, set ownership to root, and make executable (755)
     printf "Installing: %s... " "$dest_path"
     if execute cp -f "$src_path" "$dest_path" && \
        change_owner "$dest_path" && \
@@ -630,7 +698,7 @@ install_scripts() {
       echo -e "${GREEN}OK${NC}"
     else
       echo -e "${RED}FAIL${NC}"
-      echo -e "${RED}Error: Failed to install or configure helper script ${dest_path}.${NC}" >&2
+      echo -e "${RED}Error: Failed to install or configure helper ${dest_path}.${NC}" >&2
       echo -e "${YELLOW}Please ensure you have write permissions to ${TARGET_DIR} (you may need to run this script using sudo).${NC}" >&2
       exit 1
     fi

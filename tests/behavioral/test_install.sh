@@ -72,6 +72,9 @@ assert_contains "$out" "DRY RUN MODE" "install.sh install --dry-run announces dr
 assert_contains "$out" "millennium-repair" "install.sh install --dry-run lists millennium-repair as a managed script"
 assert_contains "$out" "millennium-mcp" "install.sh install --dry-run lists millennium-mcp as a managed script"
 assert_contains "$out" "millennium" "install.sh install --dry-run lists the millennium dispatcher"
+if command -v go >/dev/null 2>&1 && [[ -d "${REPO_ROOT}/go/cmd/millennium" ]]; then
+  assert_contains "$out" "Go dispatcher" "install.sh install --dry-run prefers Go dispatcher when toolchain present"
+fi
 assert_contains "$out" "Installing man pages" "install.sh install --dry-run installs man pages"
 assert_contains "$out" "millennium.1" "install.sh install --dry-run copies the dispatcher man page"
 assert_not_contains "$out" "Traceback" "install.sh install --dry-run has no Python trailing tracebacks"
@@ -345,6 +348,19 @@ out=$("${PREFIX_BIN}/millennium-diag" --help 2>&1)
 rc=$?
 assert_success "$rc" "installed millennium-diag --help works against prefix lib"
 assert_contains "$out" "Usage:" "installed millennium-diag --help prints usage"
+
+# Go-first dispatcher when toolchain or prebuilt binary is available
+if command -v go >/dev/null 2>&1 && [[ -d "${REPO_ROOT}/go/cmd/millennium" ]]; then
+  first_line=$(head -n 1 "${PREFIX_BIN}/millennium" 2>/dev/null || true)
+  assert_not_contains "$first_line" "#!" "isolated install places Go binary as millennium (not shell shebang)"
+  out=$("${PREFIX_BIN}/millennium" version 2>&1)
+  rc=$?
+  assert_success "$rc" "installed Go millennium version exits 0"
+  assert_contains "$out" "millennium" "installed Go millennium version mentions millennium"
+else
+  first_line=$(head -n 1 "${PREFIX_BIN}/millennium" 2>/dev/null || true)
+  assert_contains "$first_line" "#!" "without Go toolchain, millenium.sh fallback is installed"
+fi
 
 out=$(
   TARGET_DIR="$PREFIX_BIN" \
