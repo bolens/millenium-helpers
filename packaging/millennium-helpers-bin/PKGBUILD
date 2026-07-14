@@ -23,7 +23,7 @@ backup=('etc/sudoers.d/millennium-helpers')
 source=("${url}/releases/download/v${pkgver}/millennium-helpers-v${pkgver}-linux-amd64.tar.gz"
         "millennium-helpers.sudoers")
 sha256sums=('c077c3f536e751e776fabb329600b18d7452d455a2e2dd1908491332569f4e55'
-            'd2a3e23decbd8d3e8ec59919f3bc244be21b9a1f6fa5e70ddd039243b7a87c9d')
+            '68a0e3cfd6cbc860d4c936ee0eba10506a6ec64d260a44ab8f4b92b067a658af')
 
 prepare() {
   # shellcheck source=/dev/null

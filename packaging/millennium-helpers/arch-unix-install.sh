@@ -1,4 +1,5 @@
 # shellcheck shell=bash
+# shellcheck disable=SC2154 # pkgdir/pkgname provided by Arch package()
 # Shared Arch package() body for Unix helpers (from-source / -git / -bin).
 # Caller must set:
 #   pkgdir  — package root

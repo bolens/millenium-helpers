@@ -23,7 +23,7 @@ backup=('etc/sudoers.d/millennium-helpers')
 source=("${_pkgname}::git+${url}.git"
         "millennium-helpers.sudoers")
 sha256sums=('SKIP'
-            'd2a3e23decbd8d3e8ec59919f3bc244be21b9a1f6fa5e70ddd039243b7a87c9d')
+            '81ca0e2fb67adf41f6f29b576a5d4cd4d614b624f7db7de55506e926a0730674')
 
 prepare() {
   # shellcheck source=/dev/null

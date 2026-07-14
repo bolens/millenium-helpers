@@ -85,7 +85,7 @@ jobs:
           jq -e --arg v "$VERSION" '
             .version == $v
             and (.url | endswith("/releases/download/v\($v)/millennium-helpers-v\($v)-windows-amd64.zip"))
-            and (.autoupdate.hash.url | endswith("millennium-helpers-v\($v)-windows-amd64.zip.sha256"))
+            and (.autoupdate.hash.url | endswith("millennium-helpers-v$version-windows-amd64.zip.sha256"))
           ' "$bin" >/dev/null
 
           jq -e '
