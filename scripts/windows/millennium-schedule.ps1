@@ -89,7 +89,12 @@ if ([string]::IsNullOrWhiteSpace($Channel)) {
         try {
             $config = Get-Content -Path $configFile -Raw | ConvertFrom-Json
             if ($config -and $config.update_channel) {
-                $Channel = [string]$config.update_channel
+                $cand = [string]$config.update_channel
+                if (Test-ValidUpdateChannel -Channel $cand) {
+                    $Channel = $cand
+                } else {
+                    Log-Warn "Ignoring invalid update_channel '$cand' in config (expected stable|beta|main)."
+                }
             }
         } catch {}
     }
@@ -98,9 +103,16 @@ if ([string]::IsNullOrWhiteSpace($Channel)) {
 # enable <channel> from remaining positionals
 if ($Command -eq "enable" -and $script:PositionalArgs.Count -gt 0) {
     $cand = [string]$script:PositionalArgs[0]
-    if ($cand -in @("stable", "beta", "main")) {
+    if (Test-ValidUpdateChannel -Channel $cand) {
         $Channel = $cand
     }
+}
+
+try {
+    $Channel = Require-UpdateChannel -Channel $Channel
+} catch {
+    Log-Error $_.Exception.Message
+    exit 1
 }
 
 function Show-Help {
@@ -135,7 +147,13 @@ if ($Version -or $Command -eq "version" -or $Command -eq "--version" -or $Comman
 }
 
 function Enable-Task {
-    $channel_arg = $args[0]
+    param([Parameter(Mandatory = $true)][string]$ChannelArg)
+    try {
+        $channel_arg = Require-UpdateChannel -Channel $ChannelArg
+    } catch {
+        Log-Error $_.Exception.Message
+        exit 1
+    }
     $upgradeScript = Join-Path -Path $ScriptDir -ChildPath "millennium-upgrade.ps1"
     $themeScript = Join-Path -Path $ScriptDir -ChildPath "millennium-theme.ps1"
 
@@ -154,11 +172,16 @@ function Enable-Task {
     # Generate random start delay to prevent DDoS on GitHub
     $delayMin = Get-Random -Minimum 0 -Maximum 60
 
-    # Match Unix timer: upgrade -Yes -Quiet, theme update, append to updater.log
+    # Escape single quotes in paths for embedding inside single-quoted PowerShell literals.
+    $escConfigDir = $configDir.Replace("'", "''")
+    $escUpgrade = $upgradeScript.Replace("'", "''")
+    $escTheme = $themeScript.Replace("'", "''")
+    $escLog = $updaterLog.Replace("'", "''")
+    # Channel is allow-listed; embed as a single-quoted literal so injection cannot break out.
     $psInner = @(
-        "New-Item -ItemType Directory -Force -Path '$configDir' | Out-Null"
-        "& '$upgradeScript' -Channel $channel_arg -Yes -Quiet *>> '$updaterLog'"
-        "if (Test-Path -LiteralPath '$themeScript') { & '$themeScript' update -Quiet *>> '$updaterLog' }"
+        "New-Item -ItemType Directory -Force -Path '$escConfigDir' | Out-Null"
+        "& '$escUpgrade' -Channel '$channel_arg' -Yes -Quiet *>> '$escLog'"
+        "if (Test-Path -LiteralPath '$escTheme') { & '$escTheme' update -Quiet *>> '$escLog' }"
     ) -join "; "
     $taskArg = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command `"$psInner`""
 

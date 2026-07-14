@@ -165,10 +165,11 @@ fi
 # execute and write_file resolved from common.sh
 
 enable_timer() {
-  local channel="${1:-${CONFIG_UPDATE_CHANNEL:-stable}}"
+  local channel
+  channel="$(require_update_channel "${1:-${CONFIG_UPDATE_CHANNEL:-stable}}")" || exit 1
   local script_file=""
 
-  script_file=$(resolve_helper_path "millennium-upgrade")
+  script_file=$(resolve_packaged_helper_path "millennium-upgrade")
 
   # Sanity check: Ensure scripts have been installed (only if not dry run)
   if [[ "$DRY_RUN" == "false" ]] && [[ ! -f "$script_file" ]]; then
@@ -182,10 +183,10 @@ enable_timer() {
   fi
 
   local theme_cmd
-  theme_cmd=$(resolve_helper_path "millennium-theme")
+  theme_cmd=$(resolve_packaged_helper_path "millennium-theme")
 
   local sched_self
-  sched_self=$(resolve_helper_path "millennium-schedule")
+  sched_self=$(resolve_packaged_helper_path "millennium-schedule")
 
   local state_dir="${XDG_STATE_HOME:-$USER_HOME/.local/state}/millennium-helpers"
 
@@ -196,6 +197,7 @@ enable_timer() {
     execute mkdir -p "$plist_dir"
 
     echo -e "${BLUE}Creating launchd plist file...${NC}"
+    # Channel is allow-listed (stable|beta|main); paths come from packaged resolve.
     write_file "$plist_path" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -207,7 +209,7 @@ enable_timer() {
     <array>
         <string>/bin/bash</string>
         <string>-c</string>
-        <string>mkdir -p '${state_dir}' && { '${sched_self}' pre-update && '${script_file}' --channel '${channel}' && '${theme_cmd}' update && '${sched_self}' post-update; } >> '${state_dir}/updater.log' 2>&1</string>
+        <string>mkdir -p '${state_dir}' && { MILLENNIUM_SCHEDULER=1 '${sched_self}' pre-update && '${script_file}' --channel '${channel}' && '${theme_cmd}' update && MILLENNIUM_SCHEDULER=1 '${sched_self}' post-update; } >> '${state_dir}/updater.log' 2>&1</string>
     </array>
     <key>StartCalendarInterval</key>
     <dict>
@@ -254,7 +256,7 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/bin/bash -c 'mkdir -p "${state_dir}" && { "${sched_self}" pre-update && /usr/bin/sudo -n "${script_file}" --channel "${channel}" --quiet && "${theme_cmd}" update --quiet && "${sched_self}" post-update; } >> "${state_dir}/updater.log" 2>&1'
+ExecStart=/bin/bash -c 'mkdir -p "${state_dir}" && { MILLENNIUM_SCHEDULER=1 "${sched_self}" pre-update && /usr/bin/sudo -n "${script_file}" --channel "${channel}" --quiet && "${theme_cmd}" update --quiet && MILLENNIUM_SCHEDULER=1 "${sched_self}" post-update; } >> "${state_dir}/updater.log" 2>&1'
 EOF
 
   echo -e "${BLUE}Creating systemd user timer file...${NC}"
@@ -473,6 +475,11 @@ rotate_logs() {
 }
 
 pre_update() {
+  if [[ "${MILLENNIUM_SCHEDULER:-}" != "1" ]]; then
+    echo -e "${RED}Error: pre-update is only for the scheduler. Do not invoke it manually.${NC}" >&2
+    echo "Enable or run updates via: millennium-schedule enable | millennium-upgrade" >&2
+    exit 1
+  fi
   rotate_logs
   log_info "Initiating pre-update checks..."
   if is_game_running; then
@@ -495,6 +502,11 @@ pre_update() {
 }
 
 post_update() {
+  if [[ "${MILLENNIUM_SCHEDULER:-}" != "1" ]]; then
+    echo -e "${RED}Error: post-update is only for the scheduler. Do not invoke it manually.${NC}" >&2
+    echo "Enable or run updates via: millennium-schedule enable | millennium-upgrade" >&2
+    exit 1
+  fi
   log_info "Initiating post-update checks and verification..."
   local state_file
   state_file="$(relaunch_state_file "$RUNNING_USER")"
@@ -538,10 +550,11 @@ post_update() {
 }
 
 enable_cron() {
-  local channel="${1:-${CONFIG_UPDATE_CHANNEL:-stable}}"
+  local channel
+  channel="$(require_update_channel "${1:-${CONFIG_UPDATE_CHANNEL:-stable}}")" || exit 1
   local script_file=""
 
-  script_file=$(resolve_helper_path "millennium-upgrade")
+  script_file=$(resolve_packaged_helper_path "millennium-upgrade")
 
   if ! command -v crontab &>/dev/null; then
     echo -e "${RED}Error: 'crontab' command not found. Please install a cron daemon (e.g. cronie, fcron).${NC}" >&2
@@ -549,13 +562,19 @@ enable_cron() {
   fi
 
   local sched_self
-  sched_self=$(resolve_helper_path "millennium-schedule")
+  sched_self=$(resolve_packaged_helper_path "millennium-schedule")
 
   local theme_cmd
-  theme_cmd=$(resolve_helper_path "millennium-theme")
+  theme_cmd=$(resolve_packaged_helper_path "millennium-theme")
 
   local state_dir="${XDG_STATE_HOME:-$USER_HOME/.local/state}/millennium-helpers"
-  local cron_cmd="0 2 * * * sleep \$(python3 -c 'import random; print(random.randint(0, 3600))') && mkdir -p ${state_dir} && { ${sched_self} pre-update && /usr/bin/sudo -n ${script_file} --channel ${channel} && ${theme_cmd} update && ${sched_self} post-update; } >> ${state_dir}/updater.log 2>&1"
+  # Channel is allow-listed (stable|beta|main). Quote paths with printf %q for cron.
+  local q_state q_sched q_script q_theme
+  printf -v q_state '%q' "$state_dir"
+  printf -v q_sched '%q' "$sched_self"
+  printf -v q_script '%q' "$script_file"
+  printf -v q_theme '%q' "$theme_cmd"
+  local cron_cmd="0 2 * * * sleep \$(python3 -c 'import random; print(random.randint(0, 3600))') && mkdir -p ${q_state} && { MILLENNIUM_SCHEDULER=1 ${q_sched} pre-update && /usr/bin/sudo -n ${q_script} --channel ${channel} && ${q_theme} update && MILLENNIUM_SCHEDULER=1 ${q_sched} post-update; } >> ${q_state}/updater.log 2>&1"
 
   echo -e "${BLUE}Configuring daily crontab job for user ${RUNNING_USER}...${NC}"
 

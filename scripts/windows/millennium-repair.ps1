@@ -94,9 +94,20 @@ if (Test-Path -Path $configFile) {
     try {
         $config = Get-Content -Path $configFile -Raw | ConvertFrom-Json
         if ($config -and $config.update_channel) {
-            $Channel = $config.update_channel
+            $cand = [string]$config.update_channel
+            if (Test-ValidUpdateChannel -Channel $cand) {
+                $Channel = $cand
+            } else {
+                Log-Warn "Ignoring invalid update_channel '$cand' in config (expected stable|beta|main)."
+            }
         }
     } catch {}
+}
+try {
+    $Channel = Require-UpdateChannel -Channel $Channel
+} catch {
+    Log-Error $_.Exception.Message
+    exit 1
 }
 
 Log-Info "=== Initiating Millennium Force Repair ==="
