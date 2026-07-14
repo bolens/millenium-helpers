@@ -53,6 +53,37 @@ func TestNeedsLegacy(t *testing.T) {
 	if NeedsLegacy(Options{Action: "enable", DryRun: true}) {
 		t.Fatal("dry-run enable should be native")
 	}
+	if NeedsLegacy(Options{Action: "enable"}) {
+		t.Fatal("enable should be native (Unix timers / Windows Task Scheduler)")
+	}
+	if NeedsLegacy(Options{Action: "disable"}) {
+		t.Fatal("disable should be native")
+	}
+}
+
+func TestBuildEnablePowerShell(t *testing.T) {
+	arg, script := buildEnablePowerShell(
+		"beta",
+		`C:\Users\alice\AppData\Local\millennium-helpers`,
+		`C:\helpers\millennium-upgrade.ps1`,
+		`C:\helpers\millennium-theme.ps1`,
+		`C:\helpers\updater.log`,
+		15,
+	)
+	if !strings.Contains(arg, "millennium-upgrade.ps1") || !strings.Contains(arg, "beta") {
+		t.Fatalf("taskArg=%s", arg)
+	}
+	if !strings.Contains(script, "Register-ScheduledTask") || !strings.Contains(script, WinTaskName) {
+		t.Fatalf("script=%s", script)
+	}
+	if !strings.Contains(script, "Minutes 15") {
+		t.Fatalf("missing delay: %s", script)
+	}
+	// Single-quote escaping in taskArg (Register script re-escapes via psSingle)
+	arg2, _ := buildEnablePowerShell("stable", `C:\O'Brien`, "u.ps1", "t.ps1", "l.log", 0)
+	if !strings.Contains(arg2, `O''Brien`) {
+		t.Fatalf("escape failed: %s", arg2)
+	}
 }
 
 func TestResolveChannelFromConfig(t *testing.T) {

@@ -111,7 +111,7 @@ func useLegacy() bool {
 func newScheduleCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:                "schedule",
-		Short:              "Scheduler (config/status/Unix timer native; Windows live + setup legacy)",
+		Short:              "Scheduler (config/status/enable/disable native; setup + pre/post legacy)",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
 			if useLegacy() {

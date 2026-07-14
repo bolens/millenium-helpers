@@ -97,10 +97,6 @@ func NeedsLegacy(o Options) bool {
 	switch o.Action {
 	case "setup", "pre-update", "post-update", "config":
 		return true
-	case "enable", "disable":
-		if runtime.GOOS == "windows" && !o.DryRun {
-			return true
-		}
 	}
 	return false
 }
@@ -131,8 +127,8 @@ func RunCLI(o Options) int {
 func helpText() string {
 	return `Usage: millennium schedule <enable|disable|status|setup|config> [OPTIONS]
 
-Native: status, enable/disable --dry-run, Unix live enable/disable.
-Windows live enable/disable and setup/pre-update/post-update remain legacy.
+Native: status, enable/disable (Unix timers + Windows Task Scheduler), --dry-run.
+setup / pre-update / post-update remain legacy.
 
 Options:
   -c, --cron     Linux/macOS: force crontab (auto when systemd unavailable)
