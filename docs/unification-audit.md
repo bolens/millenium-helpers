@@ -87,7 +87,7 @@ Tests: Bash behavioral/unit under `tests/` · Pester under `tests/windows/`.
 | `diag` (health report) | Y | Y | **Native report** | `test_diag` + Go | `millennium-diag` + Go | --share/follow and live doctor → legacy |
 | `diag doctor` / `--fix` | Y | Y | **`--dry-run` native**; live legacy | `test_diag` + Go | `millennium-diag` | Elevation / upgrade adapters |
 | `diag --json` / `--share` / `--follow` | Y | Y | **`--json` + `--share` native**; `--follow` legacy | Go + partial | Go + partial | Redact + paste.rs |
-| `upgrade` download/verify/install | Y | Y | **Download+SHA native**; extract/install legacy | `test_upgrade` + Go | `millennium-upgrade` | Handoff via `--file` after verify |
+| `upgrade` download/verify/install | Y | Y | **Download+SHA+install native when writable**; else legacy extract | `test_upgrade` + Go | `millennium-upgrade` | Non-root Linux `/usr/lib` still legacy |
 | `upgrade --rollback` / `list` | Y | Y | **`list` native**; apply legacy | `test_upgrade` + Go | `millennium-upgrade` | Apply still legacy |
 | `upgrade --file` / `--sha256` | Y | Y | **Verify native**; install legacy | Y + Go | Y | Fail-closed SHA before legacy |
 | `repair` | Y | Y | **Dry-run + live user-path native** | `test_repair` + Go | `millennium-repair` + Go | Hook reinstall still legacy as needed |

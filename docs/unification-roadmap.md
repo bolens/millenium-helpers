@@ -96,7 +96,8 @@ Keep Bash + Pester green for unmigrated commands. Supersede suites
 | `millennium diag doctor\|--fix` (live) / `--follow` | Legacy |
 | `millennium upgrade --rollback list` | Native (`internal/upgrade`) |
 | `millennium upgrade --file … --dry-run` (+ SHA verify) | Native verify / announce |
-| `millennium upgrade` (remote) | Native GitHub resolve + download + SHA; legacy extract/install |
+| `millennium upgrade` (remote) | Native download+SHA; native extract/install when writable (root / `MILLENNIUM_LIB_DIR` / Windows Steam); else legacy |
+| `millennium upgrade --file` (live) | Native install when writable; else legacy |
 | `millennium upgrade --rollback <id>` | Legacy apply |
 | `millennium purge --dry-run` | Native plan (`internal/purge`) |
 | `millennium purge` (live, Unix) | Native (confirm / `--yes`); Windows → legacy |
