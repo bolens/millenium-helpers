@@ -60,7 +60,6 @@ stdenv.mkDerivation ({
     mkdir -p $out/lib/millennium-helpers/lib
     install -m644 scripts/common.sh $out/lib/millennium-helpers/common.sh
     install -m644 scripts/lib/*.sh $out/lib/millennium-helpers/lib/
-    install -m644 scripts/millennium-mcp.py $out/lib/millennium-helpers/millennium-mcp.py
 
     for script in millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp millennium; do
       wrapProgram $out/bin/$script \

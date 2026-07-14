@@ -46,7 +46,6 @@ class MillenniumHelpersBin < Formula
 
     (lib/"millennium-helpers").install "scripts/common.sh"
     (lib/"millennium-helpers/lib").install Dir["scripts/lib/*.sh"]
-    (lib/"millennium-helpers").install "scripts/millennium-mcp.py"
 
     commands = %w[
       millennium

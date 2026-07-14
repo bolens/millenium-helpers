@@ -204,7 +204,7 @@ Also available via the dispatcher: `millennium diag`, `millennium doctor`, `mill
 | [`millennium-repair`](scripts/millennium-repair.sh) | Permissions, CEF cache, theme refresh |
 | [`millennium-purge`](scripts/millennium-purge.sh) | De-register and remove Millennium from Steam |
 | [`millennium-theme`](scripts/millennium-theme.sh) | List, install, update, remove skins |
-| [`millennium-mcp`](scripts/millennium-mcp.py) | MCP server for AI assistants |
+| [`millennium-mcp`](go/internal/mcp/) | MCP server for AI assistants (`millennium mcp`) |
 | [`millennium`](go/cmd/millennium) | Go PATH dispatcher (`bin/millennium`) → the commands above |
 
 Windows counterparts live under [`scripts/windows/`](scripts/windows/).

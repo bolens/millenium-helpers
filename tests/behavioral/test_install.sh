@@ -234,7 +234,7 @@ cp "$REPO_ROOT/install.sh" "$REPO_ROOT/VERSION" "$REPO_ROOT/LICENSE" "$MOCK_PAYL
 cp "$REPO_ROOT/README.md" "$MOCK_PAYLOAD/" 2>/dev/null || true
 cp "$REPO_ROOT/scripts/common.sh" \
   "$REPO_ROOT/scripts/millennium-diag.sh" \
-  "$REPO_ROOT/scripts/millennium-mcp.py" \
+
   "$REPO_ROOT/scripts/millennium-mcp.sh" \
   "$REPO_ROOT/scripts/millennium-purge.sh" \
   "$REPO_ROOT/scripts/millennium-repair.sh" \
@@ -522,7 +522,7 @@ mkdir -p "$MAIN_PAYLOAD/scripts" "$MAIN_PAYLOAD/completions" "$MAIN_PAYLOAD/man"
 cp "$REPO_ROOT/install.sh" "$REPO_ROOT/VERSION" "$REPO_ROOT/LICENSE" "$MAIN_PAYLOAD/"
 cp "$REPO_ROOT/scripts/common.sh" \
   "$REPO_ROOT/scripts/millennium-diag.sh" \
-  "$REPO_ROOT/scripts/millennium-mcp.py" \
+
   "$REPO_ROOT/scripts/millennium-mcp.sh" \
   "$REPO_ROOT/scripts/millennium-purge.sh" \
   "$REPO_ROOT/scripts/millennium-repair.sh" \

@@ -13,7 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 CONTRACT = ROOT / "spec" / "cli-contract.yaml"
-MCP = ROOT / "scripts" / "millennium-mcp.py"
+MCP = ROOT / "go" / "internal" / "mcp" / "tools.go"
 BASH_COMP = ROOT / "completions" / "bash" / "millennium-helpers"
 MAN_DIR = ROOT / "man"
 
@@ -62,13 +62,12 @@ def check_man(contract: dict) -> None:
 
 
 def mcp_tool_blocks(src: str) -> dict[str, set[str]]:
-    """Map MCP tool name -> set of inputSchema property names."""
+    """Map MCP tool name -> set of inputSchema property names (Go tools.go catalog)."""
     tools: dict[str, set[str]] = {}
-    # Match each tools/list entry by name, then take the following inputSchema object.
-    for m in re.finditer(r'"name":\s*"(millennium_\w+)"', src):
+    for m in re.finditer(r'Name:\s+"(millennium_\w+)"', src):
         name = m.group(1)
         rest = src[m.end() : m.end() + 2500]
-        schema_m = re.search(r'"inputSchema":\s*\{', rest)
+        schema_m = re.search(r"InputSchema:\s*map\[string\]any\{", rest)
         if not schema_m:
             tools[name] = set()
             continue
@@ -84,18 +83,20 @@ def mcp_tool_blocks(src: str) -> dict[str, set[str]]:
                     end = start + i + 1
                     break
         schema = rest[start:end] if end else ""
-        props = set(re.findall(r'"([a-z_]+)":\s*\{\s*"type":', schema))
+        # Property keys are `"foo": map[string]any{` under properties.
+        props = set(re.findall(r'"([a-z_]+)":\s*map\[string\]any\{', schema))
+        props.discard("properties")  # nested map key if matched loosely
         tools[name] = props
     return tools
 
 
 def check_mcp(contract: dict) -> None:
     if not MCP.is_file():
-        fail(f"missing MCP server: {MCP.relative_to(ROOT)}")
+        fail(f"missing MCP tools catalog: {MCP.relative_to(ROOT)}")
     src = MCP.read_text(encoding="utf-8")
     tools = mcp_tool_blocks(src)
     if not tools:
-        fail("no MCP tools parsed from millennium-mcp.py")
+        fail("no MCP tools parsed from go/internal/mcp/tools.go")
     commands = contract.get("commands") or {}
     for name, meta in commands.items():
         if not isinstance(meta, dict):
@@ -105,7 +106,7 @@ def check_mcp(contract: dict) -> None:
             continue
         if mcp_name not in tools:
             fail(
-                f"command {name!r}: MCP tool {mcp_name!r} not found in millennium-mcp.py"
+                f"command {name!r}: MCP tool {mcp_name!r} not found in go/internal/mcp/tools.go"
             )
         expected = meta.get("mcp_properties")
         if expected is None:

@@ -48,7 +48,6 @@ else
 fi
 install -m644 scripts/common.sh %{buildroot}%{_libdir}/millennium-helpers/common.sh
 install -m644 scripts/lib/*.sh %{buildroot}%{_libdir}/millennium-helpers/lib/
-install -m644 scripts/millennium-mcp.py %{buildroot}%{_libdir}/millennium-helpers/millennium-mcp.py
 install -m644 VERSION %{buildroot}%{_libdir}/millennium-helpers/VERSION
 install -m644 completions/bash/millennium-helpers %{buildroot}%{_datadir}/bash-completion/completions/millennium-helpers
 for s in millennium millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp; do

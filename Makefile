@@ -104,7 +104,7 @@ bump-version:
 
 lint:
 	shellcheck *.sh scripts/*.sh scripts/lib/*.sh scripts/ci/*.sh tests/*.sh tests/lib/*.sh tests/unit/*.sh tests/behavioral/*.sh
-	ruff check scripts/millennium-mcp.py scripts/ci/check-cli-contract.py
+	ruff check scripts/ci/check-cli-contract.py
 	@test -s VERSION || (echo "VERSION file missing or empty" >&2; exit 1)
 	@$(MAKE) check-version
 	@$(MAKE) check-man
@@ -113,6 +113,6 @@ lint:
 	@$(MAKE) check-cli-contract
 
 format:
-	ruff format scripts/millennium-mcp.py scripts/ci/check-cli-contract.py
+	ruff format scripts/ci/check-cli-contract.py
 
 check-all: lint test-go test

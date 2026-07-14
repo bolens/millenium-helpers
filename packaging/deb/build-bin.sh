@@ -50,7 +50,6 @@ fi
 
 install -m644 "$TREE"/scripts/common.sh "$DEST/usr/lib/millennium-helpers/common.sh"
 install -m644 "$TREE"/scripts/lib/*.sh "$DEST/usr/lib/millennium-helpers/lib/"
-install -m644 "$TREE"/scripts/millennium-mcp.py "$DEST/usr/lib/millennium-helpers/millennium-mcp.py"
 install -m644 "$TREE"/VERSION "$DEST/usr/lib/millennium-helpers/VERSION"
 install -m644 "$TREE"/completions/bash/millennium-helpers "$DEST/usr/share/bash-completion/completions/millennium-helpers"
 for s in millennium millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp; do

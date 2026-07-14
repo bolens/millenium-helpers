@@ -463,16 +463,6 @@ if (Test-Path -LiteralPath $trackLib) {
     Log-Info "Installed: install-meta.json (track=$metaTrack)"
 }
 
-# Also install the Python MCP server next to the PowerShell wrapper
-$mcpPySrc = Join-Path -Path $srcDir -ChildPath "..\millennium-mcp.py"
-if (!(Test-Path -Path $mcpPySrc)) {
-    $mcpPySrc = Join-Path -Path $srcDir -ChildPath "millennium-mcp.py"
-}
-if (Test-Path -Path $mcpPySrc) {
-    Copy-Item -Path $mcpPySrc -Destination (Join-Path -Path $binDir -ChildPath "millennium-mcp.py") -Force
-    Log-Info "Installed: millennium-mcp.py"
-}
-
 # Generate CMD wrappers
 $wrappers = @(
     "millennium",

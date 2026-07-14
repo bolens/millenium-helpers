@@ -39,15 +39,13 @@ else
   echo "OK  bin/millennium → man/millennium.1"
 fi
 
-# MCP is a Python entrypoint with its own man page
-if [[ -f scripts/millennium-mcp.py ]]; then
-  if [[ ! -f man/millennium-mcp.1 ]]; then
-    echo "::error file=scripts/millennium-mcp.py::missing man page man/millennium-mcp.1"
-    echo "error: missing man page for scripts/millennium-mcp.py" >&2
-    missing=1
-  else
-    echo "OK  scripts/millennium-mcp.py → man/millennium-mcp.1"
-  fi
+# MCP man page (argv0 twin / thin shim)
+if [[ ! -f man/millennium-mcp.1 ]]; then
+  echo "::error file=man/millennium-mcp.1::missing man page for millennium-mcp"
+  echo "error: missing man/millennium-mcp.1" >&2
+  missing=1
+else
+  echo "OK  millennium-mcp → man/millennium-mcp.1"
 fi
 
 # Orphan man pages (no matching script) — warn but do not fail

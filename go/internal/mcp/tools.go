@@ -7,7 +7,7 @@ type Tool struct {
 	InputSchema map[string]any `json:"inputSchema"`
 }
 
-// ToolsList mirrors scripts/millennium-mcp.py get_tools_list().
+// ToolsList is the MCP tools/list catalog (contract-checked by check-cli-contract.py).
 func ToolsList() []Tool {
 	return []Tool{
 		{

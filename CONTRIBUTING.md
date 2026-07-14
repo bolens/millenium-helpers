@@ -30,7 +30,7 @@ Tools fall into three tiers. Install what matches the work you are doing.
 | Python 3 | MCP server, packaging YAML checks, some tests | `python3` + PyYAML for `make check-winget` |
 | **Go 1.22+** | `make test-go` (included in `check-all`) / `make build` | [Install Go](https://go.dev/dl/); CI uses `CGO_ENABLED=0` |
 | [ShellCheck](https://www.shellcheck.net/) | `make lint` | `make setup`, or brew/pacman/apt/dnf |
-| [Ruff](https://docs.astral.sh/ruff/) | Lint/format `millennium-mcp.py` | `make setup`, or brew/pacman/apt/dnf |
+| [Ruff](https://docs.astral.sh/ruff/) | Lint/format `scripts/ci/*.py` | `make setup`, or brew/pacman/apt/dnf |
 | `jq`, `curl`, `unzip` | Script runtime + tests | System packages |
 
 `make setup` only installs **shellcheck** and **ruff**. Everything else above is assumed present on a normal Linux/macOS/devcontainer host.
@@ -95,8 +95,8 @@ Guide index: **[docs/README.md](docs/README.md)**. When adding or renaming a gui
 | `scripts/lib/` | Shared + remaining feature libraries (`logging`, `steam`, `upgrade_*`, …); schedule/theme/purge/diag/repair/dispatcher feature libs peeled |
 | `scripts/windows/*.ps1` | Windows PowerShell long-name command entrypoints |
 | `scripts/windows/common.ps1` | Shared PowerShell entry (culture/colors + sources `scripts/windows/lib/*`) |
-| `scripts/windows/lib/` | Shared + remaining feature libraries (`Logging`, `Steam`, `UpgradeRollback`, …); schedule/theme/purge/diag/repair/dispatcher feature libs peeled |
-| `scripts/millennium-mcp.py` | MCP server for AI assistants |
+| `scripts/windows/lib/` | Shared libraries (`Logging`, `Steam`, …); feature dual libs peeled (schedule/theme/purge/diag/repair/upgrade/dispatcher) |
+| `go/` + PATH `millennium-mcp` | Native MCP stdio server (`millennium mcp`) |
 | `spec/cli-contract.yaml` | **Source of truth** for commands / flags / platforms (Go + shells) |
 | `go/` | Go strangler module (`cmd/millennium`); native version/help; other cmds exec legacy |
 | `man/` | Manual pages (`millennium-*.1`) for every user-facing command |

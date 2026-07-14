@@ -9,7 +9,6 @@ on:
     paths:
       - 'man/**'
       - 'scripts/millennium-*.sh'
-      - 'scripts/millennium-mcp.py'
       - 'scripts/ci/check-man-pages.sh'
       - '.github/workflows/man-pages.yml'
   pull_request:
@@ -17,7 +16,6 @@ on:
     paths:
       - 'man/**'
       - 'scripts/millennium-*.sh'
-      - 'scripts/millennium-mcp.py'
       - 'scripts/ci/check-man-pages.sh'
       - '.github/workflows/man-pages.yml'
 

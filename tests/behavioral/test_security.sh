@@ -104,17 +104,17 @@ assert_failure "$rc" "millennium-upgrade --file without checksum fails"
 assert_contains "$out" "--sha256" "millennium-upgrade --file explains checksum requirement"
 rm -f "$MOCK_FILE"
 
-# --- MCP Windows elevation builder uses EncodedCommand ---
-MCP_PY="${REPO_ROOT}/scripts/millennium-mcp.py"
-if grep -q 'EncodedCommand' "$MCP_PY"; then
-  _report true "MCP uses EncodedCommand for Windows elevation"
+# --- Go MCP elevation uses sudo -n (Python EncodedCommand hatch retired) ---
+MCP_GO="${REPO_ROOT}/go/internal/mcp/runcmd.go"
+if grep -qE 'sudo.*,.*"-n"' "$MCP_GO"; then
+  _report true "Go MCP elevates with sudo -n on Unix"
 else
-  _report false "MCP uses EncodedCommand for Windows elevation"
+  _report false "Go MCP elevates with sudo -n on Unix"
 fi
-if grep -qF "ArgumentList '{ps_args}'" "$MCP_PY"; then
-  _report false "MCP no longer uses ArgumentList single-quote interpolation"
+if grep -qF "ArgumentList '{ps_args}'" "$MCP_GO"; then
+  _report false "Go MCP avoids ArgumentList single-quote interpolation"
 else
-  _report true "MCP no longer uses ArgumentList single-quote interpolation"
+  _report true "Go MCP avoids ArgumentList single-quote interpolation"
 fi
 
 rm -rf "$FAKE_CFG" "$FAKE_HOME" "$ZIP_DIR" "$EXTRACT" 2>/dev/null || true

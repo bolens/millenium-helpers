@@ -1,26 +1,28 @@
 #!/usr/bin/env bash
 # Thin millennium-mcp entry when the Go dispatcher is not installed as this PATH name.
-# Prefer: millennium mcp → Python millennium-mcp.py (escape hatch / legacy).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-if [[ "${MILLENNIUM_MCP_PYTHON:-}" != "1" && "${MILLENNIUM_LEGACY:-}" != "1" ]]; then
-  if command -v millennium >/dev/null 2>&1; then
-    exec millennium mcp "$@"
-  fi
+resolve_millennium_go() {
+  local cand
+  for cand in \
+    "${SCRIPT_DIR}/../bin/millennium" \
+    "${SCRIPT_DIR}/millennium" \
+    "$(command -v millennium 2>/dev/null || true)"
+  do
+    if [[ -n "$cand" && -x "$cand" ]]; then
+      printf '%s\n' "$cand"
+      return 0
+    fi
+  done
+  return 1
+}
+
+if go_bin="$(resolve_millennium_go)"; then
+  exec "$go_bin" mcp "$@"
 fi
 
-PY_CANDIDATES=(
-  "${SCRIPT_DIR}/millennium-mcp.py"
-  "${SCRIPT_DIR}/../millennium-mcp.py"
-  "/usr/lib/millennium-helpers/millennium-mcp.py"
-)
-for py in "${PY_CANDIDATES[@]}"; do
-  if [[ -f "$py" ]]; then
-    exec python3 "$py" "$@"
-  fi
-done
-
-echo "Error: millennium-mcp.py not found; install millennium-helpers or set PATH." >&2
+echo "Error: millennium MCP requires the Go millennium dispatcher (not found)." >&2
+echo "Install millennium-helpers or run 'make build' from a checkout." >&2
 exit 1

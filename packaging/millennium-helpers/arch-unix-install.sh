@@ -30,7 +30,6 @@ _arch_install_unix_helpers() {
   install -d "${pkgdir}/usr/lib/millennium-helpers/lib"
   install -m644 scripts/common.sh "${pkgdir}/usr/lib/millennium-helpers/common.sh"
   install -m644 scripts/lib/*.sh "${pkgdir}/usr/lib/millennium-helpers/lib/"
-  install -m644 scripts/millennium-mcp.py "${pkgdir}/usr/lib/millennium-helpers/millennium-mcp.py"
 
   install -Dm644 completions/bash/millennium-helpers "${pkgdir}/usr/share/bash-completion/completions/millennium-helpers"
   local script

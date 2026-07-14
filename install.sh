@@ -741,17 +741,6 @@ install_scripts() {
     fi
   done
 
-  # Keep Python MCP as lib escape hatch (MILLENNIUM_MCP_PYTHON=1 / legacy).
-  printf "Installing Python MCP escape hatch to %s... " "${LIB_DIR}/millennium-mcp.py"
-  if execute mkdir -p "${LIB_DIR}" && \
-     execute cp -f "${SCRIPT_DIR}/scripts/millennium-mcp.py" "${LIB_DIR}/millennium-mcp.py" && \
-     change_owner "${LIB_DIR}/millennium-mcp.py" && \
-     execute chmod 644 "${LIB_DIR}/millennium-mcp.py"; then
-    echo -e "${GREEN}OK${NC}"
-  else
-    echo -e "${YELLOW}WARN${NC}"
-  fi
-
   # Copy shared helper library and its modules
   local lib_dir="$LIB_DIR"
   printf "Installing shared helper library to %s... " "${lib_dir}/common.sh"

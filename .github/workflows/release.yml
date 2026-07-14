@@ -234,7 +234,6 @@ jobs:
             bin/millennium
             scripts/common.sh
             scripts/millennium-diag.sh
-            scripts/millennium-mcp.py
             scripts/millennium-mcp.sh
             scripts/millennium-purge.sh
             scripts/millennium-repair.sh
@@ -266,7 +265,6 @@ jobs:
           cp "dist/$WIN_GO" scripts/windows/millennium.exe
           zip -r "$WIN_ZIP" \
             scripts/windows/ \
-            scripts/millennium-mcp.py \
             completions/powershell/ \
             VERSION \
             LICENSE \
