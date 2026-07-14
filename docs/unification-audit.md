@@ -57,9 +57,8 @@ parity gaps are tracked in the matrix below
 
 ### Façade-only (should collapse)
 
-- Dual help / completions / man / MCP schema maintained by hand (command suites until Endgame C)
-- MCP argv mapping onto platform CLIs; Python hatch until Parallel retirement
-- Upgrade dual libs kept for `NeedsLegacy` install handoff (Parallel)
+- Dual help / completions / man / MCP schema maintained by hand (thin long-name wrappers remain)
+- MCP argv mapping onto platform CLIs (Go-only after Parallel)
 
 ---
 
@@ -90,7 +89,7 @@ Tests: Bash behavioral/unit under `tests/` · Pester under `tests/windows/`.
 | `diag doctor` / `--fix` | Y | Y | **Graduated** (6x dry-run + Endgame C live healthy) | `test_diag` + Go | Go thin-wrap | Completions/package cleanup still advisory |
 | `diag --json` / `--share` / `--follow` | Y | Y | **Graduated** (6w JSON; Endgame C share/follow) | Go | Go | Redact + paste stub; capped follow |
 | `diag logs` | Y | Y | **Graduated** (6y) | Go + thin-wrap | Go | No-logs path OK |
-| `upgrade` download/verify/install | Y | Y | **Graduated** when writable (Endgame C); Linux non-root → `sudo` hint Graduated | `test_upgrade` + Go | Go thin-wrap | Dual libs for `MILLENNIUM_LEGACY=1` install handoff |
+| `upgrade` download/verify/install | Y | Y | **Graduated/peeled** (Endgame C smoke + Parallel peel) | `test_upgrade` + Go | Go thin-wrap | Dual libs removed; Linux sudo handoff |
 | `upgrade --rollback` apply | Y | Y | **Graduated** when writable (6u); list Graduated 6q | `test_upgrade` + Go | Go | Sudo handoff when unwritable |
 | `upgrade --file` / `--sha256` | Y | Y | **Graduated** verify (6t) + dry-run (6s) | Y + Go | Y | Fail-closed SHA before install |
 | `repair` | Y | Y | **Graduated/peeled** (6ab–6ad) | `test_repair` + Go thin-wrap | Go thin-wrap | Dual libs removed |
@@ -100,8 +99,8 @@ Tests: Bash behavioral/unit under `tests/` · Pester under `tests/windows/`.
 | `schedule --cron` | Y | — | Linux/macOS only | Y | — | Contract OS-only |
 | `theme` list/install/update/remove | Y | Y | **Graduated** (Phase 6g peel) | `TestNativeTheme*` + `go.yml`; Bash/Pester via thin-wrap | Go + `go.yml` | Dual libs removed |
 | `theme list --json` | Y | Y | **Graduated** (Phase 6g peel) | Go + `go.yml` dual-OS; Bash/Pester via thin-wrap | Go + `go.yml` | Long-name theme thin-wrap |
-| `upgrade --rollback list` | Y | Y | **Graduated** (Phase 6q) | `TestNativeUpgradeRollbackList` + dual-OS `go.yml` | Go + `go.yml` | Dual libs retained for install handoff |
-| `mcp` tools surface | Y | Y | **Graduated** (6aa `initialize` smoke); Python hatch retained | `test_mcp` | `millennium` / `millennium-mcp` | Hatch until explicit retirement |
+| `upgrade --rollback list` | Y | Y | **Graduated** (Phase 6q) | `TestNativeUpgradeRollbackList` + dual-OS `go.yml` | Go + `go.yml` | Dual libs removed (Parallel) |
+| `mcp` tools surface | Y | Y | **Graduated** (6aa + Parallel hatch retirement) | `test_mcp` (Go-only) | Go thin-wrap | Python hatch deleted |
 | Install / uninstall helpers | Y | Y | **Go required** PATH `millennium` / `.exe` (Endgame A–B) | `test_install` | `install` | No shell/PS PATH dispatcher; uninstall clears both systemd scopes |
 | Install track / doctor sync | Y | Y | Native | `test_install_track` | `InstallTrack` | Shared meta JSON |
 | Completions | Y | Y | Generated from contract | `test_completions` | `completions` | Codegen later |

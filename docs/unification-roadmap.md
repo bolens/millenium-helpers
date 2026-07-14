@@ -21,8 +21,8 @@ and test parity** on Linux, macOS, and Windows.
 | **2 — Config + read-mostly** | Done | `schedule config`, `theme list`, bare diag |
 | **3 — Mutating core** | Done | Upgrade/repair/purge/diag (incl. follow) native |
 | **4 — Schedule + installers** | Done | Schedule + installers Go-first; legacy dual-scope systemd cleanup (4m) |
-| **5 — MCP + cleanup** | Done | Native Go MCP + `--register` + PATH twin; Python escape hatch remains |
-| **6 — Graduation** | In progress | Through **Endgame C**: Done→Graduated smokes for share/follow/doctor live/writable install/sudo hint; shell dispatcher gone; upgrade dual libs + MCP hatch remain (**Parallel** next) |
+| **5 — MCP + cleanup** | Done | Native Go MCP + `--register` + PATH twin; Python hatch retired (Parallel) |
+| **6 — Graduation** | Done | Through **Parallel**: Endgame A–C + upgrade peel + MCP hatch retirement; remaining work is shared-lib hygiene / suite trim |
 
 Force any native path back to shell/PS: `MILLENNIUM_LEGACY=1`.
 
@@ -91,7 +91,7 @@ Work through this queue; check items off as PRs land and update this list.
 35. [x] **Endgame A** — installer hard-require Go (no silent shell/PS PATH fallback)
 36. [x] **Endgame B** — delete `dispatcher.sh` / `Dispatcher.ps1` + shell `millennium` entrypoints
 37. [x] **Endgame C** — suite retirement command-by-command
-38. [ ] **Parallel** — collapse upgrade `NeedsLegacy` install handoff; MCP Python hatch retirement
+38. [x] **Parallel** — collapse upgrade `NeedsLegacy` install handoff; MCP Python hatch retirement
 
 ---
 
@@ -144,7 +144,7 @@ Work through this queue; check items off as PRs land and update this list.
 | `--file` SHA gate | Graduated | dual-OS fail-closed + pass (Phase 6t) |
 | `--rollback <id>` apply | Graduated | dual-OS writable smoke (Phase 6u); else Linux `sudo` |
 | Non-root Linux → `/usr/lib` | Graduated | Linux CI smoke with failing `sudo` + requires-root hint (Endgame C) |
-| Long-name entrypoint | Thin-wrap | Phase 6v: prefers Go; `MILLENNIUM_LEGACY=1` keeps upgrade dual libs for install handoff |
+| Long-name entrypoint | Thin-wrap | Parallel peel: always Go; upgrade dual libs removed |
 
 ### `purge` / `repair`
 
@@ -160,9 +160,9 @@ Work through this queue; check items off as PRs land and update this list.
 
 | Surface | Status | Notes |
 | --- | --- | --- |
-| MCP server | Graduated | dual-OS `initialize` smoke (Phase 6aa); Python hatch (`MILLENNIUM_MCP_PYTHON=1`) retained until explicit retirement |
+| MCP server | Graduated | dual-OS `initialize` smoke (Phase 6aa); Python hatch retired (Parallel) |
 | Installers ship Go binary first | Done | Unix `install.sh` + Windows `install.ps1` hard-require Go (**Endgame A–B**); no shell/PS PATH dispatcher |
-| Dual `.sh` / `.ps1` libs removed | Partial | Schedule + theme + purge + diag + repair + dispatcher feature libs deleted; upgrade/shared remain until Parallel |
+| Dual `.sh` / `.ps1` libs removed | Done | Feature dual libs deleted; shared Steam/logging/archive libs remain |
 
 ---
 
@@ -264,18 +264,16 @@ Shipped behavior:
 - [x] **Phase 6x:** `diag doctor --dry-run` dual-OS Go smoke + graduated mark
 - [x] **Phase 6y:** `diag logs` dual-OS Go smoke + graduated mark
 - [x] **Phase 6z:** Peel diag — long-name → Go; delete `diag_*.sh` / `Diag*.ps1`
-- [x] **Phase 6aa:** MCP `initialize` dual-OS smoke + graduated mark; Python hatch retained
+- [x] **Phase 6aa:** MCP `initialize` dual-OS smoke + graduated mark; Python hatch retained until Parallel
 - [x] **Phase 6ab:** Repair Partial → Done — native Unix hooks, Windows force-upgrade, Steam lifecycle, sudo chown, theme refresh
 - [x] **Phase 6ac:** `repair --dry-run` (+ Linux mock live hooks) dual-OS Go smoke + graduated mark
 - [x] **Phase 6ad:** Peel repair — long-name → Go; delete `repair_ops.sh` / `RepairOps.ps1`
 - [x] **Endgame A:** installer hard-require Go (drop silent shell/PS PATH fallback)
 - [x] **Endgame B:** delete `dispatcher.sh` / `Dispatcher.ps1` + shell `millennium` / `millennium.ps1` entrypoints; packaging/install Go-only
 - [x] **Endgame C:** graduate remaining Done surfaces (share/follow/doctor live/writable install/sudo hint); Bash/Pester long-name suites kept as thin-wrap residual
-- [ ] Collapse upgrade `NeedsLegacy` install handoff; MCP Python hatch retirement (parallel)
-- [ ] Every contract feature implemented **once** in Go
-- [ ] Every [parity matrix](unification-audit.md#parity-matrix) row green / graduated
-- [ ] Bash / Pester suites retired only after Go dual-OS suite supersedes them
-- [ ] Dual libs removable after per-command graduation
+- [x] **Parallel:** collapse upgrade `NeedsLegacy` install handoff; delete upgrade dual libs; retire MCP Python hatch
+- [ ] Trim remaining long-name Bash/Pester overlap where Go dual-OS suites already supersede
+- [ ] Optional: peel shared Steam/logging libs into Go-only (thin-wraps still source `common.sh` / `common.ps1`)
 
 ---
 

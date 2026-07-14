@@ -22,7 +22,7 @@ see [security_troubleshooting.md](security_troubleshooting.md). Licensing:
 
 **Helpers track vs client channel:** MCP `channel` arguments always mean the Millennium **client** `update_channel` (`stable` / `beta` / `main`). Helpers install track (`release` / `main` / `tag`) is chosen at install time (`install.sh --track`, `install.ps1 -Track`) and is not an MCP tool parameter.
 
-**Go MCP server (Graduated Phase 6aa):** `millennium mcp` (and PATH `millennium-mcp` argv0 twin) is the native stdio JSON-RPC server and owns `--register`. Dual-OS `go.yml` smokes `initialize`. Packaging installs the Go binary (or a thin shim) as `millennium-mcp` so existing client configs keep working. Python remains an escape hatch (`MILLENNIUM_MCP_PYTHON=1` / `MILLENNIUM_LEGACY=1`; under `TEST_SUITE_RUN` the suite uses in-process Python) until an explicit hatch-retirement PR. Tool calls self-exec `millennium <feature> …`, including elevating doctor/upgrade/repair/purge (`sudo -n` / UAC). Force long-name helpers with `MILLENNIUM_MCP_LONGNAMES=1`.
+**Go MCP server (Graduated Phase 6aa + Parallel):** `millennium mcp` (and PATH `millennium-mcp` argv0 twin) is the native stdio JSON-RPC server and owns `--register`. Dual-OS `go.yml` smokes `initialize`. Packaging installs the Go binary (or a thin shim) as `millennium-mcp`. The Python escape hatch was removed. Tool calls self-exec `millennium <feature> …`, including elevating doctor/upgrade/repair/purge (`sudo -n` / UAC). Force long-name helpers with `MILLENNIUM_MCP_LONGNAMES=1`.
 
 **Safety gates (server-side):**
 - `action` / `channel` values are allow-listed independently of the JSON schema (clients can send arbitrary strings)
