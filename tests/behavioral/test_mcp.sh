@@ -20,6 +20,8 @@ source "${TEST_DIR}/../lib/mocks.sh"
 MCP_PY="${REPO_ROOT}/scripts/millennium-mcp.py"
 
 setup_mock_bin
+# Go dispatcher stub: Phase 5a prefers `millennium <feature>` for non-elevate tools.
+mock_cmd "millennium" "exit 0"
 mock_cmd "millennium-diag" "exit 0"
 mock_cmd "millennium-theme" "exit 0"
 mock_cmd "millennium-upgrade" "exit 0"
@@ -78,17 +80,30 @@ assert_contains "$resp" '-32601' "unrecognized method returns JSON-RPC 'method n
 # --- tools/call: millennium_diag builds the expected command line ---
 
 log=$(run_mcp_stderr '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"millennium_diag","arguments":{"doctor":false}}}')
-assert_contains "$log" "millennium-diag --json" "millennium_diag (doctor:false) invokes millennium-diag --json"
+assert_contains "$log" "millennium diag --json" "millennium_diag (doctor:false) prefers Go: millennium diag --json"
+assert_not_contains "$log" "millennium-diag" "millennium_diag (doctor:false) does not use long-name helper when Go is present"
 assert_not_contains "$log" "sudo -n" "millennium_diag (doctor:false) does not escalate to sudo"
 
 log=$(run_mcp_stderr '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"millennium_diag","arguments":{"doctor":true}}}')
-assert_contains "$log" "millennium-diag doctor" "millennium_diag (doctor:true) invokes millennium-diag doctor"
+assert_contains "$log" "millennium-diag doctor" "millennium_diag (doctor:true) stays on long-name for elevate/sudoers"
 assert_contains "$log" "sudo -n" "millennium_diag (doctor:true) escalates via sudo -n"
+
+# Escape hatch: force long-name even when Go dispatcher is on PATH
+log=$(
+  MILLENNIUM_MCP_LONGNAMES=1 run_mcp_stderr \
+    '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"millennium_diag","arguments":{"doctor":false}}}'
+)
+assert_contains "$log" "millennium-diag --json" "MILLENNIUM_MCP_LONGNAMES=1 forces millennium-diag --json"
 
 # --- tools/call: millennium_theme with a valid action builds the expected command line ---
 
 log=$(run_mcp_stderr '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"millennium_theme","arguments":{"action":"list"}}}')
-assert_contains "$log" "millennium-theme list --json" "millennium_theme (action:list) invokes millennium-theme list --json"
+assert_contains "$log" "millennium theme list --json" "millennium_theme (action:list) prefers Go: millennium theme list --json"
+assert_not_contains "$log" "millennium-theme" "millennium_theme list does not use long-name when Go is present"
+
+log=$(run_mcp_stderr '{"jsonrpc":"2.0","id":50,"method":"tools/call","params":{"name":"millennium_schedule","arguments":{"action":"status"}}}')
+assert_contains "$log" "millennium schedule status" "millennium_schedule status prefers Go dispatcher"
+assert_not_contains "$log" "sudo -n" "millennium_schedule status does not escalate"
 
 # --- tools/call: millennium_theme with an invalid action is rejected server-side ---
 # (get_tools_list() declares an "enum" for action, but nothing enforces it

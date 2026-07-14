@@ -185,7 +185,63 @@ def get_tools_list():
 IS_WINDOWS = sys.platform == "win32"
 
 
+def _env_truthy(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() in ("1", "true", "yes")
+
+
+def force_longnames() -> bool:
+    """Escape hatch: keep MCP on long-name helpers (and elevate-safe sudoers)."""
+    return _env_truthy("MILLENNIUM_MCP_LONGNAMES") or _env_truthy("MILLENNIUM_LEGACY")
+
+
+def find_go_dispatcher():
+    """Locate the Go `millennium` binary when MCP should prefer it.
+
+    Phase 5a: non-elevating tools invoke `millennium <feature> …`. Elevating
+    tools still use long-name helpers because sudoers NOPASSWD allowlists those
+    paths, not the dispatcher.
+    """
+    if force_longnames():
+        return None
+
+    names = ["millennium.exe", "millennium"] if IS_WINDOWS else ["millennium"]
+    # Prefer PATH first so TEST_SUITE_RUN / MOCK_BIN stubs win.
+    for name in names:
+        found = shutil.which(name)
+        if found:
+            return found
+
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    repo_root = os.path.dirname(script_dir)
+    candidates = []
+    for name in names:
+        candidates.append(os.path.join(repo_root, "bin", name))
+        candidates.append(os.path.join(script_dir, name))
+        if IS_WINDOWS:
+            candidates.append(os.path.join(script_dir, "windows", name))
+    for path in candidates:
+        if os.path.isfile(path) and os.access(path, os.X_OK):
+            return path
+
+    if not IS_WINDOWS:
+        for path in ("/usr/local/bin/millennium", "/usr/bin/millennium"):
+            if os.path.isfile(path) and os.access(path, os.X_OK):
+                return path
+    return None
+
+
+def feature_argv(feature: str, *rest: str, elevate: bool = False) -> list[str]:
+    """Build argv for a feature command; prefer Go dispatcher when safe."""
+    if not elevate:
+        go = find_go_dispatcher()
+        if go:
+            return [go, feature, *rest]
+    return [f"millennium-{feature}", *rest]
+
+
 def find_executable(cmd):
+    if os.path.isabs(cmd) and os.path.isfile(cmd):
+        return cmd
     if IS_WINDOWS:
         script_dir = os.path.dirname(os.path.abspath(__file__))
         # Check installed folder layout (same directory)
@@ -196,6 +252,14 @@ def find_executable(cmd):
         ps1_path = os.path.join(script_dir, "windows", f"{cmd}.ps1")
         if os.path.exists(ps1_path):
             return ps1_path
+        # Go dispatcher next to scripts / on PATH
+        if cmd in ("millennium", "millennium.exe"):
+            exe = os.path.join(script_dir, "millennium.exe")
+            if os.path.isfile(exe):
+                return exe
+            exe = os.path.join(script_dir, "windows", "millennium.exe")
+            if os.path.isfile(exe):
+                return exe
     else:
         for path in ["/usr/local/bin", "/usr/bin"]:
             full_path = f"{path}/{cmd}"
@@ -213,7 +277,8 @@ def _run_under_test_suite(args, cmd_args, mock_bin, timeout):
     have no system-installed helpers at all.
     """
     log(f"Executing: {' '.join(cmd_args)}")
-    mock_path = os.path.join(mock_bin, args[0]) if mock_bin else ""
+    mock_key = os.path.basename(args[0])
+    mock_path = os.path.join(mock_bin, mock_key) if mock_bin else ""
     if mock_path and os.path.isfile(mock_path) and os.access(mock_path, os.X_OK):
         res = subprocess.run(
             [mock_path] + args[1:],
@@ -375,12 +440,12 @@ def handle_tool_call(
 ) -> dict:
     if tool_name == "millennium_diag":
         doctor = arguments.get("doctor", False)
-        args = ["millennium-diag"]
+        # Doctor elevates via sudoers allowlisted millennium-diag only.
         if doctor:
-            args.append("doctor")
-        else:
-            args.append("--json")
-        return run_cmd(args, run_as_root=doctor)
+            return run_cmd(
+                feature_argv("diag", "doctor", elevate=True), run_as_root=True
+            )
+        return run_cmd(feature_argv("diag", "--json"))
 
     elif tool_name == "millennium_theme":
         action = arguments.get("action")
@@ -422,9 +487,9 @@ def handle_tool_call(
                 ],
             }
 
-        args = ["millennium-theme", action]
+        rest: list[str] = [action]
         if action == "list":
-            args.append("--json")
+            rest.append("--json")
         elif action in ["install", "remove"]:
             if not theme:
                 return {
@@ -436,13 +501,13 @@ def handle_tool_call(
                         }
                     ],
                 }
-            args.append(theme)
+            rest.append(theme)
         elif action == "update":
             if all_themes:
-                args.append("--all")
+                rest.append("--all")
             elif theme:
-                args.append(theme)
-        return run_cmd(args, timeout=LONG_TIMEOUT_SECONDS)
+                rest.append(theme)
+        return run_cmd(feature_argv("theme", *rest), timeout=LONG_TIMEOUT_SECONDS)
 
     elif tool_name == "millennium_upgrade":
         channel = arguments.get("channel", "stable")
@@ -460,9 +525,9 @@ def handle_tool_call(
                 ],
             }
 
-        args = ["millennium-upgrade", "--channel", channel]
+        rest: list[str] = ["--channel", channel]
         if force:
-            args.append("--force")
+            rest.append("--force")
         if rollback:
             import re
 
@@ -476,9 +541,14 @@ def handle_tool_call(
                         }
                     ],
                 }
-            args += ["--rollback", rollback]
+            rest += ["--rollback", rollback]
 
-        return run_cmd(args, run_as_root=True, timeout=LONG_TIMEOUT_SECONDS)
+        # Elevate path stays on long-name binary (sudoers allowlist).
+        return run_cmd(
+            feature_argv("upgrade", *rest, elevate=True),
+            run_as_root=True,
+            timeout=LONG_TIMEOUT_SECONDS,
+        )
 
     elif tool_name == "millennium_schedule":
         action = arguments.get("action")
@@ -518,20 +588,22 @@ def handle_tool_call(
                 ],
             }
 
-        args = ["millennium-schedule", action]
+        rest = [action]
         if action == "enable" and channel:
-            args.append(channel)
+            rest.append(channel)
         if cron:
-            args.append("--cron")
+            rest.append("--cron")
         if system:
-            args.append("--system")
+            rest.append("--system")
         if user:
-            args.append("--user")
-        return run_cmd(args)
+            rest.append("--user")
+        return run_cmd(feature_argv("schedule", *rest))
 
     elif tool_name == "millennium_repair":
         return run_cmd(
-            ["millennium-repair"], run_as_root=True, timeout=LONG_TIMEOUT_SECONDS
+            feature_argv("repair", elevate=True),
+            run_as_root=True,
+            timeout=LONG_TIMEOUT_SECONDS,
         )
 
     elif tool_name == "millennium_purge":
@@ -547,12 +619,16 @@ def handle_tool_call(
                     }
                 ],
             }
-        args = ["millennium-purge"]
+        rest: list[str] = []
         if dry_run:
-            args.append("-DryRun" if IS_WINDOWS else "--dry-run")
+            rest.append("-DryRun" if IS_WINDOWS else "--dry-run")
         else:
-            args.append("-Yes" if IS_WINDOWS else "--yes")
-        return run_cmd(args, run_as_root=True, timeout=LONG_TIMEOUT_SECONDS)
+            rest.append("-Yes" if IS_WINDOWS else "--yes")
+        return run_cmd(
+            feature_argv("purge", *rest, elevate=True),
+            run_as_root=True,
+            timeout=LONG_TIMEOUT_SECONDS,
+        )
 
     else:
         return {

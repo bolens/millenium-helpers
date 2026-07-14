@@ -153,7 +153,7 @@ commands:
     binary: millennium-mcp
     man: millennium-mcp.1
     mcp: null
-    notes: "Python server today; Phase 5 invokes Go CLI"
+    notes: "Python JSON-RPC façade; Phase 5a prefers Go millennium for non-elevate tools; elevate still long-name (sudoers)"
 
   doctor:
     platforms: [linux, darwin, windows]
