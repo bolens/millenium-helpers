@@ -446,7 +446,13 @@ jobs:
   update-packaging:
     name: Open packaging update PR
     needs: [build-release]
-    if: needs.build-release.result == 'success' && needs.build-release.outputs.tag != 'v-draft'
+    # always(): build-release uses always() because assert-skip-policy is skipped on
+    # tag pushes; without always() here, this job is skipped even when build succeeds.
+    if: >-
+      always() &&
+      needs.build-release.result == 'success' &&
+      needs.build-release.outputs.tag != 'v-draft' &&
+      needs.build-release.outputs.tag != ''
     runs-on: ubuntu-latest
     outputs:
       pr_number: ${{ steps.cpr.outputs.pull-request-number }}
@@ -583,7 +589,9 @@ jobs:
   finalize:
     name: Merge packaging PR & publish release
     needs: [build-release, update-packaging]
-    if: needs.update-packaging.result == 'success'
+    if: >-
+      always() &&
+      needs.update-packaging.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
