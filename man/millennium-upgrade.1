@@ -46,6 +46,17 @@ to list backups.
 .BR \-\-file " " \fIPATH\fR
 Install from a local archive instead of downloading.
 .TP
+.BR \-\-sha256 " " \fIHEX\fR
+Expected SHA\-256 of a
+.B \-\-file
+archive (optional integrity check).
+.TP
+.B \-\-insecure\-skip\-verify
+Skip archive checksum verification (not recommended).
+.TP
+.B \-\-all\-users
+Unix: apply install for all users when supported.
+.TP
 .BR \-f ", " \-\-force
 Force reinstall even if already up to date.
 .TP
@@ -54,6 +65,9 @@ Skip confirmation when closing Steam.
 .TP
 .BR \-d ", " \-\-dry\-run
 Simulate operations without modifying files.
+.TP
+.BR \-q ", " \-\-quiet
+Suppress informational output.
 .TP
 .BR \-V ", " \-\-version
 Show version information.
