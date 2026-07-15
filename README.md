@@ -236,7 +236,7 @@ Installed PATH commands are the Go binary (or Windows `.cmd` twins). Prefer
 | `millennium purge` | De-register and remove Millennium from Steam |
 | `millennium theme` | List, install, update, remove skins |
 | `millennium mcp` | MCP server for AI assistants ([docs/mcp.md](docs/mcp.md)) |
-| [`install.sh`](install.sh) / [`install.ps1`](scripts/windows/install.ps1) | Installers — Go binary, twins, completions, sudoers |
+| `millennium install` / `uninstall` | Install helpers (Go); thin [`install.sh`](install.sh) / [`install.ps1`](scripts/windows/install.ps1) bootstraps |
 
 Feature commands ship as the Go binary and PATH argv0 twins only (no Bash/PS
 feature-script fallbacks). Install-time libs remain under [`scripts/`](scripts/)

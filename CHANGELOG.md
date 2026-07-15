@@ -7,9 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `millennium install` / `millennium uninstall` (Go) for checkout/fixture installs; thin `install.sh` / `install.ps1` bootstraps exec the Go commands
+
 ### Removed
 - Checkout Bash/PowerShell feature scripts (`scripts/millennium-*.sh`, `scripts/windows/millennium-*.ps1`); PATH long-name twins and `bin/millennium` are the only feature entrypoints
 - Feature Bash/Pester suites retired in favor of Go unit tests and `go.yml` smokes
+- Fat Bash/PowerShell installer bodies (replaced by thin bootstrap + Go install)
 
 ### Changed
 - Release payloads and installers stop shipping/copying feature scripts; uninstall/wizard invoke `millennium` / `millennium.exe`

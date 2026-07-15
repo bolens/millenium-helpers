@@ -26,6 +26,9 @@ Parity on Linux, macOS, and Windows is enforced by Go unit tests and
 | Release + install stop shipping/copying feature scripts | Done |
 | Feature CI = `go.yml` (ubuntu + windows + macos) | Done |
 | `test-suite.yml` = install / unit libs / packaging / completions | Done |
+| `millennium install` / `uninstall` (checkout + fixture; thin bootstraps) | In progress |
+| Delete install-time Bash/PS libs | Pending |
+| PATH = `millennium` only (retire twins) | Pending |
 
 `make build` → `bin/millennium`. Release CD embeds per-OS/arch Go binaries and
 waits on a green required-CI gate (`go.yml` + `test-suite.yml` + other packaging
@@ -44,7 +47,7 @@ checks). **Feature regressions must fail `go.yml`.**
 | Zip extract | Go (`go/internal/archive`); theme wraps it |
 | GitHub / config backup | Go (`githubapi`, `config`) |
 | MCP | `millennium mcp` / PATH `millennium-mcp` argv0 twin (Go) |
-| Installers | `install.sh` / `install.ps1` require a built Go binary; install all long names as Go twins |
+| Installers | `millennium install` / `uninstall` (Go); thin `install.sh` / `install.ps1` bootstrap to the Go binary |
 | Schedule timers | systemd / launchd / cron / Task Scheduler invoke `millennium <cmd>` (rewrite on next enable) |
 | `MILLENNIUM_LEGACY=1` | Obsolete for Go-owned commands (they stay native) |
 
@@ -53,14 +56,12 @@ Local checks: `make test-go` (feature parity) + `make test` / `make test-windows
 
 ---
 
-## Remaining optional work
+## Remaining work
 
-Ordered roughly by leverage; **none block shipping** the peeled feature surface.
-
-1. **Install-time libs** — still Bash/PS: `logging.sh` / `version.sh` / `install_track.sh` / `release_assets.sh` / `millennium_license.sh`; Windows `Logging` / `Args` / `Version` / `Config` / `License` / `InstallTrack`. Keep until installers move.
-2. **Port installers to Go** — replace `install.sh` / `install.ps1` (and eventually peel install libs). Large surface; own milestone.
-3. **Long-name PATH twins** — still useful for timers/sudoers/docs; migrate docs/timers to `millennium <cmd>` first, then drop twin installs if desired.
-4. **Contract-driven façade sync** — completions / man / MCP schema stay hand-aligned; CI already gates drift via `make check-cli-contract`.
+1. **Finish Go installer** — network release download + SHA in `go/internal/install`; Linux sudoers; Windows PATH/profile hooks; wizard handoff; piped Windows bootstrap.
+2. **Delete install-time libs** — once packaging/bootstraps no longer need `scripts/lib/*` and `scripts/windows/lib/*` (and `common.sh` / `common.ps1`).
+3. **Long-name PATH twins** — stop installing `millennium-*` twins; PATH is `millennium` only (breaking; CHANGELOG).
+4. **Contract-driven façade sync** — completions / man / MCP schema stay hand-aligned; CI gates via `make check-cli-contract`.
 
 ---
 
