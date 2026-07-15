@@ -4,7 +4,7 @@ Release: 1%{?dist}
 Summary:        Millennium helpers (prebuilt release assets)
 License:        MIT
 URL:            https://github.com/bolens/millenium-helpers
-%global source_sha256 de7a0d7ae896dea26e982c45585b2117015e7224b90f754a5a2774578d1d3d92
+%global source_sha256 5ec3c429c16f4096cb0fb66a561b9fd8f44e8a8fd0d4e4de7cc6ec9a58a53f0c
 Source0:        https://github.com/bolens/millenium-helpers/releases/download/v%{version}/millennium-helpers-v%{version}-linux-amd64.tar.gz
 # Source0 sha256: %{source_sha256}
 
