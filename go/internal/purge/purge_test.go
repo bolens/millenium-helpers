@@ -88,6 +88,24 @@ func TestConfirmOrRefuseYes(t *testing.T) {
 	}
 }
 
+func TestConfirmOrRefuseNonInteractive(t *testing.T) {
+	f, err := os.Open(os.DevNull)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	err = ConfirmOrRefuse(false, f)
+	if err == nil {
+		t.Fatal("expected refusal without --yes on non-TTY")
+	}
+	if !contains(err.Error(), "Refusing to purge without confirmation") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !contains(err.Error(), "--yes") {
+		t.Fatalf("refusal should mention --yes: %v", err)
+	}
+}
+
 func contains(s, sub string) bool {
 	for i := 0; i+len(sub) <= len(s); i++ {
 		if s[i:i+len(sub)] == sub {
