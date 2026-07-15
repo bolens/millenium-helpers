@@ -20,3 +20,16 @@ func TestPythonStyleJSONSpaces(t *testing.T) {
 		t.Fatalf("expected trailing newline, got %q", got)
 	}
 }
+
+func TestPythonStyleJSONPreservesColonsInsideStrings(t *testing.T) {
+	got := string(pythonStyleJSON([]byte(`{"url":"https://example.com","n":1}`)))
+	if !strings.Contains(got, `"url": "https://example.com"`) {
+		t.Fatalf("space after key colon: %q", got)
+	}
+	if !strings.Contains(got, `https://example.com`) || strings.Contains(got, `https: //`) {
+		t.Fatalf("must not space colon inside string: %q", got)
+	}
+	if !strings.Contains(got, `"n": 1`) {
+		t.Fatalf("space after second key: %q", got)
+	}
+}

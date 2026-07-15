@@ -18,7 +18,9 @@ func writeJSONLine(w io.Writer, v any) error {
 }
 
 func pythonStyleJSON(b []byte) []byte {
-	out := make([]byte, 0, len(b)+32)
+	// Capacity is len(b) only — never len(b)+N (CodeQL go/allocation-size-overflow).
+	// Spaces after ':' / ',' grow via append as needed.
+	out := make([]byte, 0, len(b))
 	inStr := false
 	esc := false
 	for i := 0; i < len(b); i++ {
