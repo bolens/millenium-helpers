@@ -157,17 +157,19 @@ pairs = [
 idx = 0
 parts: list[str] = []
 pos = 0
+# Capture leading indent so sha256 lines stay aligned with url (brew audit).
 pattern = re.compile(
-    r'url\s+"https://github\.com/[^"]+"\s*\n\s*sha256\s+"[0-9a-fA-F]{64}"'
+    r'^([ \t]*)url\s+"https://github\.com/[^"]+"\s*\n'
+    r'[ \t]*sha256\s+"[0-9a-fA-F]{64}"',
+    re.M,
 )
 for m in pattern.finditer(text):
     if idx >= len(pairs):
         break
     url, sha = pairs[idx]
     idx += 1
+    indent = m.group(1)
     parts.append(text[pos:m.start()])
-    indent_url = re.match(r'(\s*)url', m.group(0))
-    indent = indent_url.group(1) if indent_url else "      "
     parts.append(f'{indent}url "{url}"\n{indent}sha256 "{sha}"')
     pos = m.end()
 parts.append(text[pos:])

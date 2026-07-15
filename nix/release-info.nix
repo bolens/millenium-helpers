@@ -3,9 +3,9 @@
 {
   version = "2.7.0";
   # SRI hash of millennium-helpers-v*-linux-amd64.tar.gz (release asset / -bin)
-  srcAssetHash = "sha256-wHfD9TbnUed2+rsylgCxjXRS1FWi4t0ZCEkTMlafTlU=";
+  srcAssetHash = "sha256-lrqpKFvhkaE2qrRguk517cQmhCMzt9+PcZyN5yRzDKE=";
   # Legacy alias used by older flakes
-  srcHash = "sha256-wHfD9TbnUed2+rsylgCxjXRS1FWi4t0ZCEkTMlafTlU=";
+  srcHash = "sha256-lrqpKFvhkaE2qrRguk517cQmhCMzt9+PcZyN5yRzDKE=";
   # SRI hash of millennium-helpers-v*-src.tar.gz (from-source packages)
-  srcGitHash = "sha256-ZeTHY4T3n151g4gJowNp6N1RUNfGG8trCT0FVErS5Bk=";
+  srcGitHash = "sha256-USZvhnoifRxxIrkiH6dsXZJtloaSQ0lIRna923U1GC0=";
 }
