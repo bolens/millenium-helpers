@@ -99,10 +99,20 @@ func TestFetchHelpersTreeWithSHA(t *testing.T) {
 
 func TestPrepareSourceMainRequiresAllow(t *testing.T) {
 	// Ensure cwd is not a helpers tree so we hit the network path.
-	t.Chdir(t.TempDir())
+	// Prefer os.Chdir over t.Chdir so go vet stays happy with go 1.22 in go.mod.
+	orig, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	tmp := t.TempDir()
+	if err := os.Chdir(tmp); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(orig) })
+
 	t.Setenv("MILLENNIUM_SOURCE_ROOT", "")
 	var res Result
-	_, _, _, _, err := prepareSource(Options{Track: "main"}, &res)
+	_, _, _, _, err = prepareSource(Options{Track: "main"}, &res)
 	if err == nil || !strings.Contains(err.Error(), "--allow-unsigned-main") {
 		t.Fatalf("got %v", err)
 	}

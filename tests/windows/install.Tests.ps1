@@ -4,18 +4,17 @@ Describe "Windows millennium install bootstrap (Go)" {
         $binDir = Join-Path $repoRoot "bin"
         New-Item -ItemType Directory -Force -Path $binDir | Out-Null
         $outExe = Join-Path $binDir "millennium.exe"
-        if (-not (Test-Path -LiteralPath $outExe)) {
-            $go = Get-Command go -ErrorAction SilentlyContinue
-            if (-not $go) { throw "Go toolchain required for install tests" }
-            $ver = [System.IO.File]::ReadAllText((Join-Path $repoRoot "VERSION")).Trim()
-            Push-Location (Join-Path $repoRoot "go")
-            try {
-                & go build "-ldflags=-X github.com/bolens/millenium-helpers/internal/version.Version=$ver" `
-                    -o $outExe ./cmd/millennium
-                if ($LASTEXITCODE -ne 0) { throw "go build failed" }
-            } finally {
-                Pop-Location
-            }
+        $go = Get-Command go -ErrorAction SilentlyContinue
+        if (-not $go) { throw "Go toolchain required for install tests" }
+        $ver = [System.IO.File]::ReadAllText((Join-Path $repoRoot "VERSION")).Trim()
+        # Always rebuild so help/flags match the working tree (stale bin/millennium.exe breaks assertions).
+        Push-Location (Join-Path $repoRoot "go")
+        try {
+            & go build "-ldflags=-X github.com/bolens/millenium-helpers/internal/version.Version=$ver" `
+                -o $outExe ./cmd/millennium
+            if ($LASTEXITCODE -ne 0) { throw "go build failed" }
+        } finally {
+            Pop-Location
         }
         $script:exe = $outExe
     }

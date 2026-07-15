@@ -14,12 +14,12 @@ const MetaFileName = "install-meta.json"
 
 // Meta is install-meta.json.
 type Meta struct {
-	Track         string `json:"track"`
-	Ref           string `json:"ref,omitempty"`
-	Version       string `json:"version,omitempty"`
-	SourceURL     string `json:"source_url,omitempty"`
-	InstalledAt   string `json:"installed_at"`
-	MigratedFrom  string `json:"migrated_from,omitempty"`
+	Track        string `json:"track"`
+	Ref          string `json:"ref,omitempty"`
+	Version      string `json:"version,omitempty"`
+	SourceURL    string `json:"source_url,omitempty"`
+	InstalledAt  string `json:"installed_at"`
+	MigratedFrom string `json:"migrated_from,omitempty"`
 }
 
 // MetaPath returns the meta path under an install meta root (lib dir or Windows install root).

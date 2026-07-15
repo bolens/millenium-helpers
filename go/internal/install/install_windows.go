@@ -42,4 +42,4 @@ func installWindowsExtras(o Options, dispatcher string, res *Result) error {
 }
 
 func installUnixCompletionsAndMan(Options, string, *Result) error { return nil }
-func removeUnixCompletionsAndMan(Options, *Result)                 {}
+func removeUnixCompletionsAndMan(Options, *Result)                {}

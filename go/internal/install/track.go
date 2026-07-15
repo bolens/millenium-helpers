@@ -13,13 +13,13 @@ import (
 
 // ResolvedTrack is the download plan for a helpers install track.
 type ResolvedTrack struct {
-	Track            string
-	Ref              string
-	Version          string
-	URL              string
-	SHAURL           string
-	NeedsSHA         bool
-	IsSourceArchive  bool
+	Track           string
+	Ref             string
+	Version         string
+	URL             string
+	SHAURL          string
+	NeedsSHA        bool
+	IsSourceArchive bool
 }
 
 // ResolveTrackURLs resolves release/main/tag download URLs (no download).

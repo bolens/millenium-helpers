@@ -3,4 +3,4 @@
 package install
 
 func installWindowsCompletionHooks(Options, *Result) error { return nil }
-func removeWindowsCompletionHooks(Options, *Result)       {}
+func removeWindowsCompletionHooks(Options, *Result)        {}

@@ -10,20 +10,20 @@ import (
 
 // Options configure install / uninstall.
 type Options struct {
-	Action             string // install | uninstall
-	Track              string
-	Tag                string
-	DryRun             bool
-	Purge              bool // uninstall: also purge Millennium client
-	AllowUnsignedMain  bool
-	Force              bool
-	SkipWizard         bool
-	TargetDir          string
-	LibDir             string // Unix lib / Windows unused (meta under InstallRoot)
-	InstallRoot        string // Windows: %USERPROFILE%\.millennium-helpers
-	SourceRoot         string // checkout / extracted archive root
-	SourceURL          string // recorded in meta (piped installs)
-	DispatcherSrc      string // path to millennium binary to install; empty = resolve
+	Action            string // install | uninstall
+	Track             string
+	Tag               string
+	DryRun            bool
+	Purge             bool // uninstall: also purge Millennium client
+	AllowUnsignedMain bool
+	Force             bool
+	SkipWizard        bool
+	TargetDir         string
+	LibDir            string // Unix lib / Windows unused (meta under InstallRoot)
+	InstallRoot       string // Windows: %USERPROFILE%\.millennium-helpers
+	SourceRoot        string // checkout / extracted archive root
+	SourceURL         string // recorded in meta (piped installs)
+	DispatcherSrc     string // path to millennium binary to install; empty = resolve
 }
 
 // DefaultOptions fills OS defaults from the environment.

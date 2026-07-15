@@ -43,5 +43,4 @@ assert_contains "$out" "DRY RUN MODE" "dry-run announces mode"
 assert_file_not_exists "${PREFIX}/bin/millennium" "dry-run does not write binary"
 rm -rf "$PREFIX"
 
-echo -e "${YELLOW}--- test_install.sh summary: ${ASSERT_RUN:-?} run, ${ASSERT_FAIL:-?} failed ---${NC}"
-[[ "${ASSERT_FAIL:-0}" -eq 0 ]]
+print_summary
