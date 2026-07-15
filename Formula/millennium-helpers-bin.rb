@@ -36,28 +36,13 @@ class MillenniumHelpersBin < Formula
   def install
     odie "Release archive missing bin/millennium (Go dispatcher required)" unless (buildpath/"bin/millennium").exist?
     bin.install "bin/millennium"
-    commands = %w[
-      millennium
-      millennium-repair
-      millennium-upgrade
-      millennium-schedule
-      millennium-purge
-      millennium-diag
-      millennium-theme
-      millennium-mcp
-    ]
-
     bash_completion.install "completions/bash/millennium-helpers" => "millennium-helpers"
-    commands.each do |cmd|
-      ln_sf "millennium-helpers", bash_completion/cmd
-    end
+    ln_sf "millennium-helpers", bash_completion/"millennium"
 
     zsh_completion.install "completions/zsh/_millennium-helpers" => "_millennium-helpers"
-    commands.each do |cmd|
-      ln_sf "_millennium-helpers", zsh_completion/"_#{cmd}"
-    end
+    ln_sf "_millennium-helpers", zsh_completion/"_millennium"
 
-    fish_completion.install Dir["completions/fish/*.fish"]
+    fish_completion.install "completions/fish/millennium.fish"
     (share/"nushell/completions").install "completions/nushell/millennium-helpers.nu"
     man1.install Dir["man/*.1"]
     (lib/"millennium-helpers").install "VERSION"

@@ -25,14 +25,10 @@ _arch_install_unix_helpers() {
 
   install -Dm644 completions/bash/millennium-helpers "${pkgdir}/usr/share/bash-completion/completions/millennium-helpers"
   local script
-  for script in millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp millennium; do
-    ln -sf millennium-helpers "${pkgdir}/usr/share/bash-completion/completions/${script}"
-  done
+  ln -sf millennium-helpers "${pkgdir}/usr/share/bash-completion/completions/millennium"
 
   install -Dm644 completions/zsh/_millennium-helpers "${pkgdir}/usr/share/zsh/site-functions/_millennium-helpers"
-  for script in millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp millennium; do
-    ln -sf _millennium-helpers "${pkgdir}/usr/share/zsh/site-functions/_${script}"
-  done
+  ln -sf _millennium-helpers "${pkgdir}/usr/share/zsh/site-functions/_millennium"
 
   install -d "${pkgdir}/usr/share/fish/vendor_completions.d"
   install -m644 completions/fish/*.fish "${pkgdir}/usr/share/fish/vendor_completions.d/"

@@ -42,13 +42,9 @@ install -m755 "$TREE/bin/millennium" "$DEST/usr/bin/millennium"
 
 install -m644 "$TREE"/VERSION "$DEST/usr/lib/millennium-helpers/VERSION"
 install -m644 "$TREE"/completions/bash/millennium-helpers "$DEST/usr/share/bash-completion/completions/millennium-helpers"
-for s in millennium millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp; do
-  ln -sf millennium-helpers "$DEST/usr/share/bash-completion/completions/$s"
-done
+ln -sf millennium-helpers "$DEST/usr/share/bash-completion/completions/millennium"
 install -m644 "$TREE"/completions/zsh/_millennium-helpers "$DEST/usr/share/zsh/site-functions/_millennium-helpers"
-for s in millennium millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp; do
-  ln -sf _millennium-helpers "$DEST/usr/share/zsh/site-functions/_$s"
-done
+ln -sf _millennium-helpers "$DEST/usr/share/zsh/site-functions/_millennium"
 install -m644 "$TREE"/completions/fish/*.fish "$DEST/usr/share/fish/vendor_completions.d/"
 install -m644 "$TREE"/completions/nushell/millennium-helpers.nu "$DEST/usr/share/nushell/completions/"
 install -m644 "$TREE"/man/*.1 "$DEST/usr/share/man/man1/"

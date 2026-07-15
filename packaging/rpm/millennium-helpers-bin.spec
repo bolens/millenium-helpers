@@ -40,13 +40,9 @@ fi
 install -m755 bin/millennium %{buildroot}%{_bindir}/millennium
 install -m644 VERSION %{buildroot}%{_libdir}/millennium-helpers/VERSION
 install -m644 completions/bash/millennium-helpers %{buildroot}%{_datadir}/bash-completion/completions/millennium-helpers
-for s in millennium millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp; do
-  ln -sf millennium-helpers %{buildroot}%{_datadir}/bash-completion/completions/$s
-done
+ln -sf millennium-helpers %{buildroot}%{_datadir}/bash-completion/completions/millennium
 install -m644 completions/zsh/_millennium-helpers %{buildroot}%{_datadir}/zsh/site-functions/_millennium-helpers
-for s in millennium millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp; do
-  ln -sf _millennium-helpers %{buildroot}%{_datadir}/zsh/site-functions/_$s
-done
+ln -sf _millennium-helpers %{buildroot}%{_datadir}/zsh/site-functions/_millennium
 install -m644 completions/fish/*.fish %{buildroot}%{_datadir}/fish/vendor_completions.d/
 install -m644 completions/nushell/millennium-helpers.nu %{buildroot}%{_datadir}/nushell/completions/
 install -m644 man/*.1 %{buildroot}%{_mandir}/man1/

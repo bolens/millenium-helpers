@@ -69,15 +69,11 @@ stdenv.mkDerivation ({
 
     mkdir -p $out/share/bash-completion/completions
     install -m644 completions/bash/millennium-helpers $out/share/bash-completion/completions/millennium-helpers
-    for script in millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp millennium; do
-      ln -sf millennium-helpers $out/share/bash-completion/completions/$script
-    done
+    ln -sf millennium-helpers $out/share/bash-completion/completions/millennium
 
     mkdir -p $out/share/zsh/site-functions
     install -m644 completions/zsh/_millennium-helpers $out/share/zsh/site-functions/_millennium-helpers
-    for script in millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp millennium; do
-      ln -sf _millennium-helpers $out/share/zsh/site-functions/_$script
-    done
+    ln -sf _millennium-helpers $out/share/zsh/site-functions/_millennium
 
     mkdir -p $out/share/fish/vendor_completions.d
     for f in completions/fish/*.fish; do
