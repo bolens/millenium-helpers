@@ -98,10 +98,8 @@ Tests: Go unit under `go/` · smokes in [`.github/workflows/go.yml`](../.github/
 ## Open gaps (non-contract)
 
 1. Completions/man/MCP schema still hand-synced with the contract (CI gates help).
-2. Some packaging still install completion/man symlinks named `millennium-*` for
-   discoverability; PATH binaries for those names are no longer shipped.
-3. Sudoers/docs may still mention long-name `millennium-upgrade` for older installs
-   until a later cleanup pass.
+2. User-facing docs may still show long-name examples (`millennium-repair`) in places;
+   packaging/sudoers/completions use `millennium <cmd>` only.
 
 ---
 

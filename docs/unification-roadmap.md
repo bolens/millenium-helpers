@@ -32,6 +32,7 @@ Parity on Linux, macOS, and Windows is enforced by Go unit tests and
 | Install-time Bash/PS libs removed (`common.sh` / `common.ps1` / `scripts/*/lib`) | Done |
 | PATH = `millennium` only (no new long-name twins) | Done |
 | Contract-driven façade sync (completions / man / MCP) | Ongoing |
+| Long-name sudoers + completion symlink cleanup | Done |
 
 `make build` → `bin/millennium`. Release CD embeds per-OS/arch Go binaries and
 waits on a green required-CI gate (`go.yml` + `test-suite.yml` + other packaging
@@ -45,6 +46,8 @@ checks). **Feature regressions must fail `go.yml`.**
 | --- | --- |
 | PATH entry | `millennium` / `millennium.exe` only on new installs |
 | Long-name helpers | Not installed; `commandFromArgv0` still maps leftover twins → subcommands |
+| Completions | Register `millennium` only (nested `millennium <cmd>…`) |
+| Sudoers | Allowlist `millennium upgrade|diag|repair|purge` (no PATH twins) |
 | Steam lifecycle | Go (`go/internal/steam`); Windows + Unix |
 | Shared logging | Go (`go/internal/logging`) |
 | Zip extract | Go (`go/internal/archive`); theme + helpers install use it |
@@ -66,8 +69,6 @@ Local checks: `make test-go` (features) + `make test` / `make test-windows`
 1. **Contract-driven façade sync** — keep completions, man pages, and MCP schema
    aligned with [`spec/cli-contract.yaml`](../spec/cli-contract.yaml)
    (`make check-cli-contract`).
-2. **Optional cleanup** — retire long-name sudoers/timer allowlists and completion
-   symlinks for `millennium-*` once enough releases have shipped PATH-only installs.
 
 ---
 
