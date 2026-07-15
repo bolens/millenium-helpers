@@ -51,6 +51,16 @@ func TestSanitizeAndParse(t *testing.T) {
 	if err != nil || o != "acme" || r != "Skin" {
 		t.Fatalf("%s %s %v", o, r, err)
 	}
+	// Bash suite seam: install/remove reject path traversal in components.
+	if _, _, err := ParseOwnerRepo("someowner/.."); err == nil {
+		t.Fatal("expected traversal in repo component to fail")
+	}
+	if err := SanitizeComponent("..", "theme name"); err == nil {
+		t.Fatal("expected '..' theme name to fail")
+	}
+	if _, err := ResolveThemeDir(t.TempDir(), ".."); err == nil {
+		t.Fatal("expected path traversal outside skins to fail")
+	}
 }
 
 func TestInstallAndRemove(t *testing.T) {

@@ -1,6 +1,6 @@
 pkgbase = millennium-helpers
 	pkgdesc = Millennium helpers (from source) — Go strangler CLI plus shell helpers/MCP
-	pkgver = 2.7.0
+	pkgver = 3.0.0
 	pkgrel = 1
 	url = https://github.com/bolens/millenium-helpers
 	install = millennium-helpers.install
@@ -21,7 +21,7 @@ pkgbase = millennium-helpers
 	conflicts = millennium-helpers-git
 	conflicts = millennium-helpers-bin
 	backup = etc/sudoers.d/millennium-helpers
-	source = https://github.com/bolens/millenium-helpers/releases/download/v2.7.0/millennium-helpers-v2.7.0-src.tar.gz
+	source = https://github.com/bolens/millenium-helpers/releases/download/v3.0.0/millennium-helpers-v3.0.0-src.tar.gz
 	source = millennium-helpers.sudoers
 	sha256sums = 51266f867a227d1c7122b9221fa76c5d926d9686924349484676bddb7535182d
 	sha256sums = 2eaf267685ee9125ae5f5b1e73d9c056792e2175424b64e02e6e51da8522ae83

@@ -1,49 +1,14 @@
 {
-    "version": "2.7.0",
-    "description": "Millennium helpers (from source tag) \u2014 builds Go dispatcher; long-name PATH twins invoke millennium.exe <cmd>.",
+    "version": "3.0.0",
+    "description": "Millennium helpers (from source tag) \u2014 builds Go dispatcher; PATH entry is millennium.exe (millennium <cmd>).",
     "homepage": "https://github.com/bolens/millenium-helpers",
     "license": "MIT",
-    "url": "https://github.com/bolens/millenium-helpers/releases/download/v2.7.0/millennium-helpers-v2.7.0-src.zip",
+    "url": "https://github.com/bolens/millenium-helpers/releases/download/v3.0.0/millennium-helpers-v3.0.0-src.zip",
     "hash": "23bc1a43ad9f4710b58366d5d062a9bff719fd664a622b0f3f83365f5d52cab8",
     "bin": [
         [
             "scripts\\windows\\millennium.exe",
             "millennium"
-        ],
-        [
-            "scripts\\windows\\millennium.exe",
-            "millennium-diag",
-            "diag"
-        ],
-        [
-            "scripts\\windows\\millennium.exe",
-            "millennium-mcp",
-            "mcp"
-        ],
-        [
-            "scripts\\windows\\millennium.exe",
-            "millennium-purge",
-            "purge"
-        ],
-        [
-            "scripts\\windows\\millennium.exe",
-            "millennium-repair",
-            "repair"
-        ],
-        [
-            "scripts\\windows\\millennium.exe",
-            "millennium-schedule",
-            "schedule"
-        ],
-        [
-            "scripts\\windows\\millennium.exe",
-            "millennium-theme",
-            "theme"
-        ],
-        [
-            "scripts\\windows\\millennium.exe",
-            "millennium-upgrade",
-            "upgrade"
         ]
     ],
     "post_install": [
@@ -89,7 +54,7 @@
         "url": "https://github.com/bolens/millenium-helpers/releases/download/v$version/millennium-helpers-v$version-src.zip",
         "extract_dir": "millenium-helpers-$version"
     },
-    "extract_dir": "millenium-helpers-2.7.0",
+    "extract_dir": "millenium-helpers-3.0.0",
     "pre_install": [
         "$exe = Join-Path $dir 'scripts\\windows\\millennium.exe'",
         "if (!(Test-Path -LiteralPath $exe)) {",

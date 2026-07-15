@@ -11,22 +11,22 @@ class MillenniumHelpersBin < Formula
 
   on_macos do
     on_arm do
-      url "https://github.com/bolens/millenium-helpers/releases/download/v2.7.0/millennium-helpers-v2.7.0-darwin-arm64.tar.gz"
+      url "https://github.com/bolens/millenium-helpers/releases/download/v3.0.0/millennium-helpers-v3.0.0-darwin-arm64.tar.gz"
       sha256 "bb3532ec10271709638cca737ae05cbe55673a508923c8a4d2f106e6bbae07c6"
     end
     on_intel do
-      url "https://github.com/bolens/millenium-helpers/releases/download/v2.7.0/millennium-helpers-v2.7.0-darwin-amd64.tar.gz"
+      url "https://github.com/bolens/millenium-helpers/releases/download/v3.0.0/millennium-helpers-v3.0.0-darwin-amd64.tar.gz"
       sha256 "10a75d831d9648c487a5cc303e615902a9565f9e1689403fc5dd4a9ba90db6e6"
     end
   end
 
   on_linux do
     on_arm do
-      url "https://github.com/bolens/millenium-helpers/releases/download/v2.7.0/millennium-helpers-v2.7.0-linux-arm64.tar.gz"
+      url "https://github.com/bolens/millenium-helpers/releases/download/v3.0.0/millennium-helpers-v3.0.0-linux-arm64.tar.gz"
       sha256 "5067b7592df4c06b20406c0e8da50cad76c541c401c4b6d6df8cee6d90833535"
     end
     on_intel do
-      url "https://github.com/bolens/millenium-helpers/releases/download/v2.7.0/millennium-helpers-v2.7.0-linux-amd64.tar.gz"
+      url "https://github.com/bolens/millenium-helpers/releases/download/v3.0.0/millennium-helpers-v3.0.0-linux-amd64.tar.gz"
       sha256 "96baa9285be191a136aab460ba4e75edc426842333b7df8f719c8de724730ca1"
     end
   end
@@ -36,41 +36,13 @@ class MillenniumHelpersBin < Formula
   def install
     odie "Release archive missing bin/millennium (Go dispatcher required)" unless (buildpath/"bin/millennium").exist?
     bin.install "bin/millennium"
-    %w[
-      millennium-mcp
-      millennium-repair
-      millennium-upgrade
-      millennium-schedule
-      millennium-purge
-      millennium-diag
-      millennium-theme
-    ].each { |name| bin.install_symlink "millennium" => name }
-
-    (lib/"millennium-helpers").install "scripts/common.sh"
-    (lib/"millennium-helpers/lib").install Dir["scripts/lib/*.sh"]
-
-    commands = %w[
-      millennium
-      millennium-repair
-      millennium-upgrade
-      millennium-schedule
-      millennium-purge
-      millennium-diag
-      millennium-theme
-      millennium-mcp
-    ]
-
     bash_completion.install "completions/bash/millennium-helpers" => "millennium-helpers"
-    commands.each do |cmd|
-      ln_sf "millennium-helpers", bash_completion/cmd
-    end
+    ln_sf "millennium-helpers", bash_completion/"millennium"
 
     zsh_completion.install "completions/zsh/_millennium-helpers" => "_millennium-helpers"
-    commands.each do |cmd|
-      ln_sf "_millennium-helpers", zsh_completion/"_#{cmd}"
-    end
+    ln_sf "_millennium-helpers", zsh_completion/"_millennium"
 
-    fish_completion.install Dir["completions/fish/*.fish"]
+    fish_completion.install "completions/fish/millennium.fish"
     (share/"nushell/completions").install "completions/nushell/millennium-helpers.nu"
     man1.install Dir["man/*.1"]
     (lib/"millennium-helpers").install "VERSION"
@@ -87,7 +59,7 @@ class MillenniumHelpersBin < Formula
   end
 
   test do
-    system "#{bin}/millennium-diag", "--help"
-    assert_path_exists lib/"millennium-helpers/common.sh"
+    system "#{bin}/millennium", "diag", "--help"
+    assert_path_exists lib/"millennium-helpers/VERSION"
   end
 end

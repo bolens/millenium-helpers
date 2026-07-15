@@ -165,9 +165,8 @@ url = str(scoop_bin.get("url", ""))
 if f"releases/download/v{version}/millennium-helpers-v{version}-windows-amd64.zip" not in url:
     errors.append("Scoop-bin URL must use windows-amd64 release asset")
 bins = {b[1] if isinstance(b, list) else b for b in scoop_bin.get("bin", [])}
-for required in ("millennium", "millennium-mcp", "millennium-diag"):
-    if required not in bins:
-        errors.append(f"Scoop-bin missing {required!r}")
+if "millennium" not in bins:
+    errors.append("Scoop-bin missing 'millennium'")
 
 installer = Path("packaging/winget/bolens.millenniumhelpers.installer.yaml").read_text(encoding="utf-8")
 if f"releases/download/v{version}/millennium-helpers-v{version}-windows-amd64.zip" not in installer:

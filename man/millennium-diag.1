@@ -52,6 +52,7 @@ for packaged upgrades.
 .B logs
 Display recent Millennium and Steam WebHelper startup logs.
 .SH OPTIONS
+.\" @@cli-contract:commands.diag.man_options@@
 .TP
 .BR \-f ", " \-\-fix
 Alias for the
@@ -78,6 +79,9 @@ and
 Follow (tail \-f) real-time log output with
 .BR logs .
 .TP
+.BR \-s ", " \-\-share
+Upload a redacted diagnostic report to a pastebin and print a short link.
+.TP
 .BR \-y ", " \-\-yes
 Skip confirmation when doctor closes Steam; also allows automatic
 .B makepkg \-si
@@ -86,14 +90,15 @@ when a packaging checkout is found.
 .BR \-d ", " \-\-dry\-run
 Simulate doctor repairs without modifying anything.
 .TP
-.BR \-s ", " \-\-share
-Upload a redacted diagnostic report to a pastebin and print a short link.
+.BR \-q ", " \-\-quiet
+Suppress informational output.
 .TP
 .BR \-V ", " \-\-version
 Show version information.
 .TP
 .BR \-h ", " \-\-help
 Show help message.
+.\" @@/cli-contract:commands.diag.man_options@@
 .SH EXAMPLES
 .TP
 Check health and follow suggested repairs:

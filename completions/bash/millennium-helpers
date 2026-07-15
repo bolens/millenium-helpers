@@ -1,4 +1,4 @@
-# Bash completions for Millennium helper scripts
+# Bash completions for the millennium dispatcher (millennium <command> …)
 
 _millennium_skins_dir() {
   local home="${HOME:-}"
@@ -37,24 +37,31 @@ _millennium_backup_ids() {
   echo "list"
 }
 
+# Nested helpers expect COMP_WORDS[0]=millennium and COMP_WORDS[1]=subcommand.
 _millennium_repair_comp() {
   COMPREPLY=()
   local cur="${COMP_WORDS[COMP_CWORD]}"
-  local opts="-s --skip-theme -y --yes -d --dry-run -q --quiet -V --version -h --help"
-  COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+  # @@cli-contract:commands.repair.flags@@
+  local flagopts="-s --skip-theme -y --yes -d --dry-run -q --quiet -V --version -h --help"
+  # @@/cli-contract:commands.repair.flags@@
+  COMPREPLY=( $(compgen -W "${flagopts}" -- "${cur}") )
   return 0
 }
-complete -F _millennium_repair_comp millennium-repair
 
 _millennium_upgrade_comp() {
   COMPREPLY=()
   local cur="${COMP_WORDS[COMP_CWORD]}"
   local prev="${COMP_WORDS[COMP_CWORD-1]}"
-  local opts="-c --channel --stable --beta --main -r --rollback --file --sha256 --insecure-skip-verify --all-users -f --force -y --yes -d --dry-run -q --quiet -V --version -h --help"
+  # @@cli-contract:commands.upgrade.flags@@
+  local flagopts="-c --channel --stable --beta --main -r --rollback --file --sha256 --insecure-skip-verify --all-users -f --force -y --yes -d --dry-run -q --quiet -V --version -h --help"
+  # @@/cli-contract:commands.upgrade.flags@@
+  # @@cli-contract:channels@@
+  local channels="stable beta main"
+  # @@/cli-contract:channels@@
 
   case "${prev}" in
     -c|--channel)
-      COMPREPLY=( $(compgen -W "stable beta main" -- "${cur}") )
+      COMPREPLY=( $(compgen -W "${channels}" -- "${cur}") )
       return 0
       ;;
     -r|--rollback)
@@ -67,20 +74,27 @@ _millennium_upgrade_comp() {
       ;;
   esac
 
-  COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+  COMPREPLY=( $(compgen -W "${flagopts}" -- "${cur}") )
   return 0
 }
-complete -F _millennium_upgrade_comp millennium-upgrade
 
 _millennium_schedule_comp() {
   COMPREPLY=()
   local cur="${COMP_WORDS[COMP_CWORD]}"
   local prev="${COMP_WORDS[COMP_CWORD-1]}"
+  # @@cli-contract:commands.schedule.subcommands@@
   local subcmds="enable disable status setup config"
+  # @@/cli-contract:commands.schedule.subcommands@@
+  # @@cli-contract:commands.schedule.flags@@
+  local flagopts="-c --cron --system --user -d --dry-run -q --quiet -V --version -h --help"
+  # @@/cli-contract:commands.schedule.flags@@
+  # @@cli-contract:channels@@
+  local channels="stable beta main"
+  # @@/cli-contract:channels@@
 
   case "${prev}" in
     enable)
-      COMPREPLY=( $(compgen -W "stable beta main" -- "${cur}") )
+      COMPREPLY=( $(compgen -W "${channels}" -- "${cur}") )
       return 0
       ;;
     config)
@@ -93,34 +107,43 @@ _millennium_schedule_comp() {
       ;;
   esac
 
-  COMPREPLY=( $(compgen -W "${subcmds} -c --cron --system --user -d --dry-run -q --quiet -V --version -h --help" -- "${cur}") )
+  COMPREPLY=( $(compgen -W "${subcmds} ${flagopts}" -- "${cur}") )
   return 0
 }
-complete -F _millennium_schedule_comp millennium-schedule
 
 _millennium_purge_comp() {
   COMPREPLY=()
   local cur="${COMP_WORDS[COMP_CWORD]}"
-  local opts="-d --dry-run -q --quiet -y --yes -V --version -h --help"
-  COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+  # @@cli-contract:commands.purge.flags@@
+  local flagopts="-d --dry-run -y --yes -q --quiet -V --version -h --help"
+  # @@/cli-contract:commands.purge.flags@@
+  COMPREPLY=( $(compgen -W "${flagopts}" -- "${cur}") )
   return 0
 }
-complete -F _millennium_purge_comp millennium-purge
 
 _millennium_diag_comp() {
   COMPREPLY=()
   local cur="${COMP_WORDS[COMP_CWORD]}"
-  local opts="doctor logs --fix --force --json -l --follow -y --yes -s --share -d --dry-run -q --quiet -V --version -h --help"
-  COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+  # @@cli-contract:commands.diag.subcommands@@
+  local subcmds="doctor logs"
+  # @@/cli-contract:commands.diag.subcommands@@
+  # @@cli-contract:commands.diag.flags@@
+  local flagopts="-f --fix --force --json -l --follow -s --share -y --yes -d --dry-run -q --quiet -V --version -h --help"
+  # @@/cli-contract:commands.diag.flags@@
+  COMPREPLY=( $(compgen -W "${subcmds} ${flagopts}" -- "${cur}") )
   return 0
 }
-complete -F _millennium_diag_comp millennium-diag
 
 _millennium_theme_comp() {
   COMPREPLY=()
   local cur="${COMP_WORDS[COMP_CWORD]}"
   local prev="${COMP_WORDS[COMP_CWORD-1]}"
-  local subcmds="list install remove update"
+  # @@cli-contract:commands.theme.subcommands@@
+  local subcmds="list install update remove"
+  # @@/cli-contract:commands.theme.subcommands@@
+  # @@cli-contract:commands.theme.flags@@
+  local flagopts="-a --all --json -y --yes -d --dry-run -q --quiet -V --version -h --help"
+  # @@/cli-contract:commands.theme.flags@@
 
   case "${prev}" in
     update)
@@ -141,25 +164,37 @@ _millennium_theme_comp() {
       ;;
   esac
 
-  COMPREPLY=( $(compgen -W "${subcmds} --json -y --yes -d --dry-run -q --quiet -V --version -h --help" -- "${cur}") )
+  COMPREPLY=( $(compgen -W "${subcmds} ${flagopts}" -- "${cur}") )
   return 0
 }
-complete -F _millennium_theme_comp millennium-theme
 
 _millennium_mcp_comp() {
   COMPREPLY=()
   local cur="${COMP_WORDS[COMP_CWORD]}"
-  local opts="-r --register -V --version -h --help"
-  COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+  # @@cli-contract:commands.mcp.flags@@
+  local flagopts="-r --register -V --version -h --help"
+  # @@/cli-contract:commands.mcp.flags@@
+  COMPREPLY=( $(compgen -W "${flagopts}" -- "${cur}") )
   return 0
 }
-complete -F _millennium_mcp_comp millennium-mcp
+
+_millennium_install_comp() {
+  COMPREPLY=()
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+  # @@cli-contract:commands.install_uninstall.flags@@
+  local flagopts="--track --tag --allow-unsigned-main --prefix --target-dir --lib-dir --source-root --skip-wizard -d --dry-run -f --force -V --version -h --help -p --purge"
+  # @@/cli-contract:commands.install_uninstall.flags@@
+  COMPREPLY=( $(compgen -W "${flagopts}" -- "${cur}") )
+  return 0
+}
 
 _millennium_dispatcher_comp() {
   COMPREPLY=()
   local cur="${COMP_WORDS[COMP_CWORD]}"
   if [[ ${COMP_CWORD} -eq 1 ]]; then
-    COMPREPLY=( $(compgen -W "diag doctor upgrade schedule theme repair purge mcp help" -- "${cur}") )
+    # @@cli-contract:dispatcher.commands@@
+    COMPREPLY=( $(compgen -W "diag doctor upgrade schedule theme repair purge mcp install uninstall help" -- "${cur}") )
+    # @@/cli-contract:dispatcher.commands@@
     return 0
   fi
   local sub="${COMP_WORDS[1]}"
@@ -171,6 +206,7 @@ _millennium_dispatcher_comp() {
     repair) _millennium_repair_comp ;;
     purge) _millennium_purge_comp ;;
     mcp) _millennium_mcp_comp ;;
+    install|uninstall) _millennium_install_comp ;;
   esac
 }
 complete -F _millennium_dispatcher_comp millennium

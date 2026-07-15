@@ -9,11 +9,13 @@ import (
 )
 
 var (
+	// @@cli-contract:mcp.dispatch_allowlists@@
 	validThemeActions    = map[string]bool{"list": true, "install": true, "remove": true, "update": true}
 	validScheduleActions = map[string]bool{"enable": true, "disable": true, "status": true}
 	validChannels        = map[string]bool{"stable": true, "beta": true, "main": true}
-	themeRe              = regexp.MustCompile(`^[a-zA-Z0-9_\-\./:]+$`)
-	rollbackRe           = regexp.MustCompile(`^[a-zA-Z0-9_\-\.]+$`)
+	// @@/cli-contract:mcp.dispatch_allowlists@@
+	themeRe    = regexp.MustCompile(`^[a-zA-Z0-9_\-\./:]+$`)
+	rollbackRe = regexp.MustCompile(`^[a-zA-Z0-9_\-\.]+$`)
 )
 
 func sortedKeys(m map[string]bool) string {

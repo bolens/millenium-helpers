@@ -40,13 +40,13 @@ Describe "PowerShell completions" {
         $values | Should -Contain "config"
     }
 
-    It "Completes millennium-schedule enable channels" {
+    It "Completes millennium schedule enable channels" {
         $cmd = [System.Management.Automation.Language.Parser]::ParseInput(
-            "millennium-schedule enable ",
+            "millennium schedule enable ",
             [ref]$null,
             [ref]$null
         ).EndBlock.Statements[0].PipelineElements[0]
-        $results = @(Complete-MillenniumNative -CommandName "millennium-schedule" -WordToComplete "" -CommandAst $cmd -CursorPosition 27)
+        $results = @(Complete-MillenniumNative -CommandName "millennium" -WordToComplete "" -CommandAst $cmd -CursorPosition 27)
         $values = @($results | ForEach-Object { $_.CompletionText })
         $values | Should -Contain "stable"
         $values | Should -Contain "beta"
@@ -54,11 +54,11 @@ Describe "PowerShell completions" {
 
     It "Filters schedule actions by prefix" {
         $cmd = [System.Management.Automation.Language.Parser]::ParseInput(
-            "millennium-schedule en",
+            "millennium schedule en",
             [ref]$null,
             [ref]$null
         ).EndBlock.Statements[0].PipelineElements[0]
-        $results = @(Complete-MillenniumNative -CommandName "millennium-schedule" -WordToComplete "en" -CommandAst $cmd -CursorPosition 22)
+        $results = @(Complete-MillenniumNative -CommandName "millennium" -WordToComplete "en" -CommandAst $cmd -CursorPosition 22)
         $values = @($results | ForEach-Object { $_.CompletionText })
         $values | Should -Contain "enable"
         $values | Should -Not -Contain "disable"

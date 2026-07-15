@@ -45,7 +45,7 @@ url="$(jq -r .url "$scoop_src")"
 extract_dir="$(jq -r .extract_dir "$scoop_src")"
 [[ "$extract_dir" == "millenium-helpers-${VERSION}" ]] \
   || fail "Scoop from-source extract_dir must be millenium-helpers-${VERSION}, got: $extract_dir"
-require_bins "$scoop_src" millennium millennium-mcp millennium-diag
+require_bins "$scoop_src" millennium
 echo "Scoop from-source OK"
 
 scoop_bin=packaging/scoop/millennium-helpers-bin.json
@@ -55,7 +55,7 @@ url="$(jq -r .url "$scoop_bin")"
 hash_url="$(jq -r '.autoupdate.hash.url // empty' "$scoop_bin")"
 [[ "$hash_url" == *"/millennium-helpers-v"*"-windows-amd64.zip.sha256" ]] \
   || fail "Scoop-bin autoupdate.hash.url must point at .sha256 sidecar, got: $hash_url"
-require_bins "$scoop_bin" millennium millennium-mcp millennium-diag
+require_bins "$scoop_bin" millennium
 echo "Scoop-bin OK"
 
 scoop_git=packaging/scoop/millennium-helpers-git.json
@@ -66,7 +66,7 @@ url="$(jq -r .url "$scoop_git")"
   || fail "Scoop-git url must be main.zip, got: $url"
 [[ "$(jq -r .extract_dir "$scoop_git")" == "millenium-helpers-main" ]] \
   || fail "Scoop-git extract_dir must be millenium-helpers-main"
-require_bins "$scoop_git" millennium millennium-mcp millennium-diag
+require_bins "$scoop_git" millennium
 echo "Scoop-git OK"
 
 # --- Winget release + git ---

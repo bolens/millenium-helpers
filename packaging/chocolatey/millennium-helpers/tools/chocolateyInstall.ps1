@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Stop'
 $toolsDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
-$version = '2.7.0'
+$version = '3.0.0'
 $url = "https://github.com/bolens/millenium-helpers/releases/download/v$version/millennium-helpers-v$version-windows-amd64.zip"
 $checksum = 'ef1514ff14caccc54863932ee250d8bbfc32869fe0f5619166ec8759559b4b93'
 
@@ -27,16 +27,4 @@ if (Test-Path -LiteralPath $millenniumExe) {
   Install-BinFile -Name 'millennium' -Path $millenniumExe
 } else {
   throw 'millennium.exe (Go dispatcher) not found in release zip'
-}
-
-foreach ($pair in @(
-    @{ Name = 'millennium-diag'; Args = 'diag' },
-    @{ Name = 'millennium-mcp'; Args = 'mcp' },
-    @{ Name = 'millennium-purge'; Args = 'purge' },
-    @{ Name = 'millennium-repair'; Args = 'repair' },
-    @{ Name = 'millennium-schedule'; Args = 'schedule' },
-    @{ Name = 'millennium-theme'; Args = 'theme' },
-    @{ Name = 'millennium-upgrade'; Args = 'upgrade' }
-  )) {
-  Install-BinFile -Name $pair.Name -Path $millenniumExe -Command "$($pair.Args) %*"
 }

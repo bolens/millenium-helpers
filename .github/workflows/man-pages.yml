@@ -8,14 +8,14 @@ on:
     tags: [ 'v*' ]
     paths:
       - 'man/**'
-      - 'scripts/millennium-*.sh'
+      - 'go/cmd/millennium/**'
       - 'scripts/ci/check-man-pages.sh'
       - '.github/workflows/man-pages.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'man/**'
-      - 'scripts/millennium-*.sh'
+      - 'go/cmd/millennium/**'
       - 'scripts/ci/check-man-pages.sh'
       - '.github/workflows/man-pages.yml'
 

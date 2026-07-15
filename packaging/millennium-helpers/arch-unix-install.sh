@@ -19,28 +19,15 @@ _arch_install_unix_helpers() {
   fi
 
   install -d "${pkgdir}/usr/bin"
-  # Long-name PATH entries are argv0 twins of the Go dispatcher.
-  local twin
-  for twin in millennium millennium-mcp millennium-repair millennium-upgrade \
-    millennium-schedule millennium-purge millennium-diag millennium-theme
-  do
-    install -m755 "${dispatcher}" "${pkgdir}/usr/bin/${twin}"
-  done
+  install -m755 "${dispatcher}" "${pkgdir}/usr/bin/millennium"
 
-  install -d "${pkgdir}/usr/lib/millennium-helpers/lib"
-  install -m644 scripts/common.sh "${pkgdir}/usr/lib/millennium-helpers/common.sh"
-  install -m644 scripts/lib/*.sh "${pkgdir}/usr/lib/millennium-helpers/lib/"
+  install -d "${pkgdir}/usr/lib/millennium-helpers"
 
   install -Dm644 completions/bash/millennium-helpers "${pkgdir}/usr/share/bash-completion/completions/millennium-helpers"
-  local script
-  for script in millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp millennium; do
-    ln -sf millennium-helpers "${pkgdir}/usr/share/bash-completion/completions/${script}"
-  done
+  ln -sf millennium-helpers "${pkgdir}/usr/share/bash-completion/completions/millennium"
 
   install -Dm644 completions/zsh/_millennium-helpers "${pkgdir}/usr/share/zsh/site-functions/_millennium-helpers"
-  for script in millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp millennium; do
-    ln -sf _millennium-helpers "${pkgdir}/usr/share/zsh/site-functions/_${script}"
-  done
+  ln -sf _millennium-helpers "${pkgdir}/usr/share/zsh/site-functions/_millennium"
 
   install -d "${pkgdir}/usr/share/fish/vendor_completions.d"
   install -m644 completions/fish/*.fish "${pkgdir}/usr/share/fish/vendor_completions.d/"

@@ -12,51 +12,39 @@ fail() {
 }
 
 [[ -d man ]] || fail "man/ directory is missing"
-[[ -d scripts ]] || fail "scripts/ directory is missing"
 
 missing=0
-# Long-name Bash commands: scripts/millennium-*.sh → matching man/*.1
-# PATH millennium is the Go binary (man/millennium.1 required separately).
-while IFS= read -r -d '' script; do
-  base="$(basename "$script" .sh)"
+# Required pages come from spec/cli-contract.yaml (commands.*.man).
+# PATH ships only `millennium`; long-name pages document `millennium <cmd>`.
+if ! command -v python3 >/dev/null 2>&1; then
+  fail "python3 is required to load man page list from cli-contract.yaml"
+fi
+mapfile -t REQUIRED_MAN < <(python3 scripts/ci/check-cli-contract.py --list-man-bases)
+[[ ${#REQUIRED_MAN[@]} -gt 0 ]] || fail "cli-contract.yaml produced no man page basenames"
+
+for base in "${REQUIRED_MAN[@]}"; do
   page="man/${base}.1"
   if [[ ! -f "$page" ]]; then
-    echo "::error file=$script::missing man page $page"
-    echo "error: missing man page for $script → expected $page" >&2
+    echo "::error file=$page::missing man page for $base"
+    echo "error: missing man page for $base → expected $page" >&2
     missing=1
   else
-    echo "OK  $script → $page"
+    echo "OK  $base → $page"
   fi
-done < <(
-  find scripts -maxdepth 1 -type f -name 'millennium-*.sh' -print0 | sort -z
-)
+done
 
-if [[ ! -f man/millennium.1 ]]; then
-  echo "::error file=man/millennium.1::missing man page for Go PATH dispatcher"
-  echo "error: missing man/millennium.1 for Go PATH dispatcher" >&2
-  missing=1
-else
-  echo "OK  bin/millennium → man/millennium.1"
-fi
-
-# MCP man page (argv0 twin / thin shim)
-if [[ ! -f man/millennium-mcp.1 ]]; then
-  echo "::error file=man/millennium-mcp.1::missing man page for millennium-mcp"
-  echo "error: missing man/millennium-mcp.1" >&2
-  missing=1
-else
-  echo "OK  millennium-mcp → man/millennium-mcp.1"
-fi
-
-# Orphan man pages (no matching script) — warn but do not fail
+# Unexpected man pages (not in the required set) — warn but do not fail.
+is_required_man() {
+  local cand="$1" r
+  for r in "${REQUIRED_MAN[@]}"; do
+    [[ "$r" == "$cand" ]] && return 0
+  done
+  return 1
+}
 while IFS= read -r -d '' page; do
   base="$(basename "$page" .1)"
-  # PATH millennium is the Go binary (no scripts/millennium.sh).
-  if [[ "$base" == "millennium" ]]; then
-    continue
-  fi
-  if [[ ! -f "scripts/${base}.sh" && ! -f "scripts/${base}.py" ]]; then
-    echo "::warning file=$page::orphan man page (no scripts/${base}.sh or .py)"
+  if ! is_required_man "$base"; then
+    echo "::warning file=$page::orphan man page (not a Go PATH command)"
     echo "warning: orphan man page $page" >&2
   fi
 done < <(find man -maxdepth 1 -type f -name '*.1' -print0 | sort -z)

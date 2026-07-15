@@ -19,8 +19,8 @@ This setup achieves this securely:
 4. **Channel allow-list**: Scheduler enable paths only accept `stable|beta|main`. Poisoned `update_channel` values in config are ignored on load and rejected before embedding into cron/systemd/Task Scheduler command lines.
 5. **Scheduler-only hooks**: `pre-update` / `post-update` require `MILLENNIUM_SCHEDULER=1` (set by the unit/cron). Manual invocation is refused.
 6. **Release checksums**: Non-`main` helper/client downloads hard-fail if the `.sha256` sidecar is missing or mismatches. Tip-of-main installs require `--allow-unsigned-main` / `-AllowUnsignedMain`. Same-origin GitHub sidecars are TOFU, not independent attestation.
-7. **Local archives**: `millennium-upgrade --file` requires `--sha256` or explicit `--insecure-skip-verify`.
-8. **Doctor**: Syncing helper scripts over root-owned install paths requires `millennium-diag doctor --yes` after a verified release download.
+7. **Local archives**: `millennium upgrade --file` requires `--sha256` or explicit `--insecure-skip-verify`.
+8. **Doctor**: Syncing helper scripts over root-owned install paths requires `millennium diag doctor --yes` after a verified release download.
 9. **Archive extract**: Theme and Windows client zips reject path-traversal members (`..` / absolute paths).
 
 Arch packages ship `%wheel` NOPASSWD for the four privileged commands; that is intentional for multi-admin Wheel hosts—prefer the curl-installer user-specific sudoers drop-in on shared desktops if wheel membership is broad.
@@ -33,16 +33,16 @@ Arch packages ship `%wheel` NOPASSWD for the four privileged commands; that is i
 This is usually caused by outdated CEF cached files. Run the repair utility to fix local permissions and clear Steam's htmlcache:
 ```bash
 # Linux
-sudo millennium-repair
+sudo millennium repair
 
 # Windows
-millennium-repair
+millennium repair
 ```
 
 ### The background timer is not running updates
 1. Check the timer status:
    ```bash
-   millennium-schedule status
+   millennium schedule status
    ```
 2. Verify that passwordless sudo (Linux) or Scheduled Tasks (Windows) are configured correctly.
 3. If you want the updates to run even when you are logged out of your session on Linux, enable user lingering:

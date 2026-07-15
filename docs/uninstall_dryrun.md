@@ -15,12 +15,12 @@ All scripts support a Dry-Run mode (`--dry-run` or `-d`) to preview file copies,
 ```bash
 # Linux (Natively Installed)
 ./install.sh --dry-run
-millennium-upgrade --channel stable --dry-run
-millennium-repair --dry-run
+millennium upgrade --channel stable --dry-run
+millennium repair --dry-run
 
 # Windows
-millennium-upgrade -Channel stable -DryRun
-millennium-diag doctor -DryRun
+millennium upgrade -Channel stable -DryRun
+millennium doctor --dry-run
 ```
 
 When run in Dry-Run mode, scripts log exactly what files would be created, moved, or deleted, and what commands would be executed, without committing any changes.
@@ -47,7 +47,6 @@ If you installed via the standard installer script:
    Preferred:
    ```bash
    sudo millennium schedule disable
-   # or: sudo millennium-schedule disable
    ```
    Manual equivalent:
    ```bash
@@ -66,7 +65,8 @@ If you installed via the standard installer script:
    systemctl --user daemon-reload
    ```
 
-2. **Remove the script binaries from `/usr/local/bin`**:
+2. **Remove the script binaries from `/usr/local/bin`** (`millennium` plus any
+   leftover long-name argv0 twins from older installs):
    ```bash
    sudo rm -f /usr/local/bin/millennium \
               /usr/local/bin/millennium-repair \
@@ -197,14 +197,14 @@ If you installed the helpers via Homebrew (`Formula/millennium-helpers.rb` in th
    rm -rf ${XDG_STATE_HOME:-~/.local/state}/millennium-helpers
    ```
 
-   Homebrew does not remove Millennium client hooks under Steam; use `sudo millennium-purge --yes` before uninstalling the formula if you also want those gone.
+   Homebrew does not remove Millennium client hooks under Steam; use `sudo millennium purge --yes` before uninstalling the formula if you also want those gone.
 
 ### 5. Windows (Standard Install)
 
-If you installed via the standard installer script:
-* **Option A: Piped Uninstall (One-Liner)**:
+If helpers are on your `PATH` (Scoop, Winget, Chocolatey, or `millennium install`):
+* **Option A: Uninstall helpers**:
   ```powershell
-  irm https://raw.githubusercontent.com/bolens/millenium-helpers/main/scripts/windows/install.ps1 | iex -Arguments @{Uninstall=$true}
+  millennium uninstall
   ```
 
 * **Option B: Manual Cleanup**:

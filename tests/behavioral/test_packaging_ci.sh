@@ -36,9 +36,9 @@ seed_packaging_tree() {
     "$dest/packaging/deb/millennium-helpers-bin/DEBIAN" \
     "$dest/packaging/rpm" \
     "$dest/packaging/chocolatey/millennium-helpers/tools" \
-    "$dest/nix" "$dest/scripts/ci" "$dest/scripts/lib"
+    "$dest/nix" "$dest/scripts/ci"
   cp "$UPDATE" "$BUMP" "$CHECK" "$SYNC_SRC" "$SYNC_BIN" "$dest/scripts/ci/"
-  cp "${REPO_ROOT}/scripts/lib/release_assets.sh" "$dest/scripts/lib/"
+  cp "${REPO_ROOT}/scripts/ci/release_assets.sh" "$dest/scripts/ci/"
   cp "${REPO_ROOT}/Formula/millennium-helpers.rb" "$dest/Formula/"
   cp "${REPO_ROOT}/Formula/millennium-helpers-bin.rb" "$dest/Formula/"
   cp "${REPO_ROOT}/packaging/scoop/"*.json "$dest/packaging/scoop/"
@@ -456,43 +456,24 @@ fi
 assets_block=$(awk '/Build Go dispatchers and versioned archives/,/Calculate Checksums/' "${REPO_ROOT}/.github/workflows/release.yml")
 assert_file_not_exists "${REPO_ROOT}/scripts/millennium-mcp.py" "millennium-mcp.py must not exist (Go MCP only)"
 assert_contains "$assets_block" "completions/powershell/" "Windows release zip includes PowerShell completions"
-assert_contains "$assets_block" "scripts/windows/" "Windows release zip includes scripts/windows tree (diag lib modules)"
+assert_contains "$assets_block" "scripts/windows/millennium.exe" "Windows release zip includes millennium.exe"
+assert_not_contains "$assets_block" "scripts/windows/install.ps1" "Windows release zip omits install.ps1"
 assert_contains "$assets_block" "windows" "release.yml builds windows helpers zip"
 assert_contains "$assets_block" "release_asset_go" "release.yml builds versioned Go dispatchers"
 assert_contains "$assets_block" "bin/millennium" "release.yml embeds bin/millennium for Unix tarballs"
 assert_contains "$assets_block" "release_asset_src" "release.yml builds versioned -src archives"
+assert_not_contains "$assets_block" "scripts/common.sh" "release unix payload omits install-time common.sh"
+assert_not_contains "$assets_block" "scripts/lib" "release unix payload omits scripts/lib"
+assert_not_contains "$assets_block" "scripts/windows/common.ps1" "release Windows zip omits common.ps1"
+assert_not_contains "$assets_block" "scripts/windows/lib/" "release Windows zip omits install-time lib/"
 
-assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/DiagReport.ps1" "DiagReport.ps1 removed; diag thin-wraps to Go"
-assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/DiagInstall.ps1" "DiagInstall.ps1 removed; diag thin-wraps to Go"
-assert_file_exists "${REPO_ROOT}/scripts/windows/lib/Logging.ps1" "scripts/windows/lib/Logging.ps1 exists for release packaging"
-assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/ScheduleEnable.ps1" "ScheduleEnable.ps1 removed; enable thin-wraps to Go"
-assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/ScheduleDisable.ps1" "ScheduleDisable.ps1 removed; disable thin-wraps to Go"
-assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/ScheduleStatus.ps1" "ScheduleStatus.ps1 removed; status thin-wraps to Go"
-assert_file_not_exists "${REPO_ROOT}/scripts/lib/schedule_status.sh" "schedule_status.sh removed; status thin-wraps to Go"
-assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/ThemeOps.ps1" "ThemeOps.ps1 removed; theme thin-wraps to Go"
-assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/UpgradeRollback.ps1" "UpgradeRollback.ps1 removed; upgrade thin-wraps to Go"
-assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/Download.ps1" "Download.ps1 removed; upgrade thin-wraps to Go"
-assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/Archive.ps1" "Archive.ps1 removed; upgrade thin-wraps to Go"
-assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/RepairOps.ps1" "RepairOps.ps1 removed; repair thin-wraps to Go"
-assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/Diag.ps1" "thin Diag.ps1 loader must not exist"
-assert_file_not_exists "${REPO_ROOT}/scripts/lib/theme_ops.sh" "theme_ops.sh removed; theme thin-wraps to Go"
-assert_file_not_exists "${REPO_ROOT}/scripts/lib/schedule_timer.sh" "schedule_timer.sh removed; enable/disable thin-wraps to Go"
-assert_file_not_exists "${REPO_ROOT}/scripts/lib/schedule_cron.sh" "schedule_cron.sh removed; enable/disable thin-wraps to Go"
-assert_file_not_exists "${REPO_ROOT}/scripts/lib/schedule_hooks.sh" "schedule_hooks.sh removed; pre/post-update thin-wraps to Go"
-assert_file_not_exists "${REPO_ROOT}/scripts/lib/schedule_wizard.sh" "schedule_wizard.sh removed; setup thin-wraps to Go"
-assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/ScheduleWizard.ps1" "ScheduleWizard.ps1 removed; setup thin-wraps to Go"
-assert_file_not_exists "${REPO_ROOT}/scripts/lib/repair_ops.sh" "repair_ops.sh removed; repair thin-wraps to Go"
-assert_file_not_exists "${REPO_ROOT}/scripts/lib/upgrade_failure.sh" "upgrade_failure.sh removed; upgrade thin-wraps to Go"
-assert_file_not_exists "${REPO_ROOT}/scripts/lib/upgrade_network.sh" "upgrade_network.sh removed; upgrade thin-wraps to Go"
-assert_file_not_exists "${REPO_ROOT}/scripts/lib/diag.sh" "thin diag.sh loader must not exist"
-assert_file_not_exists "${REPO_ROOT}/scripts/lib/purge_ops.sh" "purge_ops.sh removed; purge thin-wraps to Go"
-assert_file_not_exists "${REPO_ROOT}/scripts/lib/dispatcher.sh" "dispatcher.sh must not exist (Go PATH only)"
-assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/PurgeOps.ps1" "PurgeOps.ps1 removed; purge thin-wraps to Go"
-assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/Dispatcher.ps1" "Dispatcher.ps1 must not exist (Go PATH only)"
+assert_file_not_exists "${REPO_ROOT}/scripts/common.sh" "common.sh removed (Go install owns helpers layout)"
+assert_file_not_exists "${REPO_ROOT}/scripts/windows/common.ps1" "common.ps1 removed (Go install owns helpers layout)"
+assert_file_not_exists "${REPO_ROOT}/scripts/lib" "scripts/lib removed (release_assets.sh lives in scripts/ci)"
+assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib" "scripts/windows/lib removed"
 assert_file_not_exists "${REPO_ROOT}/scripts/millennium.sh" "millennium.sh must not exist (Go PATH only)"
 assert_file_not_exists "${REPO_ROOT}/scripts/windows/millennium.ps1" "millennium.ps1 must not exist (Go PATH only)"
-assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/DiagDoctor.ps1" "DiagDoctor.ps1 removed; diag thin-wraps to Go"
-assert_file_not_exists "${REPO_ROOT}/scripts/lib/diag_ui.sh" "diag_ui.sh removed; diag thin-wraps to Go"
+assert_file_exists "${REPO_ROOT}/scripts/ci/release_assets.sh" "release asset naming helper lives under scripts/ci"
 assert_not_contains "$(cat "${REPO_ROOT}/.github/workflows/release.yml")" "scripts/millennium.sh" "release unix payload omits millennium.sh"
 
 release_gate=$(awk '/name: Wait for required CI/,/build-release:/' "${REPO_ROOT}/.github/workflows/release.yml")
@@ -559,6 +540,8 @@ assert_contains "$suite_wf" "- '.github/workflows/release.yml'" "Test suite path
 
 ps_lint=$(cat "${REPO_ROOT}/.github/workflows/powershell-lint.yml")
 assert_contains "$ps_lint" "completions/powershell" "PowerShell lint path filters include completions/powershell"
+assert_contains "$ps_lint" "tests/windows" "PowerShell lint path filters include tests/windows"
+assert_not_contains "$ps_lint" "scripts/windows/**" "PowerShell lint no longer watches removed scripts/windows tree"
 
 for wf in homebrew.yml package-manifests.yml version-sync.yml man-pages.yml python-lint.yml; do
   body=$(cat "${REPO_ROOT}/.github/workflows/${wf}")
@@ -601,9 +584,25 @@ for sudoers_pkg in millennium-helpers millennium-helpers-bin millennium-helpers-
   sudoers_body=$(cat "${REPO_ROOT}/packaging/${sudoers_pkg}/millennium-helpers.sudoers")
   assert_contains "$sudoers_body" "/usr/bin/millennium upgrade" \
     "${sudoers_pkg} sudoers allowlists Go millennium upgrade"
-  assert_contains "$sudoers_body" "/usr/bin/millennium-upgrade" \
-    "${sudoers_pkg} sudoers keeps long-name millennium-upgrade"
+  assert_not_contains "$sudoers_body" "/usr/bin/millennium-upgrade" \
+    "${sudoers_pkg} sudoers omits retired long-name millennium-upgrade"
 done
+
+# Completions install only millennium (+ shared millennium-helpers file), not twin names.
+arch_install=$(cat "${REPO_ROOT}/packaging/lib/arch-unix-install.sh")
+# Intentional literal ${pkgdir} — must match packaging/lib/arch-unix-install.sh source text.
+# shellcheck disable=SC2016
+assert_contains "$arch_install" \
+  'ln -sf millennium-helpers "${pkgdir}/usr/share/bash-completion/completions/millennium"' \
+  "Arch packaging symlinks bash completion for millennium only"
+assert_not_contains "$arch_install" "for script in millennium-repair" \
+  "Arch packaging no longer loops long-name bash completion symlinks"
+formula=$(cat "${REPO_ROOT}/Formula/millennium-helpers.rb")
+# shellcheck disable=SC2016
+assert_contains "$formula" 'bash_completion/"millennium"' \
+  "Homebrew formula installs bash completion for millennium"
+assert_not_contains "$formula" "millennium-repair" \
+  "Homebrew formula no longer lists long-name completion twins"
 
 assert_file_exists "${REPO_ROOT}/scripts/ci/check-packaging-manifests.sh" "check-packaging-manifests.sh exists"
 assert_contains "$(cat "${REPO_ROOT}/Makefile")" "sync-git-srcinfo" "Makefile exposes sync-git-srcinfo target"

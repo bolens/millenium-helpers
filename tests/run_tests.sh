@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Millennium Helpers local test runner
 # Thin orchestrator: syntax checks + unit/behavioral suites.
-# Packaging/Homebrew/Winget gates live in dedicated CI workflows / make targets.
+# Feature/CLI coverage: make test-go / go.yml. Packaging/Homebrew/Winget: dedicated CI.
 set -euo pipefail
 
 THIS_TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -13,6 +13,7 @@ source "${THIS_TEST_DIR}/lib/assertions.sh"
 # 1. Syntax Validation
 echo -e "${YELLOW}Running syntax validations...${NC}"
 for script in "${REPO_ROOT}"/scripts/*.sh "${REPO_ROOT}"/install.sh; do
+  [[ -f "$script" ]] || continue
   tests_run=$((tests_run + 1))
   if bash -n "$script"; then
     echo -e "  ${GREEN}PASS:${NC} Syntax check for ${script#"$REPO_ROOT"/}"
@@ -22,41 +23,7 @@ for script in "${REPO_ROOT}"/scripts/*.sh "${REPO_ROOT}"/install.sh; do
   fi
 done
 
-# 2. Unit Testing common.sh (inline smoke checks)
-echo -e "\n${YELLOW}Running unit tests for common.sh...${NC}"
-
-SCRIPT_DIR="${REPO_ROOT}/scripts"
-export DRY_RUN=true
-export MOCK_PROC="/nonexistent_mock_proc"
-
-MOCK_BIN=$(mktemp -d)
-trap 'rm -rf "$MOCK_BIN"' EXIT
-
-touch "${MOCK_BIN}/millennium-diag"
-chmod +x "${MOCK_BIN}/millennium-diag"
-
-# shellcheck disable=SC1090
-source "${SCRIPT_DIR}/common.sh"
-
-OLD_PATH="$PATH"
-export PATH="${MOCK_BIN}:$PATH"
-resolved=$(resolve_helper_path "millennium-diag")
-assert_equals "${MOCK_BIN}/millennium-diag" "$resolved" "resolve_helper_path resolves scripts from PATH"
-export PATH="$OLD_PATH"
-
-log_output=$(log_info "Test Message")
-assert_contains "$log_output" "[INFO]" "log_info contains INFO severity tag"
-assert_contains "$log_output" "Test Message" "log_info contains correct message text"
-
-log_err_output=$(log_error "Error Message" 2>&1)
-assert_contains "$log_err_output" "[ERROR]" "log_error contains ERROR severity tag"
-assert_contains "$log_err_output" "Error Message" "log_error contains correct message text"
-
-exec_output=$(execute echo "hello world")
-assert_contains "$exec_output" "[DRY RUN]" "execute wrapper outputs dry-run notice"
-assert_contains "$exec_output" "echo hello world" "execute wrapper outputs command arguments"
-
-# 3. Unit & behavioral test suites
+# 2. Unit & behavioral test suites
 suite_failed_files=()
 
 for suite in "${THIS_TEST_DIR}"/unit/*.sh "${THIS_TEST_DIR}"/behavioral/*.sh; do
@@ -90,7 +57,7 @@ for suite in "${THIS_TEST_DIR}"/unit/*.sh "${THIS_TEST_DIR}"/behavioral/*.sh; do
   fi
 done
 
-# 4. Lightweight packaging version sync (full packaging gates are in CI)
+# 3. Lightweight packaging version sync (full packaging gates are in CI)
 echo -e "\n${YELLOW}Running packaging version sync check...${NC}"
 tests_run=$((tests_run + 1))
 if bash "${REPO_ROOT}/scripts/ci/check-version-sync.sh"; then

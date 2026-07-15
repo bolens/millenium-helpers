@@ -24,8 +24,8 @@ VERSION="${VERSION#v}"
 }
 
 REPO="${REPO:-bolens/millenium-helpers}"
-# shellcheck source=scripts/lib/release_assets.sh
-source "$ROOT/scripts/lib/release_assets.sh"
+# shellcheck source=scripts/ci/release_assets.sh
+source "$ROOT/scripts/ci/release_assets.sh"
 ASSET_LINUX_AMD64="$(release_asset_helpers "$VERSION" linux amd64 tar.gz)"
 ASSET_LINUX_ARM64="$(release_asset_helpers "$VERSION" linux arm64 tar.gz)"
 ASSET_DARWIN_AMD64="$(release_asset_helpers "$VERSION" darwin amd64 tar.gz)"

@@ -396,6 +396,95 @@ func TestNativePurgeDryRun(t *testing.T) {
 	}
 }
 
+func TestInstallUninstallHelpSmoke(t *testing.T) {
+	exe := buildMillennium(t)
+	installOut, err := exec.Command(exe, "install", "--help").CombinedOutput()
+	if err != nil {
+		t.Fatalf("install --help: %v\n%s", err, installOut)
+	}
+	inst := string(installOut)
+	if !strings.Contains(inst, "millennium install") || !strings.Contains(inst, "--track") {
+		t.Fatalf("install --help missing expected text:\n%s", inst)
+	}
+	unOut, err := exec.Command(exe, "uninstall", "--help").CombinedOutput()
+	if err != nil {
+		t.Fatalf("uninstall --help: %v\n%s", err, unOut)
+	}
+	un := string(unOut)
+	if !strings.Contains(un, "millennium uninstall") || !strings.Contains(un, "--purge") {
+		t.Fatalf("uninstall --help missing expected text:\n%s", un)
+	}
+}
+
+func TestInstallUninstallCLIDryRun(t *testing.T) {
+	exe := buildMillennium(t)
+	repo := repoRoot(t)
+	prefix := t.TempDir()
+	env := withEnv(os.Environ(), map[string]string{
+		"MILLENNIUM_BASH_COMPLETION_DIR":    filepath.Join(prefix, "bash"),
+		"MILLENNIUM_ZSH_COMPLETION_DIR":     filepath.Join(prefix, "zsh"),
+		"MILLENNIUM_FISH_COMPLETION_DIR":    filepath.Join(prefix, "fish"),
+		"MILLENNIUM_NUSHELL_COMPLETION_DIR": filepath.Join(prefix, "nu"),
+		"MILLENNIUM_MAN_DIR":                filepath.Join(prefix, "man"),
+	})
+	install := exec.Command(exe, "install", "--dry-run",
+		"--source-root", repo,
+		"--prefix", filepath.Join(prefix, "bin"),
+		"--lib-dir", filepath.Join(prefix, "lib"),
+		"--skip-wizard",
+	)
+	install.Env = env
+	out, err := install.CombinedOutput()
+	if err != nil {
+		t.Fatalf("install --dry-run: %v\n%s", err, out)
+	}
+	text := string(out)
+	if !strings.Contains(text, "DRY RUN MODE") || !strings.Contains(text, "millennium") {
+		t.Fatalf("install dry-run unexpected:\n%s", text)
+	}
+	uninstall := exec.Command(exe, "uninstall", "--dry-run",
+		"--prefix", filepath.Join(prefix, "bin"),
+		"--lib-dir", filepath.Join(prefix, "lib"),
+	)
+	uninstall.Env = env
+	out2, err := uninstall.CombinedOutput()
+	if err != nil {
+		t.Fatalf("uninstall --dry-run: %v\n%s", err, out2)
+	}
+	if !strings.Contains(string(out2), "DRY RUN MODE") {
+		t.Fatalf("uninstall dry-run unexpected:\n%s", out2)
+	}
+}
+
+func TestPurgeRefuseWithoutYes(t *testing.T) {
+	exe := buildMillennium(t)
+	home := t.TempDir()
+	steam := filepath.Join(home, "Steam")
+	if err := os.MkdirAll(steam, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(exe, "purge")
+	cmd.Stdin = strings.NewReader("")
+	cmd.Env = withEnv(os.Environ(), map[string]string{
+		"HOME":         home,
+		"USERPROFILE":  home,
+		"LOCALAPPDATA": filepath.Join(home, "LocalAppData"),
+		"APPDATA":      filepath.Join(home, "AppData"),
+		"STEAM":        steam,
+	})
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		t.Fatalf("expected non-zero exit, got:\n%s", out)
+	}
+	text := string(out)
+	if !strings.Contains(text, "Refusing to purge without confirmation") {
+		t.Fatalf("missing refuse message:\n%s", text)
+	}
+	if !strings.Contains(text, "--yes") {
+		t.Fatalf("missing --yes hint:\n%s", text)
+	}
+}
+
 // withEnv returns base env with keys replaced (or added). Empty values unset.
 func withEnv(base []string, kv map[string]string) []string {
 	drop := make(map[string]struct{}, len(kv))

@@ -93,6 +93,7 @@ func InferVersion(archivePath, fallback string) string {
 }
 
 // InstallLicense writes DEST/LICENSE best-effort.
+// Attribution and vendored notice policy: docs/licensing.md.
 func InstallLicense(destDir string) {
 	_ = os.WriteFile(filepath.Join(destDir, "LICENSE"), []byte(licenseFallback), 0o644)
 }

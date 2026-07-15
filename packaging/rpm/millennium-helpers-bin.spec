@@ -1,5 +1,5 @@
 Name:           millennium-helpers-bin
-Version: 2.7.0
+Version: 3.0.0
 Release: 1%{?dist}
 Summary:        Millennium helpers (prebuilt release assets)
 License:        MIT
@@ -25,7 +25,7 @@ when the Go dispatcher is embedded in the asset.
 
 %install
 install -d %{buildroot}%{_bindir} \
-  %{buildroot}%{_libdir}/millennium-helpers/lib \
+  %{buildroot}%{_libdir}/millennium-helpers \
   %{buildroot}%{_datadir}/bash-completion/completions \
   %{buildroot}%{_datadir}/zsh/site-functions \
   %{buildroot}%{_datadir}/fish/vendor_completions.d \
@@ -37,23 +37,12 @@ if [ ! -x bin/millennium ]; then
   echo "error: release tree missing bin/millennium (Go dispatcher required)" >&2
   exit 1
 fi
-# Long-name PATH entries are argv0 twins of the Go dispatcher.
-for twin in millennium millennium-mcp millennium-repair millennium-upgrade \
-  millennium-schedule millennium-purge millennium-diag millennium-theme
-do
-  install -m755 bin/millennium %{buildroot}%{_bindir}/$twin
-done
-install -m644 scripts/common.sh %{buildroot}%{_libdir}/millennium-helpers/common.sh
-install -m644 scripts/lib/*.sh %{buildroot}%{_libdir}/millennium-helpers/lib/
+install -m755 bin/millennium %{buildroot}%{_bindir}/millennium
 install -m644 VERSION %{buildroot}%{_libdir}/millennium-helpers/VERSION
 install -m644 completions/bash/millennium-helpers %{buildroot}%{_datadir}/bash-completion/completions/millennium-helpers
-for s in millennium millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp; do
-  ln -sf millennium-helpers %{buildroot}%{_datadir}/bash-completion/completions/$s
-done
+ln -sf millennium-helpers %{buildroot}%{_datadir}/bash-completion/completions/millennium
 install -m644 completions/zsh/_millennium-helpers %{buildroot}%{_datadir}/zsh/site-functions/_millennium-helpers
-for s in millennium millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp; do
-  ln -sf _millennium-helpers %{buildroot}%{_datadir}/zsh/site-functions/_$s
-done
+ln -sf _millennium-helpers %{buildroot}%{_datadir}/zsh/site-functions/_millennium
 install -m644 completions/fish/*.fish %{buildroot}%{_datadir}/fish/vendor_completions.d/
 install -m644 completions/nushell/millennium-helpers.nu %{buildroot}%{_datadir}/nushell/completions/
 install -m644 man/*.1 %{buildroot}%{_mandir}/man1/

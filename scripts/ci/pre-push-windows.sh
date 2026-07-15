@@ -25,7 +25,7 @@ if [[ -z "$base" ]]; then
   exit 0
 fi
 
-if ! git diff --name-only "$base"...HEAD | grep -qE '^(scripts/windows/|tests/windows/|completions/powershell/)'; then
+if ! git diff --name-only "$base"...HEAD | grep -qE '^(tests/windows/|completions/powershell/|go/internal/install/|packaging/chocolatey/)'; then
   echo "skip: no Windows-related changes in $base...HEAD"
   exit 0
 fi

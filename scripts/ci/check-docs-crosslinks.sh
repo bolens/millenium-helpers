@@ -151,20 +151,8 @@ need_contains "docs/licensing.md" "uninstall_dryrun.md" \
   "docs/licensing.md must link to uninstall_dryrun.md"
 need_contains "docs/licensing.md" "release_runbook.md" \
   "docs/licensing.md must link to release_runbook.md"
-need_contains "docs/licensing.md" "unification-audit.md" \
-  "docs/licensing.md must link to unification-audit.md"
-need_contains "docs/licensing.md" "unification-roadmap.md" \
-  "docs/licensing.md must link to unification-roadmap.md"
 need_contains "docs/licensing.md" "](README.md)" \
   "docs/licensing.md must link to the docs index"
-
-# unification guides
-need_contains "docs/unification-audit.md" "unification-roadmap.md" \
-  "docs/unification-audit.md must link to unification-roadmap.md"
-need_contains "docs/unification-roadmap.md" "unification-audit.md" \
-  "docs/unification-roadmap.md must link to unification-audit.md"
-need_contains "docs/unification-roadmap.md" "../spec/cli-contract.yaml" \
-  "docs/unification-roadmap.md must link to the CLI contract"
 
 # ---------------------------------------------------------------------------
 # Man pages → matching guides
@@ -197,7 +185,7 @@ need_file "LICENSE"
 need_file "docs/licensing.md"
 need_file "third_party/MILLENNIUM-LICENSE.md"
 need_file "third_party/README.md"
-need_file "scripts/lib/millennium_license.sh"
+need_file "go/internal/upgrade/install.go"
 
 need_contains "third_party/MILLENNIUM-LICENSE.md" "MIT License" \
   "third_party/MILLENNIUM-LICENSE.md must be an MIT license text"
@@ -215,8 +203,10 @@ need_contains "docs/licensing.md" "$UPSTREAM_LICENSE_URL" \
   "docs/licensing.md must link to upstream Millennium LICENSE.md"
 need_contains "docs/licensing.md" "README.md#license" \
   "docs/licensing.md must link to README § License"
+need_contains "docs/licensing.md" "millennium upgrade" \
+  "docs/licensing.md must mention millennium upgrade install behavior"
 need_contains "docs/licensing.md" "millennium-upgrade" \
-  "docs/licensing.md must mention millennium-upgrade install behavior"
+  "docs/licensing.md must mention millennium-upgrade man/binary name"
 need_contains "docs/licensing.md" "make check-docs" \
   "docs/licensing.md must document make check-docs"
 need_contains "docs/licensing.md" "third_party/README.md" \
@@ -277,9 +267,9 @@ need_contains "packaging/winget-git/bolens.millenniumhelpers.git.locale.en-US.ya
 need_contains ".github/workflows/release.yml" "third_party/MILLENNIUM-LICENSE.md" \
   "release.yml must package third_party/MILLENNIUM-LICENSE.md"
 
-need_contains "scripts/lib/millennium_license.sh" "docs/licensing.md" \
-  "scripts/lib/millennium_license.sh must reference docs/licensing.md"
-need_contains "scripts/windows/lib/License.ps1" "docs/licensing.md" \
-  "scripts/windows/lib/License.ps1 must reference docs/licensing.md"
+need_contains "go/internal/upgrade/install.go" "docs/licensing.md" \
+  "go/internal/upgrade/install.go must reference docs/licensing.md"
+need_contains "docs/licensing.md" "go/internal/upgrade" \
+  "docs/licensing.md must mention Go upgrade license install"
 
 echo "Documentation cross-links OK."

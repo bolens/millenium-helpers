@@ -254,9 +254,9 @@ func RunCLI(dryRun, yes, quiet bool) int {
 
 func successTip() string {
 	if runtime.GOOS == "windows" {
-		return "Tip: remove helper tools with .\\install.ps1 uninstall if you no longer need them.\n     Scheduler tip: millennium schedule status should now report disabled."
+		return "Tip: remove helper tools with `millennium uninstall` if you no longer need them.\n     Scheduler tip: millennium schedule status should now report disabled."
 	}
-	return "Tip: remove helper tools with sudo ./install.sh uninstall if you no longer need them.\n     Scheduler tip: millennium schedule status should now report disabled."
+	return "Tip: remove helper tools with `sudo millennium uninstall` (or ./install.sh uninstall) if you no longer need them.\n     Scheduler tip: millennium schedule status should now report disabled."
 }
 
 // RunDryRunCLI prints a native purge plan.

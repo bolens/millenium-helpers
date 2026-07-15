@@ -53,17 +53,6 @@ stdenv.mkDerivation ({
     runHook postBuild
   '';
 
-  postPatch = ''
-    # Shell checkout fallbacks may still mention the packaged common path.
-    for f in scripts/millennium-*.sh; do
-      [ -f "$f" ] || continue
-      if grep -q '/usr/lib/millennium-helpers/common.sh' "$f"; then
-        substituteInPlace "$f" \
-          --replace-fail '/usr/lib/millennium-helpers/common.sh' "$out/lib/millennium-helpers/common.sh"
-      fi
-    done
-  '';
-
   installPhase = ''
     runHook preInstall
 
@@ -73,40 +62,18 @@ stdenv.mkDerivation ({
       exit 1
     fi
     install -m755 bin/millennium $out/bin/millennium
-    # Long-name PATH twins: inject subcommand (Nix wrappers change argv0).
-    for pair in \
-      "millennium-mcp:mcp" \
-      "millennium-repair:repair" \
-      "millennium-upgrade:upgrade" \
-      "millennium-schedule:schedule" \
-      "millennium-purge:purge" \
-      "millennium-diag:diag" \
-      "millennium-theme:theme"
-    do
-      twin="''${pair%%:*}"
-      cmd="''${pair#*:}"
-      makeWrapper $out/bin/millennium $out/bin/$twin \
-        --add-flags "$cmd" \
-        --prefix PATH : ${lib.makeBinPath [ bash python3 curl unzip git ]}
-    done
     wrapProgram $out/bin/millennium \
       --prefix PATH : ${lib.makeBinPath [ bash python3 curl unzip git ]}
 
-    mkdir -p $out/lib/millennium-helpers/lib
-    install -m644 scripts/common.sh $out/lib/millennium-helpers/common.sh
-    install -m644 scripts/lib/*.sh $out/lib/millennium-helpers/lib/
+    mkdir -p $out/lib/millennium-helpers
 
     mkdir -p $out/share/bash-completion/completions
     install -m644 completions/bash/millennium-helpers $out/share/bash-completion/completions/millennium-helpers
-    for script in millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp millennium; do
-      ln -sf millennium-helpers $out/share/bash-completion/completions/$script
-    done
+    ln -sf millennium-helpers $out/share/bash-completion/completions/millennium
 
     mkdir -p $out/share/zsh/site-functions
     install -m644 completions/zsh/_millennium-helpers $out/share/zsh/site-functions/_millennium-helpers
-    for script in millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp millennium; do
-      ln -sf _millennium-helpers $out/share/zsh/site-functions/_$script
-    done
+    ln -sf _millennium-helpers $out/share/zsh/site-functions/_millennium
 
     mkdir -p $out/share/fish/vendor_completions.d
     for f in completions/fish/*.fish; do

@@ -6,7 +6,6 @@ on:
     paths:
       - 'packaging/scoop/**'
       - 'packaging/chocolatey/**'
-      - 'scripts/windows/**'
       - 'completions/powershell/**'
       - 'go/**'
       - 'VERSION'
@@ -16,7 +15,6 @@ on:
     paths:
       - 'packaging/scoop/**'
       - 'packaging/chocolatey/**'
-      - 'scripts/windows/**'
       - 'completions/powershell/**'
       - 'go/**'
       - 'VERSION'
@@ -58,17 +56,15 @@ jobs:
           $version = (Get-Content VERSION -Raw).Trim()
           $zipPath = Join-Path $env:TEMP "millennium-helpers-v$version-windows-amd64.zip"
           Remove-Item -Recurse -Force $stage, $zipPath -ErrorAction SilentlyContinue
-          New-Item -ItemType Directory -Path (Join-Path $stage "scripts") | Out-Null
-          New-Item -ItemType Directory -Path (Join-Path $stage "completions") | Out-Null
+          New-Item -ItemType Directory -Force -Path (Join-Path $stage "scripts\windows") | Out-Null
+          New-Item -ItemType Directory -Force -Path (Join-Path $stage "completions") | Out-Null
 
-          # Match release.yml Windows payload layout (MCP + PowerShell completions).
-          Copy-Item -Recurse scripts\windows (Join-Path $stage "scripts\windows")
+          # Match release.yml Windows payload: Go exe under scripts/windows/ + PowerShell completions.
           Copy-Item -Recurse completions\powershell (Join-Path $stage "completions\powershell")
           Copy-Item VERSION, LICENSE, README.md $stage\
           New-Item -ItemType Directory -Force -Path (Join-Path $stage "third_party") | Out-Null
           Copy-Item third_party\MILLENNIUM-LICENSE.md (Join-Path $stage "third_party\MILLENNIUM-LICENSE.md")
 
-          # Build Go dispatcher into the zip (release.yml embeds scripts/windows/millennium.exe).
           $ver = $version
           Push-Location go
           try {
@@ -112,29 +108,24 @@ jobs:
           $ErrorActionPreference = "Stop"
           $env:PATH += ";$HOME\scoop\shims"
           $prefix = scoop prefix millennium-helpers-bin
-          $loggingLib = Join-Path $prefix "scripts\windows\lib\Logging.ps1"
-          if (-not (Test-Path $loggingLib)) {
-            throw "Missing shared Logging.ps1 at $loggingLib (scripts/windows/lib not packaged)"
+          $exe = Join-Path $prefix "scripts\windows\millennium.exe"
+          if (-not (Test-Path $exe)) {
+            throw "Missing millennium.exe at $exe"
           }
-          Write-Host "Shared lib OK: $loggingLib"
-          if (Test-Path (Join-Path $prefix "scripts\windows\lib\UpgradeRollback.ps1")) {
-            throw "UpgradeRollback.ps1 must not ship in packaging"
+          if (Test-Path (Join-Path $prefix "scripts\windows\lib")) {
+            throw "scripts/windows/lib must not ship in packaging"
           }
-          Get-ChildItem (Join-Path $prefix "scripts\windows\lib\*.ps1") | ForEach-Object {
-            $errs = $null
-            $null = [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$null, [ref]$errs)
-            if ($errs -and $errs.Count -gt 0) {
-              throw "Parse error in $($_.Name): $($errs[0])"
-            }
+          if (Test-Path (Join-Path $prefix "scripts\windows\common.ps1")) {
+            throw "common.ps1 must not ship in packaging"
           }
-          Write-Host "Diag lib parse OK (Windows PowerShell)"
+          Write-Host "Windows package layout OK: $exe"
           millennium help
-          millennium-mcp -Help
-          millennium-diag -DryRun
-          $json = millennium-diag -Json | ConvertFrom-Json
+          millennium mcp --help
+          millennium diag --dry-run
+          $json = millennium diag --json | ConvertFrom-Json
           foreach ($key in @('install_method', 'mixed_install_ok', 'scripts_up_to_date')) {
             if (-not ($json.PSObject.Properties.Name -contains $key)) {
-              throw "millennium-diag -Json missing required field: $key"
+              throw "millennium diag --json missing required field: $key"
             }
           }
           Write-Host "install_method=$($json.install_method) scripts_up_to_date=$($json.scripts_up_to_date)"

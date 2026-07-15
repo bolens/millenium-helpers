@@ -1,5 +1,6 @@
-# Millennium Helpers CLI contract — source of truth for Bash/PS + Go migration.
+# Millennium Helpers CLI contract — source of truth for commands, flags, channels, and MCP.
 # Validated by scripts/ci/check-cli-contract.py (make check-cli-contract).
+# Façades synced by scripts/ci/sync-cli-facade.py (completions, man OPTIONS, MCP tools/allowlists).
 version: 1
 
 platforms: [linux, darwin, windows]
@@ -34,128 +35,498 @@ global_flags:
   - { name: yes, long: --yes, short: -y, aliases_windows: [-Yes] }
 
 dispatcher:
-  commands: [diag, doctor, upgrade, schedule, theme, repair, purge, mcp, help]
+  commands: [diag, doctor, upgrade, schedule, theme, repair, purge, mcp, install, uninstall, help]
   # doctor is an alias route to diag doctor
 
 commands:
   help:
+    short: "Show help"
     platforms: [linux, darwin, windows]
     man: millennium.1
     mcp: null
 
   diag:
+    short: "Run diagnostics"
     platforms: [linux, darwin, windows]
     binary: millennium-diag
     man: millennium-diag.1
     mcp: millennium_diag
-    subcommands: [doctor]
+    mcp_description: >-
+      Run diagnostics to check the health of the Millennium client, themes,
+      update timers, and configurations. Can optionally run in doctor mode to
+      apply auto-repairs.
+    subcommands: [doctor, logs]
     flags:
-      - { name: fix, long: --fix, short: -f, aliases_windows: [-Fix], notes: "alias for doctor" }
-      - { name: force, long: --force, aliases_windows: [-Force] }
-      - { name: json, long: --json, aliases_windows: [-Json] }
-      - { name: follow, long: --follow, short: -l, aliases_windows: [-Follow] }
-      - { name: share, long: --share, short: -s, aliases_windows: [-Share] }
-      - { name: yes, long: --yes, short: -y }
-      - { name: dry_run, long: --dry-run, short: -d }
-      - { name: quiet, long: --quiet, short: -q }
-      - { name: version, long: --version, short: -V }
-      - { name: help, long: --help, short: -h }
+      - name: fix
+        long: --fix
+        short: -f
+        aliases_windows: [-Fix]
+        notes: "alias for doctor"
+        man: |
+          Alias for the
+          .B doctor
+          command.
+      - name: force
+        long: --force
+        aliases_windows: [-Force]
+        man: Force doctor repairs even if the system looks healthy.
+      - name: json
+        long: --json
+        aliases_windows: [-Json]
+        man: |
+          Emit the diagnostics report as structured JSON, including
+          .BR install_method ,
+          .BR mixed_install_ok ,
+          .BR helpers_checkout ,
+          .BR helpers_track ,
+          .BR helpers_ref ,
+          .BR latest_release_tag ,
+          .BR update_channel
+          (Millennium client channel),
+          and
+          .BR unmanaged_files_ok .
+      - name: follow
+        long: --follow
+        short: -l
+        aliases_windows: [-Follow]
+        man: |
+          Follow (tail \-f) real-time log output with
+          .BR logs .
+      - name: share
+        long: --share
+        short: -s
+        aliases_windows: [-Share]
+        man: Upload a redacted diagnostic report to a pastebin and print a short link.
+      - name: yes
+        long: --yes
+        short: -y
+        man: |
+          Skip confirmation when doctor closes Steam; also allows automatic
+          .B makepkg \-si
+          when a packaging checkout is found.
+      - name: dry_run
+        long: --dry-run
+        short: -d
+        man: Simulate doctor repairs without modifying anything.
+      - name: quiet
+        long: --quiet
+        short: -q
+        man: Suppress informational output.
+      - name: version
+        long: --version
+        short: -V
+        man: Show version information.
+      - name: help
+        long: --help
+        short: -h
+        man: Show help message.
     mcp_properties: [doctor]
+    mcp_schema:
+      doctor:
+        type: boolean
+        description: >-
+          Set to true to run auto-repairs. Note: running doctor requires
+          root/sudo privileges.
 
   upgrade:
+    short: "Upgrade / install Millennium"
     platforms: [linux, darwin, windows]
     binary: millennium-upgrade
     man: millennium-upgrade.1
     mcp: millennium_upgrade
+    mcp_description: >-
+      Upgrade, reinstall, or roll back the Millennium client on the stable,
+      beta, or main release channel.
     flags:
-      - { name: channel, long: --channel, short: -c, aliases_windows: [-Channel], enum: [stable, beta, main] }
-      - { name: stable, long: --stable, notes: "alias for --channel stable" }
-      - { name: beta, long: --beta, notes: "alias for --channel beta" }
-      - { name: main, long: --main, notes: "alias for --channel main" }
-      - { name: rollback, long: --rollback, short: -r, aliases_windows: [-Rollback] }
-      - { name: file, long: --file, aliases_windows: [-File] }
-      - { name: sha256, long: --sha256, aliases_windows: [-Sha256] }
-      - { name: insecure_skip_verify, long: --insecure-skip-verify, aliases_windows: [-InsecureSkipVerify] }
-      - { name: all_users, long: --all-users, platforms: [linux, darwin], os_only: true }
-      - { name: force, long: --force, short: -f, aliases_windows: [-Force] }
-      - { name: yes, long: --yes, short: -y }
-      - { name: dry_run, long: --dry-run, short: -d }
-      - { name: quiet, long: --quiet, short: -q }
-      - { name: version, long: --version, short: -V }
-      - { name: help, long: --help, short: -h }
+      - name: channel
+        long: --channel
+        short: -c
+        aliases_windows: [-Channel]
+        enum: [stable, beta, main]
+        arg: CHANNEL
+        man: |
+          Update channel:
+          .BR stable ,
+          .BR beta ,
+          or
+          .B main
+          (default: config
+          .B update_channel
+          , else stable).
+      - name: stable
+        long: --stable
+        notes: "alias for --channel stable"
+        man: |
+          Alias for
+          .BR \-\-channel " stable" .
+      - name: beta
+        long: --beta
+        notes: "alias for --channel beta"
+        man: |
+          Alias for
+          .BR \-\-channel " beta" .
+      - name: main
+        long: --main
+        notes: "alias for --channel main"
+        man: |
+          Alias for
+          .BR \-\-channel " main" .
+      - name: rollback
+        long: --rollback
+        short: -r
+        aliases_windows: [-Rollback]
+        arg: "[ID]"
+        man: |
+          Roll back to a previous backup, or pass
+          .B list
+          to list backups.
+      - name: file
+        long: --file
+        aliases_windows: [-File]
+        arg: PATH
+        man: Install from a local archive instead of downloading.
+      - name: sha256
+        long: --sha256
+        aliases_windows: [-Sha256]
+        arg: HEX
+        man: |
+          Expected SHA\-256 of a
+          .B \-\-file
+          archive (optional integrity check).
+      - name: insecure_skip_verify
+        long: --insecure-skip-verify
+        aliases_windows: [-InsecureSkipVerify]
+        man: Skip archive checksum verification (not recommended).
+      - name: all_users
+        long: --all-users
+        platforms: [linux, darwin]
+        os_only: true
+        man: "Unix: apply install for all users when supported."
+      - name: force
+        long: --force
+        short: -f
+        aliases_windows: [-Force]
+        man: Force reinstall even if already up to date.
+      - name: yes
+        long: --yes
+        short: -y
+        man: Skip confirmation when closing Steam.
+      - name: dry_run
+        long: --dry-run
+        short: -d
+        man: Simulate operations without modifying files.
+      - name: quiet
+        long: --quiet
+        short: -q
+        man: Suppress informational output.
+      - name: version
+        long: --version
+        short: -V
+        man: Show version information.
+      - name: help
+        long: --help
+        short: -h
+        man: Show help message.
     mcp_properties: [channel, force, rollback]
+    mcp_schema:
+      channel:
+        type: string
+        enum: channels
+        description: The release channel to upgrade to (defaults to stable).
+      force:
+        type: boolean
+        description: >-
+          Force reinstalling or upgrading the client even if it is already up
+          to date.
+      rollback:
+        type: string
+        description: >-
+          Rollback option. Set to 'list' to view available backup directories, or
+          specify a backup directory name to roll back to that state.
 
   schedule:
+    short: "Manage auto-update scheduler"
     platforms: [linux, darwin, windows]
     binary: millennium-schedule
     man: millennium-schedule.1
     mcp: millennium_schedule
+    mcp_description: >-
+      Configure the background update scheduler (enable systemd daily timer or
+      cron job). On Linux, systemd prefers system units when privileged.
+    mcp_required: [action]
     subcommands: [enable, disable, status, setup, config]
     # internal hooks not in MCP: pre-update, post-update
     flags:
-      - { name: cron, long: --cron, short: -c, platforms: [linux, darwin], os_only: true }
-      - { name: system, long: --system, platforms: [linux], os_only: true }
-      - { name: user, long: --user, platforms: [linux], os_only: true }
-      - { name: dry_run, long: --dry-run, short: -d }
-      - { name: quiet, long: --quiet, short: -q }
-      - { name: version, long: --version, short: -V }
-      - { name: help, long: --help, short: -h }
+      - name: cron
+        long: --cron
+        short: -c
+        platforms: [linux, darwin]
+        os_only: true
+        man: Force crontab instead of systemd (Linux/macOS).
+      - name: system
+        long: --system
+        platforms: [linux]
+        os_only: true
+        man: |
+          Linux: force systemd
+          .B system
+          units under
+          .I /etc/systemd/system
+          (requires root). Default when privileged and systemd is available.
+      - name: user
+        long: --user
+        platforms: [linux]
+        os_only: true
+        man: |
+          Linux: force systemd
+          .B user
+          units under
+          .IR ~/.config/systemd/user .
+      - name: dry_run
+        long: --dry-run
+        short: -d
+        man: Simulate without writing files or changing scheduler state.
+      - name: quiet
+        long: --quiet
+        short: -q
+        man: Suppress informational output.
+      - name: version
+        long: --version
+        short: -V
+        man: Show version information.
+      - name: help
+        long: --help
+        short: -h
+        man: Show help message.
     mcp_properties: [action, channel, cron, system, user]
+    # MCP exposes a subset of schedule actions (setup/config stay CLI-only).
+    mcp_actions: [enable, disable, status]
     mcp_os_only_properties:
       cron: [linux]
       system: [linux]
       user: [linux]
+    mcp_schema:
+      action:
+        type: string
+        enum: mcp_actions
+        description: Scheduler action.
+      channel:
+        type: string
+        enum: channels
+        description: Release channel to target (only for 'enable').
+      cron:
+        type: boolean
+        description: Force using crontab instead of systemd.
+      system:
+        type: boolean
+        description: "Linux: force systemd system units (requires root)."
+      user:
+        type: boolean
+        description: "Linux: force systemd user units."
 
   theme:
+    short: "Manage skins/themes"
     platforms: [linux, darwin, windows]
     binary: millennium-theme
     man: millennium-theme.1
     mcp: millennium_theme
+    mcp_description: Manage Millennium skins/themes (install, remove, list, update).
+    mcp_required: [action]
+    # MCP enum order (remove before update) is intentional for clients.
+    mcp_actions: [list, install, remove, update]
     subcommands: [list, install, update, remove]
     flags:
-      - { name: json, long: --json, aliases_windows: [-Json] }
-      - { name: yes, long: --yes, short: -y }
-      - { name: dry_run, long: --dry-run, short: -d }
-      - { name: quiet, long: --quiet, short: -q }
-      - { name: version, long: --version, short: -V }
-      - { name: help, long: --help, short: -h }
+      - name: all
+        long: --all
+        short: -a
+        notes: "with update: update every installed theme"
+        man: |
+          With
+          .B update ,
+          update every installed theme.
+      - name: json
+        long: --json
+        aliases_windows: [-Json]
+        man: |
+          Output
+          .B list
+          results as structured JSON.
+      - name: yes
+        long: --yes
+        short: -y
+        man: Skip confirmation when removing a theme.
+      - name: dry_run
+        long: --dry-run
+        short: -d
+        man: Simulate operations without modifying files.
+      - name: quiet
+        long: --quiet
+        short: -q
+        man: Suppress informational output.
+      - name: version
+        long: --version
+        short: -V
+        man: Show version information.
+      - name: help
+        long: --help
+        short: -h
+        man: Show help message.
     mcp_properties: [action, theme, all]
+    mcp_schema:
+      action:
+        type: string
+        enum: mcp_actions
+        description: The action to perform.
+      theme:
+        type: string
+        description: >-
+          Name or GitHub repository URL of the theme (required for install,
+          remove, or updating a single theme).
+      all:
+        type: boolean
+        description: Update all themes (only applicable if action is 'update').
 
   repair:
+    short: "Repair hooks and ownership"
     platforms: [linux, darwin, windows]
     binary: millennium-repair
     man: millennium-repair.1
     mcp: millennium_repair
+    mcp_description: >-
+      Force reinstalling or repairing the Millennium client (restores hooks and
+      binaries).
     flags:
-      - { name: skip_theme, long: --skip-theme, short: -s, aliases_windows: [-SkipTheme] }
-      - { name: yes, long: --yes, short: -y }
-      - { name: dry_run, long: --dry-run, short: -d }
-      - { name: quiet, long: --quiet, short: -q }
-      - { name: version, long: --version, short: -V }
-      - { name: help, long: --help, short: -h }
+      - name: skip_theme
+        long: --skip-theme
+        short: -s
+        aliases_windows: [-SkipTheme]
+        man: Skip theme refresh during repair.
+      - name: yes
+        long: --yes
+        short: -y
+        man: Skip confirmation when closing Steam.
+      - name: dry_run
+        long: --dry-run
+        short: -d
+        man: Simulate operations without modifying files.
+      - name: quiet
+        long: --quiet
+        short: -q
+        man: Suppress informational output (warnings and errors still print).
+      - name: version
+        long: --version
+        short: -V
+        man: Show version information.
+      - name: help
+        long: --help
+        short: -h
+        man: Show help message.
     mcp_properties: []
 
   purge:
+    short: "Uninstall Millennium"
     platforms: [linux, darwin, windows]
     binary: millennium-purge
     man: millennium-purge.1
     mcp: millennium_purge
+    mcp_description: >-
+      Uninstall and completely purge all Millennium client files, themes, and
+      bootstrap hooks. Destructive: requires confirm=true.
+    mcp_required: [confirm]
     flags:
-      - { name: dry_run, long: --dry-run, short: -d }
-      - { name: yes, long: --yes, short: -y }
-      - { name: quiet, long: --quiet, short: -q }
-      - { name: version, long: --version, short: -V }
-      - { name: help, long: --help, short: -h }
+      - name: dry_run
+        long: --dry-run
+        short: -d
+        man: Simulate operations without modifying files.
+      - name: yes
+        long: --yes
+        short: -y
+        man: Skip the interactive confirmation prompt (required for non-interactive use).
+      - name: quiet
+        long: --quiet
+        short: -q
+        man: Suppress informational output (warnings and errors still print).
+      - name: version
+        long: --version
+        short: -V
+        man: Show version information.
+      - name: help
+        long: --help
+        short: -h
+        man: Show help message.
     mcp_properties: [confirm, dry_run]
+    mcp_schema:
+      confirm:
+        type: boolean
+        description: Must be true to actually purge. Refuses otherwise.
+      dry_run:
+        type: boolean
+        description: If true, simulate the purge without deleting anything.
 
   mcp:
+    short: "Run / register MCP server"
     platforms: [linux, darwin, windows]
     binary: millennium-mcp
     man: millennium-mcp.1
     mcp: null
-    notes: "Go millennium mcp; tools self-exec millennium <feature>; sudoers allowlists Go verbs + long-names"
+    notes: "Go millennium mcp; tools self-exec millennium <feature>"
+    flags:
+      - name: register
+        long: --register
+        short: -r
+        aliases_windows: [-Register]
+        man: |
+          Register the server in Claude Desktop, Windsurf, and Cursor config files
+          when those directories exist. Prints a JSON snippet you can paste into
+          other MCP clients.
+      - name: version
+        long: --version
+        short: -V
+        man: Show version information.
+      - name: help
+        long: --help
+        short: -h
+        man: Show help message.
+
+  install:
+    short: "Install helpers on this machine"
+    platforms: [linux, darwin, windows]
+    binary: null
+    man: null
+    mcp: null
+    notes: "Install helpers on this machine; Unix thin install.sh bootstraps into this"
+    flags:
+      - { name: track, long: --track, aliases_windows: [-Track], enum: [release, main, tag, checkout] }
+      - { name: tag, long: --tag, aliases_windows: [-Tag] }
+      - { name: allow_unsigned_main, long: --allow-unsigned-main, aliases_windows: [-AllowUnsignedMain] }
+      - { name: prefix, long: --prefix }
+      - { name: target_dir, long: --target-dir }
+      - { name: lib_dir, long: --lib-dir }
+      - { name: source_root, long: --source-root }
+      - { name: skip_wizard, long: --skip-wizard }
+      - { name: dry_run, long: --dry-run, short: -d, aliases_windows: [-DryRun] }
+      - { name: force, long: --force, short: -f, aliases_windows: [-Force] }
+      - { name: version, long: --version, short: -V }
+      - { name: help, long: --help, short: -h }
+
+  uninstall:
+    short: "Remove helpers installed by millennium install"
+    platforms: [linux, darwin, windows]
+    binary: null
+    man: null
+    mcp: null
+    notes: "Remove helpers installed by millennium install"
+    flags:
+      - { name: purge, long: --purge, short: -p, aliases_windows: [-Purge] }
+      - { name: prefix, long: --prefix }
+      - { name: target_dir, long: --target-dir }
+      - { name: lib_dir, long: --lib-dir }
+      - { name: dry_run, long: --dry-run, short: -d, aliases_windows: [-DryRun] }
+      - { name: version, long: --version, short: -V }
+      - { name: help, long: --help, short: -h }
 
   doctor:
+    short: "Alias for diag doctor"
     platforms: [linux, darwin, windows]
     notes: "Dispatcher alias → millenium-diag doctor"
     delegates_to: diag

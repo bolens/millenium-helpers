@@ -162,15 +162,6 @@ run_comp() {
 
 print -r -- "=== zsh nested completion simulation ==="
 
-# Standalone schedule
-run_comp millennium-schedule ""
-assert_has "zsh schedule actions" enable
-assert_has "zsh schedule actions" status
-assert_has "zsh schedule actions" setup
-assert_has "zsh schedule actions" config
-assert_has "zsh schedule standalone --cron" --cron
-assert_has "zsh schedule standalone --quiet" --quiet
-
 # Dispatcher top-level
 run_comp millennium ""
 assert_has "zsh dispatcher cmds" diag

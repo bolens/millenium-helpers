@@ -8,7 +8,7 @@ Thanks for contributing. This repo provides cross-platform CLI helpers for [Mill
 git clone https://github.com/bolens/millenium-helpers.git
 cd millenium-helpers
 make setup      # installs shellcheck + ruff via your package manager
-make check-all  # lint + Go tests + Bash test suite
+make check-all  # lint + Go tests (feature parity) + install-time Bash suite
 ```
 
 Alternatives:
@@ -77,8 +77,7 @@ Guide index: **[docs/README.md](docs/README.md)**. When adding or renaming a gui
 | Doc | When to read |
 | --- | --- |
 | [docs/release_runbook.md](docs/release_runbook.md) | Cutting a release |
-| [docs/unification-audit.md](docs/unification-audit.md) | Bash/PS → Go inventory + parity matrix |
-| [docs/unification-roadmap.md](docs/unification-roadmap.md) | Go unification notes + definition of done |
+| [spec/cli-contract.yaml](spec/cli-contract.yaml) | Commands / flags / MCP / façades (`make sync-cli-facade`) |
 | [docs/licensing.md](docs/licensing.md) | Attribution / Millennium client MIT |
 | [docs/mcp.md](docs/mcp.md) | MCP tool surface |
 | [docs/security_troubleshooting.md](docs/security_troubleshooting.md) | Sudoers / scheduler / doctor FAQs |
@@ -89,70 +88,67 @@ Guide index: **[docs/README.md](docs/README.md)**. When adding or renaming a gui
 
 | Path | Role |
 | --- | --- |
-| `install.sh` | Linux/macOS installer / uninstall |
-| `scripts/*.sh` | Linux/macOS user-facing command entrypoints |
-| `scripts/common.sh` | Shared Bash entry (locale + sources `scripts/lib/*`) |
-| `scripts/lib/` | Install/shared Bash helpers (`logging`, `archive`, …); Steam lifecycle is Go |
-| `scripts/windows/*.ps1` | Windows PowerShell long-name command entrypoints (thin-wrap → Go) |
-| `scripts/windows/common.ps1` | Shared PowerShell entry for install/tests (culture/colors + lib modules) |
-| `scripts/windows/lib/` | Install/shared PS helpers (`Logging`, `Args`, …); Steam lifecycle is Go |
+| `install.sh` | Thin Linux/macOS bootstrap → `millennium install` / `uninstall` |
+| `scripts/ci/` | Release/packaging CI helpers (e.g. `release_assets.sh`) |
+| `go/` | Go CLI (`cmd/millennium`); features + installer under `go/internal/` |
 | `go/` + PATH `millennium-mcp` | Native MCP stdio server (`millennium mcp`) |
-| `spec/cli-contract.yaml` | **Source of truth** for commands / flags / platforms (Go + shells) |
-| `go/` | Go CLI (`cmd/millennium`); feature implementations under `go/internal/` |
+| `spec/cli-contract.yaml` | **Source of truth** for commands / flags / platforms |
 | `man/` | Manual pages (`millennium-*.1`) for every user-facing command |
 | `docs/` | User/maintainer guides (index: [`docs/README.md`](docs/README.md)) |
 | `Formula/` | Homebrew formulas (`millennium-helpers.rb` from-source + `head`; `millennium-helpers-bin.rb`) |
 | `packaging/` | Arch / Scoop / Winget / deb / rpm / Chocolatey — see [`packaging/README.md`](packaging/README.md) |
 | `completions/` | Bash / Zsh / Fish / Nushell / PowerShell completions |
-| `tests/` | Unit + behavioral suites (`tests/run_tests.sh`) |
-| `tests/windows/` | Pester tests for PowerShell scripts (`make test-windows`) |
+| `tests/` | Install/packaging suites (`tests/run_tests.sh`); feature coverage in `go.yml` |
+| `tests/windows/` | Pester tests for Windows install bootstrap / completions |
 
-**No thin aggregators.** Feature modules are sourced (or dot-sourced) directly by the command entrypoint or by `common.sh` / `common.ps1`. Do not add pass-through-only loader files that only re-source other modules.
+Feature commands live in Go only. Do not reintroduce install-time `scripts/lib` / `scripts/windows/lib` trees.
 
 ## Adding or changing a command
 
-1. Update [`spec/cli-contract.yaml`](spec/cli-contract.yaml) first (flags, platforms, MCP properties).
-2. Implement in Go under `go/`. Long-name `.sh` / `.ps1` helpers thin-wrap to Go (no `common` sourcing).
-3. Update dispatcher help/registration in `go/cmd/millennium` when adding commands.
-4. Keep `--help` / `-h` accurate and exit `0` on help.
-5. On unknown options, print usage and exit non-zero.
-6. Update matching files under `completions/` so flags stay in sync.
-7. Keep `man/millennium-<name>.1` in sync (`.TH` date like `"July 9, 2026"`; `make check-man` / CI mandoc lint).
-8. Add or extend Go tests / `go.yml` smokes; keep thin-wrap behavioral or Pester only for unique seams.
+1. Update [`spec/cli-contract.yaml`](spec/cli-contract.yaml) first (flags, platforms, MCP properties; `short:` for dispatcher commands).
+2. Run `make sync-cli-facade` to refresh marked façades (dispatcher /
+   subcommands / channels / bash+PS flags / man OPTIONS / MCP `InputSchema` /
+   MCP dispatch allowlists).
+3. Implement in Go under `go/` (`millennium <cmd>`; leftover argv0 twins via `commandFromArgv0`).
+4. Update dispatcher help/registration in `go/cmd/millennium` when adding commands.
+5. Keep `--help` / `-h` accurate and exit `0` on help.
+6. On unknown options, print usage and exit non-zero.
+7. Keep `man/millennium-<name>.1` NAME/DESCRIPTION/EXAMPLES prose accurate (OPTIONS sync via façade; `.TH` date like `"July 9, 2026"`; `make check-man`).
+8. Add or extend Go tests / `go.yml` smokes for unique seams.
 9. Prefer `--dry-run` for destructive paths; require confirmation (or `-y`/`--yes`) for irreversible actions like purge.
-10. Run `make check-cli-contract` (also part of `make lint`).
+10. Run `make check-cli-contract` (also part of `make lint`; includes façade `--check`).
 
 ## Linux / Windows parity
 
-Prefer one Go implementation. See [docs/unification-roadmap.md](docs/unification-roadmap.md)
-and the matrix in [docs/unification-audit.md](docs/unification-audit.md).
+Prefer one Go implementation. Keep [`spec/cli-contract.yaml`](spec/cli-contract.yaml)
+aligned and cover Linux / Windows / macOS in [`.github/workflows/go.yml`](.github/workflows/go.yml).
 
 **Go surfaces:**
 
 - [ ] Contract + completions/man/MCP stay aligned (`make check-cli-contract`)
-- [ ] Covered by `make test-go` and the dual-OS job in [`.github/workflows/go.yml`](.github/workflows/go.yml)
+- [ ] Covered by `make test-go` and the Linux / Windows / macOS jobs in [`.github/workflows/go.yml`](.github/workflows/go.yml)
 
-**Cross-OS / thin-wrap residuals:**
+**Cross-OS checklist:**
 
 - [ ] Flag / subcommand exists on both OSes (**or** marked `os_only` in `spec/cli-contract.yaml`)
 - [ ] Dry-run behavior matches
 - [ ] Help text documents the same options
-- [ ] Tests cover unique seams (Bash and/or Pester) when Go dual-OS smoke does not
+- [ ] Unique seams fail `go.yml` (or Go unit tests) when not covered by existing smokes
 - [ ] Contract + completions/man/MCP stay aligned (`make check-cli-contract`)
 
-Do **not** delete a long-name entrypoint until consumers that still name it
-(timers, sudoers, docs) are migrated.
+PATH installs only `millennium`; do not reintroduce long-name twins. Keep
+`commandFromArgv0` working for leftover binaries from older installs.
 
 ## Testing
 
 See [Development requirements](#development-requirements) for tools each target needs.
 
 ```bash
-make test              # local Bash unit + behavioral suite
+make test              # local Bash unit + behavioral suite (install / packaging / completions)
 make lint              # shellcheck + ruff (+ version/man/docs/completions/cli-contract gates)
-make check-all         # lint + test-go + test
-make test-windows      # Pester under tests/windows/ (requires pwsh; not part of check-all)
-make test-go           # Go unit tests + dispatcher smokes (requires Go; part of check-all)
+make check-all         # lint + test-go + test (feature parity is test-go / go.yml)
+make test-windows      # Pester install + completions (requires pwsh; not part of check-all)
+make test-go           # Go unit tests (requires Go; part of check-all; CI smokes in go.yml)
 make build             # bin/millennium Go CLI
 make test-all-distros  # local + Debian/Ubuntu/Fedora via Docker (requires Docker)
 ```
@@ -177,8 +173,8 @@ Winget `bolens.millenniumhelpers.git`, Nix `#millennium-helpers-git`) are **not*
 
 | Concept | Values | Where |
 | --- | --- | --- |
-| **Helpers track** | `release` (default), `main`, `tag`, `checkout` | `install-meta.json`; `install.sh --track` / `--tag`; `install.ps1 -Track` / `-Tag` |
-| **Client channel** | `stable`, `beta`, `main` | `config.json` → `update_channel`; `millennium-upgrade --channel`; schedule enable |
+| **Helpers track** | `release` (default), `main`, `tag`, `checkout` | `install-meta.json`; `millennium install --track` / `--tag` (Unix: `install.sh` forwards the same flags) |
+| **Client channel** | `stable`, `beta`, `main` | `config.json` → `update_channel`; `millennium upgrade --channel`; schedule enable |
 
 Doctor syncs helpers against the recorded track (pinned tags stay pinned). Legacy installs without meta are auto-migrated on first install/diag/doctor touch.
 
@@ -247,7 +243,7 @@ Tagging `vX.Y.Z` runs the release workflow:
 4. **If packaging CI passes:** squash-merge the PR and publish the draft release automatically
 5. **If packaging CI fails (or never starts):** leave the draft release and packaging PR for manual recovery (fix, merge, then publish)
 
-Piped installers (`install.sh` / `install.ps1`) download the **latest published** trimmed release asset (override with `MILLENNIUM_HELPERS_RELEASE_URL`).
+The Unix piped installer (`install.sh`) and Go `millennium install` download the **latest published** trimmed release asset when needed (override with `MILLENNIUM_HELPERS_RELEASE_URL`).
 
 Repo secret `PACKAGING_PAT` is **required** for the automatic path: a classic PAT with `contents` + `pull-requests`, and permission to merge into `main` under any branch protection. PRs opened with `GITHUB_TOKEN` do not trigger workflows, so without this secret the finalize job cannot wait on packaging CI.
 
@@ -274,15 +270,15 @@ pre-commit install --hook-type pre-push
 
 **pre-commit** runs: remote [pre-commit-hooks](https://github.com/pre-commit/pre-commit-hooks) sanity checks (private keys, merge conflicts, large files, symlinks, trailing whitespace, EOF newlines, LF line endings), plus local shellcheck, ruff check + format `--check`, VERSION presence, Arch from-source/`-bin`/`-git` `.SRCINFO` sync when those recipes change, packaging version sync, winget manifests, completions tests (when `completions/` changes), man-page coverage, docs cross-links (guides + licensing), actionlint (workflows; skipped if not installed), and gitleaks on staged changes (skipped if not installed).
 
-**pre-push** runs: `make lint`, and `make test-windows` when the push range touches `scripts/windows/`, `tests/windows/`, or `completions/powershell/` (skipped if `pwsh` is missing).
+**pre-push** runs: `make lint`, and `make test-windows` when the push range touches `tests/windows/`, `completions/powershell/`, or `go/internal/install/` (skipped if `pwsh` is missing).
 
 ## Style
 
-- Bash: `set -euo pipefail`; source `common.sh` / `scripts/lib/*` rather than duplicating helpers.
+- Bash: `set -euo pipefail` in remaining bootstraps/CI scripts; prefer Go for product logic.
 - macOS ships Bash 3.2: under `set -u`, empty `"${arr[@]}"` / `"${arr[*]}"` is unbound. Prefer `${arr[@]+"${arr[@]}"}` (or a length guard) when an array may be empty. Avoid `"${arr[@]:-}"` (it iterates once with an empty value).
 - Honor `NO_COLOR` (and `FORCE_COLOR` when forcing color).
-- PowerShell: `Set-StrictMode -Version Latest`; gate debug noise behind `MILLENNIUM_DEBUG` or `-Verbose`.
-- Do not commit packaging build artifacts (makepkg `pkg/`/`src/`/`*.pkg.tar.*`, `*.deb`/`*.rpm`/`*.nupkg`, release tarballs, `scripts/windows/millennium.exe`). See `.gitignore`.
+- PowerShell: `Set-StrictMode -Version Latest`; gate debug noise behind `MILLENNIUM_DEBUG` or `-Verbose` (completions + packaging tools).
+- Do not commit packaging build artifacts (makepkg `pkg/`/`src/`/`*.pkg.tar.*`, `*.deb`/`*.rpm`/`*.nupkg`, release tarballs, staged `scripts/windows/millennium.exe`). See `.gitignore`.
 - Do **not** bump Arch `-git` `pkgver` on every commit ([AUR VCS policy](https://wiki.archlinux.org/title/AUR_submission_guidelines)). `pkgver()` recalculates at `makepkg` time; regenerate `.SRCINFO` only when the `-git` recipe changes (`make sync-git-srcinfo`).
 - Keep Arch from-source/`-bin` `.SRCINFO` current with `make sync-stable-srcinfo` /
   `make sync-bin-srcinfo` (or `make bump-version`). Pre-commit regenerates them when those

@@ -367,12 +367,20 @@ func checkHooks() (hooksOK, flatpakOK bool) {
 }
 
 func checkSudoers() bool {
+	// sudoers.d is Linux-oriented; calling sudo on macOS CI can hang in the
+	// security agent even with -n, and the check isn't meaningful on Darwin.
+	if runtime.GOOS != "linux" {
+		return true
+	}
 	out, err := exec.Command("sudo", "-n", "-l").CombinedOutput()
 	if err != nil {
 		return false
 	}
 	text := string(out)
-	return strings.Contains(text, "millennium-upgrade") || strings.Contains(text, "NOPASSWD: ALL") || strings.Contains(text, "NOPASSWD:ALL")
+	return strings.Contains(text, "millennium upgrade") ||
+		strings.Contains(text, "millennium-upgrade") ||
+		strings.Contains(text, "NOPASSWD: ALL") ||
+		strings.Contains(text, "NOPASSWD:ALL")
 }
 
 func scheduleConfiguredUnix() bool {

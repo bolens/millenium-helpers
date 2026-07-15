@@ -25,16 +25,18 @@ the cross-links (see also the [docs index](README.md)).
 
 ## On install / upgrade
 
-`millennium-upgrade` (Linux and Windows) places a copy of Millennium’s MIT notice
-as `LICENSE` next to the installed client binaries. That satisfies MIT’s requirement
-to include the copyright and permission notice with redistributed copies. Release
-packages for Millennium itself do not always ship a license file inside the archive;
-helpers supply the vendored text (or fetch upstream, or use an embedded fallback).
+`millennium upgrade` (Linux and Windows; see also `millennium-upgrade(1)`) places a
+copy of Millennium’s MIT notice as `LICENSE` next to the installed client binaries.
+That satisfies MIT’s requirement to include the copyright and permission notice with
+redistributed copies. Release packages for Millennium itself do not always ship a
+license file inside the archive; helpers supply the vendored text (or fetch upstream,
+or use an embedded fallback).
 
-Implementation: `scripts/lib/millennium_license.sh` and
-`Install-MillenniumLicense` in `scripts/windows/lib/License.ps1`. The vendored file is
-installed beside the helpers (e.g. `/usr/lib/millennium-helpers/MILLENNIUM-LICENSE.md`)
-via `install.sh`, Homebrew, Nix, Arch PKGBUILDs, and the Windows installer.
+Implementation: Go `InstallLicense` in `go/internal/upgrade` (see that package for the
+client-side LICENSE placement). The vendored helpers copy
+(`third_party/MILLENNIUM-LICENSE.md`) is installed beside the helpers (e.g.
+`/usr/lib/millennium-helpers/MILLENNIUM-LICENSE.md`) via `millennium install`,
+Homebrew, Nix, Arch PKGBUILDs, and the Windows installer.
 
 ## Docs & man pages
 
@@ -50,7 +52,7 @@ via `install.sh`, Homebrew, Nix, Arch PKGBUILDs, and the Windows installer.
 
 - **Docs index:** [README.md](README.md)
 - **Project:** [README.md](../README.md) · [CONTRIBUTING.md](../CONTRIBUTING.md#licensing) · [SECURITY.md](../SECURITY.md)
-- **Guides:** [MCP server](mcp.md) · [Security design & troubleshooting](security_troubleshooting.md) · [Steam Deck & Flatpak](steam_deck.md) · [Uninstall / dry-run](uninstall_dryrun.md) · [Release runbook](release_runbook.md) · [Unification audit](unification-audit.md) · [Unification roadmap](unification-roadmap.md)
+- **Guides:** [MCP server](mcp.md) · [Security design & troubleshooting](security_troubleshooting.md) · [Steam Deck & Flatpak](steam_deck.md) · [Uninstall / dry-run](uninstall_dryrun.md) · [Release runbook](release_runbook.md)
 
 ## Keeping this in sync
 

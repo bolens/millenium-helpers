@@ -205,8 +205,8 @@ jobs:
         id: assets
         run: |
           set -euo pipefail
-          # shellcheck source=scripts/lib/release_assets.sh
-          source scripts/lib/release_assets.sh
+          # shellcheck source=scripts/ci/release_assets.sh
+          source scripts/ci/release_assets.sh
           VERSION="${{ steps.meta.outputs.version }}"
           TAG="${{ steps.meta.outputs.tag }}"
           LDFLAGS="-X github.com/bolens/millenium-helpers/internal/version.Version=${VERSION}"
@@ -232,15 +232,6 @@ jobs:
             README.md
             third_party/MILLENNIUM-LICENSE.md
             bin/millennium
-            scripts/common.sh
-            scripts/millennium-diag.sh
-            scripts/millennium-mcp.sh
-            scripts/millennium-purge.sh
-            scripts/millennium-repair.sh
-            scripts/millennium-schedule.sh
-            scripts/millennium-theme.sh
-            scripts/millennium-upgrade.sh
-            scripts/lib
             completions
             man
           )
@@ -262,9 +253,11 @@ jobs:
 
           WIN_GO="$(release_asset_go "$VERSION" windows amd64)"
           WIN_ZIP="$(release_asset_helpers "$VERSION" windows amd64 zip)"
+          mkdir -p scripts/windows
           cp "dist/$WIN_GO" scripts/windows/millennium.exe
+          # Windows helpers zip: Go dispatcher + completions (no install.ps1).
           zip -r "$WIN_ZIP" \
-            scripts/windows/ \
+            scripts/windows/millennium.exe \
             completions/powershell/ \
             VERSION \
             LICENSE \
@@ -500,8 +493,8 @@ jobs:
           SRC_ZIP_SHA: ${{ needs.build-release.outputs.src_zip_sha }}
         run: |
           set -euo pipefail
-          # shellcheck source=scripts/lib/release_assets.sh
-          source scripts/lib/release_assets.sh
+          # shellcheck source=scripts/ci/release_assets.sh
+          source scripts/ci/release_assets.sh
           mkdir -p /tmp/release-assets
           LINUX_ASSET="$(release_asset_helpers "$VERSION" linux amd64 tar.gz)"
           WINDOWS_ASSET="$(release_asset_helpers "$VERSION" windows amd64 zip)"

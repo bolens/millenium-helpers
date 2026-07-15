@@ -10,6 +10,7 @@ type Tool struct {
 // ToolsList is the MCP tools/list catalog (contract-checked by check-cli-contract.py).
 func ToolsList() []Tool {
 	return []Tool{
+		// @@cli-contract:mcp.tools@@
 		{
 			Name:        "millennium_diag",
 			Description: "Run diagnostics to check the health of the Millennium client, themes, update timers, and configurations. Can optionally run in doctor mode to apply auto-repairs.",
@@ -126,5 +127,6 @@ func ToolsList() []Tool {
 				"required": []string{"confirm"},
 			},
 		},
+		// @@/cli-contract:mcp.tools@@
 	}
 }

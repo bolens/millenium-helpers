@@ -5,15 +5,20 @@
 "area: windows":
   - changed-files:
       - any-glob-to-any-file:
-          - "scripts/windows/**"
           - "tests/windows/**"
+          - "completions/powershell/**"
+          - "packaging/scoop/**"
+          - "packaging/chocolatey/**"
+          - "packaging/winget/**"
+          - "packaging/winget-git/**"
+          - "go/internal/install/**"
 
 "area: scripts":
   - changed-files:
       - any-glob-to-any-file:
           - "scripts/*.sh"
-          - "scripts/lib/**"
-          - "scripts/common.sh"
+          - "scripts/ci/**"
+          - "install.sh"
 
 "area: packaging":
   - any:
@@ -48,9 +53,8 @@
 "area: mcp":
   - changed-files:
       - any-glob-to-any-file:
-          - "scripts/windows/millennium-mcp.ps1"
-          - "tests/behavioral/test_mcp.sh"
           - "go/internal/mcp/**"
+          - "docs/mcp.md"
 
 "area: docs":
   - changed-files:

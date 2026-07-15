@@ -20,13 +20,15 @@ CLI helpers for [Millennium](https://github.com/SteamClientHomebrew/Millennium) 
 ```bash
 # Install (Linux)
 curl -fsSL https://raw.githubusercontent.com/bolens/millenium-helpers/main/install.sh | bash -s -- install
-
-# Install (Windows PowerShell)
-irm https://raw.githubusercontent.com/bolens/millenium-helpers/main/scripts/windows/install.ps1 | iex
 ```
 
-Then use the Go CLI (`millennium`) or the installed long-name argv0 twins
-(`millennium-diag`, `millennium-upgrade`, … — same binary):
+```powershell
+# Install (Windows) — Scoop recommended, or download the Go binary and install:
+scoop install https://raw.githubusercontent.com/bolens/millenium-helpers/main/packaging/scoop/millennium-helpers-bin.json
+# Or: winget install bolens.millenniumhelpers
+```
+
+Then use the Go CLI (`millennium <command>`):
 
 ```bash
 millennium diag                 # health check
@@ -52,7 +54,7 @@ $ millennium diag
 ## Features
 
 - **Go CLI** — One `bin/millennium` binary owns schedule, theme, diag/doctor, upgrade, purge, repair, and MCP on Linux and Windows
-- **Long-name twins** — PATH `millennium-*` entries are argv0 twins of the same Go binary (Windows `.cmd` shims invoke `millennium.exe`)
+- **Single PATH entry** — New installs put only `millennium` on PATH (`millennium <cmd>…`); leftover long-name argv0 twins still dispatch if present
 - **Guided install** — Interactive wizard for Millennium **client** channel, background updates, and optional GitHub PAT (helpers **track** is set separately with `--track` / `-Track`)
 - **Scheduled updates** — `systemd` (system/user), launchd/cron, or Task Scheduler; timers call `millennium …`
 - **Secure elevation** — `/etc/sudoers.d/` drop-in (Linux) or UAC / `RunAs` (Windows)
@@ -71,7 +73,7 @@ $ millennium diag
 | --- | --- |
 | **curl (recommended)** | `curl -fsSL https://raw.githubusercontent.com/bolens/millenium-helpers/main/install.sh \| bash -s -- install` |
 | curl (tip of `main`) | `curl -fsSL …/install.sh \| bash -s -- install --track main` |
-| curl (pinned tag) | `curl -fsSL …/install.sh \| bash -s -- install --tag v2.7.0` |
+| curl (pinned tag) | `curl -fsSL …/install.sh \| bash -s -- install --tag v3.0.0` |
 | Clone | `git clone … && sudo ./install.sh` (needs Go, or a release tree with `bin/millennium`) |
 | Nix (from-source) | `nix profile install github:bolens/millenium-helpers` |
 | Nix (prebuilt `-bin`) | `nix profile install github:bolens/millenium-helpers#millennium-helpers-bin` |
@@ -100,7 +102,7 @@ sudo ./install.sh install
 # Tip-of-main helpers:
 sudo ./install.sh install --track main
 # Pin helpers to a release tag:
-sudo ./install.sh install --tag v2.7.0
+sudo ./install.sh install --tag v3.0.0
 ```
 
 Install requires the Go dispatcher (`bin/millennium`) — present in release/from-source
@@ -112,7 +114,7 @@ archives, or built via `make build` when installing from a checkout.
 nix profile install github:bolens/millenium-helpers
 nix profile install github:bolens/millenium-helpers#millennium-helpers-bin
 nix profile install github:bolens/millenium-helpers#millennium-helpers-git
-# Or pin a tag: nix profile install github:bolens/millenium-helpers/v2.7.0
+# Or pin a tag: nix profile install github:bolens/millenium-helpers/v3.0.0
 ```
 
 **Homebrew** (formulas at `Formula/millennium-helpers.rb` and
@@ -133,7 +135,7 @@ Uninstall with `brew uninstall millennium-helpers` (see [Manual Uninstall](docs/
 **Daily auto-updater** — run as your normal user (no `sudo`):
 
 ```bash
-millennium-schedule enable [stable|beta|main]
+millennium schedule enable [stable|beta|main]
 ```
 
 **Arch packaging** — PKGBUILD recipes in [`packaging/millennium-helpers/`](packaging/millennium-helpers/) (from-source), [`packaging/millennium-helpers-bin/`](packaging/millennium-helpers-bin/) (release tarball), and [`packaging/millennium-helpers-git/`](packaging/millennium-helpers-git/) (tip of `main`). Each installs to `/usr/bin/`, completions, and sudoers for `%wheel`.
@@ -146,42 +148,37 @@ millennium-schedule enable [stable|beta|main]
 
 | Method | Command |
 | --- | --- |
-| **irm (recommended)** | `irm https://raw.githubusercontent.com/bolens/millenium-helpers/main/scripts/windows/install.ps1 \| iex` |
-| irm (tip of `main`) | `irm …/install.ps1 \| iex` then re-run with `-Track main`, or download and `.\install.ps1 -Track main` |
+| **Scoop (prebuilt `-bin`, recommended)** | `scoop install https://raw.githubusercontent.com/bolens/millenium-helpers/main/packaging/scoop/millennium-helpers-bin.json` |
 | Scoop (from-source / release) | `scoop install https://raw.githubusercontent.com/bolens/millenium-helpers/main/packaging/scoop/millennium-helpers.json` |
-| Scoop (prebuilt `-bin`) | `scoop install https://raw.githubusercontent.com/bolens/millenium-helpers/main/packaging/scoop/millennium-helpers-bin.json` |
 | Scoop (`main` / nightly) | `scoop install https://raw.githubusercontent.com/bolens/millenium-helpers/main/packaging/scoop/millennium-helpers-git.json` |
 | Winget (release) | `winget install bolens.millenniumhelpers` |
 | Winget (tip of `main`) | `winget install --manifest packaging/winget-git/` (local manifests; community package `bolens.millenniumhelpers.git`) |
 | Chocolatey | Local: `cd packaging/chocolatey/millennium-helpers && choco pack && choco install millennium-helpers -s . -y` · published: `choco install millennium-helpers` |
-| Clone | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\install.ps1` |
+| Standalone Go binary | Download `millennium-v*-windows-amd64.exe` from [Releases](https://github.com/bolens/millenium-helpers/releases/latest), then `.\millennium-v*-windows-amd64.exe install` |
+| Clone | `go build -C go -o bin\millennium.exe ./cmd/millennium` then `.\bin\millennium.exe install --skip-wizard` (or omit `--skip-wizard` for the schedule setup wizard) |
 
 <details>
 <summary>Prerequisites & details</summary>
 
-**Prerequisites:** PowerShell 5.1+ (Windows 10/11) or PowerShell 7+. Allow script execution if needed:
+**Prerequisites:** A recent Windows 10/11 install. Packaging methods place `millennium.exe` on your `PATH`.
+
+`millennium install`:
+
+1. Installs `millennium.exe` under `%USERPROFILE%\.millennium-helpers\bin`
+2. Adds that directory to your user `PATH`
+3. Registers PowerShell completion profile hooks when a completer is present
+
+Then configure scheduling and the Millennium **client** channel (separate from helpers `--track`):
 
 ```powershell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-```
-
-The installer:
-
-1. Installs `millennium.exe` (Go dispatcher; required — no PowerShell PATH fallback)
-2. Writes `.cmd` argv0 twins (`millennium-diag.cmd`, …) that invoke `millennium.exe`
-3. Adds the bin directory to your user `PATH`
-
-Then configure scheduling and the Millennium **client** channel (separate from helpers `-Track`):
-
-```powershell
-millennium-schedule setup
-# or: millennium-schedule config set update_channel main
+millennium schedule setup
+# or: millennium schedule config set update_channel main
 ```
 
 Uninstall:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\install.ps1 -Uninstall
+millennium uninstall
 ```
 
 **Winget:** end users install with `winget install bolens.millenniumhelpers` (community package). Tip-of-main manifests live in [`packaging/winget-git/`](packaging/winget-git/) (`bolens.millenniumhelpers.git`, rolling `0.0.0-git`). Uninstall the release package before installing the git package (same as Scoop). To try manifests from this repo before they are in the community repository:
@@ -211,18 +208,18 @@ Most commands are identical on Linux and Windows. Flag casing differs where note
 
 | Task | Command |
 | --- | --- |
-| Diagnostics | `millennium-diag` |
-| Share sanitized report | `millennium-diag --share` / `-Share` |
-| Auto-repair (`doctor`) | `millennium-diag doctor` (alias: `--fix` / `-f`) |
-| Force all repairs | `millennium-diag doctor --force` |
-| Scheduler status | `millennium-schedule status` |
-| Enable / disable updates | `millennium-schedule enable` · `disable` |
-| Repair install | `sudo millennium-repair` / `millennium-repair` (Admin) |
-| Purge Millennium | `sudo millennium-purge` / `millennium-purge` (Admin); skip prompts with `-y` / `-Yes` |
-| Uninstall helpers (Linux) | `sudo ./install.sh uninstall` |
+| Diagnostics | `millennium diag` |
+| Share sanitized report | `millennium diag --share` / `-Share` |
+| Auto-repair (`doctor`) | `millennium doctor` (or `millennium diag doctor`; `--fix` / `-f`) |
+| Force all repairs | `millennium doctor --force` |
+| Scheduler status | `millennium schedule status` |
+| Enable / disable updates | `millennium schedule enable` · `disable` |
+| Repair install | `sudo millennium repair` / `millennium repair` (Admin) |
+| Purge Millennium | `sudo millennium purge` / `millennium purge` (Admin); skip prompts with `-y` / `-Yes` |
+| Uninstall helpers | `sudo millennium uninstall` (Unix) · `millennium uninstall` (Windows) |
 
-Installed PATH commands are the Go binary (or Windows `.cmd` twins). Prefer
-`millennium <command>` or the long names interchangeably.
+New installs put only `millennium` / `millennium.exe` on PATH. Prefer
+`millennium <command>` (leftover long-name argv0 twins still work if present).
 
 ### Command overview
 
@@ -236,12 +233,11 @@ Installed PATH commands are the Go binary (or Windows `.cmd` twins). Prefer
 | `millennium purge` | De-register and remove Millennium from Steam |
 | `millennium theme` | List, install, update, remove skins |
 | `millennium mcp` | MCP server for AI assistants ([docs/mcp.md](docs/mcp.md)) |
-| [`install.sh`](install.sh) / [`install.ps1`](scripts/windows/install.ps1) | Installers — Go binary, twins, completions, sudoers |
+| `millennium install` / `uninstall` | Install helpers (Go); thin [`install.sh`](install.sh) on Unix; Windows via Scoop/Winget/standalone `millennium.exe` |
 
-Checkout Bash/PowerShell scripts under [`scripts/`](scripts/) and
-[`scripts/windows/`](scripts/windows/) remain as development fallbacks; installed
-PATH entries use the Go twins. Ownership / parity notes:
-[docs/unification-audit.md](docs/unification-audit.md).
+Feature commands ship as the Go CLI only. Contract and OS coverage:
+[`spec/cli-contract.yaml`](spec/cli-contract.yaml) and
+[`.github/workflows/go.yml`](.github/workflows/go.yml).
 
 ---
 
@@ -266,7 +262,7 @@ Prefer a JSON file over env vars:
 - **Linux:** `${XDG_CONFIG_HOME:-~/.config}/millennium-helpers/config.json`
 - **Windows:** `%LOCALAPPDATA%\millennium-helpers\config.json`
 
-Created by `millennium-schedule setup`:
+Created by `millennium schedule setup`:
 
 ```json
 {
@@ -284,7 +280,7 @@ Created by `millennium-schedule setup`:
 | `backup_limit` | number | Max upgrade backups to keep |
 | `backup_max_age_days` | number | Optional max age (days) for backups |
 
-Manage with `millennium-schedule config list|get|set`. File mode is set to `600` (owner read/write only).
+Manage with `millennium schedule config list|get|set`. File mode is set to `600` (owner read/write only).
 
 ### Shell completions
 
@@ -295,7 +291,7 @@ Manage with `millennium-schedule config list|get|set`. File mode is set to `600`
 - **Fish** → `/usr/share/fish/vendor_completions.d/`
 - **Nushell** → `/usr/share/nushell/completions/` or `/usr/local/share/nushell/completions/`
 
-**Windows** — `install.ps1` installs [`completions/powershell/millennium-helpers.ps1`](completions/powershell/millennium-helpers.ps1) as `~/.millennium-helpers/bin/millennium-helpers.completion.ps1` and registers a PowerShell profile hook. Restart the terminal (or dot-source the completer) for Tab completion on `millennium`, `millennium-schedule`, and the other helpers.
+**Windows** — `millennium install` installs [`completions/powershell/millennium-helpers.ps1`](completions/powershell/millennium-helpers.ps1) as `~/.millennium-helpers/bin/millennium-helpers.completion.ps1` and registers a PowerShell profile hook. Restart the terminal (or dot-source the completer) for Tab completion on `millennium`.
 
 ---
 
@@ -305,8 +301,7 @@ Manage with `millennium-schedule config list|get|set`. File mode is set to `600`
 | --- | --- |
 | Documentation index | [docs/README.md](docs/README.md) |
 | Licensing (helpers + Millennium) | [docs/licensing.md](docs/licensing.md) |
-| Go CLI ownership + OS/test parity | [docs/unification-audit.md](docs/unification-audit.md) |
-| Unification notes + remaining trim | [docs/unification-roadmap.md](docs/unification-roadmap.md) |
+| CLI contract (commands / flags / MCP) | [spec/cli-contract.yaml](spec/cli-contract.yaml) |
 | Packaging matrix (from-source / bin / git) | [packaging/README.md](packaging/README.md) |
 | Dry-run & manual uninstall | [docs/uninstall_dryrun.md](docs/uninstall_dryrun.md) |
 | Release runbook | [docs/release_runbook.md](docs/release_runbook.md) |
@@ -316,7 +311,7 @@ Manage with `millennium-schedule config list|get|set`. File mode is set to `600`
 | Steam Deck & Flatpak | [docs/steam_deck.md](docs/steam_deck.md) |
 | Contributing | [CONTRIBUTING.md](CONTRIBUTING.md) |
 
-Manual pages ship with the helpers (`man millennium-diag`, `man millennium-upgrade`, …) via `install.sh`, Homebrew, and packaging recipes.
+Manual pages ship with the helpers (`man millennium`, `man millennium-diag`, …) via `millennium install`, Homebrew, and packaging recipes.
 
 ---
 
@@ -326,8 +321,8 @@ Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) (including **[d
 
 ```bash
 make setup         # install shellcheck + ruff
-make check-all     # lint + full Bash test suite (lint includes check-version + cli-contract)
-make test-windows  # Pester (requires PowerShell 7+ / pwsh)
+make check-all     # lint + test-go + install-time Bash suite (feature parity is test-go / go.yml)
+make test-windows  # Pester install + completions (requires PowerShell 7+ / pwsh)
 make build         # Go CLI → bin/millennium (requires Go)
 make test-go       # Go unit + dispatcher smokes
 # make bump-version VERSION=X.Y.Z   # pre-tag packaging version bump
@@ -335,7 +330,7 @@ make test-go       # Go unit + dispatcher smokes
 # make test-all-distros            # optional; requires Docker
 ```
 
-Helpers report version via `--version` / `-V` (from the repo `VERSION` file). A Dev Container (includes `pwsh` + Docker-in-Docker) and a Nix `devShell` (lint tools only) are available for a reproducible environment. Go owns the installed CLI; install-time Bash/PS and remaining trim notes: [docs/unification-roadmap.md](docs/unification-roadmap.md).
+Helpers report version via `--version` / `-V` (from the repo `VERSION` file). A Dev Container (includes `pwsh` + Docker-in-Docker) and a Nix `devShell` (lint tools only) are available for a reproducible environment. Go owns the installed CLI; feature CI is [`go.yml`](.github/workflows/go.yml) (Linux / Windows / macOS). See [CONTRIBUTING.md](CONTRIBUTING.md) for layout and install bootstrap notes.
 
 ---
 
@@ -343,7 +338,7 @@ Helpers report version via `--version` / `-V` (from the repo `VERSION` file). A 
 
 **Millennium Helpers** is licensed under the [MIT License](LICENSE) (Copyright © 2026 bolens).
 
-These helpers install and manage **[Millennium](https://github.com/SteamClientHomebrew/Millennium)**, a separate project by Project Millennium / [SteamClientHomebrew](https://github.com/SteamClientHomebrew). Millennium is also MIT-licensed — see [their LICENSE.md](https://github.com/SteamClientHomebrew/Millennium/blob/main/LICENSE.md) (a local copy is in [`third_party/MILLENNIUM-LICENSE.md`](third_party/MILLENNIUM-LICENSE.md)). Installing or upgrading the Millennium client via these tools is subject to Millennium’s license terms; `millennium-upgrade` places a copy of that notice next to the installed client files.
+These helpers install and manage **[Millennium](https://github.com/SteamClientHomebrew/Millennium)**, a separate project by Project Millennium / [SteamClientHomebrew](https://github.com/SteamClientHomebrew). Millennium is also MIT-licensed — see [their LICENSE.md](https://github.com/SteamClientHomebrew/Millennium/blob/main/LICENSE.md) (a local copy is in [`third_party/MILLENNIUM-LICENSE.md`](third_party/MILLENNIUM-LICENSE.md)). Installing or upgrading the Millennium client via these tools is subject to Millennium’s license terms; `millennium upgrade` places a copy of that notice next to the installed client files.
 
 This project is not affiliated with or endorsed by SteamClientHomebrew, Project Millennium, or Valve Corporation. Steam® is a trademark of Valve Corporation.
 

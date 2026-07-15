@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 // SafeExtractZip extracts zipPath into destDir, rejecting zip-slip members.
@@ -36,11 +35,6 @@ func SafeExtractZip(zipPath, destDir string) error {
 	defer func() { _ = r.Close() }()
 
 	for _, f := range r.File {
-		if !zipMemberSafe(f.Name, destReal) {
-			return fmt.Errorf("Error: Refusing zip member with unsafe path: %q", f.Name)
-		}
-	}
-	for _, f := range r.File {
 		if err := extractZipFile(f, destReal); err != nil {
 			return err
 		}
@@ -48,31 +42,12 @@ func SafeExtractZip(zipPath, destDir string) error {
 	return nil
 }
 
-func zipMemberSafe(member, destReal string) bool {
-	name := strings.ReplaceAll(member, "\\", "/")
-	name = strings.TrimSuffix(name, "/")
-	if name == "" {
-		return true
-	}
-	if strings.HasPrefix(name, "/") || (len(name) >= 2 && name[1] == ':') {
-		return false
-	}
-	parts := strings.Split(name, "/")
-	for _, p := range parts {
-		if p == ".." {
-			return false
-		}
-	}
-	target := filepath.Join(append([]string{destReal}, parts...)...)
-	target = filepath.Clean(target)
-	sep := string(os.PathSeparator)
-	return target == destReal || strings.HasPrefix(target, destReal+sep)
-}
-
 func extractZipFile(f *zip.File, destReal string) error {
-	name := strings.ReplaceAll(f.Name, "\\", "/")
-	parts := strings.Split(strings.TrimSuffix(name, "/"), "/")
-	target := filepath.Join(append([]string{destReal}, parts...)...)
+	// Validate at the sink so CodeQL can see the Zip Slip guard.
+	target, err := SafeJoinDest(destReal, f.Name)
+	if err != nil {
+		return fmt.Errorf("Error: Refusing zip member with unsafe path: %q", f.Name)
+	}
 	if f.FileInfo().IsDir() {
 		return os.MkdirAll(target, 0o755)
 	}

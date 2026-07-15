@@ -42,6 +42,7 @@ must be
 or
 .BR main .
 .SH OPTIONS
+.\" @@cli-contract:commands.schedule.man_options@@
 .TP
 .BR \-c ", " \-\-cron
 Force crontab instead of systemd (Linux/macOS).
@@ -62,11 +63,15 @@ units under
 .BR \-d ", " \-\-dry\-run
 Simulate without writing files or changing scheduler state.
 .TP
+.BR \-q ", " \-\-quiet
+Suppress informational output.
+.TP
 .BR \-V ", " \-\-version
 Show version information.
 .TP
 .BR \-h ", " \-\-help
 Show help message.
+.\" @@/cli-contract:commands.schedule.man_options@@
 .SH EXAMPLES
 .TP
 Enable daily stable updates:

