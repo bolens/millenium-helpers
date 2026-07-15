@@ -192,6 +192,11 @@ def check_mcp(contract: dict) -> None:
         expected = meta.get("mcp_properties")
         if expected is None:
             continue
+        if not meta.get("mcp_description"):
+            fail(f"command {name!r}: mcp_description required for MCP tool sync")
+        schema = meta.get("mcp_schema") or {}
+        if not isinstance(schema, dict):
+            fail(f"command {name!r}: mcp_schema must be a mapping")
         found = tools[mcp_name]["props"]
         assert isinstance(found, set)
         for prop in expected:
@@ -199,6 +204,11 @@ def check_mcp(contract: dict) -> None:
                 fail(
                     f"command {name!r}: MCP tool {mcp_name!r} missing property {prop!r} "
                     f"(have {sorted(found)})"
+                )
+            if prop not in schema:
+                fail(
+                    f"command {name!r}: mcp_schema missing property {prop!r} "
+                    "(needed by make sync-cli-facade)"
                 )
         # Optional tighter surface for MCP action enums (schedule, …).
         mcp_actions = meta.get("mcp_actions")

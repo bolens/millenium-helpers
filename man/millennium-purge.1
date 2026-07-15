@@ -8,21 +8,23 @@ millennium-purge \- remove Millennium hooks and client files from Steam
 De-registers Millennium bootstrap hooks from local Steam installs and removes
 Millennium system files. This is destructive.
 .SH OPTIONS
+.\" @@cli-contract:commands.purge.man_options@@
 .TP
 .BR \-d ", " \-\-dry\-run
 Simulate operations without modifying files.
 .TP
-.BR \-q ", " \-\-quiet
-Suppress informational output (warnings and errors still print).
-.TP
 .BR \-y ", " \-\-yes
 Skip the interactive confirmation prompt (required for non-interactive use).
+.TP
+.BR \-q ", " \-\-quiet
+Suppress informational output (warnings and errors still print).
 .TP
 .BR \-V ", " \-\-version
 Show version information.
 .TP
 .BR \-h ", " \-\-help
 Show help message.
+.\" @@/cli-contract:commands.purge.man_options@@
 .SH EXAMPLES
 .TP
 Simulate a purge:
