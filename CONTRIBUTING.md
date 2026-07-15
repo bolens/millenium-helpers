@@ -90,7 +90,6 @@ Guide index: **[docs/README.md](docs/README.md)**. When adding or renaming a gui
 | Path | Role |
 | --- | --- |
 | `install.sh` | Thin Linux/macOS bootstrap → `millennium install` / `uninstall` |
-| `scripts/windows/install.ps1` | Thin Windows bootstrap (incl. piped `irm\|iex`) → `millennium.exe` |
 | `scripts/ci/` | Release/packaging CI helpers (e.g. `release_assets.sh`) |
 | `go/` | Go CLI (`cmd/millennium`); features + installer under `go/internal/` |
 | `go/` + PATH `millennium-mcp` | Native MCP stdio server (`millennium mcp`) |
@@ -173,7 +172,7 @@ Winget `bolens.millenniumhelpers.git`, Nix `#millennium-helpers-git`) are **not*
 
 | Concept | Values | Where |
 | --- | --- | --- |
-| **Helpers track** | `release` (default), `main`, `tag`, `checkout` | `install-meta.json`; `install.sh --track` / `--tag`; `install.ps1 -Track` / `-Tag` |
+| **Helpers track** | `release` (default), `main`, `tag`, `checkout` | `install-meta.json`; `millennium install --track` / `--tag` (Unix: `install.sh` forwards the same flags) |
 | **Client channel** | `stable`, `beta`, `main` | `config.json` → `update_channel`; `millennium-upgrade --channel`; schedule enable |
 
 Doctor syncs helpers against the recorded track (pinned tags stay pinned). Legacy installs without meta are auto-migrated on first install/diag/doctor touch.
@@ -243,7 +242,7 @@ Tagging `vX.Y.Z` runs the release workflow:
 4. **If packaging CI passes:** squash-merge the PR and publish the draft release automatically
 5. **If packaging CI fails (or never starts):** leave the draft release and packaging PR for manual recovery (fix, merge, then publish)
 
-Piped installers (`install.sh` / `install.ps1`) download the **latest published** trimmed release asset (override with `MILLENNIUM_HELPERS_RELEASE_URL`).
+The Unix piped installer (`install.sh`) and Go `millennium install` download the **latest published** trimmed release asset when needed (override with `MILLENNIUM_HELPERS_RELEASE_URL`).
 
 Repo secret `PACKAGING_PAT` is **required** for the automatic path: a classic PAT with `contents` + `pull-requests`, and permission to merge into `main` under any branch protection. PRs opened with `GITHUB_TOKEN` do not trigger workflows, so without this secret the finalize job cannot wait on packaging CI.
 

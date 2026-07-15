@@ -201,10 +201,10 @@ If you installed the helpers via Homebrew (`Formula/millennium-helpers.rb` in th
 
 ### 5. Windows (Standard Install)
 
-If you installed via the standard installer script:
-* **Option A: Piped Uninstall (One-Liner)**:
+If helpers are on your `PATH` (Scoop, Winget, Chocolatey, or `millennium install`):
+* **Option A: Uninstall helpers**:
   ```powershell
-  irm https://raw.githubusercontent.com/bolens/millenium-helpers/main/scripts/windows/install.ps1 | iex -Arguments @{Uninstall=$true}
+  millennium uninstall
   ```
 
 * **Option B: Manual Cleanup**:

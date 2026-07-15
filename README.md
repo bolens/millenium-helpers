@@ -20,9 +20,12 @@ CLI helpers for [Millennium](https://github.com/SteamClientHomebrew/Millennium) 
 ```bash
 # Install (Linux)
 curl -fsSL https://raw.githubusercontent.com/bolens/millenium-helpers/main/install.sh | bash -s -- install
+```
 
-# Install (Windows PowerShell)
-irm https://raw.githubusercontent.com/bolens/millenium-helpers/main/scripts/windows/install.ps1 | iex
+```powershell
+# Install (Windows) — Scoop recommended, or download the Go binary and install:
+scoop install https://raw.githubusercontent.com/bolens/millenium-helpers/main/packaging/scoop/millennium-helpers-bin.json
+# Or: winget install bolens.millenniumhelpers
 ```
 
 Then use the Go CLI (`millennium <command>`):
@@ -145,42 +148,37 @@ millennium-schedule enable [stable|beta|main]
 
 | Method | Command |
 | --- | --- |
-| **irm (recommended)** | `irm https://raw.githubusercontent.com/bolens/millenium-helpers/main/scripts/windows/install.ps1 \| iex` |
-| irm (tip of `main`) | `irm …/install.ps1 \| iex` then re-run with `-Track main`, or download and `.\install.ps1 -Track main` |
+| **Scoop (prebuilt `-bin`, recommended)** | `scoop install https://raw.githubusercontent.com/bolens/millenium-helpers/main/packaging/scoop/millennium-helpers-bin.json` |
 | Scoop (from-source / release) | `scoop install https://raw.githubusercontent.com/bolens/millenium-helpers/main/packaging/scoop/millennium-helpers.json` |
-| Scoop (prebuilt `-bin`) | `scoop install https://raw.githubusercontent.com/bolens/millenium-helpers/main/packaging/scoop/millennium-helpers-bin.json` |
 | Scoop (`main` / nightly) | `scoop install https://raw.githubusercontent.com/bolens/millenium-helpers/main/packaging/scoop/millennium-helpers-git.json` |
 | Winget (release) | `winget install bolens.millenniumhelpers` |
 | Winget (tip of `main`) | `winget install --manifest packaging/winget-git/` (local manifests; community package `bolens.millenniumhelpers.git`) |
 | Chocolatey | Local: `cd packaging/chocolatey/millennium-helpers && choco pack && choco install millennium-helpers -s . -y` · published: `choco install millennium-helpers` |
-| Clone | `powershell -ExecutionPolicy Bypass -File .\scripts\windows\install.ps1` |
+| Standalone Go binary | Download `millennium-v*-windows-amd64.exe` from [Releases](https://github.com/bolens/millenium-helpers/releases/latest), then `.\millennium-v*-windows-amd64.exe install` |
+| Clone | `go build -C go -o bin\millennium.exe ./cmd/millennium` then `.\bin\millennium.exe install --skip-wizard` (or omit `--skip-wizard` for the schedule setup wizard) |
 
 <details>
 <summary>Prerequisites & details</summary>
 
-**Prerequisites:** PowerShell 5.1+ (Windows 10/11) or PowerShell 7+. Allow script execution if needed:
+**Prerequisites:** A recent Windows 10/11 install. Packaging methods place `millennium.exe` on your `PATH`.
+
+`millennium install`:
+
+1. Installs `millennium.exe` under `%USERPROFILE%\.millennium-helpers\bin`
+2. Adds that directory to your user `PATH`
+3. Registers PowerShell completion profile hooks when a completer is present
+
+Then configure scheduling and the Millennium **client** channel (separate from helpers `--track`):
 
 ```powershell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-```
-
-The installer:
-
-1. Installs `millennium.exe` (Go dispatcher; required — no PowerShell PATH fallback)
-2. Writes `.cmd` argv0 twins (`millennium-diag.cmd`, …) that invoke `millennium.exe`
-3. Adds the bin directory to your user `PATH`
-
-Then configure scheduling and the Millennium **client** channel (separate from helpers `-Track`):
-
-```powershell
-millennium-schedule setup
-# or: millennium-schedule config set update_channel main
+millennium schedule setup
+# or: millennium schedule config set update_channel main
 ```
 
 Uninstall:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\install.ps1 -Uninstall
+millennium uninstall
 ```
 
 **Winget:** end users install with `winget install bolens.millenniumhelpers` (community package). Tip-of-main manifests live in [`packaging/winget-git/`](packaging/winget-git/) (`bolens.millenniumhelpers.git`, rolling `0.0.0-git`). Uninstall the release package before installing the git package (same as Scoop). To try manifests from this repo before they are in the community repository:
@@ -235,7 +233,7 @@ Installed PATH commands are the Go binary (or Windows `.cmd` twins). Prefer
 | `millennium purge` | De-register and remove Millennium from Steam |
 | `millennium theme` | List, install, update, remove skins |
 | `millennium mcp` | MCP server for AI assistants ([docs/mcp.md](docs/mcp.md)) |
-| `millennium install` / `uninstall` | Install helpers (Go); thin [`install.sh`](install.sh) / [`install.ps1`](scripts/windows/install.ps1) bootstraps |
+| `millennium install` / `uninstall` | Install helpers (Go); thin [`install.sh`](install.sh) on Unix; Windows via Scoop/Winget/standalone `millennium.exe` |
 
 Feature commands ship as the Go binary and PATH argv0 twins only (no Bash/PS
 feature-script fallbacks). Install-time libs remain under [`scripts/`](scripts/)
@@ -294,7 +292,7 @@ Manage with `millennium-schedule config list|get|set`. File mode is set to `600`
 - **Fish** → `/usr/share/fish/vendor_completions.d/`
 - **Nushell** → `/usr/share/nushell/completions/` or `/usr/local/share/nushell/completions/`
 
-**Windows** — `install.ps1` installs [`completions/powershell/millennium-helpers.ps1`](completions/powershell/millennium-helpers.ps1) as `~/.millennium-helpers/bin/millennium-helpers.completion.ps1` and registers a PowerShell profile hook. Restart the terminal (or dot-source the completer) for Tab completion on `millennium`, `millennium-schedule`, and the other helpers.
+**Windows** — `millennium install` installs [`completions/powershell/millennium-helpers.ps1`](completions/powershell/millennium-helpers.ps1) as `~/.millennium-helpers/bin/millennium-helpers.completion.ps1` and registers a PowerShell profile hook. Restart the terminal (or dot-source the completer) for Tab completion on `millennium`.
 
 ---
 

@@ -253,10 +253,10 @@ jobs:
 
           WIN_GO="$(release_asset_go "$VERSION" windows amd64)"
           WIN_ZIP="$(release_asset_helpers "$VERSION" windows amd64 zip)"
+          mkdir -p scripts/windows
           cp "dist/$WIN_GO" scripts/windows/millennium.exe
-          # Feature millennium-*.ps1 scripts and install-time libs are not shipped.
+          # Windows helpers zip: Go dispatcher + completions (no install.ps1).
           zip -r "$WIN_ZIP" \
-            scripts/windows/install.ps1 \
             scripts/windows/millennium.exe \
             completions/powershell/ \
             VERSION \

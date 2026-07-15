@@ -1,8 +1,10 @@
 # Unification notes (Bash / PowerShell → Go)
 
-Millennium Helpers ships a **single Go CLI** (`bin/millennium`). Installed
-long-name PATH entries are argv0 twins of that binary. Feature Bash/PowerShell
-scripts were peeled out; installers keep install-time libs only.
+Millennium Helpers ships a **single Go CLI** (`bin/millennium`). Feature
+Bash/PowerShell scripts and install-time shared libs are gone. New installs put
+only `millennium` on PATH; leftover long-name argv0 twins still dispatch if
+present. Unix `install.sh` bootstraps into `millennium install`; Windows uses
+Scoop/Winget/Chocolatey or a standalone `millennium.exe`.
 
 Parity on Linux, macOS, and Windows is enforced by Go unit tests and
 [`.github/workflows/go.yml`](../.github/workflows/go.yml) smokes.
@@ -16,19 +18,20 @@ Parity on Linux, macOS, and Windows is enforced by Go unit tests and
 
 ---
 
-## Status (post script peel)
+## Status
 
 | Milestone | State |
 | --- | --- |
 | Go owns schedule / theme / diag / upgrade / purge / repair / mcp | Done |
-| PATH long-name argv0 twins (no shell/PS feature bodies) | Done |
 | Feature `scripts/millennium-*.sh` / `scripts/windows/millennium-*.ps1` removed | Done |
 | Release + install stop shipping/copying feature scripts | Done |
 | Feature CI = `go.yml` (ubuntu + windows + macos) | Done |
-| `test-suite.yml` = install / unit libs / packaging / completions | Done |
-| `millennium install` / `uninstall` (network + PATH/hooks + wizard; thin bootstraps) | Done |
-| Delete install-time Bash/PS libs | Pending |
-| PATH = `millennium` only (retire twins) | Pending |
+| `test-suite.yml` = install bootstrap / packaging / completions | Done |
+| `millennium install` / `uninstall` (network, sudoers, Windows PATH/hooks, wizard) | Done |
+| Windows `install.ps1` removed (Scoop/Winget/standalone `millennium.exe`) | Done |
+| Install-time Bash/PS libs removed (`common.sh` / `common.ps1` / `scripts/*/lib`) | Done |
+| PATH = `millennium` only (no new long-name twins) | Done |
+| Contract-driven façade sync (completions / man / MCP) | Ongoing |
 
 `make build` → `bin/millennium`. Release CD embeds per-OS/arch Go binaries and
 waits on a green required-CI gate (`go.yml` + `test-suite.yml` + other packaging
@@ -40,35 +43,38 @@ checks). **Feature regressions must fail `go.yml`.**
 
 | Area | Notes |
 | --- | --- |
-| PATH entry | Go only (`millennium` / `millennium.exe`); no shell/PS PATH dispatcher |
-| Long-name helpers | PATH argv0 twins of Go (`commandFromArgv0`); no checkout feature-script fallbacks |
+| PATH entry | `millennium` / `millennium.exe` only on new installs |
+| Long-name helpers | Not installed; `commandFromArgv0` still maps leftover twins → subcommands |
 | Steam lifecycle | Go (`go/internal/steam`); Windows + Unix |
-| Shared logging | Go (`go/internal/logging`) for CLI; Bash `logging.sh` keeps install-only helpers (`execute`, `write_file`, …) |
-| Zip extract | Go (`go/internal/archive`); theme wraps it |
-| GitHub / config backup | Go (`githubapi`, `config`) |
-| MCP | `millennium mcp` / PATH `millennium-mcp` argv0 twin (Go) |
-| Installers | `millennium install` / `uninstall` (Go); thin `install.sh` / `install.ps1` bootstrap to the Go binary |
-| Schedule timers | systemd / launchd / cron / Task Scheduler invoke `millennium <cmd>` (rewrite on next enable) |
-| `MILLENNIUM_LEGACY=1` | Obsolete for Go-owned commands (they stay native) |
+| Shared logging | Go (`go/internal/logging`) |
+| Zip extract | Go (`go/internal/archive`); theme + helpers install use it |
+| GitHub / config | Go (`githubapi`, `config`) |
+| MCP | `millennium mcp` (Go); leftovers may still invoke as `millennium-mcp` via argv0 |
+| Installers | Go `millennium install` / `uninstall`; Unix thin `install.sh`; Windows packaging / standalone exe |
+| Install meta / license | `VERSION`, `install-meta.json`, `MILLENNIUM-LICENSE.md` under lib/install root |
+| CI helpers | [`scripts/ci/`](../scripts/ci/) (includes `release_assets.sh`) |
+| Schedule timers | systemd / launchd / cron / Task Scheduler invoke `millennium <cmd>` |
+| `MILLENNIUM_LEGACY=1` | Obsolete for Go-owned commands |
 
-Local checks: `make test-go` (feature parity) + `make test` / `make test-windows`
-(install-time only). CI mirrors that split.
+Local checks: `make test-go` (features) + `make test` / `make test-windows`
+(install/packaging/completions). CI mirrors that split.
 
 ---
 
 ## Remaining work
 
-1. ~~**Finish Go installer**~~ — network download+SHA, Linux sudoers, Windows PATH/profile hooks, wizard handoff, piped Windows bootstrap (in `go/internal/install` + thin bootstraps).
-2. ~~**Delete install-time libs**~~ — `common.sh` / `common.ps1` and `scripts/lib` / `scripts/windows/lib` removed; `release_assets.sh` lives under `scripts/ci/`.
-3. ~~**Long-name PATH twins**~~ — PATH installs `millennium` only; uninstall cleans legacy twins; argv0 still accepted when present.
-4. **Contract-driven façade sync** — completions / man / MCP schema stay hand-aligned; CI gates via `make check-cli-contract`.
+1. **Contract-driven façade sync** — keep completions, man pages, and MCP schema
+   aligned with [`spec/cli-contract.yaml`](../spec/cli-contract.yaml)
+   (`make check-cli-contract`).
+2. **Optional cleanup** — retire long-name sudoers/timer allowlists and completion
+   symlinks for `millennium-*` once enough releases have shipped PATH-only installs.
 
 ---
 
 ## When changing a command
 
 1. Update [`spec/cli-contract.yaml`](../spec/cli-contract.yaml) first if flags/subcommands change.
-2. Implement in Go under `go/`; keep `commandFromArgv0` working for leftover long-name twins.
+2. Implement in Go under `go/`; keep `commandFromArgv0` working for leftover twins.
 3. Cover with `make test-go` and the Linux / Windows / macOS jobs in [`go.yml`](../.github/workflows/go.yml).
 4. Keep completions, man, and MCP schemas aligned (`make check-cli-contract`).
 5. PATH installs only `millennium`; do not reintroduce long-name twins.
@@ -85,7 +91,7 @@ A surface is “done” when:
 3. MCP / completions / man (where applicable) describe the Go surface.
 4. The [parity matrix](unification-audit.md#parity-matrix) row matches reality.
 
-Install packaging and shared install libs stay green under `test-suite.yml`.
+Install packaging stays green under `test-suite.yml`.
 
 ---
 

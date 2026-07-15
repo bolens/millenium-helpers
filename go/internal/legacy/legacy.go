@@ -16,7 +16,7 @@ var FeatureCommands = []string{
 // ScriptDir locates an install or checkout helpers directory for this OS.
 // Preference order: MILLENNIUM_SCRIPTS_DIR, then peers of the running binary,
 // then a walk from the working directory. Discovery keys on install layout
-// (install.ps1 / millennium.exe / VERSION markers), not feature script names.
+// (millennium.exe / VERSION markers), not feature script names.
 func ScriptDir() string {
 	if v := os.Getenv("MILLENNIUM_SCRIPTS_DIR"); v != "" {
 		return v
@@ -92,12 +92,10 @@ func dirLooksLikeScripts(dir string) bool {
 		return false
 	}
 	if runtime.GOOS == "windows" {
-		for _, name := range []string{"install.ps1", "millennium.exe"} {
-			if _, err := os.Stat(filepath.Join(dir, name)); err == nil {
-				return true
-			}
+		if _, err := os.Stat(filepath.Join(dir, "millennium.exe")); err == nil {
+			return true
 		}
-		_, err := os.Stat(filepath.Join(dir, "windows", "install.ps1"))
+		_, err := os.Stat(filepath.Join(dir, "windows", "millennium.exe"))
 		return err == nil
 	}
 	// Installed lib dir (/usr/lib/millennium-helpers) or extract root.

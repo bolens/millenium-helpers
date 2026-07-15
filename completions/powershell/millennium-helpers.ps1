@@ -1,5 +1,5 @@
 # PowerShell argument completers for Millennium Helpers.
-# Dot-source from your profile, or let install.ps1 register a profile hook:
+# Dot-source from your profile, or let `millennium install` register a profile hook:
 #   . "$HOME/.millennium-helpers/bin/millennium-helpers.completion.ps1"
 
 Set-StrictMode -Version Latest

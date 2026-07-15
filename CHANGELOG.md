@@ -9,13 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `millennium install` / `millennium uninstall` (Go): checkout/fixture installs, release/main network download + SHA verify, Linux sudoers, Windows User PATH + completion profile hooks, interactive schedule setup wizard handoff
-- Thin `install.sh` / `install.ps1` bootstraps (including piped Windows `irm|iex` download + re-exec)
+- Thin Unix `install.sh` bootstrap to `millennium install` (piped Windows `install.ps1` removed; use Scoop/Winget/standalone `millennium.exe`)
 
 ### Removed
 - Checkout Bash/PowerShell feature scripts (`scripts/millennium-*.sh`, `scripts/windows/millennium-*.ps1`); PATH long-name twins and `bin/millennium` are the only feature entrypoints
 - Feature Bash/Pester suites retired in favor of Go unit tests and `go.yml` smokes
 - Fat Bash/PowerShell installer bodies (replaced by thin bootstrap + Go install)
 - Install-time shared libs (`scripts/common.sh`, `scripts/lib/*`, `scripts/windows/common.ps1`, `scripts/windows/lib/*`); release asset helpers moved to `scripts/ci/release_assets.sh`
+- Windows `scripts/windows/install.ps1` bootstrap (Go `millennium install` + Scoop/Winget/Chocolatey replace it)
 
 ### Changed
 - Release payloads and installers stop shipping/copying feature scripts; uninstall/wizard invoke `millennium` / `millennium.exe`
@@ -135,7 +136,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.2.1] - 2026-07-10
 
 ### Security
-- Verify SHA256 checksums in piped `install.sh` / `install.ps1` against release `.sha256` sidecars
+- Verify SHA256 checksums in piped `install.sh` against release `.sha256` sidecars
 - Verify SHA256 checksums during Windows `millennium-upgrade` (parity with Linux)
 - Restrict Windows `config.json` ACLs when writing `github_token`
 

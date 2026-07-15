@@ -20,7 +20,7 @@ see [security_troubleshooting.md](security_troubleshooting.md). Licensing:
 | `millennium_repair` | Runs system-wide permissions and symlink repairs. | None. |
 | `millennium_purge` | Completely uninstalls all Millennium client hooks and files. | `confirm` (boolean, required): must be `true` to purge. <br> `dry_run` (boolean, optional): simulate without deleting. Escalates via `sudo -n` / elevated PowerShell like the other write tools. |
 
-**Helpers track vs client channel:** MCP `channel` arguments always mean the Millennium **client** `update_channel` (`stable` / `beta` / `main`). Helpers install track (`release` / `main` / `tag`) is chosen at install time (`install.sh --track`, `install.ps1 -Track`) and is not an MCP tool parameter.
+**Helpers track vs client channel:** MCP `channel` arguments always mean the Millennium **client** `update_channel` (`stable` / `beta` / `main`). Helpers install track (`release` / `main` / `tag`) is chosen at install time (`millennium install --track`, or Unix `install.sh --track`) and is not an MCP tool parameter.
 
 **Go MCP server:** `millennium mcp` (and PATH `millennium-mcp` argv0 twin) is the
 stdio JSON-RPC server and owns `--register`. Dual-OS `go.yml` smokes `initialize`.

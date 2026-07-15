@@ -15,7 +15,7 @@ body:
       label: Install / package method
       options:
         - curl installer (install.sh)
-        - PowerShell installer (install.ps1)
+        - Scoop / Winget / Chocolatey / millennium.exe install
         - Homebrew
         - Scoop
         - Winget

@@ -12,20 +12,20 @@ Project: [README](../README.md). Index: [README.md](README.md).
 | Surface | Path | Language |
 | --- | --- | --- |
 | PATH CLI | `bin/millennium` (`go/cmd/millennium`) | Go |
-| Long-name helpers | PATH argv0 twins of `bin/millennium` | Go (`commandFromArgv0`) |
-| Shared libs | Go (`go/internal/*`); CI helpers in [`scripts/ci/`](../scripts/ci/) | Install-time Bash/PS libs removed |
+| Long-name helpers | Not installed on PATH; leftover twins via `commandFromArgv0` | Go |
+| Shared libs | Go (`go/internal/*`); CI helpers in [`scripts/ci/`](../scripts/ci/) | Bash/PS install libs removed |
 | Steam | `go/internal/steam` | Go (Unix + Windows) |
 | CLI logging | `go/internal/logging` | Go |
-| Zip extract | `go/internal/archive` | Go (theme + Windows upgrade install) |
-| Long-name argv0 | `go/cmd/millennium` `commandFromArgv0` | Supported for leftover twins; new installs PATH = `millennium` only |
-| MCP | `millennium mcp` / PATH `millennium-mcp` | Go |
+| Zip extract | `go/internal/archive` | Go (theme + helpers install) |
+| Install / uninstall | `go/internal/install` + Unix `install.sh`; Windows via packaging / `millennium.exe` | Go (+ Unix bootstrap) |
+| MCP | `millennium mcp` | Go |
 | Completions | [`completions/`](../completions/) | Bash / Zsh / Fish / Nushell / PowerShell |
 | Man pages | [`man/`](../man/) | mandoc |
 | Packaging | Formula, Nix, Arch, Scoop/Winget, deb/rpm/Chocolatey | various |
 
-Rough size: ~5 Bash + ~6 PowerShell install-oriented shared lib modules; Go owns
-PATH `millennium`, Steam, CLI logging, safe zip extract, GitHub/API config paths,
-MCP stdio, man pages, and completions wiring. CLI surface is gated by
+Go owns the product CLI (schedule, theme, diag, upgrade, purge, repair, mcp,
+install/uninstall), Steam lifecycle, logging, safe zip extract, GitHub/API and
+config paths, and MCP stdio. Surface is gated by
 [`spec/cli-contract.yaml`](../spec/cli-contract.yaml)
 ([CONTRIBUTING](../CONTRIBUTING.md#linux--windows-parity)).
 
@@ -36,18 +36,20 @@ MCP stdio, man pages, and completions wiring. CLI surface is gated by
 ### Shared (portable — Go packages)
 
 - `config.json` keys: `update_channel`, `github_token`, `backup_limit`, `backup_max_age_days`
-- Helpers **track** (`release` / `main` / `tag`) vs client **channel** (`stable` / `beta` / `main`)
+- Helpers **track** (`release` / `main` / `tag` / `checkout`) vs client **channel** (`stable` / `beta` / `main`)
 - GitHub release download + SHA256 verify; local `--file` / `--sha256`
 - Backup rotate / rollback list
 - Dispatcher command set + typo suggestion
 - Theme list / install / update / remove semantics
+- Helpers install track resolve, meta, archive fetch/extract
 
 ### OS-shaped (same intent, different mechanism)
 
 - Steam find / close / relaunch
 - Schedule: systemd (system + user) / launchd / cron / Task Scheduler
-- Install roots (`/usr/lib` vs Steam `millennium\`)
-- Elevation (`sudo` / UAC)
+- Install roots (`/usr/local/lib/...` vs `%USERPROFILE%\.millennium-helpers`)
+- Elevation (`sudo` / UAC); Linux sudoers drop-in from install
+- Windows User PATH + PowerShell completion profile hooks
 
 ### Façade-only
 
@@ -74,7 +76,7 @@ Not unpaid feature debt — kept in [`spec/cli-contract.yaml`](../spec/cli-contr
 
 Legend: **Y** = present · **P** = partial · **—** = N/A (contract OS-only) ·
 Tests: Go unit under `go/` · smokes in [`.github/workflows/go.yml`](../.github/workflows/go.yml)
-(Linux / Windows / macOS). Install suites remain under `tests/` + `test-suite.yml`.
+(Linux / Windows / macOS). Install suites under `tests/` + `test-suite.yml`.
 
 | Capability | Linux | Windows | Go | Go tests / go.yml | Notes |
 | --- | --- | --- | --- | --- | --- |
@@ -89,14 +91,17 @@ Tests: Go unit under `go/` · smokes in [`.github/workflows/go.yml`](../.github/
 | `schedule --cron` | Y | — | Linux/macOS only | Y (Unix smoke) | Contract OS-only |
 | `theme` list/install/update/remove | Y | Y | Native | Go `theme`/`archive` + smokes | Zip-slip in Go `archive` |
 | `mcp` tools surface | Y | Y | Native | Go MCP package + tools smokes | |
-| Install / uninstall helpers | Y | Y | Native (`millennium install`) | Go + `test_install` / Pester / extract-download units | Thin shell bootstraps; network/SHA + Windows PATH/hooks + wizard + piped Win bootstrap |
+| Install / uninstall helpers | Y | Y | Native | Go units + `test_install` / Pester | Network/SHA, sudoers, Win PATH/hooks, wizard; Windows entry via packaging / `millennium.exe` |
 
 ---
 
 ## Open gaps (non-contract)
 
-1. Prefer `millennium <cmd>` in timers/sudoers (long-name PATH twins remain for compatibility).
-2. Completions/man/MCP schema still hand-synced with the contract (CI gates help).
+1. Completions/man/MCP schema still hand-synced with the contract (CI gates help).
+2. Some packaging still install completion/man symlinks named `millennium-*` for
+   discoverability; PATH binaries for those names are no longer shipped.
+3. Sudoers/docs may still mention long-name `millennium-upgrade` for older installs
+   until a later cleanup pass.
 
 ---
 

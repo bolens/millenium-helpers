@@ -456,7 +456,8 @@ fi
 assets_block=$(awk '/Build Go dispatchers and versioned archives/,/Calculate Checksums/' "${REPO_ROOT}/.github/workflows/release.yml")
 assert_file_not_exists "${REPO_ROOT}/scripts/millennium-mcp.py" "millennium-mcp.py must not exist (Go MCP only)"
 assert_contains "$assets_block" "completions/powershell/" "Windows release zip includes PowerShell completions"
-assert_contains "$assets_block" "scripts/windows/install.ps1" "Windows release zip includes install.ps1"
+assert_contains "$assets_block" "scripts/windows/millennium.exe" "Windows release zip includes millennium.exe"
+assert_not_contains "$assets_block" "scripts/windows/install.ps1" "Windows release zip omits install.ps1"
 assert_contains "$assets_block" "windows" "release.yml builds windows helpers zip"
 assert_contains "$assets_block" "release_asset_go" "release.yml builds versioned Go dispatchers"
 assert_contains "$assets_block" "bin/millennium" "release.yml embeds bin/millennium for Unix tarballs"

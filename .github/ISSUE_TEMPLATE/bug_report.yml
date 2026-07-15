@@ -63,8 +63,9 @@ body:
     attributes:
       label: Install method
       options:
-        - curl installer (install.sh / install.ps1)
-        - curl / pwsh with --track main or -Track main
+        - curl installer (install.sh)
+        - Scoop / Winget / Chocolatey / millennium.exe install
+        - curl / millennium install --track main
         - Homebrew
         - Scoop (release)
         - Scoop (millennium-helpers-git)
