@@ -23,6 +23,6 @@ pkgbase = millennium-helpers-bin
 	source = https://github.com/bolens/millenium-helpers/releases/download/v3.0.0/millennium-helpers-v3.0.0-linux-amd64.tar.gz
 	source = millennium-helpers.sudoers
 	sha256sums = de7a0d7ae896dea26e982c45585b2117015e7224b90f754a5a2774578d1d3d92
-	sha256sums = 68a0e3cfd6cbc860d4c936ee0eba10506a6ec64d260a44ab8f4b92b067a658af
+	sha256sums = b242d171bced3313da83fb6bfd6b29fdaf17fec28892b6e38435d7dd321949bd
 
 pkgname = millennium-helpers-bin
