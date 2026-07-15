@@ -136,6 +136,10 @@ jobs:
           export LOCALAPPDATA="$home/LocalAppData"
           export APPDATA="$home/AppData"
           mkdir -p "$LOCALAPPDATA" "$APPDATA"
+          # Windows exits early when Steam is unresolved and the purge plan is empty.
+          steam="$home/Steam"
+          mkdir -p "$steam"
+          export STEAM="$steam"
           out="$(bin/millennium purge --yes </dev/null 2>&1)"
           echo "$out" | grep -Fi 'purg'
           if echo "$out" | grep -F 'Are you sure'; then
