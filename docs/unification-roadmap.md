@@ -26,7 +26,7 @@ Parity on Linux, macOS, and Windows is enforced by Go unit tests and
 | Feature `scripts/millennium-*.sh` / `scripts/windows/millennium-*.ps1` removed | Done |
 | Release + install stop shipping/copying feature scripts | Done |
 | Feature CI = `go.yml` (ubuntu + windows + macos) | Done |
-| `test-suite.yml` = install bootstrap / packaging / completions | Done |
+| `test-suite.yml` = install / packaging / completions (no feature-script suites) | Done |
 | `millennium install` / `uninstall` (network, sudoers, Windows PATH/hooks, wizard) | Done |
 | Windows `install.ps1` removed (Scoop/Winget/standalone `millennium.exe`) | Done |
 | Install-time Bash/PS libs removed (`common.sh` / `common.ps1` / `scripts/*/lib`) | Done |

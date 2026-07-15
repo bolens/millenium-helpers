@@ -12,11 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Thin Unix `install.sh` bootstrap to `millennium install` (piped Windows `install.ps1` removed; use Scoop/Winget/standalone `millennium.exe`)
 
 ### Removed
-- Checkout Bash/PowerShell feature scripts (`scripts/millennium-*.sh`, `scripts/windows/millennium-*.ps1`); PATH long-name twins and `bin/millennium` are the only feature entrypoints
+- Checkout Bash/PowerShell feature scripts (`scripts/millennium-*.sh`, `scripts/windows/millennium-*.ps1`); feature entrypoint is `millennium` only
 - Feature Bash/Pester suites retired in favor of Go unit tests and `go.yml` smokes
-- Fat Bash/PowerShell installer bodies (replaced by thin bootstrap + Go install)
+- Fat Bash/PowerShell installer bodies (replaced by Go `millennium install`; Unix keeps thin `install.sh`)
 - Install-time shared libs (`scripts/common.sh`, `scripts/lib/*`, `scripts/windows/common.ps1`, `scripts/windows/lib/*`); release asset helpers moved to `scripts/ci/release_assets.sh`
-- Windows `scripts/windows/install.ps1` bootstrap (Go `millennium install` + Scoop/Winget/Chocolatey replace it)
+- Windows `scripts/windows/install.ps1` bootstrap (Scoop/Winget/Chocolatey / standalone `millennium.exe` replace it)
 
 ### Changed
 - Release payloads and installers stop shipping/copying feature scripts; uninstall/wizard invoke `millennium` / `millennium.exe`

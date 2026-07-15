@@ -20,7 +20,7 @@ millennium-repair --dry-run
 
 # Windows
 millennium-upgrade -Channel stable -DryRun
-millennium-diag doctor -DryRun
+millennium doctor --dry-run
 ```
 
 When run in Dry-Run mode, scripts log exactly what files would be created, moved, or deleted, and what commands would be executed, without committing any changes.

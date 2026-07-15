@@ -208,18 +208,18 @@ Most commands are identical on Linux and Windows. Flag casing differs where note
 
 | Task | Command |
 | --- | --- |
-| Diagnostics | `millennium-diag` |
-| Share sanitized report | `millennium-diag --share` / `-Share` |
-| Auto-repair (`doctor`) | `millennium-diag doctor` (alias: `--fix` / `-f`) |
-| Force all repairs | `millennium-diag doctor --force` |
-| Scheduler status | `millennium-schedule status` |
-| Enable / disable updates | `millennium-schedule enable` · `disable` |
-| Repair install | `sudo millennium-repair` / `millennium-repair` (Admin) |
-| Purge Millennium | `sudo millennium-purge` / `millennium-purge` (Admin); skip prompts with `-y` / `-Yes` |
-| Uninstall helpers (Linux) | `sudo ./install.sh uninstall` |
+| Diagnostics | `millennium diag` |
+| Share sanitized report | `millennium diag --share` / `-Share` |
+| Auto-repair (`doctor`) | `millennium doctor` (or `millennium diag doctor`; `--fix` / `-f`) |
+| Force all repairs | `millennium doctor --force` |
+| Scheduler status | `millennium schedule status` |
+| Enable / disable updates | `millennium schedule enable` · `disable` |
+| Repair install | `sudo millennium repair` / `millennium repair` (Admin) |
+| Purge Millennium | `sudo millennium purge` / `millennium purge` (Admin); skip prompts with `-y` / `-Yes` |
+| Uninstall helpers | `sudo millennium uninstall` (Unix) · `millennium uninstall` (Windows) |
 
-Installed PATH commands are the Go binary (or Windows `.cmd` twins). Prefer
-`millennium <command>` or the long names interchangeably.
+New installs put only `millennium` / `millennium.exe` on PATH. Prefer
+`millennium <command>` (leftover long-name argv0 twins still work if present).
 
 ### Command overview
 
@@ -235,9 +235,8 @@ Installed PATH commands are the Go binary (or Windows `.cmd` twins). Prefer
 | `millennium mcp` | MCP server for AI assistants ([docs/mcp.md](docs/mcp.md)) |
 | `millennium install` / `uninstall` | Install helpers (Go); thin [`install.sh`](install.sh) on Unix; Windows via Scoop/Winget/standalone `millennium.exe` |
 
-Feature commands ship as the Go binary and PATH argv0 twins only (no Bash/PS
-feature-script fallbacks). Install-time libs remain under [`scripts/`](scripts/)
-and [`scripts/windows/`](scripts/windows/). Ownership / parity notes:
+Feature commands ship as the Go CLI only (no Bash/PS feature-script
+fallbacks). Ownership / parity notes:
 [docs/unification-audit.md](docs/unification-audit.md).
 
 ---
@@ -313,7 +312,7 @@ Manage with `millennium-schedule config list|get|set`. File mode is set to `600`
 | Steam Deck & Flatpak | [docs/steam_deck.md](docs/steam_deck.md) |
 | Contributing | [CONTRIBUTING.md](CONTRIBUTING.md) |
 
-Manual pages ship with the helpers (`man millennium-diag`, `man millennium-upgrade`, …) via `install.sh`, Homebrew, and packaging recipes.
+Manual pages ship with the helpers (`man millennium`, `man millennium-diag`, …) via `millennium install`, Homebrew, and packaging recipes.
 
 ---
 
@@ -324,7 +323,7 @@ Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) (including **[d
 ```bash
 make setup         # install shellcheck + ruff
 make check-all     # lint + test-go + install-time Bash suite (feature parity is test-go / go.yml)
-make test-windows  # Pester install/libs/completions (requires PowerShell 7+ / pwsh)
+make test-windows  # Pester install + completions (requires PowerShell 7+ / pwsh)
 make build         # Go CLI → bin/millennium (requires Go)
 make test-go       # Go unit + dispatcher smokes
 # make bump-version VERSION=X.Y.Z   # pre-tag packaging version bump

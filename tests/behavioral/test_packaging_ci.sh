@@ -540,6 +540,8 @@ assert_contains "$suite_wf" "- '.github/workflows/release.yml'" "Test suite path
 
 ps_lint=$(cat "${REPO_ROOT}/.github/workflows/powershell-lint.yml")
 assert_contains "$ps_lint" "completions/powershell" "PowerShell lint path filters include completions/powershell"
+assert_contains "$ps_lint" "tests/windows" "PowerShell lint path filters include tests/windows"
+assert_not_contains "$ps_lint" "scripts/windows/**" "PowerShell lint no longer watches removed scripts/windows tree"
 
 for wf in homebrew.yml package-manifests.yml version-sync.yml man-pages.yml python-lint.yml; do
   body=$(cat "${REPO_ROOT}/.github/workflows/${wf}")

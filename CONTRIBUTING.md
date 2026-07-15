@@ -135,18 +135,18 @@ and the matrix in [docs/unification-audit.md](docs/unification-audit.md).
 - [ ] Unique seams fail `go.yml` (or Go unit tests) when not covered by existing smokes
 - [ ] Contract + completions/man/MCP stay aligned (`make check-cli-contract`)
 
-Do **not** delete a long-name entrypoint until consumers that still name it
-(timers, sudoers, docs) are migrated.
+PATH installs only `millennium`; do not reintroduce long-name twins. Leave
+`commandFromArgv0` working for leftover binaries until sudoers/docs cleanup.
 
 ## Testing
 
 See [Development requirements](#development-requirements) for tools each target needs.
 
 ```bash
-make test              # local install-time Bash unit + behavioral suite
+make test              # local Bash unit + behavioral suite (install / packaging / completions)
 make lint              # shellcheck + ruff (+ version/man/docs/completions/cli-contract gates)
 make check-all         # lint + test-go + test (feature parity is test-go / go.yml)
-make test-windows      # Pester install/libs/completions (requires pwsh; not part of check-all)
+make test-windows      # Pester install + completions (requires pwsh; not part of check-all)
 make test-go           # Go unit tests (requires Go; part of check-all; CI smokes in go.yml)
 make build             # bin/millennium Go CLI
 make test-all-distros  # local + Debian/Ubuntu/Fedora via Docker (requires Docker)
@@ -269,15 +269,15 @@ pre-commit install --hook-type pre-push
 
 **pre-commit** runs: remote [pre-commit-hooks](https://github.com/pre-commit/pre-commit-hooks) sanity checks (private keys, merge conflicts, large files, symlinks, trailing whitespace, EOF newlines, LF line endings), plus local shellcheck, ruff check + format `--check`, VERSION presence, Arch from-source/`-bin`/`-git` `.SRCINFO` sync when those recipes change, packaging version sync, winget manifests, completions tests (when `completions/` changes), man-page coverage, docs cross-links (guides + licensing), actionlint (workflows; skipped if not installed), and gitleaks on staged changes (skipped if not installed).
 
-**pre-push** runs: `make lint`, and `make test-windows` when the push range touches `scripts/windows/`, `tests/windows/`, or `completions/powershell/` (skipped if `pwsh` is missing).
+**pre-push** runs: `make lint`, and `make test-windows` when the push range touches `tests/windows/`, `completions/powershell/`, or `go/internal/install/` (skipped if `pwsh` is missing).
 
 ## Style
 
 - Bash: `set -euo pipefail` in remaining bootstraps/CI scripts; prefer Go for product logic.
 - macOS ships Bash 3.2: under `set -u`, empty `"${arr[@]}"` / `"${arr[*]}"` is unbound. Prefer `${arr[@]+"${arr[@]}"}` (or a length guard) when an array may be empty. Avoid `"${arr[@]:-}"` (it iterates once with an empty value).
 - Honor `NO_COLOR` (and `FORCE_COLOR` when forcing color).
-- PowerShell: `Set-StrictMode -Version Latest`; gate debug noise behind `MILLENNIUM_DEBUG` or `-Verbose`.
-- Do not commit packaging build artifacts (makepkg `pkg/`/`src/`/`*.pkg.tar.*`, `*.deb`/`*.rpm`/`*.nupkg`, release tarballs, `scripts/windows/millennium.exe`). See `.gitignore`.
+- PowerShell: `Set-StrictMode -Version Latest`; gate debug noise behind `MILLENNIUM_DEBUG` or `-Verbose` (completions + packaging tools).
+- Do not commit packaging build artifacts (makepkg `pkg/`/`src/`/`*.pkg.tar.*`, `*.deb`/`*.rpm`/`*.nupkg`, release tarballs, staged `scripts/windows/millennium.exe`). See `.gitignore`.
 - Do **not** bump Arch `-git` `pkgver` on every commit ([AUR VCS policy](https://wiki.archlinux.org/title/AUR_submission_guidelines)). `pkgver()` recalculates at `makepkg` time; regenerate `.SRCINFO` only when the `-git` recipe changes (`make sync-git-srcinfo`).
 - Keep Arch from-source/`-bin` `.SRCINFO` current with `make sync-stable-srcinfo` /
   `make sync-bin-srcinfo` (or `make bump-version`). Pre-commit regenerates them when those

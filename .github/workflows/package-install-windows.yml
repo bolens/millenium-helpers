@@ -6,7 +6,6 @@ on:
     paths:
       - 'packaging/scoop/**'
       - 'packaging/chocolatey/**'
-      - 'scripts/windows/**'
       - 'completions/powershell/**'
       - 'go/**'
       - 'VERSION'
@@ -16,7 +15,6 @@ on:
     paths:
       - 'packaging/scoop/**'
       - 'packaging/chocolatey/**'
-      - 'scripts/windows/**'
       - 'completions/powershell/**'
       - 'go/**'
       - 'VERSION'

@@ -5,8 +5,13 @@
 "area: windows":
   - changed-files:
       - any-glob-to-any-file:
-          - "scripts/windows/**"
           - "tests/windows/**"
+          - "completions/powershell/**"
+          - "packaging/scoop/**"
+          - "packaging/chocolatey/**"
+          - "packaging/winget/**"
+          - "packaging/winget-git/**"
+          - "go/internal/install/**"
 
 "area: scripts":
   - changed-files:
