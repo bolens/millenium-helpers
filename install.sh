@@ -202,15 +202,15 @@ SUDOERS_FILE="${MOCK_SUDOERS_FILE:-/etc/sudoers.d/millennium-helpers}"
 source "${SCRIPT_DIR}/scripts/common.sh"
 
 # Feature helpers (long names). PATH entries are Go dispatcher argv0 twins
-# (same binary as `millennium <cmd>`); shell scripts remain checkout fallbacks.
+# (same binary as `millennium <cmd>`). Feature shell scripts are not shipped.
 SCRIPTS=(
-  "scripts/millennium-repair.sh:millennium-repair"
-  "scripts/millennium-upgrade.sh:millennium-upgrade"
-  "scripts/millennium-schedule.sh:millennium-schedule"
-  "scripts/millennium-purge.sh:millennium-purge"
-  "scripts/millennium-diag.sh:millennium-diag"
-  "scripts/millennium-theme.sh:millennium-theme"
-  "scripts/millennium-mcp.sh:millennium-mcp"
+  ":millennium-repair"
+  ":millennium-upgrade"
+  ":millennium-schedule"
+  ":millennium-purge"
+  ":millennium-diag"
+  ":millennium-theme"
+  ":millennium-mcp"
   # sentinel: install_scripts special-cases dest=millennium → Go binary
   ":millennium"
 )
@@ -1063,13 +1063,23 @@ uninstall_scripts() {
   fi
 
   if [[ "$purge_all" == "true" ]]; then
-    local purge_script="${SCRIPT_DIR}/scripts/millennium-purge.sh"
-    if [[ -f "$purge_script" ]]; then
-      echo -e "${YELLOW}Invoking Millennium purge script...${NC}"
+    local go_mill="${TARGET_DIR}/millennium"
+    local purge_bin="${TARGET_DIR}/millennium-purge"
+    local purge_cmd=""
+    if [[ -x "$go_mill" ]]; then
+      purge_cmd="$go_mill purge"
+    elif [[ -x "$purge_bin" ]]; then
+      purge_cmd="$purge_bin"
+    elif [[ -x "${SCRIPT_DIR}/bin/millennium" ]]; then
+      purge_cmd="${SCRIPT_DIR}/bin/millennium purge"
+    fi
+    if [[ -n "$purge_cmd" ]]; then
+      echo -e "${YELLOW}Invoking Millennium purge...${NC}"
       local dry_flag=""
       [[ "$DRY_RUN" == "true" ]] && dry_flag="--dry-run"
       # Already confirmed interactively (or via --purge); skip purge's own prompt.
-      execute "$purge_script" --yes $dry_flag
+      # shellcheck disable=SC2086
+      execute $purge_cmd --yes $dry_flag
     fi
   fi
 
@@ -1079,21 +1089,20 @@ uninstall_scripts() {
   local user_name="${SUDO_USER:-$(id -un)}"
   local go_mill="${TARGET_DIR}/millennium"
   local schedule_bin="${TARGET_DIR}/millennium-schedule"
-  local schedule_src="${SCRIPT_DIR}/scripts/millennium-schedule.sh"
   local schedule_cmd=""
   if [[ -x "$go_mill" ]]; then
     schedule_cmd="$go_mill schedule"
   elif [[ -x "$schedule_bin" ]]; then
     schedule_cmd="$schedule_bin"
-  elif [[ -f "$schedule_src" ]]; then
-    schedule_cmd="bash $schedule_src"
+  elif [[ -x "${SCRIPT_DIR}/bin/millennium" ]]; then
+    schedule_cmd="${SCRIPT_DIR}/bin/millennium schedule"
   fi
   if [[ -n "$schedule_cmd" || "$DRY_RUN" == "true" ]]; then
     echo -e "${BLUE}Disabling update scheduler (systemd system+user / LaunchAgent and cron)...${NC}"
     local dry_flag=""
     [[ "$DRY_RUN" == "true" ]] && dry_flag="--dry-run"
     # shellcheck disable=SC2086
-    execute ${schedule_cmd:-bash "$schedule_src"} disable $dry_flag || true
+    execute ${schedule_cmd:-"${SCRIPT_DIR}/bin/millennium" schedule} disable $dry_flag || true
   fi
 
   echo -e "${BLUE}Uninstalling Millennium helper scripts from ${TARGET_DIR}...${NC}"

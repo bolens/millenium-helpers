@@ -232,15 +232,7 @@ MOCK_PAYLOAD="${STANDALONE_DIR}/payload"
 mkdir -p "$MOCK_PAYLOAD/scripts" "$MOCK_PAYLOAD/completions" "$MOCK_PAYLOAD/man" "$MOCK_PAYLOAD/bin"
 cp "$REPO_ROOT/install.sh" "$REPO_ROOT/VERSION" "$REPO_ROOT/LICENSE" "$MOCK_PAYLOAD/"
 cp "$REPO_ROOT/README.md" "$MOCK_PAYLOAD/" 2>/dev/null || true
-cp "$REPO_ROOT/scripts/common.sh" \
-  "$REPO_ROOT/scripts/millennium-diag.sh" \
-  "$REPO_ROOT/scripts/millennium-mcp.sh" \
-  "$REPO_ROOT/scripts/millennium-purge.sh" \
-  "$REPO_ROOT/scripts/millennium-repair.sh" \
-  "$REPO_ROOT/scripts/millennium-schedule.sh" \
-  "$REPO_ROOT/scripts/millennium-theme.sh" \
-  "$REPO_ROOT/scripts/millennium-upgrade.sh" \
-  "$MOCK_PAYLOAD/scripts/"
+cp "$REPO_ROOT/scripts/common.sh" "$MOCK_PAYLOAD/scripts/"
 cp -r "$REPO_ROOT/scripts/lib" "$MOCK_PAYLOAD/scripts/"
 cp -r "$REPO_ROOT/completions/." "$MOCK_PAYLOAD/completions/" 2>/dev/null || true
 cp -r "$REPO_ROOT/man/." "$MOCK_PAYLOAD/man/" 2>/dev/null || true
@@ -526,15 +518,7 @@ MOCK_MAIN_TGZ="${STANDALONE_MAIN}/main.tar.gz"
 MAIN_PAYLOAD="${STANDALONE_MAIN}/src/millenium-helpers-main"
 mkdir -p "$MAIN_PAYLOAD/scripts" "$MAIN_PAYLOAD/completions" "$MAIN_PAYLOAD/man" "$MAIN_PAYLOAD/go/cmd/millennium"
 cp "$REPO_ROOT/install.sh" "$REPO_ROOT/VERSION" "$REPO_ROOT/LICENSE" "$MAIN_PAYLOAD/"
-cp "$REPO_ROOT/scripts/common.sh" \
-  "$REPO_ROOT/scripts/millennium-diag.sh" \
-  "$REPO_ROOT/scripts/millennium-mcp.sh" \
-  "$REPO_ROOT/scripts/millennium-purge.sh" \
-  "$REPO_ROOT/scripts/millennium-repair.sh" \
-  "$REPO_ROOT/scripts/millennium-schedule.sh" \
-  "$REPO_ROOT/scripts/millennium-theme.sh" \
-  "$REPO_ROOT/scripts/millennium-upgrade.sh" \
-  "$MAIN_PAYLOAD/scripts/"
+cp "$REPO_ROOT/scripts/common.sh" "$MAIN_PAYLOAD/scripts/"
 cp -r "$REPO_ROOT/scripts/lib" "$MAIN_PAYLOAD/scripts/"
 cp -r "$REPO_ROOT/completions/." "$MAIN_PAYLOAD/completions/" 2>/dev/null || true
 cp -r "$REPO_ROOT/man/." "$MAIN_PAYLOAD/man/" 2>/dev/null || true

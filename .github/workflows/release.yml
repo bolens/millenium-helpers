@@ -233,13 +233,6 @@ jobs:
             third_party/MILLENNIUM-LICENSE.md
             bin/millennium
             scripts/common.sh
-            scripts/millennium-diag.sh
-            scripts/millennium-mcp.sh
-            scripts/millennium-purge.sh
-            scripts/millennium-repair.sh
-            scripts/millennium-schedule.sh
-            scripts/millennium-theme.sh
-            scripts/millennium-upgrade.sh
             scripts/lib
             completions
             man
@@ -263,8 +256,12 @@ jobs:
           WIN_GO="$(release_asset_go "$VERSION" windows amd64)"
           WIN_ZIP="$(release_asset_helpers "$VERSION" windows amd64 zip)"
           cp "dist/$WIN_GO" scripts/windows/millennium.exe
+          # Feature millennium-*.ps1 scripts are not shipped; keep installer + libs + exe.
           zip -r "$WIN_ZIP" \
-            scripts/windows/ \
+            scripts/windows/install.ps1 \
+            scripts/windows/common.ps1 \
+            scripts/windows/millennium.exe \
+            scripts/windows/lib/ \
             completions/powershell/ \
             VERSION \
             LICENSE \

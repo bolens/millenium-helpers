@@ -325,16 +325,9 @@ if (!(Test-Path -Path $binDir)) {
     Log-Info "Created directory: $binDir"
 }
 
-# Copy scripts
+# Copy install-time helpers (feature millennium-*.ps1 scripts are not shipped)
 $scriptsToCopy = @(
-    "common.ps1",
-    "millennium-diag.ps1",
-    "millennium-mcp.ps1",
-    "millennium-purge.ps1",
-    "millennium-repair.ps1",
-    "millennium-schedule.ps1",
-    "millennium-theme.ps1",
-    "millennium-upgrade.ps1"
+    "common.ps1"
 )
 
 foreach ($script in $scriptsToCopy) {
@@ -390,7 +383,7 @@ if (-not $installedExe) {
     exit 1
 }
 
-# Install lib/*.ps1 modules (required by millennium-diag.ps1)
+# Install lib/*.ps1 modules (install-track / logging helpers)
 $libSrc  = Join-Path -Path $srcDir -ChildPath 'lib'
 $libDest = Join-Path -Path $binDir -ChildPath 'lib'
 if (Test-Path -Path $libSrc) {
@@ -488,28 +481,20 @@ foreach ($wrapperName in $wrappers) {
         'millennium-theme'     = 'theme'
         'millennium-upgrade'   = 'upgrade'
     }
-    if ($hasExe -and $cmdMap.ContainsKey($wrapperName)) {
-        $sub = $cmdMap[$wrapperName]
-        if ([string]::IsNullOrEmpty($sub)) {
-            $cmdContent = @"
+    if (-not $hasExe) {
+        Log-Error "millennium.exe missing; cannot create wrapper $wrapperName.cmd"
+        exit 1
+    }
+    $sub = $cmdMap[$wrapperName]
+    if ([string]::IsNullOrEmpty($sub)) {
+        $cmdContent = @"
 @echo off
 "%~dp0millennium.exe" %*
 "@
-        } else {
-            $cmdContent = @"
-@echo off
-"%~dp0millennium.exe" $sub %*
-"@
-        }
     } else {
         $cmdContent = @"
 @echo off
-where pwsh >nul 2>nul
-if %ERRORLEVEL% equ 0 (
-  pwsh -NoProfile -ExecutionPolicy Bypass -File "%~dp0$wrapperName.ps1" %*
-) else (
-  powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0$wrapperName.ps1" %*
-)
+"%~dp0millennium.exe" $sub %*
 "@
     }
     Set-Content -Path $wrapperPath -Value $cmdContent -Encoding ASCII
@@ -585,7 +570,7 @@ Log-Info "${green}Millennium Helpers successfully installed!${reset}"
 # Launch configuration wizard if running interactively
 if ($isInteractive -and !$Uninstall -and $env:PSTESTS -ne "true") {
     Log-Info "Launching the Millennium Helpers Configuration Wizard..."
-    & (Join-Path -Path $binDir -ChildPath "millennium-schedule.ps1") setup
+    & (Join-Path -Path $binDir -ChildPath "millennium.exe") schedule setup
 }
 
 Write-Host ""

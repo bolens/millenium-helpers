@@ -48,17 +48,17 @@ Describe "Windows Installer" {
             Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium.exe") | Should -Be $true
             $installOut | Should -BeLike "*millennium.exe (Go dispatcher)*"
 
-            $expectedScripts = @(
-                "common.ps1",
-                "millennium-diag.ps1",
-                "millennium-purge.ps1",
-                "millennium-repair.ps1",
-                "millennium-schedule.ps1",
-                "millennium-theme.ps1",
-                "millennium-upgrade.ps1"
-            )
-            foreach ($script in $expectedScripts) {
-                Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath $script) | Should -Be $true
+            Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath "common.ps1") | Should -Be $true
+            foreach ($gone in @(
+                    "millennium-diag.ps1",
+                    "millennium-mcp.ps1",
+                    "millennium-purge.ps1",
+                    "millennium-repair.ps1",
+                    "millennium-schedule.ps1",
+                    "millennium-theme.ps1",
+                    "millennium-upgrade.ps1"
+                )) {
+                Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath $gone) | Should -Be $false
             }
 
             $expectedWrappers = @(
@@ -78,7 +78,6 @@ Describe "Windows Installer" {
             (Get-Content -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium-upgrade.cmd") -Raw) | Should -BeLike "*millennium.exe*upgrade*"
             (Get-Content -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium-mcp.cmd") -Raw) | Should -BeLike "*millennium.exe*mcp*"
 
-            Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium-mcp.ps1") | Should -Be $true
             Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium-mcp.py") | Should -Be $false
             Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium-helpers.completion.ps1") | Should -Be $true
 
