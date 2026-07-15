@@ -332,7 +332,8 @@ jobs:
               exit 1
             fi
             printf '%s  %s\n' "$sha" "$(basename "$file")" > "${file}.sha256"
-            sha256sum -c "${file}.sha256"
+            # Keep -c off stdout: this function's stdout is captured into GITHUB_ENV values.
+            sha256sum -c "${file}.sha256" >/dev/null
             printf '%s' "$sha"
           }
 
