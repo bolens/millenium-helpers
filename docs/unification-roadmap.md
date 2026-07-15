@@ -32,8 +32,10 @@ Parity on Linux, macOS, and Windows is enforced by Go unit tests and
 | Install-time Bash/PS libs removed (`common.sh` / `common.ps1` / `scripts/*/lib`) | Done |
 | PATH = `millennium` only (no new long-name twins) | Done |
 | Contract-driven façade sync (completions / man / MCP) | Done |
+| Flag-level façade sync (bash + PowerShell completion bodies) | Done |
 | Long-name sudoers + completion symlink cleanup | Done |
 | Install fixture tests in Go (`go test ./internal/install`) | Done |
+| User docs use `millennium <cmd>` (not long-name PATH twins) | Done |
 
 `make build` → `bin/millennium`. Release CD embeds per-OS/arch Go binaries and
 waits on a green required-CI gate (`go.yml` + `test-suite.yml` + other packaging
@@ -68,12 +70,10 @@ split.
 
 ## Remaining work
 
-Unification feature peel is complete. Optional follow-ups (not blocking):
+Unification feature peel is complete. Further optional polish (not blocking):
 
-1. Generate more façades from the contract (per-flag completion bodies, man
-   OPTIONS blocks, MCP `InputSchema` maps) beyond the marked lists synced by
-   `make sync-cli-facade`.
-2. Retire leftover long-name examples in older user docs where they still appear.
+1. Generate man OPTIONS blocks and MCP `InputSchema` maps from the contract
+   (completion lists + flag bodies already sync via `make sync-cli-facade`).
 
 ---
 
@@ -81,7 +81,7 @@ Unification feature peel is complete. Optional follow-ups (not blocking):
 
 1. Update [`spec/cli-contract.yaml`](../spec/cli-contract.yaml) first if flags/subcommands change
    (include `short:` for dispatcher commands used by zsh sync).
-2. Run `make sync-cli-facade` to refresh marked completion lists.
+2. Run `make sync-cli-facade` to refresh marked completion lists / flag bodies.
 3. Implement in Go under `go/`; keep `commandFromArgv0` working for leftover twins.
 4. Cover with `make test-go` and the Linux / Windows / macOS jobs in [`go.yml`](../.github/workflows/go.yml).
 5. Keep completions, man, and MCP schemas aligned (`make check-cli-contract`).

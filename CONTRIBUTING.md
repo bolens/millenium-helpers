@@ -107,7 +107,8 @@ Feature commands live in Go only. Do not reintroduce install-time `scripts/lib` 
 ## Adding or changing a command
 
 1. Update [`spec/cli-contract.yaml`](spec/cli-contract.yaml) first (flags, platforms, MCP properties; `short:` for dispatcher commands).
-2. Run `make sync-cli-facade` to refresh marked completion lists (dispatcher / subcommands / channels).
+2. Run `make sync-cli-facade` to refresh marked completion lists (dispatcher /
+   subcommands / channels / per-command flags in bash + PowerShell).
 3. Implement in Go under `go/` (`millennium <cmd>`; leftover argv0 twins via `commandFromArgv0`).
 4. Update dispatcher help/registration in `go/cmd/millennium` when adding commands.
 5. Keep `--help` / `-h` accurate and exit `0` on help.
@@ -174,7 +175,7 @@ Winget `bolens.millenniumhelpers.git`, Nix `#millennium-helpers-git`) are **not*
 | Concept | Values | Where |
 | --- | --- | --- |
 | **Helpers track** | `release` (default), `main`, `tag`, `checkout` | `install-meta.json`; `millennium install --track` / `--tag` (Unix: `install.sh` forwards the same flags) |
-| **Client channel** | `stable`, `beta`, `main` | `config.json` → `update_channel`; `millennium-upgrade --channel`; schedule enable |
+| **Client channel** | `stable`, `beta`, `main` | `config.json` → `update_channel`; `millennium upgrade --channel`; schedule enable |
 
 Doctor syncs helpers against the recorded track (pinned tags stay pinned). Legacy installs without meta are auto-migrated on first install/diag/doctor touch.
 

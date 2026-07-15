@@ -97,11 +97,12 @@ Tests: Go unit under `go/` · smokes in [`.github/workflows/go.yml`](../.github/
 
 ## Open gaps (non-contract)
 
-1. Marked completion lists sync from the contract (`make sync-cli-facade`); man
-   OPTIONS / MCP schemas / nested flag bodies are still mostly hand-maintained
-   (checked by `make check-cli-contract`).
-2. User-facing docs may still show long-name examples (`millennium-repair`) in places;
-   packaging/sudoers/completions use `millennium <cmd>` only.
+1. Dispatcher / subcommands / channels / bash+PS flag bodies sync from the contract
+   (`make sync-cli-facade`). Man OPTIONS blocks and MCP `InputSchema` maps are still
+   mostly hand-maintained (checked by `make check-cli-contract`).
+2. User guides and the project README use `millennium <cmd>`; man page *filenames*
+   and MCP host `command: millennium-mcp` stay as installed artifact names. Manual
+   cleanup docs still list legacy long-name PATH twins for older installs.
 
 ---
 

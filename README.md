@@ -135,7 +135,7 @@ Uninstall with `brew uninstall millennium-helpers` (see [Manual Uninstall](docs/
 **Daily auto-updater** — run as your normal user (no `sudo`):
 
 ```bash
-millennium-schedule enable [stable|beta|main]
+millennium schedule enable [stable|beta|main]
 ```
 
 **Arch packaging** — PKGBUILD recipes in [`packaging/millennium-helpers/`](packaging/millennium-helpers/) (from-source), [`packaging/millennium-helpers-bin/`](packaging/millennium-helpers-bin/) (release tarball), and [`packaging/millennium-helpers-git/`](packaging/millennium-helpers-git/) (tip of `main`). Each installs to `/usr/bin/`, completions, and sudoers for `%wheel`.
@@ -262,7 +262,7 @@ Prefer a JSON file over env vars:
 - **Linux:** `${XDG_CONFIG_HOME:-~/.config}/millennium-helpers/config.json`
 - **Windows:** `%LOCALAPPDATA%\millennium-helpers\config.json`
 
-Created by `millennium-schedule setup`:
+Created by `millennium schedule setup`:
 
 ```json
 {
@@ -280,7 +280,7 @@ Created by `millennium-schedule setup`:
 | `backup_limit` | number | Max upgrade backups to keep |
 | `backup_max_age_days` | number | Optional max age (days) for backups |
 
-Manage with `millennium-schedule config list|get|set`. File mode is set to `600` (owner read/write only).
+Manage with `millennium schedule config list|get|set`. File mode is set to `600` (owner read/write only).
 
 ### Shell completions
 
@@ -339,7 +339,7 @@ Helpers report version via `--version` / `-V` (from the repo `VERSION` file). A 
 
 **Millennium Helpers** is licensed under the [MIT License](LICENSE) (Copyright © 2026 bolens).
 
-These helpers install and manage **[Millennium](https://github.com/SteamClientHomebrew/Millennium)**, a separate project by Project Millennium / [SteamClientHomebrew](https://github.com/SteamClientHomebrew). Millennium is also MIT-licensed — see [their LICENSE.md](https://github.com/SteamClientHomebrew/Millennium/blob/main/LICENSE.md) (a local copy is in [`third_party/MILLENNIUM-LICENSE.md`](third_party/MILLENNIUM-LICENSE.md)). Installing or upgrading the Millennium client via these tools is subject to Millennium’s license terms; `millennium-upgrade` places a copy of that notice next to the installed client files.
+These helpers install and manage **[Millennium](https://github.com/SteamClientHomebrew/Millennium)**, a separate project by Project Millennium / [SteamClientHomebrew](https://github.com/SteamClientHomebrew). Millennium is also MIT-licensed — see [their LICENSE.md](https://github.com/SteamClientHomebrew/Millennium/blob/main/LICENSE.md) (a local copy is in [`third_party/MILLENNIUM-LICENSE.md`](third_party/MILLENNIUM-LICENSE.md)). Installing or upgrading the Millennium client via these tools is subject to Millennium’s license terms; `millennium upgrade` places a copy of that notice next to the installed client files.
 
 This project is not affiliated with or endorsed by SteamClientHomebrew, Project Millennium, or Valve Corporation. Steam® is a trademark of Valve Corporation.
 

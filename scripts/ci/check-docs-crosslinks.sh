@@ -215,8 +215,10 @@ need_contains "docs/licensing.md" "$UPSTREAM_LICENSE_URL" \
   "docs/licensing.md must link to upstream Millennium LICENSE.md"
 need_contains "docs/licensing.md" "README.md#license" \
   "docs/licensing.md must link to README § License"
+need_contains "docs/licensing.md" "millennium upgrade" \
+  "docs/licensing.md must mention millennium upgrade install behavior"
 need_contains "docs/licensing.md" "millennium-upgrade" \
-  "docs/licensing.md must mention millennium-upgrade install behavior"
+  "docs/licensing.md must mention millennium-upgrade man/binary name"
 need_contains "docs/licensing.md" "make check-docs" \
   "docs/licensing.md must document make check-docs"
 need_contains "docs/licensing.md" "third_party/README.md" \

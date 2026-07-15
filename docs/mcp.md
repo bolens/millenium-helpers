@@ -46,7 +46,7 @@ Doctor mode (`millennium_diag` with `doctor=true`) escalates and may rewrite hel
 To automatically register the `millennium-mcp` server with installed AI tools (Claude Desktop, Windsurf, and Cursor), run:
 
 ```bash
-millennium-mcp --register
+millennium mcp --register
 ```
 
 This detects the config folders for Claude Desktop, Windsurf, and Cursor (`~/.cursor/mcp.json`), updates or creates the JSON configuration files, and adds the `millennium-helpers` server automatically. It also prints a copy-paste JSON snippet for any other MCP host.
@@ -71,7 +71,7 @@ Add `millennium-helpers` to your Claude Desktop configuration file:
 ```
 
 #### Cursor
-`millennium-mcp --register` writes `~/.cursor/mcp.json` when `~/.cursor` exists. You can also add it manually:
+`millennium mcp --register` writes `~/.cursor/mcp.json` when `~/.cursor` exists. You can also add it manually:
 
 ```json
 {

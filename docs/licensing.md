@@ -25,11 +25,12 @@ the cross-links (see also the [docs index](README.md)).
 
 ## On install / upgrade
 
-`millennium-upgrade` (Linux and Windows) places a copy of Millennium’s MIT notice
-as `LICENSE` next to the installed client binaries. That satisfies MIT’s requirement
-to include the copyright and permission notice with redistributed copies. Release
-packages for Millennium itself do not always ship a license file inside the archive;
-helpers supply the vendored text (or fetch upstream, or use an embedded fallback).
+`millennium upgrade` (Linux and Windows; see also `millennium-upgrade(1)`) places a
+copy of Millennium’s MIT notice as `LICENSE` next to the installed client binaries.
+That satisfies MIT’s requirement to include the copyright and permission notice with
+redistributed copies. Release packages for Millennium itself do not always ship a
+license file inside the archive; helpers supply the vendored text (or fetch upstream,
+or use an embedded fallback).
 
 Implementation: Go `InstallLicense` in `go/internal/upgrade` (see that package for the
 client-side LICENSE placement). The vendored helpers copy

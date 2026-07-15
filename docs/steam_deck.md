@@ -14,9 +14,9 @@ dry-run: [uninstall_dryrun.md](uninstall_dryrun.md). Licensing:
 On Deck or any Flatpak Steam host:
 
 ```bash
-millennium-diag
+millennium diag
 # or structured output:
-millennium-diag --json
+millennium diag --json
 ```
 
 Look for:
@@ -28,9 +28,9 @@ Look for:
 Auto-repair common issues:
 
 ```bash
-sudo millennium-diag doctor
+sudo millennium diag doctor
 # or:
-sudo millennium-repair
+sudo millennium repair
 ```
 
 ---
@@ -46,7 +46,7 @@ Helpers probe several Steam roots. On Deck and Flatpak installs the important on
 | Flatpak Steam | `~/.var/app/com.valvesoftware.Steam/.local/share/Steam` |
 | Flatpak Millennium config | `~/.var/app/com.valvesoftware.Steam/config/millennium` (or `.config/millennium`) |
 
-If `millennium-diag` cannot find Steam, confirm which client you launch (native vs Flatpak) and that the matching directory exists.
+If `millennium diag` cannot find Steam, confirm which client you launch (native vs Flatpak) and that the matching directory exists.
 
 ---
 
@@ -61,7 +61,7 @@ Grant the override (user scope):
 flatpak override --user --filesystem=/usr/lib/millennium com.valvesoftware.Steam
 ```
 
-`millennium-diag doctor` applies this automatically when Flatpak Steam is detected
+`millennium diag doctor` applies this automatically when Flatpak Steam is detected
 and the override is missing. Verify:
 
 ```bash
@@ -84,19 +84,19 @@ After changing overrides, fully quit Steam and relaunch it.
    ```
 
    Prefer verifying a release checksum / using Nix, Homebrew (`Formula/millennium-helpers.rb`), or AUR when you can avoid curl-pipe.
-4. **Read-only root** — SteamOS uses an immutable root. Millennium itself installs under `/usr/lib/millennium`; if writes fail after an OS update, re-run `sudo millennium-upgrade` or `sudo millennium-repair`, then `millennium-diag`.
+4. **Read-only root** — SteamOS uses an immutable root. Millennium itself installs under `/usr/lib/millennium`; if writes fail after an OS update, re-run `sudo millennium upgrade` or `sudo millennium repair`, then `millennium diag`.
 5. **Updates** — Deck OS updates can reset or conflict with custom system files. After a SteamOS update, run:
 
    ```bash
-   millennium-diag
-   sudo millennium-diag doctor
+   millennium diag
+   sudo millennium diag doctor
    ```
 
 6. **Scheduler** — User systemd timers work in Desktop sessions; for background updates while logged out, enable lingering:
 
    ```bash
    loginctl enable-linger $USER
-   millennium-schedule status
+   millennium schedule status
    ```
 
 7. **Games running** — Upgrade, repair, and purge refuse to proceed while a Steam game is active. Exit the game (and preferably Steam) first.
@@ -110,7 +110,7 @@ in the **client** Steam directory (bootstrap under `ubuntu12_*`), not inside eac
 game library folder. Point diagnostics at the client install Steam uses to launch,
 not only the library on `/run/media/...`.
 
-If you have multiple Steam installs (native + Flatpak), run `millennium-diag` and
+If you have multiple Steam installs (native + Flatpak), run `millennium diag` and
 confirm hooks exist for the install you actually launch on Deck.
 
 ---
@@ -121,22 +121,22 @@ confirm hooks exist for the install you actually launch on Deck.
 1. Confirm binaries: `ls /usr/lib/millennium/version.txt`
 2. Confirm override (see above)
 3. Confirm hooks under the Flatpak Steam path point at `/usr/lib/millennium/...`
-4. Run `sudo millennium-repair` then relaunch Steam
+4. Run `sudo millennium repair` then relaunch Steam
 
 ### Blank / black Steam UI after upgrade
 Clear CEF cache via repair:
 
 ```bash
-sudo millennium-repair
+sudo millennium repair
 ```
 
 ### Rate limits during upgrade on Deck Wi‑Fi
-Set a GitHub token in config (`millennium-schedule setup` or `config set github_token ...`)
+Set a GitHub token in config (`millennium schedule setup` or `config set github_token ...`)
 or export `GITHUB_TOKEN` before upgrading.
 
 ### Purge / uninstall
 ```bash
-sudo millennium-purge --yes          # remove Millennium client hooks/files
+sudo millennium purge --yes          # remove Millennium client hooks/files
 sudo ./install.sh uninstall          # remove helpers only
 ```
 
@@ -148,10 +148,10 @@ Use `--dry-run` first if unsure.
 
 | Command | Purpose |
 | --- | --- |
-| `millennium-diag` | Health report / doctor / logs / share |
-| `millennium-repair` | Hooks, ownership, htmlcache, theme refresh |
-| `millennium-upgrade` | Install/update Millennium client |
-| `millennium-schedule` | Daily auto-update timer |
+| `millennium diag` | Health report / doctor / logs / share |
+| `millennium repair` | Hooks, ownership, htmlcache, theme refresh |
+| `millennium upgrade` | Install/update Millennium client |
+| `millennium schedule` | Daily auto-update timer |
 | `man millennium-diag` | Manual page (when man pages are installed) |
 
 ## Related
