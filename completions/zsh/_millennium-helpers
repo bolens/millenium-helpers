@@ -44,6 +44,8 @@ _millennium_helpers() {
     'repair:Repair hooks and ownership'
     'purge:Uninstall Millennium'
     'mcp:Run / register MCP server'
+    'install:Install helpers on this machine'
+    'uninstall:Remove helpers installed by millennium install'
     'help:Show help'
   )
   _arguments -C \
@@ -74,6 +76,9 @@ _millennium_helpers() {
             '--main[Alias for --channel main]' \
             {-r,--rollback}'[Roll back to a previous backup]:backup:_millennium_backup_ids' \
             '--file[Install from a local archive]:file:_files' \
+            '--sha256[Expected SHA-256 of --file archive]' \
+            '--insecure-skip-verify[Skip archive checksum verification]' \
+            '--all-users[Unix: apply install for all users]' \
             {-f,--force}'[Force reinstall]' \
             {-y,--yes}'[Skip confirmation when closing Steam]' \
             {-d,--dry-run}'[Simulation mode]' \
@@ -124,6 +129,22 @@ _millennium_helpers() {
         (mcp)
           _arguments \
             {-r,--register}'[Register MCP server with AI clients]' \
+            {-V,--version}'[Show version information]' \
+            {-h,--help}'[Show help message]'
+          ;;
+        (install|uninstall)
+          _arguments \
+            '--track[Helpers install track]:track:(release main tag checkout)' \
+            '--tag[Install a specific release tag]' \
+            '--allow-unsigned-main[Allow tip-of-main unsigned archive]' \
+            '--prefix[Binary install directory prefix]' \
+            '--target-dir[Binary install directory]' \
+            '--lib-dir[Unix lib directory]' \
+            '--source-root[Checkout or extracted archive root]' \
+            '--skip-wizard[Do not launch schedule setup]' \
+            {-p,--purge}'[Also purge Millennium client (uninstall)]' \
+            {-d,--dry-run}'[Simulation mode]' \
+            {-f,--force}'[Force reinstall]' \
             {-V,--version}'[Show version information]' \
             {-h,--help}'[Show help message]'
           ;;

@@ -91,7 +91,7 @@ assert_token_in_shells() {
   assert_contains "$nu_text" "$token" "nushell completions include ${label}"
 }
 
-for cmd in diag doctor upgrade schedule theme repair purge mcp help; do
+for cmd in diag doctor upgrade schedule theme repair purge mcp install uninstall help; do
   assert_token_in_shells "$cmd" "$cmd" "dispatcher cmd '${cmd}'"
 done
 

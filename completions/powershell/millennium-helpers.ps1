@@ -5,7 +5,7 @@
 Set-StrictMode -Version Latest
 
 function Global:Get-MillenniumDispatcherCommands {
-    @('diag', 'doctor', 'upgrade', 'schedule', 'theme', 'repair', 'purge', 'mcp', 'help')
+    @('diag', 'doctor', 'upgrade', 'schedule', 'theme', 'repair', 'purge', 'mcp', 'install', 'uninstall', 'help')
 }
 
 function Global:Get-MillenniumScheduleActions {
@@ -91,7 +91,7 @@ function Global:Complete-MillenniumNative {
                 }
             }
             'upgrade' {
-                $candidates = @('--channel', '-c', '--stable', '--beta', '--main', '--rollback', '-r', '--file', '--force', '-f', '--yes', '-y', '--dry-run', '-d', '--quiet', '-q', '--version', '-V', '--help', '-h')
+                $candidates = @('--channel', '-c', '--stable', '--beta', '--main', '--rollback', '-r', '--file', '--sha256', '--insecure-skip-verify', '--all-users', '--force', '-f', '--yes', '-y', '--dry-run', '-d', '--quiet', '-q', '--version', '-V', '--help', '-h')
                 if ($args.Count -ge 2 -and $args[-1] -in @('--channel', '-c')) {
                     $candidates = Get-MillenniumScheduleChannels
                 }
@@ -122,6 +122,12 @@ function Global:Complete-MillenniumNative {
             }
             'mcp' {
                 $candidates = @('--register', '-r', '--version', '-V', '--help', '-h')
+            }
+            'install' {
+                $candidates = @('--track', '--tag', '--allow-unsigned-main', '--prefix', '--target-dir', '--lib-dir', '--source-root', '--skip-wizard', '--dry-run', '-d', '--force', '-f', '--version', '-V', '--help', '-h')
+            }
+            'uninstall' {
+                $candidates = @('--purge', '-p', '--prefix', '--target-dir', '--lib-dir', '--dry-run', '-d', '--version', '-V', '--help', '-h')
             }
         }
     }

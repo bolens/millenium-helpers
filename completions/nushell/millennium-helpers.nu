@@ -1,7 +1,7 @@
 # Millennium dispatcher Nushell completions (millennium <command> …)
 
 def _millennium_dispatcher_commands [] {
-  [ "diag", "doctor", "upgrade", "schedule", "theme", "repair", "purge", "mcp", "help" ]
+  [ "diag", "doctor", "upgrade", "schedule", "theme", "repair", "purge", "mcp", "install", "uninstall", "help" ]
 }
 
 def _millennium_schedule_actions [] {
@@ -45,6 +45,9 @@ export extern "millennium upgrade" [
   --main         # Alias for --channel main
   --rollback(-r): string # Rollback to a specific version or list backups
   --file: string # Install from a local archive
+  --sha256: string # Expected SHA-256 of --file archive
+  --insecure-skip-verify # Skip archive checksum verification
+  --all-users    # Unix: apply install for all users
   --force(-f)    # Force reinstall
   --yes(-y)      # Skip confirmation when closing Steam
   --dry-run(-d)  # Simulation mode
@@ -99,4 +102,29 @@ export extern "millennium mcp" [
   --register(-r) # Register MCP server with Claude Desktop, Windsurf, and Cursor
   --version(-V)  # Show version information
   --help(-h)     # Show help message
+]
+
+export extern "millennium install" [
+  --track: string # Helpers install track (release, main, tag, checkout)
+  --tag: string   # Install a specific release tag
+  --allow-unsigned-main # Allow tip-of-main unsigned archive
+  --prefix: string
+  --target-dir: string
+  --lib-dir: string
+  --source-root: string
+  --skip-wizard  # Do not launch schedule setup
+  --dry-run(-d)
+  --force(-f)
+  --version(-V)
+  --help(-h)
+]
+
+export extern "millennium uninstall" [
+  --purge(-p)    # Also purge Millennium client
+  --prefix: string
+  --target-dir: string
+  --lib-dir: string
+  --dry-run(-d)
+  --version(-V)
+  --help(-h)
 ]
