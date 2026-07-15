@@ -97,9 +97,9 @@ Tests: Go unit under `go/` · smokes in [`.github/workflows/go.yml`](../.github/
 
 ## Open gaps (non-contract)
 
-1. Dispatcher / subcommands / channels / bash+PS flag bodies sync from the contract
-   (`make sync-cli-facade`). Man OPTIONS blocks and MCP `InputSchema` maps are still
-   mostly hand-maintained (checked by `make check-cli-contract`).
+1. Completions, man OPTIONS, and MCP `InputSchema` sync from the contract
+   (`make sync-cli-facade`); `make check-cli-contract` asserts presence / enums.
+   NAME/DESCRIPTION/EXAMPLES prose and MCP dispatch allowlists stay hand-written.
 2. User guides and the project README use `millennium <cmd>`; man page *filenames*
    and MCP host `command: millennium-mcp` stay as installed artifact names. Manual
    cleanup docs still list legacy long-name PATH twins for older installs.

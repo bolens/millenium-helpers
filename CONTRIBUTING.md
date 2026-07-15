@@ -107,8 +107,8 @@ Feature commands live in Go only. Do not reintroduce install-time `scripts/lib` 
 ## Adding or changing a command
 
 1. Update [`spec/cli-contract.yaml`](spec/cli-contract.yaml) first (flags, platforms, MCP properties; `short:` for dispatcher commands).
-2. Run `make sync-cli-facade` to refresh marked completion lists (dispatcher /
-   subcommands / channels / per-command flags in bash + PowerShell).
+2. Run `make sync-cli-facade` to refresh marked façades (dispatcher /
+   subcommands / channels / bash+PS flags / man OPTIONS / MCP `InputSchema`).
 3. Implement in Go under `go/` (`millennium <cmd>`; leftover argv0 twins via `commandFromArgv0`).
 4. Update dispatcher help/registration in `go/cmd/millennium` when adding commands.
 5. Keep `--help` / `-h` accurate and exit `0` on help.

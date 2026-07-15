@@ -33,6 +33,7 @@ Parity on Linux, macOS, and Windows is enforced by Go unit tests and
 | PATH = `millennium` only (no new long-name twins) | Done |
 | Contract-driven façade sync (completions / man / MCP) | Done |
 | Flag-level façade sync (bash + PowerShell completion bodies) | Done |
+| Man OPTIONS + MCP InputSchema sync from contract | Done |
 | Long-name sudoers + completion symlink cleanup | Done |
 | Install fixture tests in Go (`go test ./internal/install`) | Done |
 | User docs use `millennium <cmd>` (not long-name PATH twins) | Done |
@@ -70,18 +71,17 @@ split.
 
 ## Remaining work
 
-Unification feature peel is complete. Further optional polish (not blocking):
-
-1. Generate man OPTIONS blocks and MCP `InputSchema` maps from the contract
-   (completion lists + flag bodies already sync via `make sync-cli-facade`).
+Unification feature peel is complete. Contract-driven façades cover completions
+(including flags), man OPTIONS, and MCP `InputSchema` via `make sync-cli-facade`.
 
 ---
 
 ## When changing a command
 
 1. Update [`spec/cli-contract.yaml`](../spec/cli-contract.yaml) first if flags/subcommands change
-   (include `short:` for dispatcher commands used by zsh sync).
-2. Run `make sync-cli-facade` to refresh marked completion lists / flag bodies.
+   (include `short:` for dispatcher commands used by zsh sync; `man:` / `mcp_schema`
+   when OPTIONS or MCP properties change).
+2. Run `make sync-cli-facade` to refresh marked completions, man OPTIONS, and MCP tools.
 3. Implement in Go under `go/`; keep `commandFromArgv0` working for leftover twins.
 4. Cover with `make test-go` and the Linux / Windows / macOS jobs in [`go.yml`](../.github/workflows/go.yml).
 5. Keep completions, man, and MCP schemas aligned (`make check-cli-contract`).
