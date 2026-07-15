@@ -1,6 +1,6 @@
 # Makefile for Millennium Helpers local development automation
 
-.PHONY: setup test test-windows test-go build lint lint-go format check-all check-version check-man check-docs check-licensing check-winget check-packaging check-completions check-cli-contract sync-git-srcinfo sync-stable-srcinfo sync-bin-srcinfo bump-version test-debian test-ubuntu test-fedora test-all-distros
+.PHONY: setup test test-windows test-go build lint lint-go format check-all check-version check-man check-docs check-licensing check-winget check-packaging check-completions check-cli-contract sync-cli-facade sync-git-srcinfo sync-stable-srcinfo sync-bin-srcinfo bump-version test-debian test-ubuntu test-fedora test-all-distros
 
 GO ?= go
 CGO_ENABLED ?= 0
@@ -84,6 +84,11 @@ check-completions:
 
 check-cli-contract:
 	python3 scripts/ci/check-cli-contract.py
+	python3 scripts/ci/sync-cli-facade.py --check
+
+# Rewrite marked completion regions from spec/cli-contract.yaml.
+sync-cli-facade:
+	python3 scripts/ci/sync-cli-facade.py
 
 # Regenerate packaging/millennium-helpers-git/.SRCINFO when the -git recipe changes.
 # Does not bump pkgver every commit (AUR VCS policy). See CONTRIBUTING.md § Versioning.
@@ -115,7 +120,7 @@ lint-go:
 
 lint:
 	shellcheck *.sh scripts/*.sh scripts/ci/*.sh tests/*.sh tests/lib/*.sh tests/unit/*.sh tests/behavioral/*.sh
-	ruff check scripts/ci/check-cli-contract.py
+	ruff check scripts/ci/check-cli-contract.py scripts/ci/sync-cli-facade.py
 	@test -s VERSION || (echo "VERSION file missing or empty" >&2; exit 1)
 	@$(MAKE) check-version
 	@$(MAKE) check-man
@@ -125,7 +130,7 @@ lint:
 	@$(MAKE) lint-go
 
 format:
-	ruff format scripts/ci/check-cli-contract.py
+	ruff format scripts/ci/check-cli-contract.py scripts/ci/sync-cli-facade.py
 
 # Feature / CLI / install fixtures: test-go (+ CI go.yml on Linux/Windows/macOS).
 # test = bootstrap / packaging / shell completion suites (test-suite.yml).

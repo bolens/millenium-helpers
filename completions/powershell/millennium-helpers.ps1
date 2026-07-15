@@ -5,15 +5,21 @@
 Set-StrictMode -Version Latest
 
 function Global:Get-MillenniumDispatcherCommands {
+# @@cli-contract:dispatcher.commands@@
     @('diag', 'doctor', 'upgrade', 'schedule', 'theme', 'repair', 'purge', 'mcp', 'install', 'uninstall', 'help')
+# @@/cli-contract:dispatcher.commands@@
 }
 
 function Global:Get-MillenniumScheduleActions {
+# @@cli-contract:commands.schedule.subcommands@@
     @('enable', 'disable', 'status', 'setup', 'config')
+# @@/cli-contract:commands.schedule.subcommands@@
 }
 
 function Global:Get-MillenniumScheduleChannels {
+# @@cli-contract:channels@@
     @('stable', 'beta', 'main')
+# @@/cli-contract:channels@@
 }
 
 function Global:Get-MillenniumConfigActions {
@@ -21,11 +27,15 @@ function Global:Get-MillenniumConfigActions {
 }
 
 function Global:Get-MillenniumDiagActions {
+# @@cli-contract:commands.diag.subcommands@@
     @('doctor', 'logs', '--fix')
+# @@/cli-contract:commands.diag.subcommands@@
 }
 
 function Global:Get-MillenniumThemeActions {
-    @('list', 'install', 'remove', 'update')
+# @@cli-contract:commands.theme.subcommands@@
+    @('list', 'install', 'update', 'remove')
+# @@/cli-contract:commands.theme.subcommands@@
 }
 
 function script:Filter-Completions {

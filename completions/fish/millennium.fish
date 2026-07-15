@@ -1,5 +1,7 @@
 # Dispatcher: millennium <command> [args...]
+# @@cli-contract:dispatcher.commands@@
 set -l __mh_cmds diag doctor upgrade schedule theme repair purge mcp install uninstall help
+# @@/cli-contract:dispatcher.commands@@
 
 complete -c millennium -f -n "not __fish_seen_subcommand_from $__mh_cmds" -a 'diag' -d 'Run diagnostics'
 complete -c millennium -f -n "not __fish_seen_subcommand_from $__mh_cmds" -a 'doctor' -d 'Alias for diag doctor'
@@ -14,8 +16,10 @@ complete -c millennium -f -n "not __fish_seen_subcommand_from $__mh_cmds" -a 'un
 complete -c millennium -f -n "not __fish_seen_subcommand_from $__mh_cmds" -a 'help' -d 'Show help'
 
 # diag
+# @@cli-contract:commands.diag.subcommands@@
 complete -c millennium -f -n '__fish_seen_subcommand_from diag' -a 'doctor' -d 'Repair partial or broken installations'
 complete -c millennium -f -n '__fish_seen_subcommand_from diag' -a 'logs' -d 'Show recent Millennium / Steam logs'
+# @@/cli-contract:commands.diag.subcommands@@
 complete -c millennium -f -n '__fish_seen_subcommand_from diag' -l json -d 'JSON output'
 complete -c millennium -f -n '__fish_seen_subcommand_from diag' -s f -l fix -d 'Alias for doctor'
 complete -c millennium -f -n '__fish_seen_subcommand_from diag' -l force -d 'Force all doctor repairs'
@@ -42,7 +46,9 @@ complete -c millennium -f -n '__fish_seen_subcommand_from upgrade' -s d -l dry-r
 complete -c millennium -f -n '__fish_seen_subcommand_from upgrade' -s q -l quiet -d 'Suppress informational output'
 
 # schedule
+# @@cli-contract:commands.schedule.subcommands@@
 complete -c millennium -f -n '__fish_seen_subcommand_from schedule' -a 'enable disable status setup config' -d 'Schedule command'
+# @@/cli-contract:commands.schedule.subcommands@@
 complete -c millennium -f -n '__fish_seen_subcommand_from schedule; and __fish_seen_subcommand_from enable' -a 'stable beta main' -d 'Client update channel'
 complete -c millennium -f -n '__fish_seen_subcommand_from schedule' -s c -l cron -d 'Force use of crontab instead of systemd'
 complete -c millennium -f -n '__fish_seen_subcommand_from schedule' -l system -d 'Linux: force systemd system units'
@@ -51,7 +57,9 @@ complete -c millennium -f -n '__fish_seen_subcommand_from schedule' -s d -l dry-
 complete -c millennium -f -n '__fish_seen_subcommand_from schedule' -s q -l quiet -d 'Suppress informational output'
 
 # theme
+# @@cli-contract:commands.theme.subcommands@@
 complete -c millennium -f -n '__fish_seen_subcommand_from theme' -a 'list install update remove' -d 'Theme command'
+# @@/cli-contract:commands.theme.subcommands@@
 complete -c millennium -f -n '__fish_seen_subcommand_from theme' -l json -d 'JSON list output'
 complete -c millennium -f -n '__fish_seen_subcommand_from theme' -s y -l yes -d 'Skip remove confirmation'
 complete -c millennium -f -n '__fish_seen_subcommand_from theme' -s d -l dry-run -d 'Simulation mode'

@@ -75,7 +75,9 @@ _millennium_schedule_comp() {
   COMPREPLY=()
   local cur="${COMP_WORDS[COMP_CWORD]}"
   local prev="${COMP_WORDS[COMP_CWORD-1]}"
+  # @@cli-contract:commands.schedule.subcommands@@
   local subcmds="enable disable status setup config"
+  # @@/cli-contract:commands.schedule.subcommands@@
 
   case "${prev}" in
     enable)
@@ -116,7 +118,9 @@ _millennium_theme_comp() {
   COMPREPLY=()
   local cur="${COMP_WORDS[COMP_CWORD]}"
   local prev="${COMP_WORDS[COMP_CWORD-1]}"
-  local subcmds="list install remove update"
+  # @@cli-contract:commands.theme.subcommands@@
+  local subcmds="list install update remove"
+  # @@/cli-contract:commands.theme.subcommands@@
 
   case "${prev}" in
     update)
@@ -161,7 +165,9 @@ _millennium_dispatcher_comp() {
   COMPREPLY=()
   local cur="${COMP_WORDS[COMP_CWORD]}"
   if [[ ${COMP_CWORD} -eq 1 ]]; then
+    # @@cli-contract:dispatcher.commands@@
     COMPREPLY=( $(compgen -W "diag doctor upgrade schedule theme repair purge mcp install uninstall help" -- "${cur}") )
+    # @@/cli-contract:dispatcher.commands@@
     return 0
   fi
   local sub="${COMP_WORDS[1]}"

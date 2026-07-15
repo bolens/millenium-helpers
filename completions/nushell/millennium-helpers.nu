@@ -1,23 +1,33 @@
 # Millennium dispatcher Nushell completions (millennium <command> …)
 
 def _millennium_dispatcher_commands [] {
+# @@cli-contract:dispatcher.commands@@
   [ "diag", "doctor", "upgrade", "schedule", "theme", "repair", "purge", "mcp", "install", "uninstall", "help" ]
+# @@/cli-contract:dispatcher.commands@@
 }
 
 def _millennium_schedule_actions [] {
+# @@cli-contract:commands.schedule.subcommands@@
   [ "enable", "disable", "status", "setup", "config" ]
+# @@/cli-contract:commands.schedule.subcommands@@
 }
 
 def _millennium_schedule_channels [] {
+# @@cli-contract:channels@@
   [ "stable", "beta", "main", "get", "set", "list" ]
+# @@/cli-contract:channels@@
 }
 
 def _millennium_diag_actions [] {
-  [ "doctor", "logs", "--fix" ]
+# @@cli-contract:commands.diag.subcommands@@
+  [ "doctor", "logs" ]
+# @@/cli-contract:commands.diag.subcommands@@
 }
 
 def _millennium_theme_actions [] {
-  [ "list", "install", "remove", "update" ]
+# @@cli-contract:commands.theme.subcommands@@
+  [ "list", "install", "update", "remove" ]
+# @@/cli-contract:commands.theme.subcommands@@
 }
 
 export extern "millennium" [

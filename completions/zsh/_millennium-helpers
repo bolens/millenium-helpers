@@ -35,6 +35,7 @@ _millennium_helpers() {
   typeset -A opt_args
 
   local -a cmds
+  # @@cli-contract:dispatcher.commands@@
   cmds=(
     'diag:Run diagnostics'
     'doctor:Alias for diag doctor'
@@ -48,6 +49,7 @@ _millennium_helpers() {
     'uninstall:Remove helpers installed by millennium install'
     'help:Show help'
   )
+  # @@/cli-contract:dispatcher.commands@@
   _arguments -C \
     '1:command:((${cmds}))' \
     '*::arg:->args'
