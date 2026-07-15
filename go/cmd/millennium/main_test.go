@@ -458,8 +458,20 @@ func TestInstallUninstallCLIDryRun(t *testing.T) {
 
 func TestPurgeRefuseWithoutYes(t *testing.T) {
 	exe := buildMillennium(t)
+	home := t.TempDir()
+	steam := filepath.Join(home, "Steam")
+	if err := os.MkdirAll(steam, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	cmd := exec.Command(exe, "purge")
 	cmd.Stdin = strings.NewReader("")
+	cmd.Env = withEnv(os.Environ(), map[string]string{
+		"HOME":         home,
+		"USERPROFILE":  home,
+		"LOCALAPPDATA": filepath.Join(home, "LocalAppData"),
+		"APPDATA":      filepath.Join(home, "AppData"),
+		"STEAM":        steam,
+	})
 	out, err := cmd.CombinedOutput()
 	if err == nil {
 		t.Fatalf("expected non-zero exit, got:\n%s", out)

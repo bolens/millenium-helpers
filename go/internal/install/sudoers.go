@@ -1,10 +1,14 @@
 package install
 
-import "path/filepath"
+import (
+	"path"
+	"path/filepath"
+)
 
 // SudoersLine builds the NOPASSWD line for privileged millennium verbs.
+// Paths use forward slashes (sudoers is Linux-only even when unit-tested on Windows).
 func SudoersLine(userName, targetDir string) string {
-	m := filepath.Join(targetDir, "millennium")
+	m := path.Join(filepath.ToSlash(targetDir), "millennium")
 	return userName + " ALL=(ALL) NOPASSWD: " +
 		m + " upgrade, " + m + " upgrade *, " +
 		m + " diag, " + m + " diag *, " +

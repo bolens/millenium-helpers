@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -17,9 +18,13 @@ func TestExtractTarGzAndFindRoot(t *testing.T) {
 	}
 	gz := gzip.NewWriter(f)
 	tw := tar.NewWriter(gz)
+	binName := "millennium"
+	if runtime.GOOS == "windows" {
+		binName = "millennium.exe"
+	}
 	files := map[string]string{
 		"millenium-helpers-2.7.0/VERSION":        "2.7.0\n",
-		"millenium-helpers-2.7.0/bin/millennium": "#!/bin/sh\n",
+		"millenium-helpers-2.7.0/bin/" + binName: "stub\n",
 	}
 	for name, body := range files {
 		hdr := &tar.Header{Name: name, Mode: 0o644, Size: int64(len(body))}

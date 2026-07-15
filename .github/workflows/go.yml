@@ -324,9 +324,10 @@ jobs:
           export APPDATA="$home/AppData"
           mkdir -p "$LOCALAPPDATA" "$APPDATA"
 
-          # --share offline via local paste stub
+          # --share offline via local paste stub (file + bg; heredoc+& races on macOS).
           port_file="$home/paste.port"
-          python3 - "$port_file" <<'PY' &
+          stub="$home/paste_stub.py"
+          cat >"$stub" <<'PY'
           import http.server, pathlib, sys
           port_file = sys.argv[1]
           class H(http.server.BaseHTTPRequestHandler):
@@ -342,16 +343,23 @@ jobs:
           pathlib.Path(port_file).write_text(str(srv.server_address[1]))
           srv.handle_request()
           PY
-          for _ in $(seq 1 50); do
+          python3 "$stub" "$port_file" &
+          paste_pid=$!
+          for _ in $(seq 1 100); do
             [[ -s "$port_file" ]] && break
             sleep 0.05
           done
+          if [[ ! -s "$port_file" ]]; then
+            echo "paste stub failed to bind; python3=$(command -v python3 || true)" >&2
+            wait "$paste_pid" || true
+            exit 1
+          fi
           port="$(cat "$port_file")"
           export MILLENNIUM_PASTE_URL="http://127.0.0.1:${port}"
           share_out="$(bin/millennium diag --share)"
           echo "$share_out" | grep -F 'Diagnostic report successfully shared'
           echo "$share_out" | grep -F 'https://paste.rs/endgame-c-smoke'
-          wait || true
+          wait "$paste_pid" || true
 
           # doctor live — healthy-only under test bypass (no Steam/upgrade side effects)
           doctor_live="$(DIAG_TEST_BYPASS_CHECKS=1 bin/millennium diag doctor --yes)"
