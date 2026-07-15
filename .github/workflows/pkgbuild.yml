@@ -122,6 +122,9 @@ jobs:
             python3 "${WORK}/scripts/ci/rewrite-git-pkgbuild-for-ci.py" \
               "$PKGBUILD_PATH" "$SUDOERS_SUM"
             mkdir -p "${PKG_DIR}/src/millennium-helpers"
+            # --noextract skips copying sources into $srcdir; seed both trees.
+            cp "${PKG_DIR}/millennium-helpers.sudoers" \
+              "${PKG_DIR}/src/millennium-helpers.sudoers"
             # PKG_DIR lives under WORK; exclude self to avoid recursive cp.
             tar -C "$WORK" \
               --exclude='./packaging/millennium-helpers-git/src' \
