@@ -48,9 +48,8 @@
 "area: mcp":
   - changed-files:
       - any-glob-to-any-file:
-          - "scripts/windows/millennium-mcp.ps1"
-          - "tests/behavioral/test_mcp.sh"
           - "go/internal/mcp/**"
+          - "docs/mcp.md"
 
 "area: docs":
   - changed-files:
