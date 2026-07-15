@@ -12,7 +12,7 @@ Project: [README](../README.md). Index: [README.md](README.md).
 | Surface | Path | Language |
 | --- | --- | --- |
 | PATH CLI | `bin/millennium` (`go/cmd/millennium`) | Go |
-| Long-name helpers | [`scripts/millennium-*.sh`](../scripts/), [`scripts/windows/*.ps1`](../scripts/windows/) | Checkout fallbacks; installed PATH names are Go argv0 twins |
+| Long-name helpers | PATH argv0 twins of `bin/millennium` | Go (`commandFromArgv0`) |
 | Shared libs | [`scripts/lib/`](../scripts/lib/), [`scripts/windows/lib/`](../scripts/windows/lib/) | Bash / PowerShell (install-only); Steam, CLI logging, zip extract, GitHub API in Go |
 | Steam | `go/internal/steam` | Go (Unix + Windows) |
 | CLI logging | `go/internal/logging` | Go |
@@ -51,7 +51,7 @@ MCP stdio, man pages, and completions wiring. CLI surface is gated by
 
 ### Façade-only
 
-- Dual help / completions / man / MCP schema maintained by hand (thin long-name wrappers remain)
+- Dual help / completions / man / MCP schema maintained by hand
 - MCP argv mapping onto platform CLIs
 
 ---
@@ -66,29 +66,30 @@ Not unpaid feature debt — kept in [`spec/cli-contract.yaml`](../spec/cli-contr
 | `schedule --system` / `--user` | linux | Force systemd scope; default auto prefers system |
 | `upgrade --all-users` | linux, darwin | Multi-UID Steam tree hooks |
 | MCP `cron` | linux (documented) | Same as schedule `--cron` |
-| Flag casing | windows | Pascal aliases on PowerShell thin-wraps |
+| Flag casing | windows | Documented Pascal aliases in contract / completions |
 
 ---
 
 ## Parity matrix
 
 Legend: **Y** = present · **P** = partial · **—** = N/A (contract OS-only) ·
-Tests: Bash behavioral/unit under `tests/` · Pester under `tests/windows/`.
+Tests: Go unit under `go/` · smokes in [`.github/workflows/go.yml`](../.github/workflows/go.yml)
+(Linux / Windows / macOS). Install suites remain under `tests/` + `test-suite.yml`.
 
-| Capability | Linux | Windows | Go | Bash tests | Pester | Notes |
-| --- | --- | --- | --- | --- | --- | --- |
-| Dispatcher `millennium <cmd>` + suggestions | Y | Y | Native | `main_test` + `go.yml` | `go.yml` | Shell/PS PATH dispatchers removed |
-| `version` / `-V` / root help | Y | Y | Native | Go + `go.yml` | Go + `go.yml` | |
-| `diag` report / `--json` / `--share` / logs / `--follow` / doctor | Y | Y | Native | thin-wrap help | thin-wrap help | Dual-OS smokes in `go.yml`; live doctor under `DIAG_TEST_BYPASS_CHECKS` |
-| `upgrade` download/verify/install/rollback | Y | Y | Native (+ Linux sudo handoff) | thin-wrap help | thin-wrap help | Dual-OS smokes in `go.yml` |
-| `upgrade --all-users` | Y | — | Linux/macOS only | P | — | Contract-marked |
-| `repair` | Y | Y | Native | thin-wrap help | thin-wrap help | Dual-OS smokes in `go.yml` |
-| `purge` | Y | Y | Native | unique refuse/`--yes` seams | unique seams | Dry-run smoked in `go.yml` |
-| `schedule` (all commands) | Y | Y* | Native | unique cron/wizard/Steam seams | thin-wrap help | *hooks Unix-only |
-| `schedule --cron` | Y | — | Linux/macOS only | Y | — | Contract OS-only |
-| `theme` list/install/update/remove | Y | Y | Native | canaries; zip-slip in Go `archive` | thin-wrap help | Dual-OS smokes in `go.yml` |
-| `mcp` tools surface | Y | Y | Native | `test_mcp` | Go wrap | Dual-OS `initialize` smoke |
-| Install / uninstall helpers | Y | Y | Requires Go PATH binary | `test_install` | `install` | Uninstall clears both systemd scopes |
+| Capability | Linux | Windows | Go | Go tests / go.yml | Notes |
+| --- | --- | --- | --- | --- | --- |
+| Dispatcher `millennium <cmd>` + suggestions | Y | Y | Native | `main_test` + `go.yml` | Shell/PS PATH dispatchers removed |
+| `version` / `-V` / root help | Y | Y | Native | Go + `go.yml` | |
+| `diag` report / `--json` / `--share` / logs / `--follow` / doctor | Y | Y | Native | Go + dual-OS smokes | Live doctor under `DIAG_TEST_BYPASS_CHECKS` |
+| `upgrade` download/verify/install/rollback | Y | Y | Native (+ Linux sudo handoff) | Go + dual-OS smokes | `--file` without checksum fails closed |
+| `upgrade --all-users` | Y | — | Linux/macOS only | P | Contract-marked |
+| `repair` | Y | Y | Native | Go + dual-OS smokes | |
+| `purge` | Y | Y | Native | refuse/`--yes` unit + smokes | Dry-run smoked in `go.yml` |
+| `schedule` (all commands) | Y | Y* | Native | cron/wizard/Steam seams in Go + `go.yml` | *hooks Unix-only |
+| `schedule --cron` | Y | — | Linux/macOS only | Y (Unix smoke) | Contract OS-only |
+| `theme` list/install/update/remove | Y | Y | Native | Go `theme`/`archive` + smokes | Zip-slip in Go `archive` |
+| `mcp` tools surface | Y | Y | Native | Go MCP package + tools smokes | |
+| Install / uninstall helpers | Y | Y | Requires Go PATH binary | `test_install` / Pester install | Uninstall clears both systemd scopes |
 
 ---
 

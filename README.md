@@ -238,9 +238,9 @@ Installed PATH commands are the Go binary (or Windows `.cmd` twins). Prefer
 | `millennium mcp` | MCP server for AI assistants ([docs/mcp.md](docs/mcp.md)) |
 | [`install.sh`](install.sh) / [`install.ps1`](scripts/windows/install.ps1) | Installers — Go binary, twins, completions, sudoers |
 
-Checkout Bash/PowerShell scripts under [`scripts/`](scripts/) and
-[`scripts/windows/`](scripts/windows/) remain as development fallbacks; installed
-PATH entries use the Go twins. Ownership / parity notes:
+Feature commands ship as the Go binary and PATH argv0 twins only (no Bash/PS
+feature-script fallbacks). Install-time libs remain under [`scripts/`](scripts/)
+and [`scripts/windows/`](scripts/windows/). Ownership / parity notes:
 [docs/unification-audit.md](docs/unification-audit.md).
 
 ---
@@ -326,8 +326,8 @@ Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) (including **[d
 
 ```bash
 make setup         # install shellcheck + ruff
-make check-all     # lint + full Bash test suite (lint includes check-version + cli-contract)
-make test-windows  # Pester (requires PowerShell 7+ / pwsh)
+make check-all     # lint + test-go + install-time Bash suite (feature parity is test-go / go.yml)
+make test-windows  # Pester install/libs/completions (requires PowerShell 7+ / pwsh)
 make build         # Go CLI → bin/millennium (requires Go)
 make test-go       # Go unit + dispatcher smokes
 # make bump-version VERSION=X.Y.Z   # pre-tag packaging version bump
@@ -335,7 +335,7 @@ make test-go       # Go unit + dispatcher smokes
 # make test-all-distros            # optional; requires Docker
 ```
 
-Helpers report version via `--version` / `-V` (from the repo `VERSION` file). A Dev Container (includes `pwsh` + Docker-in-Docker) and a Nix `devShell` (lint tools only) are available for a reproducible environment. Go owns the installed CLI; install-time Bash/PS and remaining trim notes: [docs/unification-roadmap.md](docs/unification-roadmap.md).
+Helpers report version via `--version` / `-V` (from the repo `VERSION` file). A Dev Container (includes `pwsh` + Docker-in-Docker) and a Nix `devShell` (lint tools only) are available for a reproducible environment. Go owns the installed CLI; feature CI is [`go.yml`](.github/workflows/go.yml) (Linux / Windows / macOS). Install-time Bash/PS notes: [docs/unification-roadmap.md](docs/unification-roadmap.md).
 
 ---
 

@@ -8,7 +8,7 @@ Thanks for contributing. This repo provides cross-platform CLI helpers for [Mill
 git clone https://github.com/bolens/millenium-helpers.git
 cd millenium-helpers
 make setup      # installs shellcheck + ruff via your package manager
-make check-all  # lint + Go tests + Bash test suite
+make check-all  # lint + Go tests (feature parity) + install-time Bash suite
 ```
 
 Alternatives:
@@ -77,7 +77,7 @@ Guide index: **[docs/README.md](docs/README.md)**. When adding or renaming a gui
 | Doc | When to read |
 | --- | --- |
 | [docs/release_runbook.md](docs/release_runbook.md) | Cutting a release |
-| [docs/unification-audit.md](docs/unification-audit.md) | Bash/PS → Go inventory + parity matrix |
+| [docs/unification-audit.md](docs/unification-audit.md) | Go inventory + go.yml parity matrix |
 | [docs/unification-roadmap.md](docs/unification-roadmap.md) | Go unification notes + definition of done |
 | [docs/licensing.md](docs/licensing.md) | Attribution / Millennium client MIT |
 | [docs/mcp.md](docs/mcp.md) | MCP tool surface |
@@ -90,35 +90,34 @@ Guide index: **[docs/README.md](docs/README.md)**. When adding or renaming a gui
 | Path | Role |
 | --- | --- |
 | `install.sh` | Linux/macOS installer / uninstall |
-| `scripts/*.sh` | Linux/macOS user-facing command entrypoints |
-| `scripts/common.sh` | Shared Bash entry (locale + sources `scripts/lib/*`) |
-| `scripts/lib/` | Install/shared Bash helpers (`logging`, `archive`, …); Steam lifecycle is Go |
-| `scripts/windows/*.ps1` | Windows PowerShell long-name command entrypoints (thin-wrap → Go) |
+| `scripts/common.sh` | Shared Bash entry for install (locale + sources `scripts/lib/*`) |
+| `scripts/lib/` | Install/shared Bash helpers (`logging`, `install_track`, …); features are Go |
+| `scripts/windows/install.ps1` | Windows installer / uninstall |
 | `scripts/windows/common.ps1` | Shared PowerShell entry for install/tests (culture/colors + lib modules) |
-| `scripts/windows/lib/` | Install/shared PS helpers (`Logging`, `Args`, …); Steam lifecycle is Go |
-| `go/` + PATH `millennium-mcp` | Native MCP stdio server (`millennium mcp`) |
-| `spec/cli-contract.yaml` | **Source of truth** for commands / flags / platforms (Go + shells) |
+| `scripts/windows/lib/` | Install/shared PS helpers (`Logging`, `Args`, …); features are Go |
 | `go/` | Go CLI (`cmd/millennium`); feature implementations under `go/internal/` |
+| `go/` + PATH `millennium-mcp` | Native MCP stdio server (`millennium mcp`) |
+| `spec/cli-contract.yaml` | **Source of truth** for commands / flags / platforms |
 | `man/` | Manual pages (`millennium-*.1`) for every user-facing command |
 | `docs/` | User/maintainer guides (index: [`docs/README.md`](docs/README.md)) |
 | `Formula/` | Homebrew formulas (`millennium-helpers.rb` from-source + `head`; `millennium-helpers-bin.rb`) |
 | `packaging/` | Arch / Scoop / Winget / deb / rpm / Chocolatey — see [`packaging/README.md`](packaging/README.md) |
 | `completions/` | Bash / Zsh / Fish / Nushell / PowerShell completions |
-| `tests/` | Unit + behavioral suites (`tests/run_tests.sh`) |
-| `tests/windows/` | Pester tests for PowerShell scripts (`make test-windows`) |
+| `tests/` | Install-time unit + behavioral suites (`tests/run_tests.sh`) |
+| `tests/windows/` | Pester tests for install libs / installer / completions (`make test-windows`) |
 
-**No thin aggregators.** Feature modules are sourced (or dot-sourced) directly by the command entrypoint or by `common.sh` / `common.ps1`. Do not add pass-through-only loader files that only re-source other modules.
+**No thin aggregators.** Install modules are sourced (or dot-sourced) by `common.sh` / `common.ps1`. Do not add pass-through-only loader files that only re-source other modules. Feature commands live in Go only.
 
 ## Adding or changing a command
 
 1. Update [`spec/cli-contract.yaml`](spec/cli-contract.yaml) first (flags, platforms, MCP properties).
-2. Implement in Go under `go/`. Long-name `.sh` / `.ps1` helpers thin-wrap to Go (no `common` sourcing).
+2. Implement in Go under `go/` (long-name PATH twins via `commandFromArgv0`).
 3. Update dispatcher help/registration in `go/cmd/millennium` when adding commands.
 4. Keep `--help` / `-h` accurate and exit `0` on help.
 5. On unknown options, print usage and exit non-zero.
 6. Update matching files under `completions/` so flags stay in sync.
 7. Keep `man/millennium-<name>.1` in sync (`.TH` date like `"July 9, 2026"`; `make check-man` / CI mandoc lint).
-8. Add or extend Go tests / `go.yml` smokes; keep thin-wrap behavioral or Pester only for unique seams.
+8. Add or extend Go tests / `go.yml` smokes for unique seams.
 9. Prefer `--dry-run` for destructive paths; require confirmation (or `-y`/`--yes`) for irreversible actions like purge.
 10. Run `make check-cli-contract` (also part of `make lint`).
 
@@ -130,14 +129,14 @@ and the matrix in [docs/unification-audit.md](docs/unification-audit.md).
 **Go surfaces:**
 
 - [ ] Contract + completions/man/MCP stay aligned (`make check-cli-contract`)
-- [ ] Covered by `make test-go` and the dual-OS job in [`.github/workflows/go.yml`](.github/workflows/go.yml)
+- [ ] Covered by `make test-go` and the Linux / Windows / macOS jobs in [`.github/workflows/go.yml`](.github/workflows/go.yml)
 
-**Cross-OS / thin-wrap residuals:**
+**Cross-OS checklist:**
 
 - [ ] Flag / subcommand exists on both OSes (**or** marked `os_only` in `spec/cli-contract.yaml`)
 - [ ] Dry-run behavior matches
 - [ ] Help text documents the same options
-- [ ] Tests cover unique seams (Bash and/or Pester) when Go dual-OS smoke does not
+- [ ] Unique seams fail `go.yml` (or Go unit tests) when not covered by existing smokes
 - [ ] Contract + completions/man/MCP stay aligned (`make check-cli-contract`)
 
 Do **not** delete a long-name entrypoint until consumers that still name it
@@ -148,11 +147,11 @@ Do **not** delete a long-name entrypoint until consumers that still name it
 See [Development requirements](#development-requirements) for tools each target needs.
 
 ```bash
-make test              # local Bash unit + behavioral suite
+make test              # local install-time Bash unit + behavioral suite
 make lint              # shellcheck + ruff (+ version/man/docs/completions/cli-contract gates)
-make check-all         # lint + test-go + test
-make test-windows      # Pester under tests/windows/ (requires pwsh; not part of check-all)
-make test-go           # Go unit tests + dispatcher smokes (requires Go; part of check-all)
+make check-all         # lint + test-go + test (feature parity is test-go / go.yml)
+make test-windows      # Pester install/libs/completions (requires pwsh; not part of check-all)
+make test-go           # Go unit tests (requires Go; part of check-all; CI smokes in go.yml)
 make build             # bin/millennium Go CLI
 make test-all-distros  # local + Debian/Ubuntu/Fedora via Docker (requires Docker)
 ```

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+- Checkout Bash/PowerShell feature scripts (`scripts/millennium-*.sh`, `scripts/windows/millennium-*.ps1`); PATH long-name twins and `bin/millennium` are the only feature entrypoints
+- Feature Bash/Pester suites retired in favor of Go unit tests and `go.yml` smokes
+
+### Changed
+- Release payloads and installers stop shipping/copying feature scripts; uninstall/wizard invoke `millennium` / `millennium.exe`
+- CI feature coverage is [`go.yml`](.github/workflows/go.yml) on Linux, Windows, and macOS; [`test-suite.yml`](.github/workflows/test-suite.yml) keeps install/unit/packaging/completions
+
 ## [2.7.0] - 2026-07-15
 
 ### Added

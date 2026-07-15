@@ -8,7 +8,7 @@ the project [README](../README.md) **Further reading** table, and each guide’s
 
 | Doc | Audience | Summary |
 | --- | --- | --- |
-| [unification-audit.md](unification-audit.md) | Maintainers | Bash/PS → Go inventory + feature×OS×test parity matrix |
+| [unification-audit.md](unification-audit.md) | Maintainers | Go inventory + feature×OS×`go.yml` parity matrix |
 | [unification-roadmap.md](unification-roadmap.md) | Maintainers | Remaining shell libs, timers/sudoers, package installs |
 | [licensing.md](licensing.md) | Users & packagers | Helpers MIT + Millennium client MIT, vendored notice, upgrade behavior |
 | [mcp.md](mcp.md) | Users | MCP server tools, registration with Claude / Cursor / Windsurf |
