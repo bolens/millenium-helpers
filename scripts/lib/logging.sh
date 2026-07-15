@@ -255,32 +255,14 @@ send_notification() {
   local target_user="${3:-${SUDO_USER:-$(id -un)}}"
 
   if [[ "$target_user" != "root" ]] && command -v notify-send &>/dev/null; then
-    local state_file
-    state_file="$(relaunch_state_file "$target_user")"
     local env_prefix=""
-    if _is_safe_relaunch_state_file "$target_user" "$state_file"; then
-      local display_val wayland_val dbus_val runtime_val
-      display_val=$(grep "^export DISPLAY=" "$state_file" | cut -d\' -f2 || true)
-      wayland_val=$(grep "^export WAYLAND_DISPLAY=" "$state_file" | cut -d\' -f2 || true)
-      dbus_val=$(grep "^export DBUS_SESSION_BUS_ADDRESS=" "$state_file" | cut -d\' -f2 || true)
-      runtime_val=$(grep "^export XDG_RUNTIME_DIR=" "$state_file" | cut -d\' -f2 || true)
-
-      [[ -n "$display_val" ]] && env_prefix+="DISPLAY=${display_val} "
-      [[ -n "$wayland_val" ]] && env_prefix+="WAYLAND_DISPLAY=${wayland_val} "
-      [[ -n "$dbus_val" ]] && env_prefix+="DBUS_SESSION_BUS_ADDRESS=${dbus_val} "
-      [[ -n "$runtime_val" ]] && env_prefix+="XDG_RUNTIME_DIR=${runtime_val} "
+    local user_uid
+    user_uid=$(id -u "$target_user" 2>/dev/null || true)
+    if [[ -n "$user_uid" ]]; then
+      env_prefix="DISPLAY=:0 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/${user_uid}/bus XDG_RUNTIME_DIR=/run/user/${user_uid} "
+    else
+      env_prefix="DISPLAY=:0 "
     fi
-
-    if [[ -z "$env_prefix" ]]; then
-      local user_uid
-      user_uid=$(id -u "$target_user" 2>/dev/null || true)
-      if [[ -n "$user_uid" ]]; then
-        env_prefix="DISPLAY=:0 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/${user_uid}/bus XDG_RUNTIME_DIR=/run/user/${user_uid} "
-      else
-        env_prefix="DISPLAY=:0 "
-      fi
-    fi
-
     runuser -l "$target_user" -c "${env_prefix}notify-send '${title}' '${msg}'" &>/dev/null || true
   fi
 }

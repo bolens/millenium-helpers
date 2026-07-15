@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Sync packaging/millennium-helpers/.SRCINFO from PKGBUILD.
+# Sync packaging/millennium-helpers/.SRCINFO from PKGBUILD (from-source / tag archive).
 # Prefer makepkg --printsrcinfo; fall back to patching key fields when makepkg
 # is unavailable (non-Arch hosts / root).
 #
@@ -39,7 +39,7 @@ pkgrel="$(grep -E '^pkgrel=' "$PKGBUILD" | head -1 | cut -d= -f2-)"
   exit 1
 }
 
-# First sha256sums entry is the Linux release tarball.
+# First sha256sums entry is the controlled -src.tar.gz release asset.
 tarball_sha="$(python3 - "$PKGBUILD" <<'PY'
 import re, sys
 text = open(sys.argv[1], encoding="utf-8").read()
@@ -48,7 +48,7 @@ print(m.group(1).lower() if m else "")
 PY
 )"
 
-expected_source="https://github.com/bolens/millenium-helpers/releases/download/v${pkgver}/millennium-helpers-linux.tar.gz"
+expected_source="https://github.com/bolens/millenium-helpers/releases/download/v${pkgver}/millennium-helpers-v${pkgver}-src.tar.gz"
 
 srcinfo_stale() {
   [[ -f "$SRCINFO" ]] || return 0
@@ -78,8 +78,6 @@ write_via_makepkg() {
     return 1
   fi
   command -v makepkg >/dev/null 2>&1 || return 1
-  # Write to a temp file first so a failed makepkg never truncates .SRCINFO.
-  # PKGBUILD may reference install=… / source files that must exist beside it.
   local tmp
   tmp="$(mktemp "${PKG_DIR}/.SRCINFO.tmp.XXXXXX")"
   if ! (cd "$PKG_DIR" && makepkg --printsrcinfo >"$(basename "$tmp")"); then
@@ -104,11 +102,18 @@ info = Path(path).read_text(encoding="utf-8")
 info = re.sub(r"(?m)^(\tpkgver = ).*$", rf"\g<1>{pkgver}", info, count=1)
 info = re.sub(r"(?m)^(\tpkgrel = ).*$", rf"\g<1>{pkgrel}", info, count=1)
 info = re.sub(
-    r"(?m)^(\tsource = https://github\.com/.+/releases/download/)v[^/]+(/millennium-helpers-linux\.tar\.gz)$",
-    rf"\g<1>v{pkgver}\g<2>",
+    r"(?m)^(\tsource = https://github\.com/.+/releases/download/)v[^/]+(/millennium-helpers-v)[^/]+(-src\.tar\.gz)$",
+    rf"\g<1>v{pkgver}\g<2>{pkgver}\g<3>",
     info,
     count=1,
 )
+if f"source = {source}" not in info:
+    info = re.sub(
+        r"(?m)^(\tsource = )https://github\.com/.+$",
+        rf"\g<1>{source}",
+        info,
+        count=1,
+    )
 if sha:
     info = re.sub(
         r"(?m)^(\tsha256sums = )[0-9a-fA-F]{64}$",
@@ -132,7 +137,6 @@ fi
 
 after="$(cat "$SRCINFO")"
 if [[ "$before" != "$after" ]]; then
-  # Pre-commit: abort so the user re-stages (same pattern as sync-git-srcinfo).
   if [[ -n "${PRE_COMMIT:-}" ]]; then
     echo "${SRCINFO} updated — re-stage it and retry the commit." >&2
     exit 1

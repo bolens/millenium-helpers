@@ -1,8 +1,31 @@
 Describe "Windows Installer" {
     BeforeAll {
         $winScriptDir = Join-Path -Path $PSScriptRoot -ChildPath "..\..\scripts\windows"
+        $repoRoot = Join-Path -Path $PSScriptRoot -ChildPath "..\.."
         $global:DryRun = $true
         $env:PSTESTS = "true"
+
+        # Installer requires millennium.exe (stub or build for the suite).
+        $binDir = Join-Path -Path $repoRoot -ChildPath "bin"
+        if (!(Test-Path -LiteralPath $binDir)) {
+            New-Item -ItemType Directory -Force -Path $binDir | Out-Null
+        }
+        $outExe = Join-Path -Path $binDir -ChildPath "millennium.exe"
+        if (!(Test-Path -LiteralPath $outExe -PathType Leaf)) {
+            $goCmd = Get-Command go -ErrorAction SilentlyContinue
+            $goMain = Join-Path -Path $repoRoot -ChildPath "go\cmd\millennium"
+            if ($goCmd -and (Test-Path -LiteralPath $goMain)) {
+                Push-Location (Join-Path -Path $repoRoot -ChildPath "go")
+                try {
+                    & go build -o $outExe ./cmd/millennium
+                    if ($LASTEXITCODE -ne 0) { throw "go build failed for millennium.exe" }
+                } finally {
+                    Pop-Location
+                }
+            } else {
+                Set-Content -Path $outExe -Value "millennium-stub" -Encoding ASCII
+            }
+        }
     }
 
     It "Successfully runs installation and uninstallation routines" {
@@ -22,10 +45,11 @@ Describe "Windows Installer" {
             $expectedBinDir = Join-Path -Path $expectedInstallDir -ChildPath "bin"
 
             Test-Path -Path $expectedBinDir | Should -Be $true
+            Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium.exe") | Should -Be $true
+            $installOut | Should -BeLike "*millennium.exe (Go dispatcher)*"
 
             $expectedScripts = @(
                 "common.ps1",
-                "millennium.ps1",
                 "millennium-diag.ps1",
                 "millennium-purge.ps1",
                 "millennium-repair.ps1",
@@ -50,16 +74,23 @@ Describe "Windows Installer" {
             foreach ($wrapper in $expectedWrappers) {
                 Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath $wrapper) | Should -Be $true
             }
+            (Get-Content -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium.cmd") -Raw) | Should -BeLike "*millennium.exe*"
+            (Get-Content -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium-upgrade.cmd") -Raw) | Should -BeLike "*millennium.exe*upgrade*"
+            (Get-Content -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium-mcp.cmd") -Raw) | Should -BeLike "*millennium.exe*mcp*"
 
             Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium-mcp.ps1") | Should -Be $true
-            Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium-mcp.py") | Should -Be $true
+            Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium-mcp.py") | Should -Be $false
             Test-Path -Path (Join-Path -Path $expectedBinDir -ChildPath "millennium-helpers.completion.ps1") | Should -Be $true
 
-            # Verify diagnostic lib modules are installed
+            # Shared Windows libs remain for install/test helpers (Logging, Args, …).
             $expectedLibDir = Join-Path -Path $expectedBinDir -ChildPath "lib"
             Test-Path -Path $expectedLibDir | Should -Be $true
-            Test-Path -Path (Join-Path -Path $expectedLibDir -ChildPath "DiagReport.ps1") | Should -Be $true
-            Test-Path -Path (Join-Path -Path $expectedLibDir -ChildPath "DiagUi.ps1") | Should -Be $true
+            Test-Path -Path (Join-Path -Path $expectedLibDir -ChildPath "UpgradeRollback.ps1") | Should -Be $false
+            Test-Path -Path (Join-Path -Path $expectedLibDir -ChildPath "Download.ps1") | Should -Be $false
+            Test-Path -Path (Join-Path -Path $expectedLibDir -ChildPath "Archive.ps1") | Should -Be $false
+            Test-Path -Path (Join-Path -Path $expectedLibDir -ChildPath "Logging.ps1") | Should -Be $true
+            Test-Path -Path (Join-Path -Path $expectedLibDir -ChildPath "DiagReport.ps1") | Should -Be $false
+            Test-Path -Path (Join-Path -Path $expectedLibDir -ChildPath "RepairOps.ps1") | Should -Be $false
 
             $pwshProfile = Join-Path -Path $tempHome -ChildPath "Documents\PowerShell\Microsoft.PowerShell_profile.ps1"
             $winProfile = Join-Path -Path $tempHome -ChildPath "Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1"
@@ -103,16 +134,23 @@ Describe "Windows Installer" {
 
     Context "Standalone / Piped Installer Mode" {
         BeforeAll {
+            Mock Invoke-RestMethod {
+                param($Uri, $Headers, $UseBasicParsing)
+                if ($Uri -like "*api.github.com/*/releases/latest*") {
+                    return [pscustomobject]@{ tag_name = 'v2.6.2' }
+                }
+                throw "Unexpected Invoke-RestMethod URI: $Uri"
+            }
             Mock Invoke-WebRequest {
                 param($Uri, $OutFile, $UseBasicParsing)
                 if (-not $OutFile) { return }
                 if ($Uri -like "*.sha256*") {
                     $zipCandidate = $OutFile -replace '\.sha256$', ''
                     if (!(Test-Path -Path $zipCandidate -PathType Leaf)) {
-                        $zipCandidate = Join-Path -Path (Split-Path -Parent $OutFile) -ChildPath "millennium-helpers-windows.zip"
+                        $zipCandidate = Join-Path -Path (Split-Path -Parent $OutFile) -ChildPath "millennium-helpers-v2.6.2-windows-amd64.zip"
                     }
                     $hash = (Get-FileHash -Path $zipCandidate -Algorithm SHA256).Hash.ToLowerInvariant()
-                    Set-Content -Path $OutFile -Value "$hash  millennium-helpers-windows.zip" -Force
+                    Set-Content -Path $OutFile -Value "$hash  millennium-helpers-v2.6.2-windows-amd64.zip" -Force
                 } else {
                     Set-Content -Path $OutFile -Value "fake-zip-content" -Force
                 }

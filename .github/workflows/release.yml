@@ -11,7 +11,7 @@ on:
         required: true
         default: 'v-draft'
       skip_ci_gate:
-        description: 'Skip waiting for required CI (test-suite/shellcheck/completions). Only for v-draft / emergency dispatch — never for real releases.'
+        description: 'Skip waiting for required CI. Allowed only for v-draft — never for real vX.Y.Z tags.'
         type: boolean
         required: false
         default: false
@@ -25,12 +25,34 @@ permissions:
   pull-requests: write
 
 jobs:
+  # Must run even when skip_ci_gate=true (the gate job itself is skipped then).
+  assert-skip-policy:
+    name: Assert skip CI policy
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Refuse skip_ci_gate for real release tags
+        env:
+          TAG: ${{ github.event.inputs.tag_name }}
+          SKIP: ${{ github.event.inputs.skip_ci_gate }}
+        run: |
+          set -euo pipefail
+          if [[ "${SKIP}" == "true" && "${TAG}" != "v-draft" ]]; then
+            echo "::error::skip_ci_gate is only allowed for tag_name=v-draft (got '${TAG}')."
+            echo "Real releases must wait for required CI before building assets."
+            exit 1
+          fi
+
   gate:
     name: Wait for required CI
+    needs: [assert-skip-policy]
     runs-on: ubuntu-latest
+    # Real tags always gate. v-draft may skip only via explicit workflow_dispatch.
     if: >-
-      github.event_name == 'push' ||
-      (github.event_name == 'workflow_dispatch' && inputs.skip_ci_gate != true)
+      always() &&
+      (needs.assert-skip-policy.result == 'success' || needs.assert-skip-policy.result == 'skipped') &&
+      (github.event_name == 'push' ||
+       (github.event_name == 'workflow_dispatch' && inputs.skip_ci_gate != true))
     steps:
       - name: Ensure required workflows passed for this commit
         env:
@@ -38,11 +60,19 @@ jobs:
         run: |
           set -euo pipefail
           SHA="${{ github.sha }}"
-          # These workflows declare tags: [v*] so tag pushes always schedule them.
+          # Every entry must declare on.push.tags: [v*] so tag pushes schedule them.
+          # Latest completed run must be success (not merely "some older success").
           REQUIRED_WORKFLOWS=(
             test-suite.yml
             shellcheck.yml
             completions.yml
+            go.yml
+            version-sync.yml
+            package-manifests.yml
+            actionlint.yml
+            python-lint.yml
+            powershell-lint.yml
+            man-pages.yml
           )
 
           echo "Waiting for required CI on $SHA:"
@@ -50,9 +80,9 @@ jobs:
 
           declare -A passed=()
           # Fail fast only when nothing is queued/running for any pending workflow.
-          fail_fast_after=10
+          fail_fast_after=12
 
-          for attempt in $(seq 1 60); do
+          for attempt in $(seq 1 80); do
             all_done=true
             any_activity=false
             missing=()
@@ -61,33 +91,32 @@ jobs:
               [[ -n "${passed[$wf]:-}" ]] && continue
               all_done=false
 
-              mapfile -t runs < <(
+              conclusion="$(
                 gh run list \
                   --repo "${{ github.repository }}" \
                   --workflow "$wf" \
                   --commit "$SHA" \
-                  --limit 5 \
-                  --json databaseId,status,conclusion,event \
-                  --jq '.[] | select(.status=="completed") | [.databaseId,.conclusion,.event] | @tsv'
-              )
-
-              if (( ${#runs[@]} > 0 )); then
-                wf_ok=false
-                for line in "${runs[@]}"; do
-                  id="$(echo "$line" | cut -f1)"
-                  conclusion="$(echo "$line" | cut -f2)"
-                  event="$(echo "$line" | cut -f3)"
-                  echo "[$wf] completed run $id (event=$event conclusion=$conclusion)"
-                  if [[ "$conclusion" == "success" ]]; then
-                    wf_ok=true
-                  fi
-                done
-                if [[ "$wf_ok" == "true" ]]; then
+                  --limit 20 \
+                  --json databaseId,status,conclusion,createdAt,event \
+                  --jq '[.[] | select(.status=="completed")] | sort_by(.createdAt) | last | .conclusion // empty'
+              )"
+              if [[ -n "$conclusion" ]]; then
+                run_meta="$(
+                  gh run list \
+                    --repo "${{ github.repository }}" \
+                    --workflow "$wf" \
+                    --commit "$SHA" \
+                    --limit 20 \
+                    --json databaseId,status,conclusion,createdAt,event \
+                    --jq '[.[] | select(.status=="completed")] | sort_by(.createdAt) | last | [.databaseId,.conclusion,.event] | @tsv'
+                )"
+                echo "[$wf] latest completed: ${run_meta}"
+                if [[ "$conclusion" == "success" ]]; then
                   echo "[$wf] passed."
                   passed[$wf]=1
                   continue
                 fi
-                echo "::error::$wf completed but did not succeed for $SHA"
+                echo "::error::$wf latest completed run did not succeed for $SHA (conclusion=$conclusion)"
                 exit 1
               fi
 
@@ -96,16 +125,16 @@ jobs:
                   --repo "${{ github.repository }}" \
                   --workflow "$wf" \
                   --commit "$SHA" \
-                  --limit 5 \
+                  --limit 20 \
                   --json status \
                   --jq '[.[] | select(.status=="in_progress" or .status=="queued" or .status=="pending" or .status=="waiting")] | length'
               )"
               if [[ "$in_progress" -gt 0 ]]; then
                 any_activity=true
-                echo "Attempt $attempt/60: $wf still running..."
+                echo "Attempt $attempt/80: $wf still running..."
               else
                 missing+=("$wf")
-                echo "Attempt $attempt/60: no $wf run found yet for $SHA..."
+                echo "Attempt $attempt/80: no $wf run found yet for $SHA..."
               fi
             done
 
@@ -128,18 +157,29 @@ jobs:
 
   build-release:
     name: Build & Package Release Assets
-    needs: [gate]
-    # Run even when gate is skipped (workflow_dispatch + skip_ci_gate)
-    if: always() && (needs.gate.result == 'success' || needs.gate.result == 'skipped')
+    needs: [assert-skip-policy, gate]
+    # Build only after a green gate, or for explicit v-draft skip (gate skipped).
+    # Never build when the gate failed or skip_ci_gate was abused on a real tag.
+    if: >-
+      always() &&
+      (needs.assert-skip-policy.result == 'success' || needs.assert-skip-policy.result == 'skipped') &&
+      (needs.gate.result == 'success' || needs.gate.result == 'skipped')
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.meta.outputs.version }}
       tag: ${{ steps.meta.outputs.tag }}
       linux_sha: ${{ steps.checksums.outputs.linux_sha }}
+      linux_arm64_sha: ${{ steps.checksums.outputs.linux_arm64_sha }}
+      darwin_amd64_sha: ${{ steps.checksums.outputs.darwin_amd64_sha }}
+      darwin_arm64_sha: ${{ steps.checksums.outputs.darwin_arm64_sha }}
       windows_sha: ${{ steps.checksums.outputs.windows_sha }}
+      src_tar_sha: ${{ steps.checksums.outputs.src_tar_sha }}
+      src_zip_sha: ${{ steps.checksums.outputs.src_zip_sha }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Resolve tag and version
         id: meta
@@ -156,88 +196,191 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Resolved tag=$TAG version=$VERSION"
 
-      - name: Create Linux/macOS Release Tarball
-        run: |
-          set -euo pipefail
-          # Explicit Unix payload only — no Windows scripts, CI, packaging, or Nix.
-          tar -czf millennium-helpers-linux.tar.gz \
-            install.sh \
-            VERSION \
-            LICENSE \
-            README.md \
-            third_party/MILLENNIUM-LICENSE.md \
-            scripts/common.sh \
-            scripts/millennium.sh \
-            scripts/millennium-diag.sh \
-            scripts/millennium-mcp.py \
-            scripts/millennium-purge.sh \
-            scripts/millennium-repair.sh \
-            scripts/millennium-schedule.sh \
-            scripts/millennium-theme.sh \
-            scripts/millennium-upgrade.sh \
-            scripts/lib \
-            completions \
-            man
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.22.x"
 
-      - name: Create Windows Release Zip
+      - name: Build Go dispatchers and versioned archives
+        id: assets
         run: |
           set -euo pipefail
-          # Windows payload — PowerShell scripts plus the shared MCP Python server
-          # (millennium-mcp.ps1 looks for ../millennium-mcp.py next to scripts/windows/).
-          # install.ps1 resolves VERSION via ..\..\VERSION.
-          zip -r millennium-helpers-windows.zip \
+          # shellcheck source=scripts/lib/release_assets.sh
+          source scripts/lib/release_assets.sh
+          VERSION="${{ steps.meta.outputs.version }}"
+          TAG="${{ steps.meta.outputs.tag }}"
+          LDFLAGS="-X github.com/bolens/millenium-helpers/internal/version.Version=${VERSION}"
+          mkdir -p dist bin
+
+          build_go() {
+            local goos="$1" goarch="$2"
+            local out
+            out="$(release_asset_go "$VERSION" "$goos" "$goarch")"
+            echo "Building $out (GOOS=$goos GOARCH=$goarch)"
+            (cd go && CGO_ENABLED=0 GOOS="$goos" GOARCH="$goarch" go build -ldflags "$LDFLAGS" -o "../dist/$out" ./cmd/millennium)
+          }
+          build_go linux amd64
+          build_go linux arm64
+          build_go darwin amd64
+          build_go darwin arm64
+          build_go windows amd64
+
+          unix_payload=(
+            install.sh
+            VERSION
+            LICENSE
+            README.md
+            third_party/MILLENNIUM-LICENSE.md
+            bin/millennium
+            scripts/common.sh
+            scripts/millennium-diag.sh
+            scripts/millennium-mcp.sh
+            scripts/millennium-purge.sh
+            scripts/millennium-repair.sh
+            scripts/millennium-schedule.sh
+            scripts/millennium-theme.sh
+            scripts/millennium-upgrade.sh
+            scripts/lib
+            completions
+            man
+          )
+
+          pack_unix() {
+            local goos="$1" goarch="$2"
+            local go_bin archive
+            go_bin="$(release_asset_go "$VERSION" "$goos" "$goarch")"
+            archive="$(release_asset_helpers "$VERSION" "$goos" "$goarch" "tar.gz")"
+            cp "dist/$go_bin" bin/millennium
+            chmod +x bin/millennium
+            tar -czf "$archive" "${unix_payload[@]}"
+            echo "Created $archive"
+          }
+          pack_unix linux amd64
+          pack_unix linux arm64
+          pack_unix darwin amd64
+          pack_unix darwin arm64
+
+          WIN_GO="$(release_asset_go "$VERSION" windows amd64)"
+          WIN_ZIP="$(release_asset_helpers "$VERSION" windows amd64 zip)"
+          cp "dist/$WIN_GO" scripts/windows/millennium.exe
+          zip -r "$WIN_ZIP" \
             scripts/windows/ \
-            scripts/millennium-mcp.py \
             completions/powershell/ \
             VERSION \
             LICENSE \
             README.md \
             third_party/MILLENNIUM-LICENSE.md
+          echo "Created $WIN_ZIP"
+
+          SRC_TAR="$(release_asset_src "$VERSION" tar.gz)"
+          SRC_ZIP="$(release_asset_src "$VERSION" zip)"
+          ARCHIVE_REF="$TAG"
+          if [[ "$TAG" == v-draft ]]; then
+            ARCHIVE_REF=HEAD
+          fi
+          git archive --format=tar.gz --prefix="millenium-helpers-${VERSION}/" -o "$SRC_TAR" "$ARCHIVE_REF"
+          git archive --format=zip --prefix="millenium-helpers-${VERSION}/" -o "$SRC_ZIP" "$ARCHIVE_REF"
+          echo "Created $SRC_TAR and $SRC_ZIP"
+
+          {
+            echo "linux_amd64=$(release_asset_helpers "$VERSION" linux amd64 tar.gz)"
+            echo "linux_arm64=$(release_asset_helpers "$VERSION" linux arm64 tar.gz)"
+            echo "darwin_amd64=$(release_asset_helpers "$VERSION" darwin amd64 tar.gz)"
+            echo "darwin_arm64=$(release_asset_helpers "$VERSION" darwin arm64 tar.gz)"
+            echo "windows_amd64=$(release_asset_helpers "$VERSION" windows amd64 zip)"
+            echo "src_tar=$SRC_TAR"
+            echo "src_zip=$SRC_ZIP"
+            echo "go_linux_amd64=$(release_asset_go "$VERSION" linux amd64)"
+            echo "go_linux_arm64=$(release_asset_go "$VERSION" linux arm64)"
+            echo "go_darwin_amd64=$(release_asset_go "$VERSION" darwin amd64)"
+            echo "go_darwin_arm64=$(release_asset_go "$VERSION" darwin arm64)"
+            echo "go_windows_amd64=$(release_asset_go "$VERSION" windows amd64)"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Calculate Checksums
         id: checksums
+        env:
+          LINUX_AMD64: ${{ steps.assets.outputs.linux_amd64 }}
+          LINUX_ARM64: ${{ steps.assets.outputs.linux_arm64 }}
+          DARWIN_AMD64: ${{ steps.assets.outputs.darwin_amd64 }}
+          DARWIN_ARM64: ${{ steps.assets.outputs.darwin_arm64 }}
+          WINDOWS_AMD64: ${{ steps.assets.outputs.windows_amd64 }}
+          SRC_TAR: ${{ steps.assets.outputs.src_tar }}
+          SRC_ZIP: ${{ steps.assets.outputs.src_zip }}
+          GO_LINUX_AMD64: ${{ steps.assets.outputs.go_linux_amd64 }}
+          GO_LINUX_ARM64: ${{ steps.assets.outputs.go_linux_arm64 }}
+          GO_DARWIN_AMD64: ${{ steps.assets.outputs.go_darwin_amd64 }}
+          GO_DARWIN_ARM64: ${{ steps.assets.outputs.go_darwin_arm64 }}
+          GO_WINDOWS_AMD64: ${{ steps.assets.outputs.go_windows_amd64 }}
         run: |
           set -euo pipefail
 
-          [[ -s millennium-helpers-linux.tar.gz ]] || {
-            echo "::error::Linux/macOS tarball is missing or empty"
-            exit 1
-          }
-          [[ -s millennium-helpers-windows.zip ]] || {
-            echo "::error::Windows zip is missing or empty"
-            exit 1
-          }
-
-          LINUX_SHA=$(sha256sum millennium-helpers-linux.tar.gz | cut -d' ' -f1)
-          WINDOWS_SHA=$(sha256sum millennium-helpers-windows.zip | cut -d' ' -f1)
-
-          for label_sha in "linux:${LINUX_SHA}" "windows:${WINDOWS_SHA}"; do
-            label="${label_sha%%:*}"
-            sha="${label_sha#*:}"
+          checksum_one() {
+            local label="$1" file="$2"
+            [[ -s "$file" ]] || {
+              echo "::error::${label} asset missing or empty: $file"
+              exit 1
+            }
+            local sha
+            sha="$(sha256sum "$file" | cut -d' ' -f1)"
             if [[ ! "$sha" =~ ^[0-9a-f]{64}$ ]]; then
-              echo "::error::Invalid ${label} SHA256 (expected 64 lowercase hex): ${sha}"
+              echo "::error::Invalid ${label} SHA256: ${sha}"
               exit 1
             fi
             if [[ "$sha" =~ ^0{64}$ ]]; then
               echo "::error::Refusing placeholder all-zero ${label} SHA256"
               exit 1
             fi
+            printf '%s  %s\n' "$sha" "$(basename "$file")" > "${file}.sha256"
+            sha256sum -c "${file}.sha256"
+            printf '%s' "$sha"
+          }
+
+          LINUX_SHA="$(checksum_one linux-amd64 "$LINUX_AMD64")"
+          LINUX_ARM64_SHA="$(checksum_one linux-arm64 "$LINUX_ARM64")"
+          DARWIN_AMD64_SHA="$(checksum_one darwin-amd64 "$DARWIN_AMD64")"
+          DARWIN_ARM64_SHA="$(checksum_one darwin-arm64 "$DARWIN_ARM64")"
+          WINDOWS_SHA="$(checksum_one windows-amd64 "$WINDOWS_AMD64")"
+          SRC_TAR_SHA="$(checksum_one src-tar "$SRC_TAR")"
+          SRC_ZIP_SHA="$(checksum_one src-zip "$SRC_ZIP")"
+
+          for f in \
+            "dist/$GO_LINUX_AMD64" \
+            "dist/$GO_LINUX_ARM64" \
+            "dist/$GO_DARWIN_AMD64" \
+            "dist/$GO_DARWIN_ARM64" \
+            "dist/$GO_WINDOWS_AMD64"
+          do
+            base="$(basename "$f")"
+            sha256sum "$f" | awk '{print $1"  '"$base"'"}' > "${base}.sha256"
+            sha256sum -c "${base}.sha256"
           done
 
-          echo "LINUX_SHA=$LINUX_SHA" >> "$GITHUB_ENV"
-          echo "WINDOWS_SHA=$WINDOWS_SHA" >> "$GITHUB_ENV"
-          echo "linux_sha=$LINUX_SHA" >> "$GITHUB_OUTPUT"
-          echo "windows_sha=$WINDOWS_SHA" >> "$GITHUB_OUTPUT"
+          {
+            echo "LINUX_SHA=$LINUX_SHA"
+            echo "LINUX_ARM64_SHA=$LINUX_ARM64_SHA"
+            echo "DARWIN_AMD64_SHA=$DARWIN_AMD64_SHA"
+            echo "DARWIN_ARM64_SHA=$DARWIN_ARM64_SHA"
+            echo "WINDOWS_SHA=$WINDOWS_SHA"
+            echo "SRC_TAR_SHA=$SRC_TAR_SHA"
+            echo "SRC_ZIP_SHA=$SRC_ZIP_SHA"
+            echo "LINUX_AMD64_ASSET=$LINUX_AMD64"
+            echo "WINDOWS_AMD64_ASSET=$WINDOWS_AMD64"
+            echo "SRC_TAR_ASSET=$SRC_TAR"
+          } >> "$GITHUB_ENV"
 
-          echo "$LINUX_SHA  millennium-helpers-linux.tar.gz" > millennium-helpers-linux.tar.gz.sha256
-          echo "$WINDOWS_SHA  millennium-helpers-windows.zip" > millennium-helpers-windows.zip.sha256
-
-          # Round-trip verify the sidecar checksum files match the archives.
-          sha256sum -c millennium-helpers-linux.tar.gz.sha256
-          sha256sum -c millennium-helpers-windows.zip.sha256
+          {
+            echo "linux_sha=$LINUX_SHA"
+            echo "linux_arm64_sha=$LINUX_ARM64_SHA"
+            echo "darwin_amd64_sha=$DARWIN_AMD64_SHA"
+            echo "darwin_arm64_sha=$DARWIN_ARM64_SHA"
+            echo "windows_sha=$WINDOWS_SHA"
+            echo "src_tar_sha=$SRC_TAR_SHA"
+            echo "src_zip_sha=$SRC_ZIP_SHA"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release Draft
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.meta.outputs.tag }}
           draft: true
@@ -245,29 +388,52 @@ jobs:
           body: |
             ## Release Verification & Checksums
 
-            Platform-trimmed archives — used by Homebrew, Scoop, Winget manifests, and the piped installers:
+            Versioned, OS/arch-trimmed archives (and controlled source trees):
 
             | Asset | Platform | Contents | SHA256 |
             | :--- | :--- | :--- | :--- |
-            | `millennium-helpers-linux.tar.gz` | Linux/macOS | scripts, completions, man pages | `${{ env.LINUX_SHA }}` |
-            | `millennium-helpers-windows.zip` | Windows | PowerShell scripts | `${{ env.WINDOWS_SHA }}` |
+            | `${{ env.LINUX_AMD64_ASSET }}` | Linux amd64 | scripts + `bin/millennium` | `${{ env.LINUX_SHA }}` |
+            | `millennium-helpers-v${{ steps.meta.outputs.version }}-linux-arm64.tar.gz` | Linux arm64 | scripts + `bin/millennium` | `${{ env.LINUX_ARM64_SHA }}` |
+            | `millennium-helpers-v${{ steps.meta.outputs.version }}-darwin-amd64.tar.gz` | Darwin amd64 | scripts + `bin/millennium` | `${{ env.DARWIN_AMD64_SHA }}` |
+            | `millennium-helpers-v${{ steps.meta.outputs.version }}-darwin-arm64.tar.gz` | Darwin arm64 | scripts + `bin/millennium` | `${{ env.DARWIN_ARM64_SHA }}` |
+            | `${{ env.WINDOWS_AMD64_ASSET }}` | Windows amd64 | PowerShell scripts + `millennium.exe` | `${{ env.WINDOWS_SHA }}` |
+            | `${{ env.SRC_TAR_ASSET }}` / `-src.zip` | source | full tag tree for from-source builds | `${{ env.SRC_TAR_SHA }}` / `${{ env.SRC_ZIP_SHA }}` |
+
+            Standalone Go dispatchers (also embedded in the matching OS/arch archives):
+
+            - `millennium-v${{ steps.meta.outputs.version }}-linux-amd64` / `-linux-arm64`
+            - `millennium-v${{ steps.meta.outputs.version }}-darwin-amd64` / `-darwin-arm64`
+            - `millennium-v${{ steps.meta.outputs.version }}-windows-amd64.exe`
 
             ### Package Verification
-            To verify the integrity of the downloaded assets, run:
             ```bash
-            # On Linux/macOS
-            sha256sum -c millennium-helpers-linux.tar.gz.sha256
-
-            # On Windows (PowerShell)
-            $h = (Get-FileHash .\millennium-helpers-windows.zip -Algorithm SHA256).Hash.ToLower()
-            Get-Content .\millennium-helpers-windows.zip.sha256
-            # Compare $h to the hash in the sidecar file
+            sha256sum -c millennium-helpers-v${{ steps.meta.outputs.version }}-linux-amd64.tar.gz.sha256
             ```
           files: |
-            millennium-helpers-linux.tar.gz
-            millennium-helpers-windows.zip
-            millennium-helpers-linux.tar.gz.sha256
-            millennium-helpers-windows.zip.sha256
+            ${{ steps.assets.outputs.linux_amd64 }}
+            ${{ steps.assets.outputs.linux_arm64 }}
+            ${{ steps.assets.outputs.darwin_amd64 }}
+            ${{ steps.assets.outputs.darwin_arm64 }}
+            ${{ steps.assets.outputs.windows_amd64 }}
+            ${{ steps.assets.outputs.src_tar }}
+            ${{ steps.assets.outputs.src_zip }}
+            ${{ steps.assets.outputs.linux_amd64 }}.sha256
+            ${{ steps.assets.outputs.linux_arm64 }}.sha256
+            ${{ steps.assets.outputs.darwin_amd64 }}.sha256
+            ${{ steps.assets.outputs.darwin_arm64 }}.sha256
+            ${{ steps.assets.outputs.windows_amd64 }}.sha256
+            ${{ steps.assets.outputs.src_tar }}.sha256
+            ${{ steps.assets.outputs.src_zip }}.sha256
+            dist/${{ steps.assets.outputs.go_linux_amd64 }}
+            dist/${{ steps.assets.outputs.go_linux_arm64 }}
+            dist/${{ steps.assets.outputs.go_darwin_amd64 }}
+            dist/${{ steps.assets.outputs.go_darwin_arm64 }}
+            dist/${{ steps.assets.outputs.go_windows_amd64 }}
+            ${{ steps.assets.outputs.go_linux_amd64 }}.sha256
+            ${{ steps.assets.outputs.go_linux_arm64 }}.sha256
+            ${{ steps.assets.outputs.go_darwin_amd64 }}.sha256
+            ${{ steps.assets.outputs.go_darwin_arm64 }}.sha256
+            ${{ steps.assets.outputs.go_windows_amd64 }}.sha256
 
   update-packaging:
     name: Open packaging update PR
@@ -312,31 +478,54 @@ jobs:
           VERSION: ${{ needs.build-release.outputs.version }}
           TAG: ${{ needs.build-release.outputs.tag }}
           LINUX_SHA: ${{ needs.build-release.outputs.linux_sha }}
+          LINUX_ARM64_SHA: ${{ needs.build-release.outputs.linux_arm64_sha }}
+          DARWIN_AMD64_SHA: ${{ needs.build-release.outputs.darwin_amd64_sha }}
+          DARWIN_ARM64_SHA: ${{ needs.build-release.outputs.darwin_arm64_sha }}
           WINDOWS_SHA: ${{ needs.build-release.outputs.windows_sha }}
+          SRC_TAR_SHA: ${{ needs.build-release.outputs.src_tar_sha }}
+          SRC_ZIP_SHA: ${{ needs.build-release.outputs.src_zip_sha }}
         run: |
           set -euo pipefail
+          # shellcheck source=scripts/lib/release_assets.sh
+          source scripts/lib/release_assets.sh
           mkdir -p /tmp/release-assets
+          LINUX_ASSET="$(release_asset_helpers "$VERSION" linux amd64 tar.gz)"
+          WINDOWS_ASSET="$(release_asset_helpers "$VERSION" windows amd64 zip)"
+          SRC_TAR="$(release_asset_src "$VERSION" tar.gz)"
           gh release download "${TAG}" \
             --repo "${{ github.repository }}" \
             --dir /tmp/release-assets \
-            --pattern 'millennium-helpers-linux.tar.gz' \
-            --pattern 'millennium-helpers-windows.zip'
+            --pattern "$LINUX_ASSET" \
+            --pattern "$WINDOWS_ASSET" \
+            --pattern "$SRC_TAR"
 
-          GOT_LINUX="$(sha256sum /tmp/release-assets/millennium-helpers-linux.tar.gz | cut -d' ' -f1)"
-          GOT_WINDOWS="$(sha256sum /tmp/release-assets/millennium-helpers-windows.zip | cut -d' ' -f1)"
+          GOT_LINUX="$(sha256sum "/tmp/release-assets/${LINUX_ASSET}" | cut -d' ' -f1)"
+          GOT_WINDOWS="$(sha256sum "/tmp/release-assets/${WINDOWS_ASSET}" | cut -d' ' -f1)"
+          GOT_SRC="$(sha256sum "/tmp/release-assets/${SRC_TAR}" | cut -d' ' -f1)"
 
           if [[ "$GOT_LINUX" != "$LINUX_SHA" ]]; then
-            echo "::error::Draft Linux asset SHA mismatch (build=$LINUX_SHA download=$GOT_LINUX)"
+            echo "::error::Draft Linux amd64 asset SHA mismatch (build=$LINUX_SHA download=$GOT_LINUX)"
             exit 1
           fi
           if [[ "$GOT_WINDOWS" != "$WINDOWS_SHA" ]]; then
-            echo "::error::Draft Windows asset SHA mismatch (build=$WINDOWS_SHA download=$GOT_WINDOWS)"
+            echo "::error::Draft Windows amd64 asset SHA mismatch (build=$WINDOWS_SHA download=$GOT_WINDOWS)"
+            exit 1
+          fi
+          if [[ "$GOT_SRC" != "$SRC_TAR_SHA" ]]; then
+            echo "::error::Draft src.tar.gz SHA mismatch (build=$SRC_TAR_SHA download=$GOT_SRC)"
             exit 1
           fi
 
-          echo "linux_sha=$LINUX_SHA" >> "$GITHUB_OUTPUT"
-          echo "windows_sha=$WINDOWS_SHA" >> "$GITHUB_OUTPUT"
-          echo "Verified trimmed release assets for ${TAG}"
+          {
+            echo "linux_sha=$LINUX_SHA"
+            echo "linux_arm64_sha=$LINUX_ARM64_SHA"
+            echo "darwin_amd64_sha=$DARWIN_AMD64_SHA"
+            echo "darwin_arm64_sha=$DARWIN_ARM64_SHA"
+            echo "windows_sha=$WINDOWS_SHA"
+            echo "src_tar_sha=$SRC_TAR_SHA"
+            echo "src_zip_sha=$SRC_ZIP_SHA"
+          } >> "$GITHUB_OUTPUT"
+          echo "Verified versioned release assets for ${TAG}"
 
       - name: Update packaging manifests
         run: |
@@ -344,7 +533,12 @@ jobs:
             "${{ needs.build-release.outputs.version }}" \
             "${{ steps.hashes.outputs.linux_sha }}" \
             "${{ steps.hashes.outputs.windows_sha }}" \
-            "${{ github.repository }}"
+            "${{ github.repository }}" \
+            "${{ steps.hashes.outputs.src_tar_sha }}" \
+            "${{ steps.hashes.outputs.src_zip_sha }}" \
+            "${{ steps.hashes.outputs.darwin_amd64_sha }}" \
+            "${{ steps.hashes.outputs.darwin_arm64_sha }}" \
+            "${{ steps.hashes.outputs.linux_arm64_sha }}"
 
       - name: Verify version sync
         run: |
@@ -353,7 +547,7 @@ jobs:
 
       - name: Create Pull Request
         id: cpr
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           # PACKAGING_PAT is required so the opened PR triggers CI.
           token: ${{ secrets.PACKAGING_PAT }}
@@ -365,22 +559,18 @@ jobs:
             ## Summary
             Automated packaging bump for release **v${{ needs.build-release.outputs.version }}**.
 
-            - Updates `VERSION`, Homebrew Formula, Scoop, Winget, versioned Arch
-              (`packaging/millennium-helpers`), and Nix `nix/release-info.nix` to the trimmed
-              release assets (`millennium-helpers-linux.tar.gz` / `millennium-helpers-windows.zip`)
-            - Hashes come from the draft release assets built by this workflow
-            - Arch `-git`, Scoop `-git`, Winget `bolens.millenniumhelpers.git`, and Nix `#millennium-helpers-git` stay tip-of-main / flake source
-              and are not bumped here
+            - Updates `VERSION` + from-source/`-bin` matrix (Homebrew, Scoop, Arch, Nix,
+              deb, rpm, Chocolatey) and Winget bin manifests from draft release hashes
+            - Tip-of-main (`*-git`, Winget-git, Nix `#millennium-helpers-git`) stay untouched
 
             ## Automation
             If packaging CI passes, the release workflow will squash-merge this PR and publish the draft GitHub release.
             If CI fails, this PR and the draft release are left for manual recovery.
 
             ## Test plan
-            - [ ] Confirm version-sync CI passes
-            - [ ] Confirm Homebrew audit / Scoop / Winget manifest jobs pass
-            - [ ] Confirm Scoop install test passes (trimmed zip layout)
-            - [ ] Confirm PKGBUILD CI passes for versioned + `-git` packages
+            - [ ] Version sync + packaging-manifest matrix jobs pass
+            - [ ] Homebrew audits (`millennium-helpers` + `-bin`) pass
+            - [ ] Arch from-source + `-bin`, Nix, deb build, Scoop-bin install, Chocolatey shape pass
 
   finalize:
     name: Merge packaging PR & publish release
@@ -413,12 +603,22 @@ jobs:
           REPO="${{ github.repository }}"
 
           # Only these jobs gate auto-merge. Ignore CodeQL Analyze / labeler / etc.
+          # Names must match GitHub check names (matrix jobs include the key in parentheses).
           REQUIRED_CHECKS=(
-            "Detect changed packaging paths"
             "VERSION matches packaging manifests"
-            "Validate Scoop / Winget manifests"
-            "Test Scoop Package Install"
-            "homebrew"
+            "Validate packaging manifests"
+            "Validate Scoop matrix shapes"
+            "Validate Winget manifests"
+            "Validate Chocolatey package"
+            "Validate deb / rpm recipes"
+            "Build deb from-source"
+            "Test Scoop-bin Package Install"
+            "Validate Chocolatey install script shape"
+            "homebrew (millennium-helpers)"
+            "homebrew (millennium-helpers-bin)"
+            "Validate AUR packaging (millennium-helpers)"
+            "Validate AUR packaging (millennium-helpers-bin)"
+            "Build Nix Package"
           )
 
           echo "Packaging PR #${PR}: ${PR_URL}"

@@ -1,42 +1,49 @@
 {
     "version": "2.6.2",
-    "description": "Cross-platform utility scripts and Model Context Protocol (MCP) server for managing, upgrading, diagnosing, and controlling Millennium.",
+    "description": "Millennium helpers (from source tag) \u2014 builds Go dispatcher; long-name PATH twins invoke millennium.exe <cmd>.",
     "homepage": "https://github.com/bolens/millenium-helpers",
     "license": "MIT",
-    "url": "https://github.com/bolens/millenium-helpers/releases/download/v2.6.2/millennium-helpers-windows.zip",
-    "hash": "3d1fabe638ce2e990b7b0007ef77dd4afa1668fd558010758f0213c1c8826506",
+    "url": "https://github.com/bolens/millenium-helpers/releases/download/v2.6.2/millennium-helpers-v2.6.2-src.zip",
+    "hash": "19c2970cde6ccff90071be6950bd99919dac443c37309e37f2e85084f13d5b00",
     "bin": [
         [
-            "scripts\\windows\\millennium.ps1",
+            "scripts\\windows\\millennium.exe",
             "millennium"
         ],
         [
-            "scripts\\windows\\millennium-diag.ps1",
-            "millennium-diag"
+            "scripts\\windows\\millennium.exe",
+            "millennium-diag",
+            "diag"
         ],
         [
-            "scripts\\windows\\millennium-mcp.ps1",
-            "millennium-mcp"
+            "scripts\\windows\\millennium.exe",
+            "millennium-mcp",
+            "mcp"
         ],
         [
-            "scripts\\windows\\millennium-purge.ps1",
-            "millennium-purge"
+            "scripts\\windows\\millennium.exe",
+            "millennium-purge",
+            "purge"
         ],
         [
-            "scripts\\windows\\millennium-repair.ps1",
-            "millennium-repair"
+            "scripts\\windows\\millennium.exe",
+            "millennium-repair",
+            "repair"
         ],
         [
-            "scripts\\windows\\millennium-schedule.ps1",
-            "millennium-schedule"
+            "scripts\\windows\\millennium.exe",
+            "millennium-schedule",
+            "schedule"
         ],
         [
-            "scripts\\windows\\millennium-theme.ps1",
-            "millennium-theme"
+            "scripts\\windows\\millennium.exe",
+            "millennium-theme",
+            "theme"
         ],
         [
-            "scripts\\windows\\millennium-upgrade.ps1",
-            "millennium-upgrade"
+            "scripts\\windows\\millennium.exe",
+            "millennium-upgrade",
+            "upgrade"
         ]
     ],
     "post_install": [
@@ -79,9 +86,19 @@
         "}"
     ],
     "autoupdate": {
-        "url": "https://github.com/bolens/millenium-helpers/releases/download/v$version/millennium-helpers-windows.zip",
-        "hash": {
-            "url": "https://github.com/bolens/millenium-helpers/releases/download/v$version/millennium-helpers-windows.zip.sha256"
-        }
-    }
+        "url": "https://github.com/bolens/millenium-helpers/releases/download/v$version/millennium-helpers-v$version-src.zip",
+        "extract_dir": "millenium-helpers-$version"
+    },
+    "extract_dir": "millenium-helpers-2.6.2",
+    "pre_install": [
+        "$exe = Join-Path $dir 'scripts\\windows\\millennium.exe'",
+        "if (!(Test-Path -LiteralPath $exe)) {",
+        "  $goCmd = Get-Command go -ErrorAction SilentlyContinue",
+        "  if (-not $goCmd) { throw 'Go toolchain required to build millennium.exe for Scoop from-source/git installs' }",
+        "  Push-Location (Join-Path $dir 'go')",
+        "  & go build -o $exe ./cmd/millennium",
+        "  if ($LASTEXITCODE -ne 0) { Pop-Location; throw 'go build failed for millennium.exe' }",
+        "  Pop-Location",
+        "}"
+    ]
 }

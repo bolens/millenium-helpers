@@ -3,20 +3,19 @@ name: "CI: Man Page Coverage"
 on:
   push:
     branches: [ main ]
+    # Tag pushes always run (GitHub skips path filters for tags) so the
+    # release workflow gate can wait on man-pages for the tag SHA.
+    tags: [ 'v*' ]
     paths:
       - 'man/**'
-      - 'scripts/millennium.sh'
       - 'scripts/millennium-*.sh'
-      - 'scripts/millennium-mcp.py'
       - 'scripts/ci/check-man-pages.sh'
       - '.github/workflows/man-pages.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'man/**'
-      - 'scripts/millennium.sh'
       - 'scripts/millennium-*.sh'
-      - 'scripts/millennium-mcp.py'
       - 'scripts/ci/check-man-pages.sh'
       - '.github/workflows/man-pages.yml'
 

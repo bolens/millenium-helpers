@@ -10,7 +10,7 @@ ReleaseDate: 2026-07-10
 Installers:
 - Architecture: neutral
   InstallerType: zip
-  InstallerUrl: https://github.com/bolens/millenium-helpers/releases/download/v2.6.2/millennium-helpers-windows.zip
+  InstallerUrl: https://github.com/bolens/millenium-helpers/releases/download/v2.6.2/millennium-helpers-v2.6.2-windows-amd64.zip
   InstallerSha256: "3D1FABE638CE2E990B7B0007EF77DD4AFA1668FD558010758F0213C1C8826506"
   UpgradeBehavior: uninstallPrevious
 ManifestType: installer

@@ -1,0 +1,161 @@
+# Millennium Helpers CLI contract — source of truth for Bash/PS + Go migration.
+# Validated by scripts/ci/check-cli-contract.py (make check-cli-contract).
+version: 1
+
+platforms: [linux, darwin, windows]
+
+# Client update channels (config.json update_channel) — not helpers install track.
+channels: [stable, beta, main]
+
+config:
+  path:
+    linux: "${XDG_CONFIG_HOME:-$HOME/.config}/millennium-helpers/config.json"
+    darwin: "${XDG_CONFIG_HOME:-$HOME/.config}/millennium-helpers/config.json"
+    windows: "%LOCALAPPDATA%/millennium-helpers/config.json"
+  keys:
+    - name: update_channel
+      type: string
+      enum: [stable, beta, main]
+    - name: github_token
+      type: string
+      optional: true
+    - name: backup_limit
+      type: number
+      optional: true
+    - name: backup_max_age_days
+      type: number
+      optional: true
+
+global_flags:
+  - { name: help, long: --help, short: -h, aliases_windows: [-Help] }
+  - { name: version, long: --version, short: -V, aliases_windows: [-Version] }
+  - { name: quiet, long: --quiet, short: -q, aliases_windows: [-Quiet] }
+  - { name: dry_run, long: --dry-run, short: -d, aliases_windows: [-DryRun] }
+  - { name: yes, long: --yes, short: -y, aliases_windows: [-Yes] }
+
+dispatcher:
+  commands: [diag, doctor, upgrade, schedule, theme, repair, purge, mcp, help]
+  # doctor is an alias route to diag doctor
+
+commands:
+  help:
+    platforms: [linux, darwin, windows]
+    man: millennium.1
+    mcp: null
+
+  diag:
+    platforms: [linux, darwin, windows]
+    binary: millennium-diag
+    man: millennium-diag.1
+    mcp: millennium_diag
+    subcommands: [doctor]
+    flags:
+      - { name: fix, long: --fix, short: -f, aliases_windows: [-Fix], notes: "alias for doctor" }
+      - { name: force, long: --force, aliases_windows: [-Force] }
+      - { name: json, long: --json, aliases_windows: [-Json] }
+      - { name: follow, long: --follow, short: -l, aliases_windows: [-Follow] }
+      - { name: share, long: --share, short: -s, aliases_windows: [-Share] }
+      - { name: yes, long: --yes, short: -y }
+      - { name: dry_run, long: --dry-run, short: -d }
+      - { name: quiet, long: --quiet, short: -q }
+      - { name: version, long: --version, short: -V }
+      - { name: help, long: --help, short: -h }
+    mcp_properties: [doctor]
+
+  upgrade:
+    platforms: [linux, darwin, windows]
+    binary: millennium-upgrade
+    man: millennium-upgrade.1
+    mcp: millennium_upgrade
+    flags:
+      - { name: channel, long: --channel, short: -c, aliases_windows: [-Channel], enum: [stable, beta, main] }
+      - { name: stable, long: --stable, notes: "alias for --channel stable" }
+      - { name: beta, long: --beta, notes: "alias for --channel beta" }
+      - { name: main, long: --main, notes: "alias for --channel main" }
+      - { name: rollback, long: --rollback, short: -r, aliases_windows: [-Rollback] }
+      - { name: file, long: --file, aliases_windows: [-File] }
+      - { name: sha256, long: --sha256, aliases_windows: [-Sha256] }
+      - { name: insecure_skip_verify, long: --insecure-skip-verify, aliases_windows: [-InsecureSkipVerify] }
+      - { name: all_users, long: --all-users, platforms: [linux, darwin], os_only: true }
+      - { name: force, long: --force, short: -f, aliases_windows: [-Force] }
+      - { name: yes, long: --yes, short: -y }
+      - { name: dry_run, long: --dry-run, short: -d }
+      - { name: quiet, long: --quiet, short: -q }
+      - { name: version, long: --version, short: -V }
+      - { name: help, long: --help, short: -h }
+    mcp_properties: [channel, force, rollback]
+
+  schedule:
+    platforms: [linux, darwin, windows]
+    binary: millennium-schedule
+    man: millennium-schedule.1
+    mcp: millennium_schedule
+    subcommands: [enable, disable, status, setup, config]
+    # internal hooks not in MCP: pre-update, post-update
+    flags:
+      - { name: cron, long: --cron, short: -c, platforms: [linux, darwin], os_only: true }
+      - { name: system, long: --system, platforms: [linux], os_only: true }
+      - { name: user, long: --user, platforms: [linux], os_only: true }
+      - { name: dry_run, long: --dry-run, short: -d }
+      - { name: quiet, long: --quiet, short: -q }
+      - { name: version, long: --version, short: -V }
+      - { name: help, long: --help, short: -h }
+    mcp_properties: [action, channel, cron, system, user]
+    mcp_os_only_properties:
+      cron: [linux]
+      system: [linux]
+      user: [linux]
+
+  theme:
+    platforms: [linux, darwin, windows]
+    binary: millennium-theme
+    man: millennium-theme.1
+    mcp: millennium_theme
+    subcommands: [list, install, update, remove]
+    flags:
+      - { name: json, long: --json, aliases_windows: [-Json] }
+      - { name: yes, long: --yes, short: -y }
+      - { name: dry_run, long: --dry-run, short: -d }
+      - { name: quiet, long: --quiet, short: -q }
+      - { name: version, long: --version, short: -V }
+      - { name: help, long: --help, short: -h }
+    mcp_properties: [action, theme, all]
+
+  repair:
+    platforms: [linux, darwin, windows]
+    binary: millennium-repair
+    man: millennium-repair.1
+    mcp: millennium_repair
+    flags:
+      - { name: skip_theme, long: --skip-theme, short: -s, aliases_windows: [-SkipTheme] }
+      - { name: yes, long: --yes, short: -y }
+      - { name: dry_run, long: --dry-run, short: -d }
+      - { name: quiet, long: --quiet, short: -q }
+      - { name: version, long: --version, short: -V }
+      - { name: help, long: --help, short: -h }
+    mcp_properties: []
+
+  purge:
+    platforms: [linux, darwin, windows]
+    binary: millennium-purge
+    man: millennium-purge.1
+    mcp: millennium_purge
+    flags:
+      - { name: dry_run, long: --dry-run, short: -d }
+      - { name: yes, long: --yes, short: -y }
+      - { name: quiet, long: --quiet, short: -q }
+      - { name: version, long: --version, short: -V }
+      - { name: help, long: --help, short: -h }
+    mcp_properties: [confirm, dry_run]
+
+  mcp:
+    platforms: [linux, darwin, windows]
+    binary: millennium-mcp
+    man: millennium-mcp.1
+    mcp: null
+    notes: "Go millennium mcp; tools self-exec millennium <feature>; sudoers allowlists Go verbs + long-names"
+
+  doctor:
+    platforms: [linux, darwin, windows]
+    notes: "Dispatcher alias → millenium-diag doctor"
+    delegates_to: diag

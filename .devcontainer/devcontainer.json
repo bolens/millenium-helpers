@@ -5,6 +5,9 @@
   },
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
   "features": {
+    "ghcr.io/devcontainers/features/go:1": {
+      "version": "1.22"
+    },
     "ghcr.io/devcontainers/features/powershell:1": {},
     "ghcr.io/devcontainers/features/nix:1": {
       "multiUser": true,
@@ -24,7 +27,8 @@
         "themisanthrope.fish-lsp",
         "ms-plugins.nushell",
         "ms-azuretools.vscode-docker",
-        "github.vscode-github-actions"
+        "github.vscode-github-actions",
+        "golang.go"
       ],
       "settings": {
         "editor.formatOnSave": true,

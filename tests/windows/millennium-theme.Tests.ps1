@@ -6,6 +6,26 @@ Describe "Theme CLI Manager" {
             New-PSDrive -Name HKCU -PSProvider FileSystem -Root ([System.IO.Path]::GetTempPath()) -ErrorAction SilentlyContinue | Out-Null
             New-PSDrive -Name C -PSProvider FileSystem -Root ([System.IO.Path]::GetTempPath()) -ErrorAction SilentlyContinue | Out-Null
         }
+        # Theme list thin-wraps to Go millennium.exe.
+        $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
+        $binDir = Join-Path $repoRoot "bin"
+        New-Item -ItemType Directory -Force -Path $binDir | Out-Null
+        $outExe = Join-Path $binDir "millennium.exe"
+        if (-not (Test-Path -LiteralPath $outExe)) {
+            $go = Get-Command go -ErrorAction SilentlyContinue
+            if (-not $go) {
+                throw "Go toolchain required for theme list thin-wrap tests"
+            }
+            $ver = [System.IO.File]::ReadAllText((Join-Path $repoRoot "VERSION")).Trim()
+            Push-Location (Join-Path $repoRoot "go")
+            try {
+                & go build "-ldflags=-X github.com/bolens/millenium-helpers/internal/version.Version=$ver" `
+                    -o $outExe ./cmd/millennium
+                if ($LASTEXITCODE -ne 0) { throw "go build failed for millennium.exe" }
+            } finally {
+                Pop-Location
+            }
+        }
         function Get-Content {
             param(
                 [string]$Path,
@@ -16,7 +36,6 @@ Describe "Theme CLI Manager" {
             }
             return "3.0.0"
         }
-        . (Join-Path -Path $winScriptDir -ChildPath "common.ps1")
     }
 
     Context "Help and Version" {
@@ -47,35 +66,21 @@ Describe "Theme CLI Manager" {
     }
 
     Context "Active theme marker" {
-        BeforeAll {
-            Mock Get-ItemProperty { return [pscustomobject]@{ SteamPath = "C:\MockedSteam" } }
-            $skins = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ("mh-skins-" + [guid]::NewGuid().ToString("n"))
-            New-Item -ItemType Directory -Path (Join-Path $skins "CoolTheme") -Force | Out-Null
-            $themeFull = Join-Path $skins "CoolTheme"
-            Mock Test-Path { return $true }
-            Mock Get-ChildItem {
-                [pscustomobject]@{
-                    Name = "CoolTheme"
-                    FullName = $themeFull
-                    PSIsContainer = $true
-                }
-            }
-            Mock Get-Content {
-                if ($Path -like "*config.json*") {
-                    return '{"themes":{"activeTheme":"CoolTheme"}}'
-                }
-                if ($Path -like "*VERSION*") { return "2.2.1" }
-                return "{}"
-            }
-        }
-
         It "Marks the active theme in list output" {
             $prevApp = $env:APPDATA
             $prevLocal = $env:LOCALAPPDATA
+            $prevSkins = $env:MILLENNIUM_SKINS_DIR
+            $skins = Join-Path ([System.IO.Path]::GetTempPath()) ("mh-skins-" + [guid]::NewGuid().ToString("n"))
+            $appData = Join-Path ([System.IO.Path]::GetTempPath()) ("mh-appdata-" + [guid]::NewGuid().ToString("n"))
             try {
-                $env:APPDATA = Join-Path ([System.IO.Path]::GetTempPath()) "mh-appdata"
-                $env:LOCALAPPDATA = Join-Path ([System.IO.Path]::GetTempPath()) "mh-localappdata"
-                New-Item -ItemType Directory -Path $env:APPDATA -Force | Out-Null
+                New-Item -ItemType Directory -Path (Join-Path $skins "CoolTheme") -Force | Out-Null
+                $cfgDir = Join-Path $appData "millennium"
+                New-Item -ItemType Directory -Path $cfgDir -Force | Out-Null
+                '{"themes":{"activeTheme":"CoolTheme"}}' |
+                    Set-Content -Path (Join-Path $cfgDir "config.json") -Encoding utf8
+                $env:APPDATA = $appData
+                $env:LOCALAPPDATA = Join-Path ([System.IO.Path]::GetTempPath()) ("mh-local-" + [guid]::NewGuid().ToString("n"))
+                $env:MILLENNIUM_SKINS_DIR = $skins
                 $themeScript = Join-Path -Path $winScriptDir -ChildPath "millennium-theme.ps1"
                 $out = (& $themeScript list *>&1) | Out-String
                 $out | Should -BeLike "*CoolTheme*"
@@ -83,42 +88,67 @@ Describe "Theme CLI Manager" {
             } finally {
                 $env:APPDATA = $prevApp
                 $env:LOCALAPPDATA = $prevLocal
+                if ($null -eq $prevSkins) {
+                    Remove-Item Env:MILLENNIUM_SKINS_DIR -ErrorAction SilentlyContinue
+                } else {
+                    $env:MILLENNIUM_SKINS_DIR = $prevSkins
+                }
+                Remove-Item -Path $skins, $appData -Recurse -Force -ErrorAction SilentlyContinue
             }
         }
     }
 
     Context "Empty list UX" {
-        BeforeAll {
-            Mock Get-ItemProperty { return [pscustomobject]@{ SteamPath = "C:\MockedSteam" } }
-            Mock Test-Path {
-                if ($Path -like "*skins*") { return $false }
-                return $true
-            }
-        }
-
         It "Suggests an install example when no themes directory exists" {
-            $themeScript = Join-Path -Path $winScriptDir -ChildPath "millennium-theme.ps1"
-            $out = (& $themeScript list *>&1) | Out-String
-            $out | Should -BeLike "*millennium theme install*"
+            $prevSkins = $env:MILLENNIUM_SKINS_DIR
+            try {
+                $env:MILLENNIUM_SKINS_DIR = Join-Path ([System.IO.Path]::GetTempPath()) ("mh-missing-skins-" + [guid]::NewGuid().ToString("n"))
+                $themeScript = Join-Path -Path $winScriptDir -ChildPath "millennium-theme.ps1"
+                $out = (& $themeScript list *>&1) | Out-String
+                $out | Should -BeLike "*millennium theme install*"
+            } finally {
+                if ($null -eq $prevSkins) {
+                    Remove-Item Env:MILLENNIUM_SKINS_DIR -ErrorAction SilentlyContinue
+                } else {
+                    $env:MILLENNIUM_SKINS_DIR = $prevSkins
+                }
+            }
         }
     }
 
     Context "Traversal and formatting validation" {
-        BeforeAll {
-            Mock Get-ItemProperty { return [pscustomobject]@{ SteamPath = "C:\MockedSteam" } }
-            Mock Test-Path { return $true }
-        }
-
         It "Rejects install arguments that contain path traversal patterns" {
-            $themeScript = Join-Path -Path $winScriptDir -ChildPath "millennium-theme.ps1"
-            $proc = Start-Process pwsh -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$themeScript`" install `"x/../../tmp/evil`"" -PassThru -Wait -NoNewWindow
-            $proc.ExitCode | Should -Not -Be 0
+            $prevSkins = $env:MILLENNIUM_SKINS_DIR
+            try {
+                $env:MILLENNIUM_SKINS_DIR = Join-Path ([System.IO.Path]::GetTempPath()) ("mh-skins-" + [guid]::NewGuid().ToString("n"))
+                New-Item -ItemType Directory -Force -Path $env:MILLENNIUM_SKINS_DIR | Out-Null
+                $themeScript = Join-Path -Path $winScriptDir -ChildPath "millennium-theme.ps1"
+                $proc = Start-Process pwsh -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$themeScript`" install `"owner/..`"" -PassThru -Wait -NoNewWindow
+                $proc.ExitCode | Should -Not -Be 0
+            } finally {
+                if ($null -eq $prevSkins) {
+                    Remove-Item Env:MILLENNIUM_SKINS_DIR -ErrorAction SilentlyContinue
+                } else {
+                    $env:MILLENNIUM_SKINS_DIR = $prevSkins
+                }
+            }
         }
 
         It "Rejects install arguments that contain Windows path traversal patterns" {
-            $themeScript = Join-Path -Path $winScriptDir -ChildPath "millennium-theme.ps1"
-            $proc = Start-Process pwsh -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$themeScript`" install `"x\..\..\tmp\evil`"" -PassThru -Wait -NoNewWindow
-            $proc.ExitCode | Should -Not -Be 0
+            $prevSkins = $env:MILLENNIUM_SKINS_DIR
+            try {
+                $env:MILLENNIUM_SKINS_DIR = Join-Path ([System.IO.Path]::GetTempPath()) ("mh-skins-" + [guid]::NewGuid().ToString("n"))
+                New-Item -ItemType Directory -Force -Path $env:MILLENNIUM_SKINS_DIR | Out-Null
+                $themeScript = Join-Path -Path $winScriptDir -ChildPath "millennium-theme.ps1"
+                $proc = Start-Process pwsh -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$themeScript`" install `"owner\..`"" -PassThru -Wait -NoNewWindow
+                $proc.ExitCode | Should -Not -Be 0
+            } finally {
+                if ($null -eq $prevSkins) {
+                    Remove-Item Env:MILLENNIUM_SKINS_DIR -ErrorAction SilentlyContinue
+                } else {
+                    $env:MILLENNIUM_SKINS_DIR = $prevSkins
+                }
+            }
         }
 
         It "Rejects install arguments without owner/repo format" {
@@ -129,20 +159,28 @@ Describe "Theme CLI Manager" {
     }
 
     Context "Theme installation standardization" {
-        BeforeAll {
-            Mock Get-ItemProperty { return [pscustomobject]@{ SteamPath = "C:\MockedSteam" } }
-            Mock Test-Path {
-                if ($Path -like "*skins*") { return $false }
-                return $true
-            }
-            Mock Invoke-RestMethod { return @( [pscustomobject]@{ sha = "mockcommitsha" } ) }
-        }
-
         It "Accepts owner\repo format and standardizes it to owner/repo" {
-            $themeScript = Join-Path -Path $winScriptDir -ChildPath "millennium-theme.ps1"
-            # Dry run with backslashes
-            $out = (& $themeScript install "mockowner\mockrepo" -DryRun *>&1) | Out-String
-            $out | Should -BeLike "*Resolving latest commit for mockowner/mockrepo*"
+            $prevSkins = $env:MILLENNIUM_SKINS_DIR
+            $prevMock = $env:MILLENNIUM_THEME_MOCK_COMMIT
+            try {
+                $env:MILLENNIUM_SKINS_DIR = Join-Path ([System.IO.Path]::GetTempPath()) ("mh-skins-" + [guid]::NewGuid().ToString("n"))
+                New-Item -ItemType Directory -Force -Path $env:MILLENNIUM_SKINS_DIR | Out-Null
+                $env:MILLENNIUM_THEME_MOCK_COMMIT = "mockcommitsha"
+                $themeScript = Join-Path -Path $winScriptDir -ChildPath "millennium-theme.ps1"
+                $out = (& $themeScript install "mockowner\mockrepo" -DryRun *>&1) | Out-String
+                $out | Should -BeLike "*Resolving repository: mockowner/mockrepo*"
+            } finally {
+                if ($null -eq $prevSkins) {
+                    Remove-Item Env:MILLENNIUM_SKINS_DIR -ErrorAction SilentlyContinue
+                } else {
+                    $env:MILLENNIUM_SKINS_DIR = $prevSkins
+                }
+                if ($null -eq $prevMock) {
+                    Remove-Item Env:MILLENNIUM_THEME_MOCK_COMMIT -ErrorAction SilentlyContinue
+                } else {
+                    $env:MILLENNIUM_THEME_MOCK_COMMIT = $prevMock
+                }
+            }
         }
     }
 }

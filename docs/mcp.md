@@ -22,6 +22,12 @@ see [security_troubleshooting.md](security_troubleshooting.md). Licensing:
 
 **Helpers track vs client channel:** MCP `channel` arguments always mean the Millennium **client** `update_channel` (`stable` / `beta` / `main`). Helpers install track (`release` / `main` / `tag`) is chosen at install time (`install.sh --track`, `install.ps1 -Track`) and is not an MCP tool parameter.
 
+**Go MCP server:** `millennium mcp` (and PATH `millennium-mcp` argv0 twin) is the
+stdio JSON-RPC server and owns `--register`. Dual-OS `go.yml` smokes `initialize`.
+Packaging installs the Go binary (or a thin shim) as `millennium-mcp`. Tool calls
+self-exec `millennium <feature> …`, including elevating doctor/upgrade/repair/purge
+(`sudo -n` / UAC). Force long-name helpers with `MILLENNIUM_MCP_LONGNAMES=1`.
+
 **Safety gates (server-side):**
 - `action` / `channel` values are allow-listed independently of the JSON schema (clients can send arbitrary strings)
 - `theme` / `rollback` strings are character-class validated; path traversal (`..`) is refused

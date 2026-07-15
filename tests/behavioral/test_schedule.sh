@@ -12,26 +12,42 @@ source "${TEST_DIR}/../lib/assertions.sh"
 source "${TEST_DIR}/../lib/mocks.sh"
 
 SCHEDULE_SH="${REPO_ROOT}/scripts/millennium-schedule.sh"
+GO_BIN="${REPO_ROOT}/bin/millennium"
+
+# Long-name config thin-wraps to Go — ensure a dispatcher exists.
+if [[ ! -x "$GO_BIN" ]]; then
+  make -C "$REPO_ROOT" build
+fi
+[[ -x "$GO_BIN" ]] || {
+  echo "error: ${GO_BIN} required for schedule config tests" >&2
+  exit 1
+}
 
 setup_mock_bin
 trap teardown_mock_bin EXIT
+
+# Isolate Steam relaunch state under MILLENNIUM_STATE_DIR (Go ignores getent home).
+FAKE_STATE_DIR=$(mktemp -d)
+export MILLENNIUM_STATE_DIR="$FAKE_STATE_DIR"
+EXPECTED_STATE_FILE="${FAKE_STATE_DIR}/relaunch.env"
 
 # Isolate systemd user unit files and state dir in a throwaway HOME/XDG dir
 FAKE_XDG_CONFIG=$(mktemp -d)
 export XDG_CONFIG_HOME="$FAKE_XDG_CONFIG"
 
-# millennium-schedule.sh stores the Steam relaunch state file under the
-# running user's home directory (resolved via getent), not /tmp. Point
-# getent's reported home at a throwaway temp dir so post-update tests don't
-# read/write the real developer $HOME.
-FAKE_RELAUNCH_HOME=$(mktemp -d)
-mock_cmd "getent" 'echo "faketestuser:x:1000:1000::'"${FAKE_RELAUNCH_HOME}"':/bin/bash"'
-EXPECTED_STATE_FILE="${FAKE_RELAUNCH_HOME}/.local/state/millennium-helpers/relaunch.env"
-
-# Fast stand-ins for the other helper scripts (avoid invoking real, slow tools)
-mock_cmd "millennium-diag" 'exit 0'
+# Fast stand-ins for helper CLIs (post-update prefers millennium-diag, then millennium diag)
+# shellcheck disable=SC2016
+mock_cmd "millennium" '
+case "${1:-}" in
+  diag) exit "${MILLENNIUM_MOCK_DIAG_RC:-0}" ;;
+  *) exit 0 ;;
+esac
+'
 mock_cmd "millennium-theme" 'exit 0'
 mock_cmd "millennium-upgrade" 'exit 0'
+
+# shellcheck disable=SC2016
+mock_cmd "millennium-diag" 'exit "${MILLENNIUM_MOCK_DIAG_RC:-0}"'
 
 run_schedule() {
   bash "$SCHEDULE_SH" "$@"
@@ -67,20 +83,20 @@ rc=$?
 assert_failure "$rc" "millennium-schedule enable rejects an unrecognized channel argument"
 assert_contains "$out" "Unknown channel" "millennium-schedule enable reports the unrecognized channel"
 
-# --- enable (no --cron flag): path depends on whether systemd is actually
-# booted on this machine (millennium-schedule.sh auto-detects via
-# /run/systemd/system and silently falls back to cron otherwise, e.g. inside
-# minimal containers used in CI). Branch on the real environment so the test
-# is accurate either way instead of assuming systemd is always available.
+# --- enable (no --cron flag): path depends on platform/boot detection.
+# Linux with systemd → user/system units; macOS → launchd; else crontab.
 
 out=$(run_schedule enable stable --dry-run 2>&1)
 rc=$?
 assert_success "$rc" "millennium-schedule enable stable --dry-run exits 0"
 assert_contains "$out" "DRY RUN" "millennium-schedule enable --dry-run announces dry-run mode"
 if [[ -d /run/systemd/system ]]; then
-  assert_contains "$out" "systemd user service file" "millennium-schedule enable --dry-run mentions creating the systemd service file"
+  assert_contains "$out" "Would write service" "millennium-schedule enable --dry-run mentions writing the systemd service file"
+  assert_contains "$out" "Would write timer" "millennium-schedule enable --dry-run mentions writing the systemd timer file"
   assert_file_not_exists "${FAKE_XDG_CONFIG}/systemd/user/millennium-update.timer" "millennium-schedule enable --dry-run does not actually write the timer unit file"
   assert_file_not_exists "${FAKE_XDG_CONFIG}/systemd/user/millennium-update.service" "millennium-schedule enable --dry-run does not actually write the service unit file"
+elif [[ "$(uname -s)" == "Darwin" ]]; then
+  assert_contains "$out" "LaunchAgent" "millennium-schedule enable --dry-run uses launchd on macOS"
 else
   assert_contains "$out" "crontab" "millennium-schedule enable --dry-run falls back to crontab when systemd is not booted"
 fi
@@ -92,7 +108,7 @@ rc=$?
 assert_success "$rc" "millennium-schedule enable beta --cron --dry-run exits 0"
 assert_contains "$out" "DRY RUN" "millennium-schedule enable --cron --dry-run announces dry-run mode"
 assert_contains "$out" "crontab" "millennium-schedule enable --cron --dry-run mentions crontab"
-assert_contains "$out" "millennium-upgrade" "millennium-schedule enable beta --cron --dry-run references the upgrade script"
+assert_contains "$out" "upgrade --channel" "millennium-schedule enable beta --cron --dry-run references millennium upgrade"
 
 # --- disable dry-run ---
 
@@ -100,6 +116,11 @@ out=$(run_schedule disable --dry-run 2>&1)
 rc=$?
 assert_success "$rc" "millennium-schedule disable --dry-run exits 0"
 assert_contains "$out" "DRY RUN" "millennium-schedule disable --dry-run announces dry-run mode"
+if [[ "$(uname -s)" == "Linux" ]]; then
+  assert_contains "$out" "system and user scopes" "millennium-schedule disable --dry-run mentions both systemd scopes"
+  assert_contains "$out" "system units under" "millennium-schedule disable --dry-run announces system-scope cleanup"
+  assert_contains "$out" "user units under" "millennium-schedule disable --dry-run announces user-scope cleanup"
+fi
 
 # --- status (no timer/service configured) ---
 
@@ -169,19 +190,29 @@ assert_contains "$out" "No saved relaunch state" "millennium-schedule post-updat
 
 # --- post-update: diagnostics failure aborts relaunch ---
 
+# shellcheck disable=SC2016
+mock_cmd "millennium" '
+case "${1:-}" in
+  diag) exit 1 ;;
+  *) exit 0 ;;
+esac
+'
 mock_cmd "millennium-diag" 'exit 1'
 out=$(MILLENNIUM_SCHEDULER=1 run_schedule post-update 2>&1)
 rc=$?
 assert_failure "$rc" "millennium-schedule post-update exits non-zero when diagnostics fail"
 assert_contains "$out" "failed verification" "millennium-schedule post-update explains the verification failure"
-mock_cmd "millennium-diag" 'exit 0'
+# shellcheck disable=SC2016
+mock_cmd "millennium" '
+case "${1:-}" in
+  diag) exit "${MILLENNIUM_MOCK_DIAG_RC:-0}" ;;
+  *) exit 0 ;;
+esac
+'
+# shellcheck disable=SC2016
+mock_cmd "millennium-diag" 'exit "${MILLENNIUM_MOCK_DIAG_RC:-0}"'
 
 # --- post-update with saved state must not launch host Steam under TEST_SUITE_RUN ---
-# Ownership checks require the state file owner to match RUNNING_USER (the
-# invoking user). Point getent's home at the fake dir while keeping the
-# username as the real user so _is_safe_relaunch_state_file accepts it.
-real_user="$(id -un)"
-mock_cmd "getent" 'echo "'"${real_user}"':x:1000:1000::'"${FAKE_RELAUNCH_HOME}"':/bin/bash"'
 mkdir -p "$(dirname "$EXPECTED_STATE_FILE")"
 cat > "$EXPECTED_STATE_FILE" << EOF
 export DISPLAY=':1'
@@ -198,12 +229,13 @@ assert_file_not_exists "${MOCK_BIN}/steam.calls" "millennium-schedule post-updat
 assert_file_not_exists "$EXPECTED_STATE_FILE" "millennium-schedule post-update consumes the relaunch state file"
 mock_cmd "steam" 'exit 0'
 
-# --- Default channel selection from CONFIG_UPDATE_CHANNEL ---
+# --- Default channel selection from config update_channel ---
 
-export CONFIG_UPDATE_CHANNEL="beta"
+mkdir -p "${FAKE_XDG_CONFIG}/millennium-helpers"
+printf '%s\n' '{"update_channel":"beta"}' > "${FAKE_XDG_CONFIG}/millennium-helpers/config.json"
+export XDG_CONFIG_HOME="${FAKE_XDG_CONFIG}"
 out=$(run_schedule enable --dry-run --cron 2>&1)
-assert_contains "$out" "millennium-upgrade" "millennium-schedule defaults to beta channel when CONFIG_UPDATE_CHANNEL is set to beta"
-unset CONFIG_UPDATE_CHANNEL
+assert_contains "$out" "upgrade --channel beta" "millennium-schedule enable uses update_channel from config.json"
 
 # --- config command tests ---
 
@@ -296,11 +328,9 @@ assert_equals "14" "$val_age" "setup wizard preserves backup_max_age_days when r
 
 rm -f "${MOCK_BIN}/systemctl"
 rm -rf "${TEST_CONFIG_DIR}"
-unset XDG_CONFIG_HOME
-
-unset XDG_CONFIG_HOME
+unset XDG_CONFIG_HOME MILLENNIUM_STATE_DIR
 
 rm -rf "$FAKE_XDG_CONFIG"
-rm -rf "$FAKE_RELAUNCH_HOME"
+rm -rf "$FAKE_STATE_DIR"
 
 print_summary

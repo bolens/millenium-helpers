@@ -3,6 +3,9 @@ name: "CI: Packaging Version Sync"
 on:
   push:
     branches: [ main ]
+    # Tag pushes always run (GitHub skips path filters for tags) so the
+    # release workflow gate can wait on version-sync for the tag SHA.
+    tags: [ 'v*' ]
     paths:
       - 'VERSION'
       - 'pyproject.toml'
@@ -10,9 +13,14 @@ on:
       - 'packaging/scoop/**'
       - 'packaging/winget/**'
       - 'packaging/millennium-helpers/**'
+      - 'packaging/millennium-helpers-bin/**'
+      - 'packaging/deb/**'
+      - 'packaging/rpm/**'
+      - 'packaging/chocolatey/**'
       - 'nix/release-info.nix'
       - 'scripts/ci/check-version-sync.sh'
       - 'scripts/ci/sync-stable-srcinfo.sh'
+      - 'scripts/ci/sync-bin-srcinfo.sh'
       - 'scripts/ci/bump-version.sh'
       - '.github/workflows/version-sync.yml'
   pull_request:
@@ -24,9 +32,14 @@ on:
       - 'packaging/scoop/**'
       - 'packaging/winget/**'
       - 'packaging/millennium-helpers/**'
+      - 'packaging/millennium-helpers-bin/**'
+      - 'packaging/deb/**'
+      - 'packaging/rpm/**'
+      - 'packaging/chocolatey/**'
       - 'nix/release-info.nix'
       - 'scripts/ci/check-version-sync.sh'
       - 'scripts/ci/sync-stable-srcinfo.sh'
+      - 'scripts/ci/sync-bin-srcinfo.sh'
       - 'scripts/ci/bump-version.sh'
       - '.github/workflows/version-sync.yml'
 
@@ -48,7 +61,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.x'
+          python-version: "3.x"
 
       - name: Install dependencies
         run: pip install pyyaml

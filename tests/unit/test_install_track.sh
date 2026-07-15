@@ -13,12 +13,17 @@ source "${REPO_ROOT}/scripts/lib/install_track.sh"
 
 echo -e "${YELLOW}=== Unit tests: install_track.sh ===${NC}"
 
+# Stub latest-tag resolver so release-track tests stay offline.
+release_fetch_latest_tag() {
+  printf 'v2.6.2'
+}
+
 # --- resolve_helpers_install_track ---
 
 resolve_helpers_install_track release "" linux
 assert_equals "release" "$HELPERS_TRACK" "resolve release track"
-assert_equals "latest" "$HELPERS_TRACK_REF" "resolve release ref is latest"
-assert_contains "$HELPERS_TRACK_URL" "releases/latest/download/millennium-helpers-linux.tar.gz" "resolve release URL"
+assert_equals "v2.6.2" "$HELPERS_TRACK_REF" "resolve release ref is latest tag"
+assert_contains "$HELPERS_TRACK_URL" "releases/download/v2.6.2/millennium-helpers-v2.6.2-linux-" "resolve release URL"
 assert_equals "1" "$HELPERS_TRACK_NEEDS_SHA" "release track needs SHA"
 
 resolve_helpers_install_track main "" linux
@@ -32,11 +37,11 @@ resolve_helpers_install_track tag "v2.5.0" linux
 assert_equals "tag" "$HELPERS_TRACK" "resolve tag track"
 assert_equals "v2.5.0" "$HELPERS_TRACK_REF" "resolve tag ref"
 assert_equals "2.5.0" "$HELPERS_TRACK_VERSION" "resolve tag version"
-assert_contains "$HELPERS_TRACK_URL" "releases/download/v2.5.0/millennium-helpers-linux.tar.gz" "resolve tag URL"
+assert_contains "$HELPERS_TRACK_URL" "releases/download/v2.5.0/millennium-helpers-v2.5.0-linux-" "resolve tag URL"
 
 resolve_helpers_install_track tag "2.5.0" windows
 assert_equals "v2.5.0" "$HELPERS_TRACK_REF" "tag without v is normalized"
-assert_contains "$HELPERS_TRACK_URL" "millennium-helpers-windows.zip" "windows asset for tag"
+assert_contains "$HELPERS_TRACK_URL" "millennium-helpers-v2.5.0-windows-amd64.zip" "windows asset for tag"
 
 out=$(resolve_helpers_install_track bogus "" linux 2>&1) && rc=0 || rc=$?
 assert_failure "$rc" "unknown track fails"

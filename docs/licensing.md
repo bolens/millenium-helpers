@@ -50,7 +50,7 @@ via `install.sh`, Homebrew, Nix, Arch PKGBUILDs, and the Windows installer.
 
 - **Docs index:** [README.md](README.md)
 - **Project:** [README.md](../README.md) · [CONTRIBUTING.md](../CONTRIBUTING.md#licensing) · [SECURITY.md](../SECURITY.md)
-- **Guides:** [MCP server](mcp.md) · [Security design & troubleshooting](security_troubleshooting.md) · [Steam Deck & Flatpak](steam_deck.md) · [Uninstall / dry-run](uninstall_dryrun.md) · [Release runbook](release_runbook.md)
+- **Guides:** [MCP server](mcp.md) · [Security design & troubleshooting](security_troubleshooting.md) · [Steam Deck & Flatpak](steam_deck.md) · [Uninstall / dry-run](uninstall_dryrun.md) · [Release runbook](release_runbook.md) · [Unification audit](unification-audit.md) · [Unification roadmap](unification-roadmap.md)
 
 ## Keeping this in sync
 

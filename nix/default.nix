@@ -6,55 +6,96 @@
 , unzip
 , python3
 , git
+, go
+, buildGoModule
 , src
 , version
 , pname ? "millennium-helpers"
   # Release tarball is flat (multiple top-level dirs). Git/cleanSource is a directory.
 , unpackFlat ? false
+  # Build Go strangler dispatcher (from-source / git). -bin uses prebuilt if present.
+, buildGoDispatcher ? false
 }:
 
+let
+  # Fixed-output module fetch (sandbox-safe). Source tree must include go/go.mod.
+  millenniumDispatcher = buildGoModule {
+    pname = "${pname}-dispatcher";
+    inherit version src;
+    modRoot = "go";
+    vendorHash = "sha256-5HKVipTHytOwJIDbEfw3mm593Qkt7T8NW/R6mUkwx9Q=";
+    subPackages = [ "cmd/millennium" ];
+    env.CGO_ENABLED = "0";
+    ldflags = [
+      "-X github.com/bolens/millenium-helpers/internal/version.Version=${version}"
+    ];
+    # Avoid VCS stamping when src is not a clean .git checkout for the builder.
+    allowGoReference = false;
+    # Offline after vendor FOD.
+    proxyVendor = true;
+  };
+in
 stdenv.mkDerivation ({
   inherit pname version src;
 
-  nativeBuildInputs = [ makeWrapper ];
+  nativeBuildInputs = [ makeWrapper ] ++ lib.optionals buildGoDispatcher [ go ];
 
   buildInputs = [ bash python3 curl unzip git ];
 
-  dontBuild = true;
+  dontBuild = !buildGoDispatcher;
+
+  buildPhase = lib.optionalString buildGoDispatcher ''
+    runHook preBuild
+    mkdir -p bin
+    # Copy prefetched/prebuilt dispatcher (modules resolved in a fixed-output drv).
+    cp ${millenniumDispatcher}/bin/millennium bin/millennium
+    chmod +x bin/millennium
+    runHook postBuild
+  '';
 
   postPatch = ''
+    # Shell checkout fallbacks may still mention the packaged common path.
     for f in scripts/millennium-*.sh; do
-      substituteInPlace "$f" \
-        --replace-fail '/usr/lib/millennium-helpers/common.sh' "$out/lib/millennium-helpers/common.sh"
+      [ -f "$f" ] || continue
+      if grep -q '/usr/lib/millennium-helpers/common.sh' "$f"; then
+        substituteInPlace "$f" \
+          --replace-fail '/usr/lib/millennium-helpers/common.sh' "$out/lib/millennium-helpers/common.sh"
+      fi
     done
   '';
 
   installPhase = ''
     runHook preInstall
 
-    # Install scripts
     mkdir -p $out/bin
-    install -m755 scripts/millennium-repair.sh $out/bin/millennium-repair
-    install -m755 scripts/millennium-upgrade.sh $out/bin/millennium-upgrade
-    install -m755 scripts/millennium-schedule.sh $out/bin/millennium-schedule
-    install -m755 scripts/millennium-purge.sh $out/bin/millennium-purge
-    install -m755 scripts/millennium-diag.sh $out/bin/millennium-diag
-    install -m755 scripts/millennium-theme.sh $out/bin/millennium-theme
-    install -m755 scripts/millennium-mcp.py $out/bin/millennium-mcp
-    install -m755 scripts/millennium.sh $out/bin/millennium
+    if [ ! -x bin/millennium ]; then
+      echo "error: Go dispatcher bin/millennium is required" >&2
+      exit 1
+    fi
+    install -m755 bin/millennium $out/bin/millennium
+    # Long-name PATH twins: inject subcommand (Nix wrappers change argv0).
+    for pair in \
+      "millennium-mcp:mcp" \
+      "millennium-repair:repair" \
+      "millennium-upgrade:upgrade" \
+      "millennium-schedule:schedule" \
+      "millennium-purge:purge" \
+      "millennium-diag:diag" \
+      "millennium-theme:theme"
+    do
+      twin="''${pair%%:*}"
+      cmd="''${pair#*:}"
+      makeWrapper $out/bin/millennium $out/bin/$twin \
+        --add-flags "$cmd" \
+        --prefix PATH : ${lib.makeBinPath [ bash python3 curl unzip git ]}
+    done
+    wrapProgram $out/bin/millennium \
+      --prefix PATH : ${lib.makeBinPath [ bash python3 curl unzip git ]}
 
-    # Install shared library and its modules
     mkdir -p $out/lib/millennium-helpers/lib
     install -m644 scripts/common.sh $out/lib/millennium-helpers/common.sh
     install -m644 scripts/lib/*.sh $out/lib/millennium-helpers/lib/
 
-    # Wrap the scripts to ensure they have the runtime dependencies on PATH
-    for script in millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp millennium; do
-      wrapProgram $out/bin/$script \
-        --prefix PATH : ${lib.makeBinPath [ bash python3 curl unzip git ]}
-    done
-
-    # Install completions
     mkdir -p $out/share/bash-completion/completions
     install -m644 completions/bash/millennium-helpers $out/share/bash-completion/completions/millennium-helpers
     for script in millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp millennium; do
@@ -75,20 +116,15 @@ stdenv.mkDerivation ({
     mkdir -p $out/share/nushell/completions
     install -m644 completions/nushell/millennium-helpers.nu $out/share/nushell/completions/millennium-helpers.nu
 
-    # Install man pages
     mkdir -p $out/share/man/man1
     install -m644 man/*.1 $out/share/man/man1/
 
-    # Install VERSION for --version lookups
     install -m644 VERSION $out/lib/millennium-helpers/VERSION
 
-    # Vendored Millennium client MIT license (copied next to client on upgrade).
-    # Optional so packaging still works against older release tarballs without third_party/.
     if [ -f third_party/MILLENNIUM-LICENSE.md ]; then
       install -m644 third_party/MILLENNIUM-LICENSE.md $out/lib/millennium-helpers/MILLENNIUM-LICENSE.md
     fi
 
-    # Install license
     mkdir -p $out/share/licenses/${pname}
     install -m644 LICENSE $out/share/licenses/${pname}/LICENSE
 

@@ -27,6 +27,8 @@ Environment: MILLENNIUM_HELPERS_TRACK, MILLENNIUM_HELPERS_TAG,
   MILLENNIUM_HELPERS_RELEASE_URL, MILLENNIUM_HELPERS_RELEASE_SHA_URL,
   MILLENNIUM_HELPERS_ALLOW_UNSIGNED_MAIN=1
 
+Install requires millennium.exe (Go dispatcher) on PATH.
+
 Release checksums are same-origin GitHub TOFU, not independent signing.
 
 Millennium client update channel (stable|beta|main) is separate — use
@@ -110,11 +112,17 @@ if ($isStandalone) {
                 if ([string]::IsNullOrWhiteSpace($Tag) -and $env:MILLENNIUM_HELPERS_TAG) { $Tag = $env:MILLENNIUM_HELPERS_TAG }
                 if ([string]::IsNullOrWhiteSpace($Tag)) { throw "Tag is required for -Track tag" }
                 $norm = if ($Tag.StartsWith('v')) { $Tag } else { "v$Tag" }
-                $url = "https://github.com/$repo/releases/download/$norm/millennium-helpers-windows.zip"
+                $ver = $norm.TrimStart('v')
+                $url = "https://github.com/$repo/releases/download/$norm/millennium-helpers-v$ver-windows-amd64.zip"
                 $shaUrl = "$url.sha256"
             }
             default {
-                $url = "https://github.com/$repo/releases/latest/download/millennium-helpers-windows.zip"
+                $headers = @{ 'User-Agent' = 'millennium-helpers'; 'Accept' = 'application/vnd.github+json' }
+                $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/latest" -Headers $headers -UseBasicParsing
+                $norm = [string]$release.tag_name
+                if ([string]::IsNullOrWhiteSpace($norm)) { throw "Could not resolve latest release tag for $repo" }
+                $ver = $norm.TrimStart('v')
+                $url = "https://github.com/$repo/releases/download/$norm/millennium-helpers-v$ver-windows-amd64.zip"
                 $shaUrl = "$url.sha256"
             }
         }
@@ -288,10 +296,12 @@ Log-Info "Starting installation of Millennium Helpers..."
 if ($DryRun) {
     Log-Warn "DRY RUN: no files will be written"
     Log-Info "Would install to $binDir (track=$Track$(if ($Tag) { ", tag=$Tag" } else { '' }))"
+    Log-Info "Would require millennium.exe (Go dispatcher)"
     return
 }
 
-if ((Test-Path -Path $binDir) -and -not $Force -and (Test-Path (Join-Path $binDir 'millennium.ps1'))) {
+$existingDispatch = Test-Path (Join-Path $binDir 'millennium.exe')
+if ((Test-Path -Path $binDir) -and -not $Force -and $existingDispatch) {
     Log-Warn "Existing installation found at $binDir. Re-run with -Force to overwrite."
 }
 
@@ -318,7 +328,6 @@ if (!(Test-Path -Path $binDir)) {
 # Copy scripts
 $scriptsToCopy = @(
     "common.ps1",
-    "millennium.ps1",
     "millennium-diag.ps1",
     "millennium-mcp.ps1",
     "millennium-purge.ps1",
@@ -333,6 +342,52 @@ foreach ($script in $scriptsToCopy) {
     $destFile = Join-Path -Path $binDir -ChildPath $script
     Copy-Item -Path $srcFile -Destination $destFile -Force
     Log-Info "Installed: $script"
+}
+
+# Require Go dispatcher (millennium.exe) — no PowerShell PATH dispatcher.
+$exeCandidates = @(
+    (Join-Path -Path $srcDir -ChildPath 'millennium.exe'),
+    (Join-Path -Path $srcDir -ChildPath '..\..\bin\millennium.exe'),
+    (Join-Path -Path $srcDir -ChildPath 'bin\millennium.exe')
+)
+$installedExe = $false
+foreach ($exeSrc in $exeCandidates) {
+    if (Test-Path -LiteralPath $exeSrc -PathType Leaf) {
+        Copy-Item -Path $exeSrc -Destination (Join-Path -Path $binDir -ChildPath 'millennium.exe') -Force
+        Log-Info "Installed: millennium.exe (Go dispatcher)"
+        $installedExe = $true
+        break
+    }
+}
+if (-not $installedExe) {
+    $repoRoot = (Resolve-Path (Join-Path -Path $srcDir -ChildPath '..\..')).Path
+    $goCmd = Get-Command go -ErrorAction SilentlyContinue
+    $goMain = Join-Path -Path $repoRoot -ChildPath 'go\cmd\millennium'
+    if ($goCmd -and (Test-Path -LiteralPath $goMain)) {
+        $outExe = Join-Path -Path $repoRoot -ChildPath 'bin\millennium.exe'
+        $binOutDir = Split-Path -Parent -Path $outExe
+        if (!(Test-Path -LiteralPath $binOutDir)) {
+            New-Item -ItemType Directory -Force -Path $binOutDir | Out-Null
+        }
+        Log-Info "Building Go dispatcher (bin\millennium.exe)..."
+        Push-Location (Join-Path -Path $repoRoot -ChildPath 'go')
+        try {
+            & go build -o $outExe ./cmd/millennium
+            if ($LASTEXITCODE -ne 0) { throw "go build failed" }
+        } finally {
+            Pop-Location
+        }
+        if (Test-Path -LiteralPath $outExe -PathType Leaf) {
+            Copy-Item -Path $outExe -Destination (Join-Path -Path $binDir -ChildPath 'millennium.exe') -Force
+            Log-Info "Installed: millennium.exe (Go dispatcher)"
+            $installedExe = $true
+        }
+    }
+}
+if (-not $installedExe) {
+    Log-Error "Go dispatcher (millennium.exe) is required to install PATH millennium."
+    Log-Error "Place bin\millennium.exe (release archive / make build), or install a Go toolchain and re-run."
+    exit 1
 }
 
 # Install lib/*.ps1 modules (required by millennium-diag.ps1)
@@ -408,16 +463,6 @@ if (Test-Path -LiteralPath $trackLib) {
     Log-Info "Installed: install-meta.json (track=$metaTrack)"
 }
 
-# Also install the Python MCP server next to the PowerShell wrapper
-$mcpPySrc = Join-Path -Path $srcDir -ChildPath "..\millennium-mcp.py"
-if (!(Test-Path -Path $mcpPySrc)) {
-    $mcpPySrc = Join-Path -Path $srcDir -ChildPath "millennium-mcp.py"
-}
-if (Test-Path -Path $mcpPySrc) {
-    Copy-Item -Path $mcpPySrc -Destination (Join-Path -Path $binDir -ChildPath "millennium-mcp.py") -Force
-    Log-Info "Installed: millennium-mcp.py"
-}
-
 # Generate CMD wrappers
 $wrappers = @(
     "millennium",
@@ -432,7 +477,32 @@ $wrappers = @(
 
 foreach ($wrapperName in $wrappers) {
     $wrapperPath = Join-Path -Path $binDir -ChildPath "$wrapperName.cmd"
-    $cmdContent = @"
+    $hasExe = Test-Path (Join-Path $binDir 'millennium.exe')
+    $cmdMap = @{
+        'millennium'           = ''
+        'millennium-mcp'       = 'mcp'
+        'millennium-diag'      = 'diag'
+        'millennium-purge'     = 'purge'
+        'millennium-repair'    = 'repair'
+        'millennium-schedule'  = 'schedule'
+        'millennium-theme'     = 'theme'
+        'millennium-upgrade'   = 'upgrade'
+    }
+    if ($hasExe -and $cmdMap.ContainsKey($wrapperName)) {
+        $sub = $cmdMap[$wrapperName]
+        if ([string]::IsNullOrEmpty($sub)) {
+            $cmdContent = @"
+@echo off
+"%~dp0millennium.exe" %*
+"@
+        } else {
+            $cmdContent = @"
+@echo off
+"%~dp0millennium.exe" $sub %*
+"@
+        }
+    } else {
+        $cmdContent = @"
 @echo off
 where pwsh >nul 2>nul
 if %ERRORLEVEL% equ 0 (
@@ -441,6 +511,7 @@ if %ERRORLEVEL% equ 0 (
   powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0$wrapperName.ps1" %*
 )
 "@
+    }
     Set-Content -Path $wrapperPath -Value $cmdContent -Encoding ASCII
     Log-Info "Created wrapper command: $wrapperName"
 }

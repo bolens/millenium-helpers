@@ -34,6 +34,8 @@ complete -c millennium -f -n '__fish_seen_subcommand_from upgrade' -s q -l quiet
 complete -c millennium -f -n '__fish_seen_subcommand_from schedule' -a 'enable disable status setup config' -d 'Schedule command'
 complete -c millennium -f -n '__fish_seen_subcommand_from schedule; and __fish_seen_subcommand_from enable' -a 'stable beta main' -d 'Client update channel'
 complete -c millennium -f -n '__fish_seen_subcommand_from schedule' -s c -l cron -d 'Force use of crontab instead of systemd'
+complete -c millennium -f -n '__fish_seen_subcommand_from schedule' -l system -d 'Linux: force systemd system units'
+complete -c millennium -f -n '__fish_seen_subcommand_from schedule' -l user -d 'Linux: force systemd user units'
 complete -c millennium -f -n '__fish_seen_subcommand_from schedule' -s d -l dry-run -d 'Simulation mode'
 complete -c millennium -f -n '__fish_seen_subcommand_from schedule' -s q -l quiet -d 'Suppress informational output'
 

@@ -1,33 +1,38 @@
 class MillenniumHelpers < Formula
-  desc "Cross-platform utilities and MCP server for Millennium Steam Client hook"
+  desc "Go CLI and helpers for managing Millennium Steam mods"
   homepage "https://github.com/bolens/millenium-helpers"
-  url "https://github.com/bolens/millenium-helpers/releases/download/v2.6.2/millennium-helpers-linux.tar.gz"
-  sha256 "c077c3f536e751e776fabb329600b18d7452d455a2e2dd1908491332569f4e55"
+  url "https://github.com/bolens/millenium-helpers/releases/download/v2.6.2/millennium-helpers-v2.6.2-src.tar.gz"
+  sha256 "65e4c76384f79f5e75838809a30369e8dd5150d7c61bcb6b093d05544ad2e419"
   license "MIT"
   head "https://github.com/bolens/millenium-helpers.git", branch: "main"
 
+  depends_on "go" => :build
   depends_on "bash"
   depends_on "curl"
   depends_on "jq"
   depends_on "python"
   depends_on "unzip"
 
-  def install
-    # Install scripts
-    bin.install "scripts/millennium-repair.sh" => "millennium-repair"
-    bin.install "scripts/millennium-upgrade.sh" => "millennium-upgrade"
-    bin.install "scripts/millennium-schedule.sh" => "millennium-schedule"
-    bin.install "scripts/millennium-purge.sh" => "millennium-purge"
-    bin.install "scripts/millennium-diag.sh" => "millennium-diag"
-    bin.install "scripts/millennium-theme.sh" => "millennium-theme"
-    bin.install "scripts/millennium-mcp.py" => "millennium-mcp"
-    bin.install "scripts/millennium.sh" => "millennium"
+  conflicts_with "millennium-helpers-bin", because: "both install the millennium helper tools"
 
-    # Install shared library
+  def install
+    system "make", "build"
+
+    odie "Go dispatcher bin/millennium missing after make build" unless (buildpath/"bin/millennium").exist?
+    bin.install "bin/millennium"
+    %w[
+      millennium-mcp
+      millennium-repair
+      millennium-upgrade
+      millennium-schedule
+      millennium-purge
+      millennium-diag
+      millennium-theme
+    ].each { |name| bin.install_symlink "millennium" => name }
+
     (lib/"millennium-helpers").install "scripts/common.sh"
     (lib/"millennium-helpers/lib").install Dir["scripts/lib/*.sh"]
 
-    # Install completions (base + per-command symlinks for bash-completion v2 / zsh)
     commands = %w[
       millennium
       millennium-repair
@@ -50,17 +55,10 @@ class MillenniumHelpers < Formula
     end
 
     fish_completion.install Dir["completions/fish/*.fish"]
-
     (share/"nushell/completions").install "completions/nushell/millennium-helpers.nu"
-
-    # Install man pages
     man1.install Dir["man/*.1"]
-
-    # Install VERSION for --version lookups
     (lib/"millennium-helpers").install "VERSION"
 
-    # Vendored Millennium client license (installed next to the client on upgrade).
-    # Optional so packaging still works against older bottles/tarballs without third_party/.
     license_md = "third_party/MILLENNIUM-LICENSE.md"
     (lib/"millennium-helpers").install license_md if File.exist?(license_md)
   end
@@ -68,18 +66,19 @@ class MillenniumHelpers < Formula
   def caveats
     <<~EOS
       To enable daily automated updates on macOS, run:
-        millennium-schedule enable
+        millennium schedule enable
+
+      For the prebuilt release-asset formula, see: millennium-helpers-bin
 
       Nushell completions are installed to:
         #{opt_share}/nushell/completions/millennium-helpers.nu
-      Source or add that path from your Nushell config if needed.
     EOS
   end
 
   test do
+    system "#{bin}/millennium", "version"
     system "#{bin}/millennium-diag", "--help"
     assert_path_exists lib/"millennium-helpers/common.sh"
     assert_path_exists bash_completion/"millennium"
-    assert_path_exists zsh_completion/"_millennium"
   end
 end

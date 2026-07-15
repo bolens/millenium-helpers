@@ -1,12 +1,7 @@
 #!/usr/bin/env bash
-# Verify VERSION matches packaging manifests (Scoop release, Winget, Homebrew,
-# versioned Arch PKGBUILD + .SRCINFO, Nix release-info, pyproject.toml).
-# Placeholder checksums (all zeros / "skip" / previous release) are allowed;
-# version strings and release-asset URL shape must match.
-#
-# packaging/millennium-helpers-git and packaging/scoop/millennium-helpers-git.json
-# track tip-of-main and are not checked here. nix packages.millennium-helpers-git
-# builds from the flake source similarly.
+# Verify VERSION matches packaging manifests (Scoop release+from-source, Winget,
+# Homebrew source+bin, Arch from-source+-bin + .SRCINFO, Nix, deb/rpm/Chocolatey,
+# pyproject.toml). Tip-of-main (*-git / winget-git) packages are excluded.
 #
 # Usage: make check-version   # or: bash scripts/ci/check-version-sync.sh
 # See CONTRIBUTING.md § Versioning.
@@ -40,12 +35,13 @@ print(m.group(1) if m else '')
 [[ "$PYPROJECT_VERSION" == "$VERSION" ]] || fail "pyproject.toml version '$PYPROJECT_VERSION' != VERSION '$VERSION'"
 echo "pyproject.toml version OK ($PYPROJECT_VERSION)"
 
-# --- Scoop ---
-SCOOP_JSON="packaging/scoop/millennium-helpers.json"
-[[ -f "$SCOOP_JSON" ]] || fail "missing $SCOOP_JSON"
-SCOOP_VERSION="$(jq -r '.version' "$SCOOP_JSON")"
-[[ "$SCOOP_VERSION" == "$VERSION" ]] || fail "Scoop version '$SCOOP_VERSION' != VERSION '$VERSION'"
-echo "Scoop version OK ($SCOOP_VERSION)"
+# --- Scoop from-source + bin ---
+for SCOOP_JSON in packaging/scoop/millennium-helpers.json packaging/scoop/millennium-helpers-bin.json; do
+  [[ -f "$SCOOP_JSON" ]] || fail "missing $SCOOP_JSON"
+  SCOOP_VERSION="$(jq -r '.version' "$SCOOP_JSON")"
+  [[ "$SCOOP_VERSION" == "$VERSION" ]] || fail "Scoop version in $SCOOP_JSON is '$SCOOP_VERSION' != VERSION '$VERSION'"
+done
+echo "Scoop versions OK ($VERSION)"
 
 # --- Winget (all three manifests) ---
 for f in packaging/winget/bolens.millenniumhelpers.yaml \
@@ -62,50 +58,49 @@ print(data.get('PackageVersion', ''))
 done
 echo "Winget PackageVersion OK ($VERSION)"
 
-# --- Homebrew Formula ---
-FORMULA="Formula/millennium-helpers.rb"
-[[ -f "$FORMULA" ]] || fail "missing $FORMULA"
-# Prefer an explicit version "x.y.z" line; fall back to the tag in the stable url.
-# (brew audit rejects a redundant version when the URL already encodes the tag,
-# so packaging updates keep only the URL-derived version.)
-FORMULA_VERSION="$(python3 -c "
+# --- Homebrew Formulas ---
+parse_formula_version() {
+  python3 -c "
 import re, sys
 text = open(sys.argv[1], encoding='utf-8').read()
 m = re.search(r'^\s*version\s+\"([^\"]+)\"', text, re.M)
 if m:
-    print(m.group(1))
-    raise SystemExit(0)
+    print(m.group(1)); raise SystemExit(0)
 m = re.search(r'releases/download/v([0-9][^\"/]+)/', text)
 if m:
-    print(m.group(1))
-    raise SystemExit(0)
-m = re.search(r'archive/refs/tags/v([0-9][^\"/]+)\.tar\.gz', text)
+    print(m.group(1)); raise SystemExit(0)
+m = re.search(r'millennium-helpers-v([0-9][^\"/]+)-src\.tar\.gz', text)
 if m:
-    print(m.group(1))
-    raise SystemExit(0)
+    print(m.group(1)); raise SystemExit(0)
 print('')
-" "$FORMULA")"
-[[ -n "$FORMULA_VERSION" ]] || fail "could not parse version from $FORMULA"
-[[ "$FORMULA_VERSION" == "$VERSION" ]] || fail "Homebrew Formula version '$FORMULA_VERSION' != VERSION '$VERSION'"
-echo "Homebrew Formula version OK ($FORMULA_VERSION)"
+" "$1"
+}
 
-# --- Versioned Arch PKGBUILD ---
-AUR_PKGBUILD="packaging/millennium-helpers/PKGBUILD"
-[[ -f "$AUR_PKGBUILD" ]] || fail "missing $AUR_PKGBUILD"
-AUR_PKGVER="$(grep -E '^pkgver=' "$AUR_PKGBUILD" | head -1 | cut -d= -f2-)"
-[[ "$AUR_PKGVER" == "$VERSION" ]] || fail "Arch PKGBUILD pkgver '$AUR_PKGVER' != VERSION '$VERSION'"
-# URL may embed ${pkgver} / $pkgver or a literal vX.Y.Z — both are valid.
-# shellcheck disable=SC2016 # intentional literal ${pkgver}/$pkgver in the PKGBUILD pattern
-if ! grep -qE 'releases/download/v(\$\{pkgver\}|\$pkgver|'"${VERSION}"')/millennium-helpers-linux\.tar\.gz' "$AUR_PKGBUILD"; then
-  fail "Arch PKGBUILD missing trimmed Linux release asset URL for v${VERSION}"
+for FORMULA in Formula/millennium-helpers.rb Formula/millennium-helpers-bin.rb; do
+  [[ -f "$FORMULA" ]] || fail "missing $FORMULA"
+  FORMULA_VERSION="$(parse_formula_version "$FORMULA")"
+  [[ -n "$FORMULA_VERSION" ]] || fail "could not parse version from $FORMULA"
+  [[ "$FORMULA_VERSION" == "$VERSION" ]] || fail "Homebrew $FORMULA version '$FORMULA_VERSION' != VERSION '$VERSION'"
+done
+echo "Homebrew Formula versions OK ($VERSION)"
+
+# --- Arch from-source + -bin ---
+for AUR_PKGBUILD in packaging/millennium-helpers/PKGBUILD packaging/millennium-helpers-bin/PKGBUILD; do
+  [[ -f "$AUR_PKGBUILD" ]] || fail "missing $AUR_PKGBUILD"
+  AUR_PKGVER="$(grep -E '^pkgver=' "$AUR_PKGBUILD" | head -1 | cut -d= -f2-)"
+  [[ "$AUR_PKGVER" == "$VERSION" ]] || fail "Arch $AUR_PKGBUILD pkgver '$AUR_PKGVER' != VERSION '$VERSION'"
+done
+# shellcheck disable=SC2016
+if ! grep -qE 'releases/download/v(\$\{pkgver\}|\$pkgver|'"${VERSION}"')/millennium-helpers-v(\$\{pkgver\}|\$pkgver|'"${VERSION}"')-src\.tar\.gz' packaging/millennium-helpers/PKGBUILD; then
+  fail "Arch from-source PKGBUILD missing -src.tar.gz URL for v${VERSION}"
 fi
-echo "Arch packaging/millennium-helpers pkgver OK ($AUR_PKGVER)"
-
-# --- Versioned Arch .SRCINFO (must match PKGBUILD; catches hand-edited drift) ---
-AUR_SRCINFO="packaging/millennium-helpers/.SRCINFO"
-[[ -f "$AUR_SRCINFO" ]] || fail "missing $AUR_SRCINFO"
-bash scripts/ci/sync-stable-srcinfo.sh --check || fail "Arch .SRCINFO out of date with PKGBUILD (run: bash scripts/ci/sync-stable-srcinfo.sh)"
-echo "Arch packaging/millennium-helpers .SRCINFO OK"
+# shellcheck disable=SC2016
+if ! grep -qE 'releases/download/v(\$\{pkgver\}|\$pkgver|'"${VERSION}"')/millennium-helpers-v(\$\{pkgver\}|\$pkgver|'"${VERSION}"')-linux-amd64\.tar\.gz' packaging/millennium-helpers-bin/PKGBUILD; then
+  fail "Arch -bin PKGBUILD missing linux-amd64 release asset URL for v${VERSION}"
+fi
+bash scripts/ci/sync-stable-srcinfo.sh --check || fail "Arch from-source .SRCINFO out of date (run: bash scripts/ci/sync-stable-srcinfo.sh)"
+bash scripts/ci/sync-bin-srcinfo.sh --check || fail "Arch -bin .SRCINFO out of date (run: bash scripts/ci/sync-bin-srcinfo.sh)"
+echo "Arch packaging pkgver/.SRCINFO OK ($VERSION)"
 
 # --- Nix release-info ---
 NIX_RELEASE="nix/release-info.nix"
@@ -119,7 +114,29 @@ print(m.group(1) if m else '')
 [[ "$NIX_VERSION" == "$VERSION" ]] || fail "nix/release-info.nix version '$NIX_VERSION' != VERSION '$VERSION'"
 echo "Nix release-info.nix version OK ($NIX_VERSION)"
 
-# --- Release asset URL shape (Homebrew + Scoop + Arch) ---
+# --- deb / rpm / Chocolatey (when present) ---
+for ctrl in packaging/deb/millennium-helpers/DEBIAN/control packaging/deb/millennium-helpers-bin/DEBIAN/control; do
+  [[ -f "$ctrl" ]] || fail "missing $ctrl"
+  deb_ver="$(grep -E '^Version:' "$ctrl" | head -1 | awk '{print $2}')"
+  [[ "$deb_ver" == "$VERSION" ]] || fail "deb $ctrl Version '$deb_ver' != VERSION '$VERSION'"
+done
+for spec in packaging/rpm/millennium-helpers.spec packaging/rpm/millennium-helpers-bin.spec; do
+  [[ -f "$spec" ]] || fail "missing $spec"
+  rpm_ver="$(grep -E '^Version:' "$spec" | head -1 | awk '{print $2}')"
+  [[ "$rpm_ver" == "$VERSION" ]] || fail "rpm $spec Version '$rpm_ver' != VERSION '$VERSION'"
+done
+NUSPEC="packaging/chocolatey/millennium-helpers/millennium-helpers.nuspec"
+[[ -f "$NUSPEC" ]] || fail "missing $NUSPEC"
+choco_ver="$(python3 -c "
+import re, sys
+text = open(sys.argv[1], encoding='utf-8').read()
+m = re.search(r'<version>([^<]+)</version>', text)
+print(m.group(1) if m else '')
+" "$NUSPEC")"
+[[ "$choco_ver" == "$VERSION" ]] || fail "Chocolatey nuspec version '$choco_ver' != VERSION '$VERSION'"
+echo "deb/rpm/Chocolatey versions OK ($VERSION)"
+
+# --- Release URL shape ---
 python3 - "$VERSION" <<'PY' || fail "packaging release-asset URL checks failed"
 import json
 import re
@@ -130,28 +147,45 @@ version = sys.argv[1]
 errors = []
 
 formula = Path("Formula/millennium-helpers.rb").read_text(encoding="utf-8")
-if f"releases/download/v{version}/millennium-helpers-linux.tar.gz" not in formula:
-    errors.append("Formula URL must use trimmed Linux release asset")
+if f"releases/download/v{version}/millennium-helpers-v{version}-src.tar.gz" not in formula:
+    errors.append("Formula from-source URL must use versioned -src.tar.gz")
+
+formula_bin = Path("Formula/millennium-helpers-bin.rb").read_text(encoding="utf-8")
+if f"releases/download/v{version}/millennium-helpers-v{version}-linux-amd64.tar.gz" not in formula_bin:
+    errors.append("Formula-bin URL must include linux-amd64 release asset")
+if f"releases/download/v{version}/millennium-helpers-v{version}-darwin-arm64.tar.gz" not in formula_bin:
+    errors.append("Formula-bin URL must include darwin-arm64 release asset")
 
 scoop = json.loads(Path("packaging/scoop/millennium-helpers.json").read_text(encoding="utf-8"))
-url = str(scoop.get("url", ""))
-if f"releases/download/v{version}/millennium-helpers-windows.zip" not in url:
-    errors.append("Scoop URL must use trimmed Windows release asset")
-bins = {b[1] if isinstance(b, list) else b for b in scoop.get("bin", [])}
+if f"releases/download/v{version}/millennium-helpers-v{version}-src.zip" not in str(scoop.get("url", "")):
+    errors.append("Scoop from-source URL must use versioned -src.zip")
+
+scoop_bin = json.loads(Path("packaging/scoop/millennium-helpers-bin.json").read_text(encoding="utf-8"))
+url = str(scoop_bin.get("url", ""))
+if f"releases/download/v{version}/millennium-helpers-v{version}-windows-amd64.zip" not in url:
+    errors.append("Scoop-bin URL must use windows-amd64 release asset")
+bins = {b[1] if isinstance(b, list) else b for b in scoop_bin.get("bin", [])}
 for required in ("millennium", "millennium-mcp", "millennium-diag"):
     if required not in bins:
-        errors.append(f"Scoop bin missing {required!r}")
+        errors.append(f"Scoop-bin missing {required!r}")
 
 installer = Path("packaging/winget/bolens.millenniumhelpers.installer.yaml").read_text(encoding="utf-8")
-if f"releases/download/v{version}/millennium-helpers-windows.zip" not in installer:
-    errors.append("Winget InstallerUrl must use trimmed Windows release asset")
+if f"releases/download/v{version}/millennium-helpers-v{version}-windows-amd64.zip" not in installer:
+    errors.append("Winget InstallerUrl must use windows-amd64 release asset")
 
-pkgbuild = Path("packaging/millennium-helpers/PKGBUILD").read_text(encoding="utf-8")
+pkg = Path("packaging/millennium-helpers/PKGBUILD").read_text(encoding="utf-8")
 if not re.search(
-    rf"releases/download/v(\$\{{pkgver\}}|\$pkgver|{re.escape(version)})/millennium-helpers-linux\.tar\.gz",
-    pkgbuild,
+    rf"releases/download/v(\$\{{pkgver\}}|\$pkgver|{re.escape(version)})/millennium-helpers-v(\$\{{pkgver\}}|\$pkgver|{re.escape(version)})-src\.tar\.gz",
+    pkg,
 ):
-    errors.append("Arch PKGBUILD URL must use trimmed Linux release asset")
+    errors.append("Arch from-source PKGBUILD must use -src.tar.gz")
+
+pkg_bin = Path("packaging/millennium-helpers-bin/PKGBUILD").read_text(encoding="utf-8")
+if not re.search(
+    rf"releases/download/v(\$\{{pkgver\}}|\$pkgver|{re.escape(version)})/millennium-helpers-v(\$\{{pkgver\}}|\$pkgver|{re.escape(version)})-linux-amd64\.tar\.gz",
+    pkg_bin,
+):
+    errors.append("Arch -bin PKGBUILD must use linux-amd64 release asset")
 
 if errors:
     for err in errors:

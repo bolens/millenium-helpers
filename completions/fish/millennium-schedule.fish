@@ -6,6 +6,8 @@ complete -c millennium-schedule -f -a 'config' -d 'Manage Millennium Helper conf
 complete -c millennium-schedule -f -n '__fish_seen_subcommand_from enable' -a 'stable beta main' -d 'Select update channel'
 complete -c millennium-schedule -f -n '__fish_seen_subcommand_from config' -a 'get set list' -d 'Config action'
 complete -c millennium-schedule -s c -l cron -d 'Force use of crontab instead of systemd'
+complete -c millennium-schedule -l system -d 'Linux: force systemd system units'
+complete -c millennium-schedule -l user -d 'Linux: force systemd user units'
 complete -c millennium-schedule -s d -l dry-run -d 'Simulation mode'
 complete -c millennium-schedule -s q -l quiet -d 'Suppress informational output'
 complete -c millennium-schedule -s h -l help -d 'Show help message'

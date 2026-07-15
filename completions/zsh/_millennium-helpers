@@ -62,6 +62,8 @@ _millennium_helpers() {
         '1:subcommand:(enable disable status setup config)' \
         '2:arg:(stable beta main get set list)' \
         {-c,--cron}'[Force use of crontab instead of systemd]' \
+        --system'[Linux: force systemd system units]' \
+        --user'[Linux: force systemd user units]' \
         {-d,--dry-run}'[Simulation mode]' \
         {-q,--quiet}'[Suppress informational output]' \
         {-V,--version}'[Show version information]' \
@@ -155,6 +157,8 @@ _millennium_helpers() {
               _arguments \
                 '1:command:(enable disable status setup config)' \
                 {-c,--cron}'[Force use of crontab instead of systemd]' \
+                --system'[Linux: force systemd system units]' \
+                --user'[Linux: force systemd user units]' \
                 {-d,--dry-run}'[Simulation mode]' \
                 {-q,--quiet}'[Suppress informational output]' \
                 {-V,--version}'[Show version information]' \

@@ -77,3 +77,18 @@ function Write-ContentFile {
         Set-Content -Path $Path -Value $Content -Force
     }
 }
+
+
+function Write-UpgradeFailureTips {
+    param([string]$Detail = "")
+    Write-Host ""
+    if ($Detail) {
+        Log-Error "Upgrade failed: $Detail"
+    } else {
+        Log-Error "Upgrade failed."
+    }
+    Write-Host "Next steps:"
+    Write-Host "  * millennium upgrade -Rollback list   # list backups"
+    Write-Host "  * millennium diag                     # check installation health"
+    Write-Host "  * Re-run with -Yes if Steam close confirmation blocked the update"
+}

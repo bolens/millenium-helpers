@@ -76,16 +76,30 @@ if [[ ! -f "${SCRIPT_DIR}/scripts/common.sh" ]]; then
         NEEDS_SHA=0
         IS_SOURCE=1
         ;;
-      tag)
-        _tag="$_PIPE_TAG"
-        _tag="${_tag#v}"
-        [[ -n "$_tag" ]] || { echo "Error: --tag required for track=tag" >&2; exit 1; }
-        RELEASE_URL="https://github.com/${HELPERS_REPO}/releases/download/v${_tag}/millennium-helpers-linux.tar.gz"
-        SHA_URL="${RELEASE_URL}.sha256"
-        NEEDS_SHA=1
-        ;;
-      release|*)
-        RELEASE_URL="https://github.com/${HELPERS_REPO}/releases/latest/download/millennium-helpers-linux.tar.gz"
+      tag|release|*)
+        _pipe_arch=amd64
+        case "$(uname -m 2>/dev/null || echo x86_64)" in
+          aarch64 | arm64) _pipe_arch=arm64 ;;
+        esac
+        if [[ "$_PIPE_TRACK" == "tag" ]]; then
+          _tag="$_PIPE_TAG"
+          _tag="${_tag#v}"
+          [[ -n "$_tag" ]] || { echo "Error: --tag required for track=tag" >&2; exit 1; }
+        else
+          _tag="$(
+            curl -fsSL --retry 2 --retry-delay 1 \
+              -H "User-Agent: millennium-helpers" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${HELPERS_REPO}/releases/latest" 2>/dev/null \
+              | python3 -c "import json,sys; print((json.load(sys.stdin).get('tag_name') or '').lstrip('v'))" 2>/dev/null \
+              || true
+          )"
+          [[ -n "$_tag" ]] || {
+            echo "Error: could not resolve latest release tag for ${HELPERS_REPO}" >&2
+            exit 1
+          }
+        fi
+        RELEASE_URL="https://github.com/${HELPERS_REPO}/releases/download/v${_tag}/millennium-helpers-v${_tag}-linux-${_pipe_arch}.tar.gz"
         SHA_URL="${RELEASE_URL}.sha256"
         NEEDS_SHA=1
         ;;
@@ -187,7 +201,8 @@ SUDOERS_FILE="${MOCK_SUDOERS_FILE:-/etc/sudoers.d/millennium-helpers}"
 # shellcheck disable=SC1090
 source "${SCRIPT_DIR}/scripts/common.sh"
 
-# Define scripts to manage (format: "source_filename:target_command_name")
+# Feature helpers (long names). PATH entries are Go dispatcher argv0 twins
+# (same binary as `millennium <cmd>`); shell scripts remain checkout fallbacks.
 SCRIPTS=(
   "scripts/millennium-repair.sh:millennium-repair"
   "scripts/millennium-upgrade.sh:millennium-upgrade"
@@ -195,17 +210,69 @@ SCRIPTS=(
   "scripts/millennium-purge.sh:millennium-purge"
   "scripts/millennium-diag.sh:millennium-diag"
   "scripts/millennium-theme.sh:millennium-theme"
-  "scripts/millennium-mcp.py:millennium-mcp"
-  "scripts/millennium.sh:millennium"
+  "scripts/millennium-mcp.sh:millennium-mcp"
+  # sentinel: install_scripts special-cases dest=millennium → Go binary
+  ":millennium"
 )
+
+is_go_argv0_twin() {
+  case "$1" in
+    millennium|millennium-mcp|millennium-repair|millennium-upgrade|millennium-schedule|millennium-purge|millennium-diag|millennium-theme)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+# Ensure Go dispatcher binary exists under bin/millennium.
+ensure_go_dispatcher() {
+  local out="${SCRIPT_DIR}/bin/millennium"
+  if [[ -x "$out" ]]; then
+    return 0
+  fi
+  if [[ ! -d "${SCRIPT_DIR}/go/cmd/millennium" ]]; then
+    return 1
+  fi
+  if ! command -v go >/dev/null 2>&1; then
+    return 1
+  fi
+  if [[ "${DRY_RUN:-false}" == "true" ]]; then
+    return 0
+  fi
+  echo -e "${BLUE}Building Go dispatcher (bin/millennium)...${NC}"
+  if make -C "$SCRIPT_DIR" build >/dev/null; then
+    [[ -x "$out" ]]
+    return $?
+  fi
+  return 1
+}
+
+die_go_dispatcher_required() {
+  echo -e "${RED}Error: Go dispatcher (bin/millennium) is required to install PATH millennium.${NC}" >&2
+  echo -e "Install a Go toolchain and re-run, or use a release archive that ships bin/millennium." >&2
+  exit 1
+}
+
+# Sets DISPATCHER_SRC for TARGET_DIR/millennium.
+# Returns 1 when Go is required but missing.
+resolve_millennium_dispatcher() {
+  local go_bin="${SCRIPT_DIR}/bin/millennium"
+  if ensure_go_dispatcher && { [[ -x "$go_bin" ]] || [[ "${DRY_RUN:-false}" == "true" ]]; }; then
+    DISPATCHER_SRC="$go_bin"
+    return 0
+  fi
+  return 1
+}
 
 show_help() {
   cat << EOF
 Usage: $(basename "$0") [OPTIONS] [COMMAND]
 
 Commands:
-  install      Install scripts to ${TARGET_DIR} (default, requires sudo)
-  uninstall    Remove scripts from ${TARGET_DIR} (requires sudo)
+  install      Install helper tools to ${TARGET_DIR} (default, requires sudo)
+  uninstall    Remove helper tools from ${TARGET_DIR} (requires sudo)
 
 Options:
   -d, --dry-run      Perform dry-run without copying files or configuring sudoers
@@ -229,6 +296,10 @@ same release), not independent signing. Prefer package managers when available.
 
 Note: Millennium client update channel (stable|beta|main) is separate; configure
 via 'millennium schedule' / 'millennium upgrade --channel'.
+
+Note: Install requires the Go dispatcher (prebuilt bin/millennium or build via
+make build). Long-name shell helpers remain for MCP/timers/sudoers until command
+peels finish; PATH millennium is always the Go binary.
 EOF
 }
 
@@ -581,8 +652,8 @@ uninstall_man_pages() {
 
 run_wizard() {
   local user_name="${SUDO_USER:-$(id -un)}"
-  local dry_flag=""
-  [[ "${DRY_RUN}" == "true" ]] && dry_flag="-d"
+  local -a setup_args=()
+  [[ "${DRY_RUN}" == "true" ]] && setup_args+=(--dry-run)
 
   # Normal installs skip the wizard when the effective user is root (no real
   # desktop user to configure). Tests and FORCE_WIZARD=true still run it.
@@ -590,11 +661,25 @@ run_wizard() {
     return 0
   fi
 
-  if [[ "$user_name" != "root" && "$(id -u)" -eq 0 ]]; then
-    runuser -l "$user_name" -c "FORCE_WIZARD=true bash ${SCRIPT_DIR}/scripts/millennium-schedule.sh setup ${dry_flag}"
-  else
-    FORCE_WIZARD=true bash "${SCRIPT_DIR}/scripts/millennium-schedule.sh" setup ${dry_flag}
+  # Setup wizard needs the Go dispatcher (even under dry-run).
+  local go_bin="${SCRIPT_DIR}/bin/millennium"
+  if [[ ! -x "$go_bin" ]] \
+    && [[ -d "${SCRIPT_DIR}/go/cmd/millennium" ]] && command -v go >/dev/null 2>&1; then
+    echo -e "${BLUE}Building Go dispatcher for setup wizard (bin/millennium)...${NC}"
+    make -C "$SCRIPT_DIR" build >/dev/null || true
   fi
+
+  if [[ -x "$go_bin" ]]; then
+    if [[ "$user_name" != "root" && "$(id -u)" -eq 0 ]]; then
+      runuser -l "$user_name" -c "FORCE_WIZARD=true MILLENNIUM_LEGACY=0 $(printf '%q' "$go_bin") schedule setup $(printf '%q ' "${setup_args[@]}")"
+    else
+      FORCE_WIZARD=true MILLENNIUM_LEGACY=0 "$go_bin" schedule setup "${setup_args[@]}"
+    fi
+    return $?
+  fi
+
+  echo -e "${YELLOW}Warning: Go dispatcher unavailable; skipping setup wizard.${NC}" >&2
+  return 0
 }
 
 install_scripts() {
@@ -609,20 +694,48 @@ install_scripts() {
     fi
   done
 
-  echo -e "${BLUE}Installing Millennium helper scripts to ${TARGET_DIR}...${NC}"
+  echo -e "${BLUE}Installing Millennium helper tools to ${TARGET_DIR}...${NC}"
 
   for item in "${SCRIPTS[@]}"; do
     local src="${item%%:*}"
     local dest="${item#*:}"
     local src_path="${SCRIPT_DIR}/${src}"
     local dest_path="${TARGET_DIR}/${dest}"
+    local kind="shell"
 
-    if [[ ! -f "$src_path" ]]; then
+    if [[ "$dest" == "millennium" ]] || is_go_argv0_twin "$dest"; then
+      if [[ "$dest" == "millennium" ]]; then
+        DISPATCHER_SRC=""
+        if ! resolve_millennium_dispatcher; then
+          die_go_dispatcher_required
+        fi
+        src_path="${DISPATCHER_SRC}"
+      else
+        if ensure_go_dispatcher && [[ -x "${SCRIPT_DIR}/bin/millennium" || "${DRY_RUN:-false}" == "true" ]]; then
+          src_path="${SCRIPT_DIR}/bin/millennium"
+        else
+          die_go_dispatcher_required
+        fi
+      fi
+      kind="go"
+      if [[ "${DRY_RUN:-false}" == "true" && ! -x "${SCRIPT_DIR}/bin/millennium" ]]; then
+        printf "Installing: %s... " "$dest_path"
+        echo -e "${YELLOW}[DRY RUN] Would install Go dispatcher as ${dest} (argv0 → command)${NC}"
+        continue
+      fi
+      if [[ "$dest" == "millennium" ]]; then
+        echo -e "${BLUE}Using Go dispatcher for PATH millennium${NC}"
+      else
+        echo -e "${BLUE}Using Go dispatcher for PATH ${dest} (argv0 twin)${NC}"
+      fi
+    fi
+
+    if [[ ! -f "$src_path" && ! ( "$kind" == "go" && "${DRY_RUN:-false}" == "true" ) ]]; then
       echo -e "${RED}Error: Source script not found: ${src_path}${NC}" >&2
       exit 1
     fi
 
-    # Copy script, set ownership to root, and make executable (755)
+    # Copy binary/script, set ownership to root, and make executable (755)
     printf "Installing: %s... " "$dest_path"
     if execute cp -f "$src_path" "$dest_path" && \
        change_owner "$dest_path" && \
@@ -630,7 +743,7 @@ install_scripts() {
       echo -e "${GREEN}OK${NC}"
     else
       echo -e "${RED}FAIL${NC}"
-      echo -e "${RED}Error: Failed to install or configure helper script ${dest_path}.${NC}" >&2
+      echo -e "${RED}Error: Failed to install or configure helper ${dest_path}.${NC}" >&2
       echo -e "${YELLOW}Please ensure you have write permissions to ${TARGET_DIR} (you may need to run this script using sudo).${NC}" >&2
       exit 1
     fi
@@ -720,7 +833,7 @@ install_scripts() {
       if [[ "$sudo_ok" == "true" ]]; then
         write_file "$SUDOERS_FILE" << EOF &>/dev/null || sudo_ok=false
 # Automatically generated by Millennium helpers installer. Do not edit manually.
-${user_name} ALL=(ALL) NOPASSWD: ${TARGET_DIR}/millennium-upgrade, ${TARGET_DIR}/millennium-diag, ${TARGET_DIR}/millennium-purge, ${TARGET_DIR}/millennium-repair
+${user_name} ALL=(ALL) NOPASSWD: ${TARGET_DIR}/millennium upgrade, ${TARGET_DIR}/millennium upgrade *, ${TARGET_DIR}/millennium diag, ${TARGET_DIR}/millennium diag *, ${TARGET_DIR}/millennium repair, ${TARGET_DIR}/millennium repair *, ${TARGET_DIR}/millennium purge, ${TARGET_DIR}/millennium purge *, ${TARGET_DIR}/millennium-upgrade, ${TARGET_DIR}/millennium-diag, ${TARGET_DIR}/millennium-purge, ${TARGET_DIR}/millennium-repair
 EOF
 
         execute chmod 440 "$SUDOERS_FILE" || sudo_ok=false
@@ -758,7 +871,7 @@ EOF
                     # Rewrite file with new user
                     write_file "$SUDOERS_FILE" << EOF &>/dev/null
 # Automatically generated by Millennium helpers installer. Do not edit manually.
-${new_user} ALL=(ALL) NOPASSWD: ${TARGET_DIR}/millennium-upgrade, ${TARGET_DIR}/millennium-diag, ${TARGET_DIR}/millennium-purge, ${TARGET_DIR}/millennium-repair
+${new_user} ALL=(ALL) NOPASSWD: ${TARGET_DIR}/millennium upgrade, ${TARGET_DIR}/millennium upgrade *, ${TARGET_DIR}/millennium diag, ${TARGET_DIR}/millennium diag *, ${TARGET_DIR}/millennium repair, ${TARGET_DIR}/millennium repair *, ${TARGET_DIR}/millennium purge, ${TARGET_DIR}/millennium purge *, ${TARGET_DIR}/millennium-upgrade, ${TARGET_DIR}/millennium-diag, ${TARGET_DIR}/millennium-purge, ${TARGET_DIR}/millennium-repair
 EOF
                     chmod 440 "$SUDOERS_FILE"
                     chown root:root "$SUDOERS_FILE"
@@ -961,25 +1074,26 @@ uninstall_scripts() {
   fi
 
   # Disable scheduler (systemd/LaunchAgent + cron) while binaries still exist.
+  # Run as current euid (typically root under sudo) so system-scope units can
+  # be removed; do not drop to runuser before disable.
   local user_name="${SUDO_USER:-$(id -un)}"
+  local go_mill="${TARGET_DIR}/millennium"
   local schedule_bin="${TARGET_DIR}/millennium-schedule"
   local schedule_src="${SCRIPT_DIR}/scripts/millennium-schedule.sh"
   local schedule_cmd=""
-  if [[ -x "$schedule_bin" ]]; then
+  if [[ -x "$go_mill" ]]; then
+    schedule_cmd="$go_mill schedule"
+  elif [[ -x "$schedule_bin" ]]; then
     schedule_cmd="$schedule_bin"
   elif [[ -f "$schedule_src" ]]; then
     schedule_cmd="bash $schedule_src"
   fi
   if [[ -n "$schedule_cmd" || "$DRY_RUN" == "true" ]]; then
-    echo -e "${BLUE}Disabling update scheduler (systemd/LaunchAgent and cron)...${NC}"
+    echo -e "${BLUE}Disabling update scheduler (systemd system+user / LaunchAgent and cron)...${NC}"
     local dry_flag=""
     [[ "$DRY_RUN" == "true" ]] && dry_flag="--dry-run"
-    if [[ "$user_name" != "root" && "$(id -u)" -eq 0 ]]; then
-      execute runuser -l "$user_name" -c "${schedule_cmd:-bash $schedule_src} disable ${dry_flag}" || true
-    else
-      # shellcheck disable=SC2086
-      execute ${schedule_cmd:-bash "$schedule_src"} disable $dry_flag || true
-    fi
+    # shellcheck disable=SC2086
+    execute ${schedule_cmd:-bash "$schedule_src"} disable $dry_flag || true
   fi
 
   echo -e "${BLUE}Uninstalling Millennium helper scripts from ${TARGET_DIR}...${NC}"
@@ -1029,6 +1143,23 @@ uninstall_scripts() {
   removed_any=true
 
   # Best-effort leftover unit cleanup if schedule disable could not run
+  local system_systemd_dir="${MILLENNIUM_SYSTEMD_SYSTEM_DIR:-/etc/systemd/system}"
+  local sys_timer="${system_systemd_dir}/millennium-update.timer"
+  local sys_service="${system_systemd_dir}/millennium-update.service"
+  if [[ "$DRY_RUN" == "true" ]]; then
+    echo -e "${YELLOW}[DRY RUN] Would remove leftover systemd system units under ${system_systemd_dir} (if present)${NC}"
+    removed_any=true
+  elif [[ -f "$sys_timer" || -f "$sys_service" ]]; then
+    if [[ "$(id -u)" -eq 0 || -w "$system_systemd_dir" ]]; then
+      echo "Removing leftover systemd system update timer/service..."
+      execute systemctl disable --now millennium-update.timer || true
+      execute systemctl stop millennium-update.service || true
+      execute rm -f "$sys_timer" "$sys_service"
+      execute systemctl daemon-reload || true
+      removed_any=true
+    fi
+  fi
+
   if [[ "$user_name" != "root" ]]; then
     local user_home
     user_home="$(get_user_home "$user_name")"

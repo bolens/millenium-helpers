@@ -7,9 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Unified Go CLI (`make build` → `bin/millennium`) for schedule, theme, diag/doctor, upgrade, purge, repair, and MCP (`millennium mcp` / PATH `millennium-mcp`)
+- Machine-readable CLI contract ([`spec/cli-contract.yaml`](spec/cli-contract.yaml)) with `make check-cli-contract`, dual-OS `go.yml` smokes, and Linux quality gates (`go vet`, `gofmt`, golangci-lint, govulncheck)
+- Packaging three-variant matrix (from-source / `-bin` / `-git`) for Arch, Homebrew, Scoop, Nix; plus deb, rpm, and Chocolatey ([packaging/README.md](packaging/README.md)); release CD embeds per-OS Go binaries and waits on a broader green CI gate
+- PATH long-name argv0 twins: installed `millennium-{upgrade,schedule,theme,diag,repair,purge,mcp}` are the Go binary (Windows `.cmd` / Scoop shims invoke `millennium <cmd>`)
+- Shared Go packages for Steam lifecycle (`go/internal/steam`), CLI logging (`go/internal/logging`), and zip-slip–safe extract (`go/internal/archive`)
+- Native schedule systemd scopes (system + user), upgrade sudo handoff on Linux, Windows Task Scheduler enable/disable, and interactive schedule setup wizard
+
 ### Changed
-- Modularization: feature libraries for schedule/theme/upgrade/repair/purge and the top-level `millennium` dispatcher on Linux and Windows; Windows `common.ps1` split into `scripts/windows/lib/*.ps1` (sourced by retained `common.ps1`)
-- Removed thin diag aggregators (`scripts/lib/diag.sh`, `scripts/windows/lib/Diag.ps1`); orchestration lives in `millennium-diag` entrypoints; report API is `DiagReport.ps1`
+- Installers hard-require the Go dispatcher for PATH `millennium`; no shell/PowerShell PATH dispatcher fallback
+- Feature long-name entrypoints peel onto Go; checkout Bash/PS scripts remain as development fallbacks (installed PATH uses twins)
+- Windows scheduled updates invoke `millennium.exe upgrade` / `theme update`; Unix systemd/launchd/cron invoke `millennium schedule|upgrade|theme` (rewritten on next `schedule enable`)
+- Release assets are versioned and OS/arch-split; from-source packaging uses controlled `-src` archives (no GitHub autoarchive URLs)
+- Docs and audit/roadmap describe present-tense Go ownership (phase/graduation jargon removed)
+
+### Removed
+- Shell/PowerShell PATH dispatchers (`millennium.sh` / `millennium.ps1` and install escape hatches)
+- Feature dual libs peeled into Go (schedule/theme/upgrade/repair/purge/diag dual modules)
+- Dead shared shell libs superseded by Go (`steam.sh` / `Steam.ps1`, `archive.sh`, `github.sh`, `backup.sh`)
+- Python MCP hatch (`millennium-mcp.py` / `MILLENNIUM_MCP_PYTHON`)
 
 ## [2.6.2] - 2026-07-10
 

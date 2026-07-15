@@ -1,3 +1,4 @@
-# Enable passwordless updates of the Millennium client for members of the wheel group.
-# This rule is shipped as part of the millennium-helpers-git Arch package.
-%wheel ALL=(ALL) NOPASSWD: /usr/bin/millennium-upgrade, /usr/bin/millennium-diag, /usr/bin/millennium-purge, /usr/bin/millennium-repair
+# Enable passwordless Millennium client maintenance for members of the wheel group.
+# Allows Go dispatcher verbs (upgrade/diag/repair/purge) and long-name helpers
+# (timers / older installs). Shipped with the millennium-helpers Arch package.
+%wheel ALL=(ALL) NOPASSWD: /usr/bin/millennium upgrade, /usr/bin/millennium upgrade *, /usr/bin/millennium diag, /usr/bin/millennium diag *, /usr/bin/millennium repair, /usr/bin/millennium repair *, /usr/bin/millennium purge, /usr/bin/millennium purge *, /usr/bin/millennium-upgrade, /usr/bin/millennium-diag, /usr/bin/millennium-purge, /usr/bin/millennium-repair

@@ -5,18 +5,20 @@ on:
     branches: [ main ]
     paths:
       - 'packaging/scoop/**'
+      - 'packaging/chocolatey/**'
       - 'scripts/windows/**'
-      - 'scripts/millennium-mcp.py'
       - 'completions/powershell/**'
+      - 'go/**'
       - 'VERSION'
       - '.github/workflows/package-install-windows.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'packaging/scoop/**'
+      - 'packaging/chocolatey/**'
       - 'scripts/windows/**'
-      - 'scripts/millennium-mcp.py'
       - 'completions/powershell/**'
+      - 'go/**'
       - 'VERSION'
       - '.github/workflows/package-install-windows.yml'
 
@@ -28,12 +30,18 @@ permissions:
   contents: read
 
 jobs:
-  test-scoop:
-    name: Test Scoop Package Install
+  test-scoop-bin:
+    name: Test Scoop-bin Package Install
     runs-on: windows-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.22.x"
+          cache-dependency-path: go/go.sum
 
       - name: Install Scoop
         shell: powershell
@@ -42,38 +50,49 @@ jobs:
           [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
           Invoke-Expression (Invoke-WebRequest -UseBasicParsing https://get.scoop.sh)
 
-      - name: Build trimmed Windows zip and install via Scoop
+      - name: Build trimmed Windows zip and install via Scoop-bin
         shell: powershell
         run: |
           $ErrorActionPreference = "Stop"
           $stage = Join-Path $env:TEMP "mh-scoop-stage"
-          $zipPath = Join-Path $env:TEMP "millennium-helpers-windows.zip"
+          $version = (Get-Content VERSION -Raw).Trim()
+          $zipPath = Join-Path $env:TEMP "millennium-helpers-v$version-windows-amd64.zip"
           Remove-Item -Recurse -Force $stage, $zipPath -ErrorAction SilentlyContinue
           New-Item -ItemType Directory -Path (Join-Path $stage "scripts") | Out-Null
           New-Item -ItemType Directory -Path (Join-Path $stage "completions") | Out-Null
 
           # Match release.yml Windows payload layout (MCP + PowerShell completions).
           Copy-Item -Recurse scripts\windows (Join-Path $stage "scripts\windows")
-          Copy-Item scripts\millennium-mcp.py (Join-Path $stage "scripts\millennium-mcp.py")
           Copy-Item -Recurse completions\powershell (Join-Path $stage "completions\powershell")
           Copy-Item VERSION, LICENSE, README.md $stage\
           New-Item -ItemType Directory -Force -Path (Join-Path $stage "third_party") | Out-Null
           Copy-Item third_party\MILLENNIUM-LICENSE.md (Join-Path $stage "third_party\MILLENNIUM-LICENSE.md")
 
+          # Build Go dispatcher into the zip (release.yml embeds scripts/windows/millennium.exe).
+          $ver = $version
+          Push-Location go
+          try {
+            go build "-ldflags=-X github.com/bolens/millenium-helpers/internal/version.Version=$ver" `
+              -o (Join-Path $stage "scripts\windows\millennium.exe") .\cmd\millennium
+            if ($LASTEXITCODE -ne 0) { throw "go build millennium.exe failed" }
+          } finally {
+            Pop-Location
+          }
+
           Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zipPath -Force
 
           $hash = (Get-FileHash $zipPath -Algorithm SHA256).Hash.ToLower()
           $escapedZipPath = $zipPath.Replace('\', '\\')
-          $manifest = Get-Content packaging/scoop/millennium-helpers.json -Raw
+          $manifest = Get-Content packaging/scoop/millennium-helpers-bin.json -Raw
           $manifest = $manifest -replace '"url":\s*"[^"]+"', "`"url`": `"$escapedZipPath`""
           $manifest = $manifest -replace '"hash":\s*"[^"]+"', "`"hash`": `"$hash`""
-          $manifestPath = Join-Path $env:TEMP "millennium-helpers.json"
+          $manifestPath = Join-Path $env:TEMP "millennium-helpers-bin.json"
           $manifest | Set-Content $manifestPath -Force
 
           # Manifest URL shape check (release asset naming), independent of local install URL.
-          $declaredUrl = (Get-Content packaging/scoop/millennium-helpers.json -Raw | ConvertFrom-Json).url
-          if ($declaredUrl -notmatch '/releases/download/v[^/]+/millennium-helpers-windows\.zip$') {
-            throw "Scoop manifest url must be a trimmed Windows release asset, got: $declaredUrl"
+          $declaredUrl = (Get-Content packaging/scoop/millennium-helpers-bin.json -Raw | ConvertFrom-Json).url
+          if ($declaredUrl -notmatch '/releases/download/v[^/]+/millennium-helpers-v[^/]+-windows-amd64\.zip$') {
+            throw "Scoop-bin manifest url must be a versioned windows-amd64 release asset, got: $declaredUrl"
           }
 
           $env:PATH += ";$HOME\scoop\shims"
@@ -87,18 +106,20 @@ jobs:
           Set-ItemProperty -Path "HKCU:\Software\Valve\Steam" -Name "SteamPath" -Value "C:\MockSteam" -Force
           New-Item -ItemType Directory -Path "C:\MockSteam" -Force | Out-Null
 
-      - name: Verify Scoop commands run
+      - name: Verify Scoop-bin commands run
         shell: powershell -NoProfile -Command ". '{0}'"
         run: |
           $ErrorActionPreference = "Stop"
           $env:PATH += ";$HOME\scoop\shims"
-          $prefix = scoop prefix millennium-helpers
-          $diagLib = Join-Path $prefix "scripts\windows\lib\DiagReport.ps1"
-          if (-not (Test-Path $diagLib)) {
-            throw "Missing modular diag report library at $diagLib (scripts/windows/lib not packaged)"
+          $prefix = scoop prefix millennium-helpers-bin
+          $loggingLib = Join-Path $prefix "scripts\windows\lib\Logging.ps1"
+          if (-not (Test-Path $loggingLib)) {
+            throw "Missing shared Logging.ps1 at $loggingLib (scripts/windows/lib not packaged)"
           }
-          Write-Host "Diag lib OK: $diagLib"
-          # Parse-check diag modules under Windows PowerShell 5.1 (catches UTF-8/ANSI issues).
+          Write-Host "Shared lib OK: $loggingLib"
+          if (Test-Path (Join-Path $prefix "scripts\windows\lib\UpgradeRollback.ps1")) {
+            throw "UpgradeRollback.ps1 must not ship in packaging"
+          }
           Get-ChildItem (Join-Path $prefix "scripts\windows\lib\*.ps1") | ForEach-Object {
             $errs = $null
             $null = [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$null, [ref]$errs)
@@ -117,3 +138,34 @@ jobs:
             }
           }
           Write-Host "install_method=$($json.install_method) scripts_up_to_date=$($json.scripts_up_to_date)"
+
+  chocolatey-schema:
+    name: Validate Chocolatey install script shape
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Parse-check Chocolatey tools
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+          $files = @(
+            'packaging\chocolatey\millennium-helpers\tools\chocolateyInstall.ps1',
+            'packaging\chocolatey\millennium-helpers\tools\chocolateyUninstall.ps1'
+          )
+          foreach ($f in $files) {
+            $errs = $null
+            $null = [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $f), [ref]$null, [ref]$errs)
+            if ($errs -and $errs.Count -gt 0) {
+              throw "Parse error in ${f}: $($errs[0])"
+            }
+            Write-Host "Parse OK: $f"
+          }
+          $install = Get-Content 'packaging\chocolatey\millennium-helpers\tools\chocolateyInstall.ps1' -Raw
+          if ($install -notmatch 'millennium-helpers-v\$version-windows-amd64\.zip') {
+            throw 'chocolateyInstall.ps1 must reference versioned windows-amd64 zip'
+          }
+          if ($install -notmatch 'millennium\.exe') {
+            throw 'chocolateyInstall.ps1 must prefer millennium.exe when present'
+          }

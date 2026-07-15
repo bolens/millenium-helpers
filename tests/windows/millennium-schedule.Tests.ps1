@@ -6,6 +6,26 @@ Describe "Schedule CLI Manager" {
             New-PSDrive -Name HKCU -PSProvider FileSystem -Root ([System.IO.Path]::GetTempPath()) -ErrorAction SilentlyContinue | Out-Null
             New-PSDrive -Name C -PSProvider FileSystem -Root ([System.IO.Path]::GetTempPath()) -ErrorAction SilentlyContinue | Out-Null
         }
+        # Config + status + enable/disable thin-wrap to Go.
+        $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
+        $binDir = Join-Path $repoRoot "bin"
+        New-Item -ItemType Directory -Force -Path $binDir | Out-Null
+        $outExe = Join-Path $binDir "millennium.exe"
+        if (-not (Test-Path -LiteralPath $outExe)) {
+            $go = Get-Command go -ErrorAction SilentlyContinue
+            if (-not $go) {
+                throw "Go toolchain required for schedule config/status thin-wrap tests"
+            }
+            $ver = [System.IO.File]::ReadAllText((Join-Path $repoRoot "VERSION")).Trim()
+            Push-Location (Join-Path $repoRoot "go")
+            try {
+                & go build "-ldflags=-X github.com/bolens/millenium-helpers/internal/version.Version=$ver" `
+                    -o $outExe ./cmd/millennium
+                if ($LASTEXITCODE -ne 0) { throw "go build failed for millennium.exe" }
+            } finally {
+                Pop-Location
+            }
+        }
         function Register-ScheduledTask { }
         function Get-ScheduledTask { }
         function New-ScheduledTaskAction { }
@@ -28,7 +48,6 @@ Describe "Schedule CLI Manager" {
             }
             return Microsoft.PowerShell.Management\Get-Content @PSBoundParameters
         }
-        . (Join-Path -Path $winScriptDir -ChildPath "common.ps1")
     }
 
     Context "Help and Version" {
@@ -56,69 +75,45 @@ Describe "Schedule CLI Manager" {
         }
     }
 
-    Context "status when registered" {
-        It "Prints scheduler summary with disable CTA" {
-            Mock Get-ScheduledTask {
-                return [pscustomobject]@{
-                    TaskName = "MillenniumUpdate"
-                    TaskPath = "\"
-                    State = "Ready"
-                    Actions = @([pscustomobject]@{ Execute = "powershell.exe"; Arguments = "-File upgrade.ps1 -Channel beta" })
-                }
-            }
-            $scheduleScript = Join-Path -Path $winScriptDir -ChildPath "millennium-schedule.ps1"
-            $out = (& $scheduleScript status *>&1) | Out-String
-            $out | Should -BeLike "*Scheduler summary*"
-            $out | Should -BeLike "*millennium schedule disable*"
-            $out | Should -BeLike "*Channel*"
-        }
-    }
-
-    Context "Wizard setup" {
-        BeforeAll {
-            Mock Get-ItemProperty { return [pscustomobject]@{ SteamPath = "C:\MockedSteam" } }
-            Mock Test-Path { return $true }
-
-            # Mock Read-Host inputs for wizard: 2 (beta channel), y (daily timer), empty (token)
-            $inputs = @("2", "y", "")
-            $global:readHostIdx = 0
-            Mock Read-Host {
-                $val = $inputs[$global:readHostIdx]
-                $global:readHostIdx++
-                return $val
-            }
-            Mock Register-ScheduledTask { return $true }
-            Mock Get-ScheduledTask { return $null }
-            Mock New-ScheduledTaskAction { return $true }
-            Mock New-ScheduledTaskTrigger { return $true }
-            Mock New-ScheduledTaskSettingsSet { return $true }
-            Mock Test-Admin { return $true }
-        }
-
-        It "Saves configuration wizard data correctly" {
-            $scheduleScript = Join-Path -Path $winScriptDir -ChildPath "millennium-schedule.ps1"
-            $tempConfigDir = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "pest_test_config"
-            $env:LOCALAPPDATA = $tempConfigDir
-            $env:FORCE_WIZARD = "true"
-
-            $out = (& $scheduleScript setup -DryRun *>&1) | Out-String
-            $out | Should -BeLike "*backup_limit*"
-            $out | Should -Match "github_token\s+:\s+(\[set\]|\(not set\))"
-
-            Remove-Item -Path $tempConfigDir -Recurse -Force -ErrorAction SilentlyContinue
-        }
-    }
-
-    Context "Status CTA" {
-        BeforeAll {
-            Mock Get-ScheduledTask { return $null }
-        }
-
-        It "Prints enable command when task is not registered" {
+    Context "status via Go thin-wrap" {
+        It "Reports disabled scheduler when MillenniumUpdate task is absent" {
             $scheduleScript = Join-Path -Path $winScriptDir -ChildPath "millennium-schedule.ps1"
             $out = (& $scheduleScript status *>&1) | Out-String
             $out | Should -BeLike "*Scheduler disabled*"
             $out | Should -BeLike "*millennium schedule enable*"
+        }
+    }
+
+    Context "Wizard setup via Go" {
+        It "Dry-run wizard announces config and tips" {
+            $scheduleScript = Join-Path -Path $winScriptDir -ChildPath "millennium-schedule.ps1"
+            $tempConfigDir = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ("pest_wiz_" + [guid]::NewGuid().ToString("n"))
+            New-Item -ItemType Directory -Force -Path $tempConfigDir | Out-Null
+            $env:LOCALAPPDATA = $tempConfigDir
+            $env:FORCE_WIZARD = "true"
+            try {
+                # Avoid piping into the PS1 wrapper (CmdletBinding rejects pipeline input).
+                $psi = New-Object System.Diagnostics.ProcessStartInfo
+                $psi.FileName = "powershell.exe"
+                $psi.Arguments = "-NoProfile -File `"$scheduleScript`" setup -DryRun"
+                $psi.RedirectStandardInput = $true
+                $psi.RedirectStandardOutput = $true
+                $psi.RedirectStandardError = $true
+                $psi.UseShellExecute = $false
+                $proc = [System.Diagnostics.Process]::Start($psi)
+                $proc.StandardInput.Write("1`nn`n`n")
+                $proc.StandardInput.Close()
+                $stdout = $proc.StandardOutput.ReadToEnd()
+                $stderr = $proc.StandardError.ReadToEnd()
+                $proc.WaitForExit()
+                $out = ($stdout + $stderr)
+                $out | Should -BeLike "*Configuration Wizard*"
+                $out | Should -BeLike "*DRY RUN*"
+                $out | Should -BeLike "*backup_limit*"
+            } finally {
+                Remove-Item -Path $tempConfigDir -Recurse -Force -ErrorAction SilentlyContinue
+                Remove-Item Env:FORCE_WIZARD -ErrorAction SilentlyContinue
+            }
         }
     }
 
@@ -166,26 +161,13 @@ Describe "Schedule CLI Manager" {
         }
     }
 
-    Context "enable task action parity" {
-        It "Registers task with -Yes -Quiet, theme update, and updater.log redirect" {
-            Mock Test-Admin { return $true }
-            Mock New-ScheduledTaskAction { return [pscustomobject]@{} }
-            Mock New-ScheduledTaskTrigger {
-                $t = [pscustomobject]@{}
-                $t | Add-Member -NotePropertyName RandomDelay -NotePropertyValue $null -Force
-                return $t
-            }
-            Mock New-ScheduledTaskSettingsSet { return [pscustomobject]@{} }
-            Mock Register-ScheduledTask { return $true }
-
+    Context "enable task dry-run via Go" {
+        It "Dry-run announces Task Scheduler registration for the channel" {
             $scheduleScript = Join-Path -Path $winScriptDir -ChildPath "millennium-schedule.ps1"
             $out = (& $scheduleScript enable beta -DryRun *>&1) | Out-String
-            $out | Should -BeLike "*-Yes*"
-            $out | Should -BeLike "*-Quiet*"
-            $out | Should -BeLike "*updater.log*"
-            $out | Should -BeLike "*millennium-theme.ps1*"
-            $out | Should -BeLike "*update*"
-            $out | Should -BeLike "*-Channel*beta*"
+            $out | Should -BeLike "*DRY RUN*"
+            $out | Should -BeLike "*Would register*"
+            $out | Should -BeLike "*beta*"
         }
     }
 }

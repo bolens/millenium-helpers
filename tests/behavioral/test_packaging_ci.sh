@@ -12,6 +12,8 @@ UPDATE="${REPO_ROOT}/scripts/ci/update-packaging-versions.sh"
 BUMP="${REPO_ROOT}/scripts/ci/bump-version.sh"
 CHECK="${REPO_ROOT}/scripts/ci/check-version-sync.sh"
 SYNC_SRC="${REPO_ROOT}/scripts/ci/sync-stable-srcinfo.sh"
+SYNC_BIN="${REPO_ROOT}/scripts/ci/sync-bin-srcinfo.sh"
+PACK_CHECK="${REPO_ROOT}/scripts/ci/check-packaging-manifests.sh"
 WINGET_CHECK="${REPO_ROOT}/scripts/ci/check-winget-manifests.sh"
 
 # Portable in-place sed (GNU sed -i vs BSD/macOS sed -i '').
@@ -29,15 +31,33 @@ sed_inplace() {
 seed_packaging_tree() {
   local dest="$1"
   mkdir -p "$dest/Formula" "$dest/packaging/scoop" "$dest/packaging/winget" \
-    "$dest/packaging/millennium-helpers" "$dest/nix" "$dest/scripts/ci"
-  cp "$UPDATE" "$BUMP" "$CHECK" "$SYNC_SRC" "$dest/scripts/ci/"
+    "$dest/packaging/millennium-helpers" "$dest/packaging/millennium-helpers-bin" \
+    "$dest/packaging/deb/millennium-helpers/DEBIAN" \
+    "$dest/packaging/deb/millennium-helpers-bin/DEBIAN" \
+    "$dest/packaging/rpm" \
+    "$dest/packaging/chocolatey/millennium-helpers/tools" \
+    "$dest/nix" "$dest/scripts/ci" "$dest/scripts/lib"
+  cp "$UPDATE" "$BUMP" "$CHECK" "$SYNC_SRC" "$SYNC_BIN" "$dest/scripts/ci/"
+  cp "${REPO_ROOT}/scripts/lib/release_assets.sh" "$dest/scripts/lib/"
   cp "${REPO_ROOT}/Formula/millennium-helpers.rb" "$dest/Formula/"
-  cp "${REPO_ROOT}/packaging/scoop/millennium-helpers.json" "$dest/packaging/scoop/"
+  cp "${REPO_ROOT}/Formula/millennium-helpers-bin.rb" "$dest/Formula/"
+  cp "${REPO_ROOT}/packaging/scoop/"*.json "$dest/packaging/scoop/"
   cp "${REPO_ROOT}/packaging/winget/"*.yaml "$dest/packaging/winget/"
   cp "${REPO_ROOT}/packaging/millennium-helpers/PKGBUILD" "$dest/packaging/millennium-helpers/"
   cp "${REPO_ROOT}/packaging/millennium-helpers/.SRCINFO" "$dest/packaging/millennium-helpers/"
   cp "${REPO_ROOT}/packaging/millennium-helpers/millennium-helpers.sudoers" "$dest/packaging/millennium-helpers/"
   cp "${REPO_ROOT}/packaging/millennium-helpers/millennium-helpers.install" "$dest/packaging/millennium-helpers/"
+  cp "${REPO_ROOT}/packaging/millennium-helpers-bin/PKGBUILD" "$dest/packaging/millennium-helpers-bin/"
+  cp "${REPO_ROOT}/packaging/millennium-helpers-bin/.SRCINFO" "$dest/packaging/millennium-helpers-bin/"
+  cp "${REPO_ROOT}/packaging/millennium-helpers-bin/millennium-helpers.sudoers" "$dest/packaging/millennium-helpers-bin/"
+  cp "${REPO_ROOT}/packaging/millennium-helpers-bin/millennium-helpers.install" "$dest/packaging/millennium-helpers-bin/"
+  cp "${REPO_ROOT}/packaging/deb/millennium-helpers/DEBIAN/control" "$dest/packaging/deb/millennium-helpers/DEBIAN/"
+  cp "${REPO_ROOT}/packaging/deb/millennium-helpers-bin/DEBIAN/control" "$dest/packaging/deb/millennium-helpers-bin/DEBIAN/"
+  cp "${REPO_ROOT}/packaging/rpm/"*.spec "$dest/packaging/rpm/"
+  cp "${REPO_ROOT}/packaging/chocolatey/millennium-helpers/millennium-helpers.nuspec" \
+    "$dest/packaging/chocolatey/millennium-helpers/"
+  cp "${REPO_ROOT}/packaging/chocolatey/millennium-helpers/tools/"*.ps1 \
+    "$dest/packaging/chocolatey/millennium-helpers/tools/"
   cp "${REPO_ROOT}/nix/release-info.nix" "$dest/nix/"
   cp "${REPO_ROOT}/pyproject.toml" "$dest/"
   cp "${REPO_ROOT}/VERSION" "$dest/"
@@ -46,45 +66,121 @@ seed_packaging_tree() {
 # Rewrite version strings/URLs to $ver while leaving checksums alone.
 seed_version_only() {
   local dest="$1" ver="$2"
+  [[ -n "$dest" && "$dest" != "." && "$dest" != "/" ]] || {
+    echo "error: seed_version_only requires an absolute temp dest" >&2
+    return 1
+  }
   printf '%s\n' "$ver" > "$dest/VERSION"
   python3 - "$dest" "$ver" <<'PY'
 import json, re, sys
 from pathlib import Path
 
-root = Path(sys.argv[1])
+root = Path(sys.argv[1]).resolve()
 ver = sys.argv[2]
+if root in (Path("/"), Path(".").resolve()) or str(root) == "":
+    raise SystemExit("refusing to seed version into repo root / cwd")
 
-def rewrite_urls(text: str) -> str:
-    return re.sub(r"/v[^/]+/", f"/v{ver}/", text)
+repo = "bolens/millenium-helpers"
+
+def bump_release_url(text: str) -> str:
+    text = re.sub(r"/releases/download/v[^/]+/", f"/releases/download/v{ver}/", text)
+    text = re.sub(
+        r"(millennium-helpers-v)[0-9][^/\"'\s-]*(-)",
+        rf"\g<1>{ver}\g<2>",
+        text,
+    )
+    return text
+
+# Formula: replace only the first stable url= line (never touch head).
+src_formula = root / "Formula/millennium-helpers.rb"
+text = src_formula.read_text(encoding="utf-8")
+text = re.sub(
+    r'(?m)^(  url\s+")https://github\.com/[^"]+(")',
+    rf'\g<1>https://github.com/{repo}/releases/download/v{ver}/millennium-helpers-v{ver}-src.tar.gz\g<2>',
+    text,
+    count=1,
+)
+src_formula.write_text(text, encoding="utf-8")
+
+bin_formula = root / "Formula/millennium-helpers-bin.rb"
+text = bin_formula.read_text(encoding="utf-8")
+# Rewrite version segment in all release download URLs for Formula-bin
+text = re.sub(
+    r'(releases/download/)v[^/]+(/millennium-helpers-v)[^/-]+(-)',
+    rf'\g<1>v{ver}\g<2>{ver}\g<3>',
+    text,
+)
+bin_formula.write_text(text, encoding="utf-8")
 
 (root / "pyproject.toml").write_text(
     re.sub(r'(?m)^version\s*=\s*"[^"]+"', f'version = "{ver}"', (root / "pyproject.toml").read_text(), count=1)
 )
-formula = root / "Formula/millennium-helpers.rb"
-formula.write_text(rewrite_urls(formula.read_text()))
-pkg = root / "packaging/millennium-helpers/PKGBUILD"
-pkg.write_text(
-    re.sub(r"(?m)^pkgver=.*$", f"pkgver={ver}", pkg.read_text(), count=1)
-)
-src = root / "packaging/millennium-helpers/.SRCINFO"
-info = src.read_text()
-info = re.sub(r"(?m)^(\tpkgver = ).*$", rf"\g<1>{ver}", info, count=1)
-info = rewrite_urls(info)
-src.write_text(info)
-scoop_path = root / "packaging/scoop/millennium-helpers.json"
-scoop = json.loads(scoop_path.read_text())
-scoop["version"] = ver
-scoop["url"] = rewrite_urls(str(scoop.get("url", "")))
-scoop_path.write_text(json.dumps(scoop, indent=4) + "\n")
+
+for pkg, tag_src in (
+    ("millennium-helpers", True),
+    ("millennium-helpers-bin", False),
+):
+    pkgb = root / f"packaging/{pkg}/PKGBUILD"
+    pkgb.write_text(re.sub(r"(?m)^pkgver=.*$", f"pkgver={ver}", pkgb.read_text(), count=1))
+    src = root / f"packaging/{pkg}/.SRCINFO"
+    info = src.read_text(encoding="utf-8")
+    info = re.sub(r"(?m)^(\tpkgver = ).*$", rf"\g<1>{ver}", info, count=1)
+    if tag_src:
+        info = re.sub(
+            r"(?m)^(\tsource = https://github\.com/.+/releases/download/)v[^/\n]+(/millennium-helpers-v)[^/\n]+(-src\.tar\.gz)$",
+            rf"\g<1>v{ver}\g<2>{ver}\g<3>",
+            info,
+            count=1,
+        )
+    else:
+        info = bump_release_url(info)
+    src.write_text(info, encoding="utf-8")
+
+scoop_src = root / "packaging/scoop/millennium-helpers.json"
+data = json.loads(scoop_src.read_text(encoding="utf-8"))
+data["version"] = ver
+data["url"] = f"https://github.com/{repo}/releases/download/v{ver}/millennium-helpers-v{ver}-src.zip"
+data["extract_dir"] = f"millenium-helpers-{ver}"
+if isinstance(data.get("autoupdate"), dict):
+    data["autoupdate"]["url"] = f"https://github.com/{repo}/releases/download/v$version/millennium-helpers-v$version-src.zip"
+    data["autoupdate"]["extract_dir"] = "millenium-helpers-$version"
+scoop_src.write_text(json.dumps(data, indent=4) + "\n", encoding="utf-8")
+
+scoop_bin = root / "packaging/scoop/millennium-helpers-bin.json"
+data = json.loads(scoop_bin.read_text(encoding="utf-8"))
+data["version"] = ver
+data["url"] = f"https://github.com/{repo}/releases/download/v{ver}/millennium-helpers-v{ver}-windows-amd64.zip"
+scoop_bin.write_text(json.dumps(data, indent=4) + "\n", encoding="utf-8")
+
 for rel in (
     "packaging/winget/bolens.millenniumhelpers.yaml",
     "packaging/winget/bolens.millenniumhelpers.installer.yaml",
     "packaging/winget/bolens.millenniumhelpers.locale.en-US.yaml",
 ):
     p = root / rel
-    text = rewrite_urls(p.read_text())
+    text = bump_release_url(p.read_text(encoding="utf-8"))
     text = re.sub(r"(?m)^PackageVersion:\s*.*$", f"PackageVersion: {ver}", text, count=1)
-    p.write_text(text)
+    p.write_text(text, encoding="utf-8")
+
+for ctrl in (
+    "packaging/deb/millennium-helpers/DEBIAN/control",
+    "packaging/deb/millennium-helpers-bin/DEBIAN/control",
+):
+    p = root / ctrl
+    p.write_text(re.sub(r"(?m)^Version:\s*.*$", f"Version: {ver}", p.read_text(), count=1))
+
+for spec in (
+    "packaging/rpm/millennium-helpers.spec",
+    "packaging/rpm/millennium-helpers-bin.spec",
+):
+    p = root / spec
+    p.write_text(re.sub(r"(?m)^Version:\s*.*$", f"Version: {ver}", p.read_text(), count=1))
+
+nuspec = root / "packaging/chocolatey/millennium-helpers/millennium-helpers.nuspec"
+nuspec.write_text(re.sub(r"<version>[^<]+</version>", f"<version>{ver}</version>", nuspec.read_text(), count=1))
+choco = root / "packaging/chocolatey/millennium-helpers/tools/chocolateyInstall.ps1"
+choco.write_text(re.sub(r"(\$version\s*=\s*')[^']+(')", rf"\g<1>{ver}\g<2>", choco.read_text(), count=1))
+
 ri = root / "nix/release-info.nix"
 ri.write_text(re.sub(r'version = "[^"]+"', f'version = "{ver}"', ri.read_text(), count=1))
 PY
@@ -128,7 +224,7 @@ out=$(bash "$SYNC_SRC" --bogus 2>&1); rc=$?
 assert_exit_code 2 "$rc" "sync-stable-srcinfo.sh rejects unknown args"
 assert_contains "$out" "usage:" "sync-stable-srcinfo.sh prints usage on bad args"
 
-# --- Successful update writes quoted Winget hash and verifies round-trip ---
+# --- Successful update writes from-source + bin hashes ---
 
 WORK=$(mktemp -d)
 SYNC_WORK=$(mktemp -d)
@@ -142,10 +238,13 @@ echo "0.0.0" > "$WORK/VERSION"
 
 LINUX_SHA="1111111111111111111111111111111111111111111111111111111111111111"
 WINDOWS_SHA="2222222222222222222222222222222222222222222222222222222222222222"
+TAG_TAR_SHA="3333333333333333333333333333333333333333333333333333333333333333"
+TAG_ZIP_SHA="4444444444444444444444444444444444444444444444444444444444444444"
 
 out=$(
   cd "$WORK" && bash scripts/ci/update-packaging-versions.sh \
-    "3.4.5" "$LINUX_SHA" "$WINDOWS_SHA" 2>&1
+    "3.4.5" "$LINUX_SHA" "$WINDOWS_SHA" "bolens/millenium-helpers" \
+    "$TAG_TAR_SHA" "$TAG_ZIP_SHA" 2>&1
 )
 rc=$?
 assert_success "$rc" "update-packaging-versions.sh succeeds with valid hashes"
@@ -153,48 +252,65 @@ assert_contains "$out" "Verified packaging hashes" "update-packaging-versions.sh
 assert_equals "3.4.5" "$(tr -d '[:space:]' < "$WORK/VERSION")" "VERSION file updated"
 
 formula=$(cat "$WORK/Formula/millennium-helpers.rb")
-assert_contains "$formula" "sha256 \"${LINUX_SHA}\"" "Formula receives lowercase linux sha256"
-assert_contains "$formula" "releases/download/v3.4.5/millennium-helpers-linux.tar.gz" "Formula URL points at trimmed Linux release asset"
+assert_contains "$formula" "sha256 \"${TAG_TAR_SHA}\"" "from-source Formula receives tag archive sha256"
+assert_contains "$formula" "releases/download/v3.4.5/millennium-helpers-v3.4.5-src.tar.gz" "from-source Formula URL points at tag archive"
 assert_contains "$formula" 'license "MIT"' "Formula declares MIT license"
 assert_not_contains "$formula" 'version "3.4.5"' "Formula has no redundant version line after packaging update"
 
+formula_bin=$(cat "$WORK/Formula/millennium-helpers-bin.rb")
+assert_contains "$formula_bin" "sha256 \"${LINUX_SHA}\"" "bin Formula receives linux sha256"
+assert_contains "$formula_bin" "releases/download/v3.4.5/millennium-helpers-v3.4.5-linux-amd64.tar.gz" "bin Formula URL points at release tarball"
+
 scoop=$(cat "$WORK/packaging/scoop/millennium-helpers.json")
-assert_contains "$scoop" "\"hash\": \"${WINDOWS_SHA}\"" "Scoop receives windows sha256"
-assert_contains "$scoop" "releases/download/v3.4.5/millennium-helpers-windows.zip" "Scoop URL points at trimmed Windows release asset"
-assert_contains "$scoop" "millennium-helpers-windows.zip.sha256" "Scoop autoupdate hash uses .sha256 sidecar"
+assert_contains "$scoop" "\"hash\": \"${TAG_ZIP_SHA}\"" "Scoop from-source receives tag zip sha256"
+assert_contains "$scoop" "releases/download/v3.4.5/millennium-helpers-v3.4.5-src.zip" "Scoop from-source URL points at tag zip"
+
+scoop_bin=$(cat "$WORK/packaging/scoop/millennium-helpers-bin.json")
+assert_contains "$scoop_bin" "\"hash\": \"${WINDOWS_SHA}\"" "Scoop-bin receives windows sha256"
+assert_contains "$scoop_bin" "releases/download/v3.4.5/millennium-helpers-v3.4.5-windows-amd64.zip" "Scoop-bin URL points at Windows release zip"
+assert_contains "$scoop_bin" "millennium-helpers-v\$version-windows-amd64.zip.sha256" "Scoop-bin autoupdate hash uses .sha256 sidecar"
 
 winget=$(cat "$WORK/packaging/winget/bolens.millenniumhelpers.installer.yaml")
 WINDOWS_SHA_UC="$(printf '%s' "$WINDOWS_SHA" | tr '[:lower:]' '[:upper:]')"
 assert_contains "$winget" "InstallerSha256: \"${WINDOWS_SHA_UC}\"" "Winget InstallerSha256 is quoted uppercase"
-assert_contains "$winget" "releases/download/v3.4.5/millennium-helpers-windows.zip" "Winget InstallerUrl points at trimmed Windows release asset"
+assert_contains "$winget" "releases/download/v3.4.5/millennium-helpers-v3.4.5-windows-amd64.zip" "Winget InstallerUrl points at trimmed Windows release asset"
 assert_contains "$winget" "PackageVersion: 3.4.5" "Winget installer PackageVersion updated"
 assert_contains "$winget" "InstallerType: zip" "Winget installer uses zip (no portable .ps1 claims)"
 assert_not_contains "$winget" "NestedInstallerFiles" "Winget installer has no NestedInstallerFiles"
 assert_not_contains "$winget" "PortableCommandAliases" "Winget installer has no PortableCommandAliases"
 
 aur=$(cat "$WORK/packaging/millennium-helpers/PKGBUILD")
-assert_contains "$aur" "pkgver=3.4.5" "Arch versioned PKGBUILD pkgver updated"
-assert_contains "$aur" "${LINUX_SHA}" "Arch versioned PKGBUILD receives linux sha256"
+assert_contains "$aur" "pkgver=3.4.5" "Arch from-source PKGBUILD pkgver updated"
+assert_contains "$aur" "${TAG_TAR_SHA}" "Arch from-source PKGBUILD receives tag archive sha256"
 aur_srcinfo=$(cat "$WORK/packaging/millennium-helpers/.SRCINFO")
-assert_contains "$aur_srcinfo" "pkgver = 3.4.5" "Arch versioned .SRCINFO pkgver updated"
-assert_contains "$aur_srcinfo" "releases/download/v3.4.5/millennium-helpers-linux.tar.gz" "Arch .SRCINFO source URL expanded to new version"
-assert_contains "$aur_srcinfo" "sha256sums = ${LINUX_SHA}" "Arch .SRCINFO tarball sha synced via sync-stable-srcinfo"
+assert_contains "$aur_srcinfo" "pkgver = 3.4.5" "Arch from-source .SRCINFO pkgver updated"
+assert_contains "$aur_srcinfo" "releases/download/v3.4.5/millennium-helpers-v3.4.5-src.tar.gz" "Arch from-source .SRCINFO source URL expanded"
+assert_contains "$aur_srcinfo" "sha256sums = ${TAG_TAR_SHA}" "Arch from-source .SRCINFO sha synced"
+
+aur_bin=$(cat "$WORK/packaging/millennium-helpers-bin/PKGBUILD")
+assert_contains "$aur_bin" "pkgver=3.4.5" "Arch -bin PKGBUILD pkgver updated"
+assert_contains "$aur_bin" "${LINUX_SHA}" "Arch -bin PKGBUILD receives linux sha256"
+
 nix_info=$(cat "$WORK/nix/release-info.nix")
 assert_contains "$nix_info" 'version = "3.4.5"' "Nix release-info.nix version updated"
-assert_contains "$nix_info" "sha256-" "Nix release-info.nix has SRI srcHash"
+assert_contains "$nix_info" "srcAssetHash" "Nix release-info.nix has srcAssetHash"
+assert_contains "$nix_info" "srcGitHash" "Nix release-info.nix has srcGitHash"
+
+assert_contains "$(cat "$WORK/packaging/deb/millennium-helpers/DEBIAN/control")" "Version: 3.4.5" \
+  "deb from-source Version updated"
+assert_contains "$(cat "$WORK/packaging/chocolatey/millennium-helpers/millennium-helpers.nuspec")" \
+  "<version>3.4.5</version>" "Chocolatey nuspec version updated"
 
 # --- sync-stable-srcinfo.sh: check + write + PRE_COMMIT abort ---
 
 seed_packaging_tree "$SYNC_WORK"
 seed_version_only "$SYNC_WORK" "1.2.3"
-# Align .SRCINFO with PKGBUILD first.
 (cd "$SYNC_WORK" && bash scripts/ci/sync-stable-srcinfo.sh) >/dev/null
 out=$(cd "$SYNC_WORK" && bash scripts/ci/sync-stable-srcinfo.sh --check 2>&1); rc=$?
 assert_success "$rc" "sync-stable-srcinfo --check passes when .SRCINFO matches PKGBUILD"
 assert_contains "$out" "stable .SRCINFO OK" "sync-stable-srcinfo --check reports OK"
 
-# Stale source URL (the v2.5.0 CI failure mode).
-sed_inplace 's|releases/download/v1.2.3/|releases/download/v0.9.9/|' \
+sed_inplace 's|millennium-helpers-v1.2.3-src.tar.gz|millennium-helpers-v0.9.9-src.tar.gz|' \
   "$SYNC_WORK/packaging/millennium-helpers/.SRCINFO"
 out=$(cd "$SYNC_WORK" && bash scripts/ci/sync-stable-srcinfo.sh --check 2>&1); rc=$?
 assert_failure "$rc" "sync-stable-srcinfo --check fails on stale source URL"
@@ -203,15 +319,13 @@ assert_contains "$out" "out of date" "sync-stable-srcinfo --check explains stale
 out=$(cd "$SYNC_WORK" && bash scripts/ci/sync-stable-srcinfo.sh 2>&1); rc=$?
 assert_success "$rc" "sync-stable-srcinfo write mode repairs stale .SRCINFO"
 assert_contains "$(cat "$SYNC_WORK/packaging/millennium-helpers/.SRCINFO")" \
-  "releases/download/v1.2.3/millennium-helpers-linux.tar.gz" \
-  "sync-stable-srcinfo write restores expanded source URL"
+  "millennium-helpers-v1.2.3-src.tar.gz" \
+  "sync-stable-srcinfo write restores tag archive source URL"
 
-# Stale pkgver line.
 sed_inplace 's/\tpkgver = .*/\tpkgver = 0.0.1/' "$SYNC_WORK/packaging/millennium-helpers/.SRCINFO"
 out=$(cd "$SYNC_WORK" && bash scripts/ci/sync-stable-srcinfo.sh --check 2>&1); rc=$?
 assert_failure "$rc" "sync-stable-srcinfo --check fails on stale pkgver"
 
-# Stale tarball sha256sums (first sha256sums line only; portable across GNU/BSD sed).
 (cd "$SYNC_WORK" && bash scripts/ci/sync-stable-srcinfo.sh) >/dev/null
 python3 - "$SYNC_WORK/packaging/millennium-helpers/.SRCINFO" <<'PY'
 import re, sys
@@ -231,8 +345,7 @@ PY
 out=$(cd "$SYNC_WORK" && bash scripts/ci/sync-stable-srcinfo.sh --check 2>&1); rc=$?
 assert_failure "$rc" "sync-stable-srcinfo --check fails on stale tarball sha256"
 
-# PRE_COMMIT abort when write changes files.
-sed_inplace 's|releases/download/v1.2.3/|releases/download/v0.1.0/|' \
+sed_inplace 's|millennium-helpers-v1.2.3-src.tar.gz|millennium-helpers-v0.1.0-src.tar.gz|' \
   "$SYNC_WORK/packaging/millennium-helpers/.SRCINFO"
 out=$(cd "$SYNC_WORK" && PRE_COMMIT=1 bash scripts/ci/sync-stable-srcinfo.sh 2>&1); rc=$?
 assert_failure "$rc" "sync-stable-srcinfo under PRE_COMMIT exits non-zero after rewrite"
@@ -242,16 +355,15 @@ assert_contains "$out" "re-stage" "sync-stable-srcinfo under PRE_COMMIT asks to 
 
 seed_packaging_tree "$BUMP_WORK"
 seed_version_only "$BUMP_WORK" "1.0.0"
-# Capture hashes before bump.
 FORMULA_SHA_BEFORE="$(grep -E '^\s*sha256\s+"' "$BUMP_WORK/Formula/millennium-helpers.rb" | head -1)"
+FORMULA_BIN_SHA_BEFORE="$(grep -E '^\s*sha256\s+"' "$BUMP_WORK/Formula/millennium-helpers-bin.rb" | head -1)"
 SCOOP_HASH_BEFORE="$(python3 -c "import json; print(json.load(open('$BUMP_WORK/packaging/scoop/millennium-helpers.json'))['hash'])")"
+SCOOP_BIN_HASH_BEFORE="$(python3 -c "import json; print(json.load(open('$BUMP_WORK/packaging/scoop/millennium-helpers-bin.json'))['hash'])")"
 WINGET_SHA_BEFORE="$(grep -E '^\s*InstallerSha256:' "$BUMP_WORK/packaging/winget/bolens.millenniumhelpers.installer.yaml" | head -1)"
 PKG_SHA_BEFORE="$(grep -E "^sha256sums=\('" "$BUMP_WORK/packaging/millennium-helpers/PKGBUILD" | head -1)"
-NIX_HASH_BEFORE="$(grep -E '^\s*srcHash\s*=' "$BUMP_WORK/nix/release-info.nix" | head -1)"
-# Deliberately stale .SRCINFO source URL before bump.
-sed_inplace 's|releases/download/v1.0.0/|releases/download/v0.9.9/|' \
+NIX_HASH_BEFORE="$(grep -E '^\s*srcAssetHash\s*=' "$BUMP_WORK/nix/release-info.nix" | head -1)"
+sed_inplace 's|millennium-helpers-v1.0.0-src.tar.gz|millennium-helpers-v0.9.9-src.tar.gz|' \
   "$BUMP_WORK/packaging/millennium-helpers/.SRCINFO"
-# Bump pkgrel so we can assert reset.
 sed_inplace 's/^pkgrel=.*/pkgrel=7/' "$BUMP_WORK/packaging/millennium-helpers/PKGBUILD"
 
 out=$(cd "$BUMP_WORK" && bash scripts/ci/bump-version.sh "v9.8.7" 2>&1); rc=$?
@@ -259,50 +371,59 @@ assert_success "$rc" "bump-version.sh succeeds (strips leading v)"
 assert_equals "9.8.7" "$(tr -d '[:space:]' < "$BUMP_WORK/VERSION")" "bump-version updates VERSION"
 assert_contains "$(cat "$BUMP_WORK/pyproject.toml")" 'version = "9.8.7"' "bump-version updates pyproject.toml"
 assert_contains "$(cat "$BUMP_WORK/Formula/millennium-helpers.rb")" \
-  "releases/download/v9.8.7/millennium-helpers-linux.tar.gz" "bump-version updates Formula URL"
+  "releases/download/v9.8.7/millennium-helpers-v9.8.7-src.tar.gz" "bump-version updates from-source Formula URL"
+assert_contains "$(cat "$BUMP_WORK/Formula/millennium-helpers-bin.rb")" \
+  "releases/download/v9.8.7/millennium-helpers-v9.8.7-linux-amd64.tar.gz" "bump-version updates bin Formula URL"
 assert_contains "$(cat "$BUMP_WORK/packaging/scoop/millennium-helpers.json")" \
-  '"version": "9.8.7"' "bump-version updates Scoop version"
+  '"version": "9.8.7"' "bump-version updates Scoop from-source version"
 assert_contains "$(cat "$BUMP_WORK/packaging/scoop/millennium-helpers.json")" \
-  "releases/download/v9.8.7/millennium-helpers-windows.zip" "bump-version updates Scoop URL"
+  "releases/download/v9.8.7/millennium-helpers-v9.8.7-src.zip" "bump-version updates Scoop from-source URL"
+assert_contains "$(cat "$BUMP_WORK/packaging/scoop/millennium-helpers-bin.json")" \
+  "releases/download/v9.8.7/millennium-helpers-v9.8.7-windows-amd64.zip" "bump-version updates Scoop-bin URL"
 assert_contains "$(cat "$BUMP_WORK/packaging/winget/bolens.millenniumhelpers.installer.yaml")" \
   "PackageVersion: 9.8.7" "bump-version updates Winget installer PackageVersion"
-assert_contains "$(cat "$BUMP_WORK/packaging/winget/bolens.millenniumhelpers.yaml")" \
-  "PackageVersion: 9.8.7" "bump-version updates Winget default PackageVersion"
-assert_contains "$(cat "$BUMP_WORK/packaging/winget/bolens.millenniumhelpers.locale.en-US.yaml")" \
-  "PackageVersion: 9.8.7" "bump-version updates Winget locale PackageVersion"
-assert_contains "$(cat "$BUMP_WORK/packaging/winget/bolens.millenniumhelpers.installer.yaml")" \
-  "releases/download/v9.8.7/millennium-helpers-windows.zip" "bump-version updates Winget InstallerUrl"
 assert_contains "$(cat "$BUMP_WORK/packaging/millennium-helpers/PKGBUILD")" "pkgver=9.8.7" \
-  "bump-version updates Arch PKGBUILD pkgver"
+  "bump-version updates Arch from-source PKGBUILD pkgver"
 assert_contains "$(cat "$BUMP_WORK/packaging/millennium-helpers/PKGBUILD")" "pkgrel=1" \
   "bump-version resets Arch PKGBUILD pkgrel to 1"
 assert_contains "$(cat "$BUMP_WORK/packaging/millennium-helpers/.SRCINFO")" \
-  "releases/download/v9.8.7/millennium-helpers-linux.tar.gz" \
-  "bump-version regenerates .SRCINFO source URL (not left on old tag)"
+  "releases/download/v9.8.7/millennium-helpers-v9.8.7-src.tar.gz" \
+  "bump-version regenerates from-source .SRCINFO source URL"
+assert_contains "$(cat "$BUMP_WORK/packaging/millennium-helpers-bin/PKGBUILD")" "pkgver=9.8.7" \
+  "bump-version updates Arch -bin PKGBUILD pkgver"
 assert_contains "$(cat "$BUMP_WORK/nix/release-info.nix")" 'version = "9.8.7"' \
   "bump-version updates nix/release-info.nix version"
+assert_contains "$(cat "$BUMP_WORK/packaging/deb/millennium-helpers/DEBIAN/control")" "Version: 9.8.7" \
+  "bump-version updates deb Version"
+assert_contains "$(cat "$BUMP_WORK/packaging/chocolatey/millennium-helpers/millennium-helpers.nuspec")" \
+  "<version>9.8.7</version>" "bump-version updates Chocolatey version"
 assert_contains "$out" "All packaging versions match VERSION" "bump-version runs check-version-sync"
 
 FORMULA_SHA_AFTER="$(grep -E '^\s*sha256\s+"' "$BUMP_WORK/Formula/millennium-helpers.rb" | head -1)"
+FORMULA_BIN_SHA_AFTER="$(grep -E '^\s*sha256\s+"' "$BUMP_WORK/Formula/millennium-helpers-bin.rb" | head -1)"
 SCOOP_HASH_AFTER="$(python3 -c "import json; print(json.load(open('$BUMP_WORK/packaging/scoop/millennium-helpers.json'))['hash'])")"
+SCOOP_BIN_HASH_AFTER="$(python3 -c "import json; print(json.load(open('$BUMP_WORK/packaging/scoop/millennium-helpers-bin.json'))['hash'])")"
 WINGET_SHA_AFTER="$(grep -E '^\s*InstallerSha256:' "$BUMP_WORK/packaging/winget/bolens.millenniumhelpers.installer.yaml" | head -1)"
 PKG_SHA_AFTER="$(grep -E "^sha256sums=\('" "$BUMP_WORK/packaging/millennium-helpers/PKGBUILD" | head -1)"
-NIX_HASH_AFTER="$(grep -E '^\s*srcHash\s*=' "$BUMP_WORK/nix/release-info.nix" | head -1)"
-assert_equals "$FORMULA_SHA_BEFORE" "$FORMULA_SHA_AFTER" "bump-version preserves Formula sha256"
-assert_equals "$SCOOP_HASH_BEFORE" "$SCOOP_HASH_AFTER" "bump-version preserves Scoop hash"
+NIX_HASH_AFTER="$(grep -E '^\s*srcAssetHash\s*=' "$BUMP_WORK/nix/release-info.nix" | head -1)"
+assert_equals "$FORMULA_SHA_BEFORE" "$FORMULA_SHA_AFTER" "bump-version preserves from-source Formula sha256"
+assert_equals "$FORMULA_BIN_SHA_BEFORE" "$FORMULA_BIN_SHA_AFTER" "bump-version preserves bin Formula sha256"
+assert_equals "$SCOOP_HASH_BEFORE" "$SCOOP_HASH_AFTER" "bump-version preserves Scoop from-source hash"
+assert_equals "$SCOOP_BIN_HASH_BEFORE" "$SCOOP_BIN_HASH_AFTER" "bump-version preserves Scoop-bin hash"
 assert_equals "$WINGET_SHA_BEFORE" "$WINGET_SHA_AFTER" "bump-version preserves Winget InstallerSha256"
 assert_equals "$PKG_SHA_BEFORE" "$PKG_SHA_AFTER" "bump-version preserves Arch PKGBUILD sha256sums"
-assert_equals "$NIX_HASH_BEFORE" "$NIX_HASH_AFTER" "bump-version preserves nix srcHash"
+assert_equals "$NIX_HASH_BEFORE" "$NIX_HASH_AFTER" "bump-version preserves nix srcAssetHash"
 
-# --- check-version-sync.sh: new pyproject + .SRCINFO guards ---
+# --- check-version-sync.sh ---
 
 seed_packaging_tree "$CHECK_WORK"
 seed_version_only "$CHECK_WORK" "4.5.6"
-(cd "$CHECK_WORK" && bash scripts/ci/sync-stable-srcinfo.sh) >/dev/null
+(cd "$CHECK_WORK" && bash scripts/ci/sync-stable-srcinfo.sh && bash scripts/ci/sync-bin-srcinfo.sh) >/dev/null
 out=$(cd "$CHECK_WORK" && bash scripts/ci/check-version-sync.sh 2>&1); rc=$?
 assert_success "$rc" "check-version-sync passes on seeded consistent tree"
 assert_contains "$out" "pyproject.toml version OK" "check-version-sync validates pyproject.toml"
 assert_contains "$out" ".SRCINFO OK" "check-version-sync validates stable .SRCINFO"
+assert_contains "$out" "deb/rpm/Chocolatey" "check-version-sync validates deb/rpm/Chocolatey"
 
 sed_inplace 's/^version = .*/version = "0.0.0"/' "$CHECK_WORK/pyproject.toml"
 out=$(cd "$CHECK_WORK" && bash scripts/ci/check-version-sync.sh 2>&1); rc=$?
@@ -310,73 +431,122 @@ assert_failure "$rc" "check-version-sync fails when pyproject.toml mismatches VE
 assert_contains "$out" "pyproject.toml" "check-version-sync names pyproject.toml on mismatch"
 sed_inplace 's/^version = .*/version = "4.5.6"/' "$CHECK_WORK/pyproject.toml"
 
-sed_inplace 's|releases/download/v4.5.6/|releases/download/v4.5.5/|' \
+sed_inplace 's|millennium-helpers-v4.5.6-src.tar.gz|millennium-helpers-v4.5.5-src.tar.gz|' \
   "$CHECK_WORK/packaging/millennium-helpers/.SRCINFO"
 out=$(cd "$CHECK_WORK" && bash scripts/ci/check-version-sync.sh 2>&1); rc=$?
 assert_failure "$rc" "check-version-sync fails when stable .SRCINFO source URL is stale"
 assert_contains "$out" ".SRCINFO" "check-version-sync mentions .SRCINFO on drift"
 
-# --- check-winget-manifests accepts quoted placeholder on main ---
+# --- live check scripts on repo ---
 
 if command -v python3 >/dev/null 2>&1 && python3 -c 'import yaml' 2>/dev/null; then
   out=$(bash "$WINGET_CHECK" 2>&1)
   rc=$?
   assert_success "$rc" "check-winget-manifests.sh passes on current manifests"
   assert_contains "$out" "passed" "check-winget-manifests.sh reports success"
+  out=$(bash "$PACK_CHECK" 2>&1)
+  rc=$?
+  assert_success "$rc" "check-packaging-manifests.sh passes on current tree"
+  assert_contains "$out" "All packaging manifest checks passed" "check-packaging-manifests.sh reports success"
 else
-  echo -e "${YELLOW}SKIP:${NC} check-winget-manifests.sh (PyYAML not installed)"
+  echo -e "${YELLOW}SKIP:${NC} check-winget / check-packaging (PyYAML not installed)"
 fi
 
-# --- release.yml Windows zip must ship the shared MCP Python server ---
-windows_zip_block=$(awk '/Create Windows Release Zip/,/Calculate Checksums/' "${REPO_ROOT}/.github/workflows/release.yml")
-assert_contains "$windows_zip_block" "scripts/millennium-mcp.py" "Windows release zip includes millennium-mcp.py"
-assert_contains "$windows_zip_block" "completions/powershell/" "Windows release zip includes PowerShell completions"
-assert_contains "$windows_zip_block" "scripts/windows/" "Windows release zip includes scripts/windows tree (diag lib modules)"
-assert_contains "$windows_zip_block" "millennium-helpers-windows.zip" "release.yml builds trimmed Windows zip"
+# --- release.yml Go assets + Windows zip payload ---
+assets_block=$(awk '/Build Go dispatchers and versioned archives/,/Calculate Checksums/' "${REPO_ROOT}/.github/workflows/release.yml")
+assert_file_not_exists "${REPO_ROOT}/scripts/millennium-mcp.py" "millennium-mcp.py must not exist (Go MCP only)"
+assert_contains "$assets_block" "completions/powershell/" "Windows release zip includes PowerShell completions"
+assert_contains "$assets_block" "scripts/windows/" "Windows release zip includes scripts/windows tree (diag lib modules)"
+assert_contains "$assets_block" "windows" "release.yml builds windows helpers zip"
+assert_contains "$assets_block" "release_asset_go" "release.yml builds versioned Go dispatchers"
+assert_contains "$assets_block" "bin/millennium" "release.yml embeds bin/millennium for Unix tarballs"
+assert_contains "$assets_block" "release_asset_src" "release.yml builds versioned -src archives"
 
-# Modular Windows diag lives under scripts/windows/lib — ensure the tree is shipped.
-assert_file_exists "${REPO_ROOT}/scripts/windows/lib/DiagReport.ps1" "scripts/windows/lib/DiagReport.ps1 exists for release packaging"
-assert_file_exists "${REPO_ROOT}/scripts/windows/lib/DiagInstall.ps1" "scripts/windows/lib/DiagInstall.ps1 exists for release packaging"
+assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/DiagReport.ps1" "DiagReport.ps1 removed; diag thin-wraps to Go"
+assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/DiagInstall.ps1" "DiagInstall.ps1 removed; diag thin-wraps to Go"
 assert_file_exists "${REPO_ROOT}/scripts/windows/lib/Logging.ps1" "scripts/windows/lib/Logging.ps1 exists for release packaging"
-assert_file_exists "${REPO_ROOT}/scripts/windows/lib/ScheduleEnable.ps1" "scripts/windows/lib/ScheduleEnable.ps1 exists for release packaging"
-assert_file_exists "${REPO_ROOT}/scripts/windows/lib/ThemeOps.ps1" "scripts/windows/lib/ThemeOps.ps1 exists for release packaging"
-assert_file_exists "${REPO_ROOT}/scripts/windows/lib/UpgradeRollback.ps1" "scripts/windows/lib/UpgradeRollback.ps1 exists for release packaging"
-assert_file_exists "${REPO_ROOT}/scripts/windows/lib/RepairOps.ps1" "scripts/windows/lib/RepairOps.ps1 exists for release packaging"
+assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/ScheduleEnable.ps1" "ScheduleEnable.ps1 removed; enable thin-wraps to Go"
+assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/ScheduleDisable.ps1" "ScheduleDisable.ps1 removed; disable thin-wraps to Go"
+assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/ScheduleStatus.ps1" "ScheduleStatus.ps1 removed; status thin-wraps to Go"
+assert_file_not_exists "${REPO_ROOT}/scripts/lib/schedule_status.sh" "schedule_status.sh removed; status thin-wraps to Go"
+assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/ThemeOps.ps1" "ThemeOps.ps1 removed; theme thin-wraps to Go"
+assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/UpgradeRollback.ps1" "UpgradeRollback.ps1 removed; upgrade thin-wraps to Go"
+assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/Download.ps1" "Download.ps1 removed; upgrade thin-wraps to Go"
+assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/Archive.ps1" "Archive.ps1 removed; upgrade thin-wraps to Go"
+assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/RepairOps.ps1" "RepairOps.ps1 removed; repair thin-wraps to Go"
 assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/Diag.ps1" "thin Diag.ps1 loader must not exist"
-assert_file_exists "${REPO_ROOT}/scripts/lib/theme_ops.sh" "scripts/lib/theme_ops.sh exists for release packaging"
-assert_file_exists "${REPO_ROOT}/scripts/lib/schedule_timer.sh" "scripts/lib/schedule_timer.sh exists for release packaging"
-assert_file_exists "${REPO_ROOT}/scripts/lib/repair_ops.sh" "scripts/lib/repair_ops.sh exists for release packaging"
-assert_file_exists "${REPO_ROOT}/scripts/lib/upgrade_failure.sh" "scripts/lib/upgrade_failure.sh exists for release packaging"
+assert_file_not_exists "${REPO_ROOT}/scripts/lib/theme_ops.sh" "theme_ops.sh removed; theme thin-wraps to Go"
+assert_file_not_exists "${REPO_ROOT}/scripts/lib/schedule_timer.sh" "schedule_timer.sh removed; enable/disable thin-wraps to Go"
+assert_file_not_exists "${REPO_ROOT}/scripts/lib/schedule_cron.sh" "schedule_cron.sh removed; enable/disable thin-wraps to Go"
+assert_file_not_exists "${REPO_ROOT}/scripts/lib/schedule_hooks.sh" "schedule_hooks.sh removed; pre/post-update thin-wraps to Go"
+assert_file_not_exists "${REPO_ROOT}/scripts/lib/schedule_wizard.sh" "schedule_wizard.sh removed; setup thin-wraps to Go"
+assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/ScheduleWizard.ps1" "ScheduleWizard.ps1 removed; setup thin-wraps to Go"
+assert_file_not_exists "${REPO_ROOT}/scripts/lib/repair_ops.sh" "repair_ops.sh removed; repair thin-wraps to Go"
+assert_file_not_exists "${REPO_ROOT}/scripts/lib/upgrade_failure.sh" "upgrade_failure.sh removed; upgrade thin-wraps to Go"
+assert_file_not_exists "${REPO_ROOT}/scripts/lib/upgrade_network.sh" "upgrade_network.sh removed; upgrade thin-wraps to Go"
 assert_file_not_exists "${REPO_ROOT}/scripts/lib/diag.sh" "thin diag.sh loader must not exist"
-assert_file_exists "${REPO_ROOT}/scripts/lib/purge_ops.sh" "scripts/lib/purge_ops.sh exists for release packaging"
-assert_file_exists "${REPO_ROOT}/scripts/lib/dispatcher.sh" "scripts/lib/dispatcher.sh exists for release packaging"
-assert_file_exists "${REPO_ROOT}/scripts/windows/lib/PurgeOps.ps1" "scripts/windows/lib/PurgeOps.ps1 exists for release packaging"
-assert_file_exists "${REPO_ROOT}/scripts/windows/lib/Dispatcher.ps1" "scripts/windows/lib/Dispatcher.ps1 exists for release packaging"
-assert_file_exists "${REPO_ROOT}/scripts/windows/lib/DiagDoctor.ps1" "scripts/windows/lib/DiagDoctor.ps1 exists for release packaging"
+assert_file_not_exists "${REPO_ROOT}/scripts/lib/purge_ops.sh" "purge_ops.sh removed; purge thin-wraps to Go"
+assert_file_not_exists "${REPO_ROOT}/scripts/lib/dispatcher.sh" "dispatcher.sh must not exist (Go PATH only)"
+assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/PurgeOps.ps1" "PurgeOps.ps1 removed; purge thin-wraps to Go"
+assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/Dispatcher.ps1" "Dispatcher.ps1 must not exist (Go PATH only)"
+assert_file_not_exists "${REPO_ROOT}/scripts/millennium.sh" "millennium.sh must not exist (Go PATH only)"
+assert_file_not_exists "${REPO_ROOT}/scripts/windows/millennium.ps1" "millennium.ps1 must not exist (Go PATH only)"
+assert_file_not_exists "${REPO_ROOT}/scripts/windows/lib/DiagDoctor.ps1" "DiagDoctor.ps1 removed; diag thin-wraps to Go"
+assert_file_not_exists "${REPO_ROOT}/scripts/lib/diag_ui.sh" "diag_ui.sh removed; diag thin-wraps to Go"
+assert_not_contains "$(cat "${REPO_ROOT}/.github/workflows/release.yml")" "scripts/millennium.sh" "release unix payload omits millennium.sh"
 
-# Release CD gate must wait on ShellCheck + completions, not only the test suite
 release_gate=$(awk '/name: Wait for required CI/,/build-release:/' "${REPO_ROOT}/.github/workflows/release.yml")
 assert_contains "$release_gate" "test-suite.yml" "release gate waits on test-suite.yml"
 assert_contains "$release_gate" "shellcheck.yml" "release gate waits on shellcheck.yml"
 assert_contains "$release_gate" "completions.yml" "release gate waits on completions.yml"
+assert_contains "$release_gate" "go.yml" "release gate waits on go.yml"
+assert_contains "$release_gate" "version-sync.yml" "release gate waits on version-sync.yml"
+assert_contains "$release_gate" "package-manifests.yml" "release gate waits on package-manifests.yml"
+assert_contains "$release_gate" "actionlint.yml" "release gate waits on actionlint.yml"
+assert_contains "$release_gate" "python-lint.yml" "release gate waits on python-lint.yml"
+assert_contains "$release_gate" "powershell-lint.yml" "release gate waits on powershell-lint.yml"
+assert_contains "$release_gate" "man-pages.yml" "release gate waits on man-pages.yml"
+assert_contains "$release_gate" "sort_by(.createdAt) | last" "release gate requires latest completed CI run"
 
-# --- Workflow path-filter sanity (avoid docs-only / LICENSE over-triggers) ---
+release_yml=$(cat "${REPO_ROOT}/.github/workflows/release.yml")
+assert_contains "$release_yml" "name: Assert skip CI policy" "release refuses skip_ci_gate abuse via assert job"
+assert_contains "$release_yml" "skip_ci_gate is only allowed for tag_name=v-draft" "release documents skip_ci_gate=v-draft-only"
+
+for gate_wf in version-sync package-manifests actionlint python-lint powershell-lint man-pages go; do
+  wf_body=$(cat "${REPO_ROOT}/.github/workflows/${gate_wf}.yml")
+  assert_contains "$wf_body" "tags: [ 'v*' ]" "${gate_wf}.yml declares tags: [v*] for release gate"
+done
+
+finalize=$(awk '/Wait for packaging CI, merge, and publish/,/Squash-merging/' "${REPO_ROOT}/.github/workflows/release.yml")
+assert_contains "$finalize" "Validate packaging manifests" "release finalize waits on packaging manifests"
+assert_contains "$finalize" "Test Scoop-bin Package Install" "release finalize waits on Scoop-bin install"
+assert_contains "$finalize" "homebrew (millennium-helpers-bin)" "release finalize waits on Homebrew -bin audit"
+assert_contains "$finalize" "Validate AUR packaging (millennium-helpers-bin)" "release finalize waits on Arch -bin"
+assert_contains "$finalize" "Build deb from-source" "release finalize waits on deb from-source build"
+assert_contains "$finalize" "Validate Chocolatey package" "release finalize waits on Chocolatey validation"
+assert_contains "$finalize" "Build Nix Package" "release finalize waits on Nix build"
+
+# --- Workflow path-filter sanity ---
 scoop_ci=$(cat "${REPO_ROOT}/.github/workflows/package-install-windows.yml")
-assert_contains "$scoop_ci" "millennium-mcp.py" "Scoop CI stages millennium-mcp.py beside scripts/windows"
+assert_contains "$scoop_ci" "millennium-helpers-bin.json" "Scoop CI installs from -bin manifest"
+assert_not_contains "$scoop_ci" "millennium-mcp.py" "Scoop CI no longer stages millennium-mcp.py"
 assert_contains "$scoop_ci" "completions\\powershell" "Scoop CI stages PowerShell completions in the trimmed zip"
+assert_contains "$scoop_ci" "Validate Chocolatey install script shape" "Windows packaging CI validates Chocolatey scripts"
 assert_not_contains "$scoop_ci" "- 'README.md'" "Scoop CI path filters do not trigger on README-only docs edits"
 assert_not_contains "$scoop_ci" "- 'LICENSE'" "Scoop CI path filters do not trigger on LICENSE-only edits"
 
 nix_wf=$(cat "${REPO_ROOT}/.github/workflows/nix.yml")
 assert_contains "$nix_wf" "- 'VERSION'" "Nix CI path filters include VERSION"
-assert_not_contains "$nix_wf" "- 'LICENSE'" "Nix CI path filters do not trigger on LICENSE-only edits"
-assert_contains "$nix_wf" "Release asset not published yet" "Nix CI skips unpublished release tarball builds"
+assert_contains "$nix_wf" "millennium-helpers-bin" "Nix CI builds -bin package when asset exists"
+assert_contains "$nix_wf" "Source release asset not published yet" "Nix CI skips unpublished from-source asset builds"
 assert_contains "$nix_wf" "millennium-helpers-git" "Nix CI always builds git package"
+assert_not_contains "$nix_wf" "- 'LICENSE'" "Nix CI path filters do not trigger on LICENSE-only edits"
 
 pkg_wf=$(cat "${REPO_ROOT}/.github/workflows/pkgbuild.yml")
 assert_contains "$pkg_wf" "- 'VERSION'" "PKGBUILD CI path filters include VERSION"
 assert_contains "$pkg_wf" "millennium-helpers-git" "PKGBUILD CI validates -git package"
-assert_contains "$pkg_wf" "packaging/millennium-helpers/**" "PKGBUILD CI path filters include versioned package"
+assert_contains "$pkg_wf" "millennium-helpers-bin" "PKGBUILD CI validates -bin package"
+assert_contains "$pkg_wf" "packaging/millennium-helpers/**" "PKGBUILD CI path filters include from-source package"
 assert_not_contains "$pkg_wf" "- 'LICENSE'" "PKGBUILD CI path filters do not trigger on LICENSE-only edits"
 assert_contains "$pkg_wf" "Release asset not published yet" "PKGBUILD CI skips unpublished release tarball builds"
 assert_contains "$pkg_wf" "curl" "PKGBUILD CI installs curl for release-asset probe"
@@ -390,37 +560,60 @@ assert_contains "$suite_wf" "- '.github/workflows/release.yml'" "Test suite path
 ps_lint=$(cat "${REPO_ROOT}/.github/workflows/powershell-lint.yml")
 assert_contains "$ps_lint" "completions/powershell" "PowerShell lint path filters include completions/powershell"
 
-# Remaining packaging CIs: no docs/LICENSE over-triggers; VERSION where the package embeds it
 for wf in homebrew.yml package-manifests.yml version-sync.yml man-pages.yml python-lint.yml; do
   body=$(cat "${REPO_ROOT}/.github/workflows/${wf}")
   assert_not_contains "$body" "- 'LICENSE'" "${wf} path filters do not trigger on LICENSE-only edits"
   assert_not_contains "$body" "- 'README.md'" "${wf} path filters do not trigger on README-only docs edits"
 done
 
+pm=$(cat "${REPO_ROOT}/.github/workflows/package-manifests.yml")
+assert_contains "$pm" "packaging/chocolatey/**" "package-manifests watches Chocolatey"
+assert_contains "$pm" "packaging/deb/**" "package-manifests watches deb"
+assert_contains "$pm" "packaging/rpm/**" "package-manifests watches rpm"
+assert_contains "$pm" "packaging/winget-git/**" "package-manifests watches winget-git"
+assert_contains "$pm" "Build deb from-source" "package-manifests builds deb from-source"
+assert_contains "$pm" "check-packaging-manifests.sh" "package-manifests runs shared check script"
+
 hb=$(cat "${REPO_ROOT}/.github/workflows/homebrew.yml")
 assert_contains "$hb" "- 'Formula/**'" "Homebrew CI path filters include Formula"
+assert_contains "$hb" "millennium-helpers-bin" "Homebrew CI audits -bin formula"
 
 vs=$(cat "${REPO_ROOT}/.github/workflows/version-sync.yml")
 assert_contains "$vs" "- 'VERSION'" "version-sync path filters include VERSION"
 assert_contains "$vs" "- 'Formula/**'" "version-sync path filters include Formula"
 assert_contains "$vs" "- 'pyproject.toml'" "version-sync path filters include pyproject.toml"
 assert_contains "$vs" "sync-stable-srcinfo.sh" "version-sync path filters include sync-stable-srcinfo.sh"
+assert_contains "$vs" "sync-bin-srcinfo.sh" "version-sync path filters include sync-bin-srcinfo.sh"
+assert_contains "$vs" "packaging/millennium-helpers-bin/**" "version-sync watches Arch -bin"
+assert_contains "$vs" "packaging/chocolatey/**" "version-sync watches Chocolatey"
 assert_contains "$vs" "bump-version.sh" "version-sync path filters include bump-version.sh"
 
 pre_commit=$(cat "${REPO_ROOT}/.pre-commit-config.yaml")
 assert_contains "$pre_commit" "sync-stable-srcinfo" "pre-commit includes sync-stable-srcinfo hook"
+assert_contains "$pre_commit" "sync-bin-srcinfo" "pre-commit includes sync-bin-srcinfo hook"
 assert_contains "$pre_commit" "sync-git-srcinfo" "pre-commit includes sync-git-srcinfo hook"
 assert_contains "$pre_commit" "packaging/millennium-helpers-git" "pre-commit -git SRCINFO sync is recipe-scoped"
 assert_not_contains "$pre_commit" "sync-pkgver" "pre-commit no longer always-syncs -git pkgver"
 assert_not_contains "$pre_commit" "update-pkgbuild-pkgver" "pre-commit no longer runs update-pkgbuild-pkgver"
 assert_contains "$pre_commit" "packaging/millennium-helpers" "pre-commit version-sync watches Arch packaging"
 assert_file_exists "${REPO_ROOT}/scripts/ci/sync-git-srcinfo.sh" "sync-git-srcinfo.sh exists"
+for sudoers_pkg in millennium-helpers millennium-helpers-bin millennium-helpers-git; do
+  sudoers_body=$(cat "${REPO_ROOT}/packaging/${sudoers_pkg}/millennium-helpers.sudoers")
+  assert_contains "$sudoers_body" "/usr/bin/millennium upgrade" \
+    "${sudoers_pkg} sudoers allowlists Go millennium upgrade"
+  assert_contains "$sudoers_body" "/usr/bin/millennium-upgrade" \
+    "${sudoers_pkg} sudoers keeps long-name millennium-upgrade"
+done
+
+assert_file_exists "${REPO_ROOT}/scripts/ci/check-packaging-manifests.sh" "check-packaging-manifests.sh exists"
 assert_contains "$(cat "${REPO_ROOT}/Makefile")" "sync-git-srcinfo" "Makefile exposes sync-git-srcinfo target"
+assert_contains "$(cat "${REPO_ROOT}/Makefile")" "check-packaging" "Makefile exposes check-packaging target"
 assert_not_contains "$(cat "${REPO_ROOT}/Makefile")" "sync-pkgver:" "Makefile no longer exposes sync-pkgver target"
 
 makefile=$(cat "${REPO_ROOT}/Makefile")
 assert_contains "$makefile" "bump-version" "Makefile exposes bump-version target"
 assert_contains "$makefile" "sync-stable-srcinfo" "Makefile exposes sync-stable-srcinfo target"
+assert_contains "$makefile" "sync-bin-srcinfo" "Makefile exposes sync-bin-srcinfo target"
 # Intentional literal $(VERSION) — Makefile forwards the make variable.
 # shellcheck disable=SC2016
 assert_contains "$makefile" 'bump-version.sh "$(VERSION)"' "Makefile bump-version forwards VERSION"

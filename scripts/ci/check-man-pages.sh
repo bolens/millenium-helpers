@@ -15,7 +15,8 @@ fail() {
 [[ -d scripts ]] || fail "scripts/ directory is missing"
 
 missing=0
-# Bash commands: scripts/millennium.sh and scripts/millennium-*.sh → matching man/*.1
+# Long-name Bash commands: scripts/millennium-*.sh → matching man/*.1
+# PATH millennium is the Go binary (man/millennium.1 required separately).
 while IFS= read -r -d '' script; do
   base="$(basename "$script" .sh)"
   page="man/${base}.1"
@@ -27,26 +28,33 @@ while IFS= read -r -d '' script; do
     echo "OK  $script → $page"
   fi
 done < <(
-  {
-    find scripts -maxdepth 1 -type f -name 'millennium.sh' -print0
-    find scripts -maxdepth 1 -type f -name 'millennium-*.sh' -print0
-  } | sort -z
+  find scripts -maxdepth 1 -type f -name 'millennium-*.sh' -print0 | sort -z
 )
 
-# MCP is a Python entrypoint with its own man page
-if [[ -f scripts/millennium-mcp.py ]]; then
-  if [[ ! -f man/millennium-mcp.1 ]]; then
-    echo "::error file=scripts/millennium-mcp.py::missing man page man/millennium-mcp.1"
-    echo "error: missing man page for scripts/millennium-mcp.py" >&2
-    missing=1
-  else
-    echo "OK  scripts/millennium-mcp.py → man/millennium-mcp.1"
-  fi
+if [[ ! -f man/millennium.1 ]]; then
+  echo "::error file=man/millennium.1::missing man page for Go PATH dispatcher"
+  echo "error: missing man/millennium.1 for Go PATH dispatcher" >&2
+  missing=1
+else
+  echo "OK  bin/millennium → man/millennium.1"
+fi
+
+# MCP man page (argv0 twin / thin shim)
+if [[ ! -f man/millennium-mcp.1 ]]; then
+  echo "::error file=man/millennium-mcp.1::missing man page for millennium-mcp"
+  echo "error: missing man/millennium-mcp.1" >&2
+  missing=1
+else
+  echo "OK  millennium-mcp → man/millennium-mcp.1"
 fi
 
 # Orphan man pages (no matching script) — warn but do not fail
 while IFS= read -r -d '' page; do
   base="$(basename "$page" .1)"
+  # PATH millennium is the Go binary (no scripts/millennium.sh).
+  if [[ "$base" == "millennium" ]]; then
+    continue
+  fi
   if [[ ! -f "scripts/${base}.sh" && ! -f "scripts/${base}.py" ]]; then
     echo "::warning file=$page::orphan man page (no scripts/${base}.sh or .py)"
     echo "warning: orphan man page $page" >&2

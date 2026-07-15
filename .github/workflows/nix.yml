@@ -9,11 +9,12 @@ on:
       - 'nix/**'
       - 'VERSION'
       - 'scripts/millennium*.sh'
-      - 'scripts/millennium-mcp.py'
       - 'scripts/common.sh'
       - 'scripts/lib/**'
       - 'completions/**'
       - 'man/**'
+      - 'go/**'
+      - 'Makefile'
       - '.github/workflows/nix.yml'
   pull_request:
     branches: [ main ]
@@ -23,11 +24,12 @@ on:
       - 'nix/**'
       - 'VERSION'
       - 'scripts/millennium*.sh'
-      - 'scripts/millennium-mcp.py'
       - 'scripts/common.sh'
       - 'scripts/lib/**'
       - 'completions/**'
       - 'man/**'
+      - 'go/**'
+      - 'Makefile'
       - '.github/workflows/nix.yml'
 
 concurrency:
@@ -50,18 +52,27 @@ jobs:
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build Flake (release + git packages)
+      - name: Build Flake (from-source / bin / git)
         run: |
           set -euo pipefail
           nix build --experimental-features "nix-command flakes" --no-link .#millennium-helpers-git
 
           VERSION="$(tr -d '[:space:]' < VERSION)"
-          URL="https://github.com/bolens/millenium-helpers/releases/download/v${VERSION}/millennium-helpers-linux.tar.gz"
-          if curl -fsI "$URL" >/dev/null 2>&1; then
+          TAG_URL="https://github.com/bolens/millenium-helpers/releases/download/v${VERSION}/millennium-helpers-v${VERSION}-src.tar.gz"
+          BIN_URL="https://github.com/bolens/millenium-helpers/releases/download/v${VERSION}/millennium-helpers-v${VERSION}-linux-amd64.tar.gz"
+
+          if curl -fsI "$TAG_URL" >/dev/null 2>&1; then
             nix build --experimental-features "nix-command flakes" --no-link .#millennium-helpers
             nix build --experimental-features "nix-command flakes" --no-link
           else
-            echo "::notice::Release asset not published yet ($URL); skipping release package / default build"
-            echo "Evaluated release package version:"
+            echo "::notice::Source release asset not published yet ($TAG_URL); skipping from-source / default build"
+            echo "Evaluated from-source package version:"
             nix eval --experimental-features "nix-command flakes" .#millennium-helpers.version
+          fi
+
+          if curl -fsI "$BIN_URL" >/dev/null 2>&1; then
+            nix build --experimental-features "nix-command flakes" --no-link .#millennium-helpers-bin
+          else
+            echo "::notice::Release asset not published yet ($BIN_URL); skipping -bin package"
+            nix eval --experimental-features "nix-command flakes" .#millennium-helpers-bin.version
           fi

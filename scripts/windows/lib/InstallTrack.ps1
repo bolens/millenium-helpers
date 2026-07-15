@@ -17,6 +17,37 @@ function Normalize-HelpersTag {
     return "v$t"
 }
 
+function Get-HelpersBinAssetName {
+    param(
+        [Parameter(Mandatory = $true)][string]$Version,
+        [ValidateSet('windows', 'linux')]
+        [string]$Platform = 'windows'
+    )
+    $ver = $Version.TrimStart('v')
+    if ($Platform -eq 'windows') {
+        return "millennium-helpers-v$ver-windows-amd64.zip"
+    }
+    $arch = 'amd64'
+    try {
+        $m = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant()
+        if ($m -match 'arm') { $arch = 'arm64' }
+    } catch {
+        # keep amd64
+    }
+    return "millennium-helpers-v$ver-linux-$arch.tar.gz"
+}
+
+function Get-LatestHelpersReleaseTag {
+    param([string]$Repo = $script:HelpersGitHubRepo)
+    $headers = @{
+        'User-Agent' = 'millennium-helpers'
+        'Accept'     = 'application/vnd.github+json'
+    }
+    $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest" -Headers $headers -UseBasicParsing
+    if (-not $release.tag_name) { throw "Could not resolve latest release tag for $Repo" }
+    return [string]$release.tag_name
+}
+
 function Resolve-HelpersInstallTrack {
     param(
         [string]$Track = '',
@@ -34,12 +65,6 @@ function Resolve-HelpersInstallTrack {
     $Track = $Track.ToLowerInvariant()
     if (-not [string]::IsNullOrWhiteSpace($Tag)) {
         $Track = 'tag'
-    }
-
-    $asset = if ($Platform -eq 'windows') {
-        'millennium-helpers-windows.zip'
-    } else {
-        'millennium-helpers-linux.tar.gz'
     }
 
     $result = [ordered]@{
@@ -78,8 +103,12 @@ function Resolve-HelpersInstallTrack {
 
     switch ($Track) {
         'release' {
-            $result.Ref = 'latest'
-            $result.Url = "https://github.com/$($script:HelpersGitHubRepo)/releases/latest/download/$asset"
+            $latest = Get-LatestHelpersReleaseTag
+            $ver = $latest.TrimStart('v')
+            $asset = Get-HelpersBinAssetName -Version $ver -Platform $Platform
+            $result.Ref = $latest
+            $result.Version = $ver
+            $result.Url = "https://github.com/$($script:HelpersGitHubRepo)/releases/download/$latest/$asset"
             $result.ShaUrl = "$($result.Url).sha256"
             $result.NeedsSha = $true
         }
@@ -88,8 +117,10 @@ function Resolve-HelpersInstallTrack {
                 throw "Tag is required for track=tag"
             }
             $norm = Normalize-HelpersTag -Tag $Tag
+            $ver = $norm.TrimStart('v')
+            $asset = Get-HelpersBinAssetName -Version $ver -Platform $Platform
             $result.Ref = $norm
-            $result.Version = $norm.TrimStart('v')
+            $result.Version = $ver
             $result.Url = "https://github.com/$($script:HelpersGitHubRepo)/releases/download/$norm/$asset"
             $result.ShaUrl = "$($result.Url).sha256"
             $result.NeedsSha = $true

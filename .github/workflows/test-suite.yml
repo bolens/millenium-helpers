@@ -121,8 +121,6 @@ jobs:
           - tests/unit/test_mocks.sh
           - tests/unit/test_completions.sh
           - tests/unit/test_install_track.sh
-          - tests/unit/test_theme_ops.sh
-          - tests/unit/test_dispatcher.sh
           - tests/behavioral/test_install.sh
           - tests/behavioral/test_theme.sh
           - tests/behavioral/test_schedule.sh
@@ -131,7 +129,6 @@ jobs:
           - tests/behavioral/test_upgrade.sh
           - tests/behavioral/test_diag.sh
           - tests/behavioral/test_mcp.sh
-          - tests/behavioral/test_millennium_dispatcher.sh
           - tests/behavioral/test_packaging_ci.sh
           - tests/behavioral/test_security.sh
         include:
@@ -198,17 +195,57 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
 
+      # Suites that build or invoke bin/millennium (Go 1.22+).
+      - name: Set up Go
+        if: >-
+          matrix.suite == 'tests/behavioral/test_schedule.sh' ||
+          matrix.suite == 'tests/behavioral/test_theme.sh' ||
+          matrix.suite == 'tests/behavioral/test_purge.sh' ||
+          matrix.suite == 'tests/behavioral/test_upgrade.sh' ||
+          matrix.suite == 'tests/behavioral/test_diag.sh' ||
+          matrix.suite == 'tests/behavioral/test_security.sh' ||
+          matrix.suite == 'tests/behavioral/test_repair.sh' ||
+          matrix.suite == 'tests/behavioral/test_mcp.sh' ||
+          matrix.suite == 'tests/behavioral/test_install.sh'
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.25.12"
+          cache-dependency-path: go/go.sum
+
       - name: Create non-root test user
         run: |
           useradd -m testuser
           chown -R testuser:testuser "$GITHUB_WORKSPACE"
+
+      # Build as root (setup-go cache paths) then hand the binary to testuser.
+      - name: Build Go dispatcher
+        if: >-
+          matrix.suite == 'tests/behavioral/test_schedule.sh' ||
+          matrix.suite == 'tests/behavioral/test_theme.sh' ||
+          matrix.suite == 'tests/behavioral/test_purge.sh' ||
+          matrix.suite == 'tests/behavioral/test_upgrade.sh' ||
+          matrix.suite == 'tests/behavioral/test_diag.sh' ||
+          matrix.suite == 'tests/behavioral/test_security.sh' ||
+          matrix.suite == 'tests/behavioral/test_repair.sh' ||
+          matrix.suite == 'tests/behavioral/test_mcp.sh' ||
+          matrix.suite == 'tests/behavioral/test_install.sh'
+        shell: bash
+        run: |
+          set -euo pipefail
+          ver="$(tr -d '[:space:]' < VERSION)"
+          mkdir -p bin
+          (cd go && CGO_ENABLED=0 go build -buildvcs=false \
+            -ldflags "-X github.com/bolens/millenium-helpers/internal/version.Version=${ver}" \
+            -o ../bin/millennium ./cmd/millennium)
+          # Root-owned build outputs must be fully writable by testuser (mv/hide in install suite).
+          chown -R testuser:testuser bin "$GITHUB_WORKSPACE"
 
       # Scripts distinguish root vs non-root behavior (e.g. sudo hints,
       # passwordless-sudo setup being skipped). Running as a regular user
       # matches how these scripts are used in the real world and exercises
       # that logic, which running as root (the container default) would skip.
       - name: Run ${{ matrix.suite }}
-        run: su testuser -c "bash '${{ matrix.suite }}'"
+        run: su testuser -c "PATH='$PATH' bash '${{ matrix.suite }}'"
 
   test-windows:
     name: Windows - ${{ matrix.suite }}
@@ -220,8 +257,6 @@ jobs:
         suite:
           - tests/windows/common.Tests.ps1
           - tests/windows/Args.Tests.ps1
-          - tests/windows/Dispatcher.Tests.ps1
-          - tests/windows/millennium.Tests.ps1
           - tests/windows/millennium-diag.Tests.ps1
           - tests/windows/millennium-upgrade.Tests.ps1
           - tests/windows/millennium-theme.Tests.ps1
@@ -229,12 +264,25 @@ jobs:
           - tests/windows/install.Tests.ps1
           - tests/windows/InstallTrack.Tests.ps1
           - tests/windows/completions.Tests.ps1
-          - tests/windows/millennium-mcp.Tests.ps1
           - tests/windows/millennium-repair.Tests.ps1
           - tests/windows/millennium-purge.Tests.ps1
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+
+      # Schedule config / theme list thin-wrap to Go; Pester builds bin/millennium.exe.
+      - name: Set up Go
+        if: >-
+          matrix.suite == 'tests/windows/millennium-schedule.Tests.ps1' ||
+          matrix.suite == 'tests/windows/millennium-theme.Tests.ps1' ||
+          matrix.suite == 'tests/windows/millennium-purge.Tests.ps1' ||
+          matrix.suite == 'tests/windows/millennium-upgrade.Tests.ps1' ||
+          matrix.suite == 'tests/windows/millennium-diag.Tests.ps1' ||
+          matrix.suite == 'tests/windows/millennium-repair.Tests.ps1'
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.25.12"
+          cache-dependency-path: go/go.sum
 
       - name: Run Pester tests
         shell: pwsh
@@ -253,8 +301,6 @@ jobs:
           - tests/unit/test_mocks.sh
           - tests/unit/test_completions.sh
           - tests/unit/test_install_track.sh
-          - tests/unit/test_theme_ops.sh
-          - tests/unit/test_dispatcher.sh
           - tests/behavioral/test_install.sh
           - tests/behavioral/test_theme.sh
           - tests/behavioral/test_schedule.sh
@@ -263,7 +309,6 @@ jobs:
           - tests/behavioral/test_upgrade.sh
           - tests/behavioral/test_diag.sh
           - tests/behavioral/test_mcp.sh
-          - tests/behavioral/test_millennium_dispatcher.sh
           - tests/behavioral/test_packaging_ci.sh
           - tests/behavioral/test_security.sh
     steps:
@@ -277,6 +322,23 @@ jobs:
           python3 -m venv "$RUNNER_TEMP/mh-pyyaml"
           "$RUNNER_TEMP/mh-pyyaml/bin/pip" install --quiet pyyaml
           echo "$RUNNER_TEMP/mh-pyyaml/bin" >> "$GITHUB_PATH"
+
+      # Suites that build or invoke bin/millennium.
+      - name: Set up Go
+        if: >-
+          matrix.suite == 'tests/behavioral/test_schedule.sh' ||
+          matrix.suite == 'tests/behavioral/test_theme.sh' ||
+          matrix.suite == 'tests/behavioral/test_purge.sh' ||
+          matrix.suite == 'tests/behavioral/test_upgrade.sh' ||
+          matrix.suite == 'tests/behavioral/test_diag.sh' ||
+          matrix.suite == 'tests/behavioral/test_security.sh' ||
+          matrix.suite == 'tests/behavioral/test_repair.sh' ||
+          matrix.suite == 'tests/behavioral/test_mcp.sh' ||
+          matrix.suite == 'tests/behavioral/test_install.sh'
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.25.12"
+          cache-dependency-path: go/go.sum
 
       - name: Run ${{ matrix.suite }}
         run: |

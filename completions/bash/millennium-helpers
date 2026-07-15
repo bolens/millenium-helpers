@@ -50,7 +50,7 @@ _millennium_upgrade_comp() {
   COMPREPLY=()
   local cur="${COMP_WORDS[COMP_CWORD]}"
   local prev="${COMP_WORDS[COMP_CWORD-1]}"
-  local opts="-c --channel --stable --beta --main -r --rollback --file -f --force -y --yes -d --dry-run -q --quiet -V --version -h --help"
+  local opts="-c --channel --stable --beta --main -r --rollback --file --sha256 --insecure-skip-verify --all-users -f --force -y --yes -d --dry-run -q --quiet -V --version -h --help"
 
   case "${prev}" in
     -c|--channel)
@@ -93,7 +93,7 @@ _millennium_schedule_comp() {
       ;;
   esac
 
-  COMPREPLY=( $(compgen -W "${subcmds} -c --cron -d --dry-run -q --quiet -V --version -h --help" -- "${cur}") )
+  COMPREPLY=( $(compgen -W "${subcmds} -c --cron --system --user -d --dry-run -q --quiet -V --version -h --help" -- "${cur}") )
   return 0
 }
 complete -F _millennium_schedule_comp millennium-schedule

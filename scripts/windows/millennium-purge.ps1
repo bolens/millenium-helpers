@@ -1,4 +1,4 @@
-# Millennium client uninstaller and files purge utility on Windows
+# Millennium client uninstaller — thin-wrap to Go.
 param(
     [switch]$DryRun = $false,
     [Alias("y")]
@@ -11,6 +11,27 @@ param(
     [switch]$Version = $false
 )
 set-strictmode -version Latest
+
+$ScriptDir = $PSScriptRoot
+
+function Resolve-MillenniumGo {
+    $candidates = @(
+        (Join-Path -Path $ScriptDir -ChildPath 'millennium.exe'),
+        (Join-Path -Path $ScriptDir -ChildPath '..\..\bin\millennium.exe'),
+        (Join-Path -Path $ScriptDir -ChildPath '..\millennium.exe')
+    )
+    foreach ($cand in $candidates) {
+        if (Test-Path -LiteralPath $cand -PathType Leaf) {
+            return (Resolve-Path -LiteralPath $cand).Path
+        }
+    }
+    foreach ($name in @('millennium.exe', 'millennium')) {
+        $cmd = Get-Command -Name $name -ErrorAction SilentlyContinue
+        if ($cmd) { return $cmd.Source }
+    }
+    return $null
+}
+
 
 if ($Help) {
     Write-Host @"
@@ -28,37 +49,44 @@ Options:
     exit 0
 }
 
-# Source shared helpers
-$ScriptDir = $PSScriptRoot
-$CommonPs1 = Join-Path -Path $ScriptDir -ChildPath "common.ps1"
-if (Test-Path -Path $CommonPs1) {
-    . $CommonPs1
-} else {
-    Write-Error "Shared helper library not found at $CommonPs1"
-    exit 1
-}
-
 if ($Version) {
-    Write-HelpersVersion -Name "millennium-purge"
-    exit 0
-}
+    $goBin = Resolve-MillenniumGo
+    if ($goBin) { & $goBin purge -V; exit $LASTEXITCODE }
+    $verFile = Join-Path $ScriptDir '..\..\VERSION'
+    if (Test-Path -LiteralPath $verFile) {
+        Write-Host ("{0} {1}" -f ($MyInvocation.MyCommand.Name -replace '\.ps1$',''), ((Get-Content -LiteralPath $verFile -Raw).Trim()))
+        exit 0
+    }
+    Write-Error "millennium not found (and no VERSION file)."
+    exit 1
 
-if ($Yes) {
-    $global:AssumeYes = $true
 }
 
 if ($Quiet) {
-    $global:Quiet = $true
     $env:MILLENNIUM_QUIET = "1"
 }
 
-if ($DryRun) {
-    $global:DryRun = $true
+$goBin = Resolve-MillenniumGo
+if (-not $goBin) {
+    Write-Error "purge requires the Go millennium dispatcher (not found). Install millennium-helpers or run 'make build'."
+    exit 1
 }
 
+$goArgs = [System.Collections.Generic.List[string]]::new()
+[void]$goArgs.Add('purge')
+if ($DryRun) { [void]$goArgs.Add('--dry-run') }
+if ($Yes) { [void]$goArgs.Add('--yes') }
+if ($Quiet) { [void]$goArgs.Add('--quiet') }
 
-# Feature modules (dot-sourced by this entrypoint — no thin aggregator)
-. (Join-Path -Path $ScriptDir -ChildPath 'lib\PurgeOps.ps1')
-
-Invoke-MillenniumPurge
-exit 0
+$prevLegacy = $env:MILLENNIUM_LEGACY
+$env:MILLENNIUM_LEGACY = '0'
+try {
+    & $goBin @($goArgs.ToArray())
+    exit $LASTEXITCODE
+} finally {
+    if ($null -eq $prevLegacy) {
+        Remove-Item Env:MILLENNIUM_LEGACY -ErrorAction SilentlyContinue
+    } else {
+        $env:MILLENNIUM_LEGACY = $prevLegacy
+    }
+}

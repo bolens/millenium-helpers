@@ -3,14 +3,19 @@ name: "CI: Python Code Linting"
 on:
   push:
     branches: [ main ]
+    # Tag pushes always run (GitHub skips path filters for tags) so the
+    # release workflow gate can wait on python-lint for the tag SHA.
+    tags: [ 'v*' ]
     paths:
-      - 'scripts/*.py'
+      - 'scripts/**/*.py'
+      - 'scripts/ci/**/*.py'
       - 'pyproject.toml'
       - '.github/workflows/python-lint.yml'
   pull_request:
     branches: [ main ]
     paths:
-      - 'scripts/*.py'
+      - 'scripts/**/*.py'
+      - 'scripts/ci/**/*.py'
       - 'pyproject.toml'
       - '.github/workflows/python-lint.yml'
 
@@ -23,16 +28,16 @@ permissions:
 
 jobs:
   ruff:
-    name: Ruff lint (millennium-mcp.py)
+    name: Ruff lint (Python)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
 
       - name: Compile check
-        run: python3 -m py_compile scripts/millennium-mcp.py
+        run: python3 -m py_compile scripts/ci/check-cli-contract.py
 
       - name: Run ruff check
-        uses: astral-sh/ruff-action@v3
+        uses: astral-sh/ruff-action@v4.1.0
         with:
-          src: scripts/millennium-mcp.py
+          src: scripts/ci/check-cli-contract.py

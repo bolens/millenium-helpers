@@ -56,11 +56,19 @@ repos:
         stages: [pre-commit]
 
       - id: sync-stable-srcinfo
-        name: sync versioned Arch .SRCINFO from PKGBUILD
+        name: sync from-source Arch .SRCINFO from PKGBUILD
         entry: bash scripts/ci/sync-stable-srcinfo.sh
         language: system
         pass_filenames: false
         files: '^(VERSION|packaging/millennium-helpers/PKGBUILD|packaging/millennium-helpers/\.SRCINFO)$'
+        stages: [pre-commit]
+
+      - id: sync-bin-srcinfo
+        name: sync -bin Arch .SRCINFO from PKGBUILD
+        entry: bash scripts/ci/sync-bin-srcinfo.sh
+        language: system
+        pass_filenames: false
+        files: '^(VERSION|packaging/millennium-helpers-bin/PKGBUILD|packaging/millennium-helpers-bin/\.SRCINFO)$'
         stages: [pre-commit]
 
       - id: version-sync
@@ -68,7 +76,7 @@ repos:
         entry: bash scripts/ci/check-version-sync.sh
         language: system
         pass_filenames: false
-        files: '^(VERSION|pyproject\.toml|Formula/.*|packaging/scoop/.*|packaging/winget/.*|packaging/millennium-helpers/.*|nix/release-info\.nix)$'
+        files: '^(VERSION|pyproject\.toml|Formula/.*|packaging/scoop/.*|packaging/winget/.*|packaging/millennium-helpers/.*|packaging/millennium-helpers-bin/.*|packaging/deb/.*|packaging/rpm/.*|packaging/chocolatey/.*|nix/release-info\.nix)$'
         stages: [pre-commit]
 
       - id: check-winget

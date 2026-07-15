@@ -3,18 +3,35 @@ name: "CI: Package Manifests Validation"
 on:
   push:
     branches: [ main ]
+    # Tag pushes always run (GitHub skips path filters for tags) so the
+    # release workflow gate can wait on package-manifests for the tag SHA.
+    tags: [ 'v*' ]
     paths:
       - 'VERSION'
+      - 'Formula/**'
       - 'packaging/scoop/**'
       - 'packaging/winget/**'
+      - 'packaging/winget-git/**'
+      - 'packaging/chocolatey/**'
+      - 'packaging/deb/**'
+      - 'packaging/rpm/**'
+      - 'packaging/README.md'
+      - 'scripts/ci/check-packaging-manifests.sh'
       - 'scripts/ci/check-winget-manifests.sh'
       - '.github/workflows/package-manifests.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'VERSION'
+      - 'Formula/**'
       - 'packaging/scoop/**'
       - 'packaging/winget/**'
+      - 'packaging/winget-git/**'
+      - 'packaging/chocolatey/**'
+      - 'packaging/deb/**'
+      - 'packaging/rpm/**'
+      - 'packaging/README.md'
+      - 'scripts/ci/check-packaging-manifests.sh'
       - 'scripts/ci/check-winget-manifests.sh'
       - '.github/workflows/package-manifests.yml'
 
@@ -26,112 +43,182 @@ permissions:
   contents: read
 
 jobs:
-  changes:
-    name: Detect changed packaging paths
-    runs-on: ubuntu-latest
-    outputs:
-      winget: ${{ steps.filter.outputs.winget }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Path filter
-        uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            winget:
-              - 'packaging/winget/**'
-              - 'VERSION'
-              - 'scripts/ci/check-winget-manifests.sh'
-              - '.github/workflows/package-manifests.yml'
-
-  validate:
-    name: Validate Scoop / Winget manifests
-    needs: [changes]
+  manifests:
+    name: Validate packaging manifests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
-
-      - name: Validate Scoop JSON
-        run: |
-          set -euo pipefail
-          for f in packaging/scoop/*.json; do
-            jq . "$f" >/dev/null
-            echo "Scoop JSON OK: $f"
-          done
-
-      - name: Assert Scoop release package points at trimmed Windows release asset
-        run: |
-          set -euo pipefail
-          url="$(jq -r .url packaging/scoop/millennium-helpers.json)"
-          [[ "$url" == *"/releases/download/"*"/millennium-helpers-windows.zip" ]] || {
-            echo "::error::Scoop url must be a trimmed Windows release asset, got: $url"
-            exit 1
-          }
-          hash_url="$(jq -r '.autoupdate.hash.url // empty' packaging/scoop/millennium-helpers.json)"
-          [[ "$hash_url" == *"/millennium-helpers-windows.zip.sha256" ]] || {
-            echo "::error::Scoop autoupdate.hash.url must point at the .sha256 sidecar, got: $hash_url"
-            exit 1
-          }
-          for bin in millennium millennium-mcp millennium-diag; do
-            jq -e --arg b "$bin" '.bin | flatten | index($b)' packaging/scoop/millennium-helpers.json >/dev/null || {
-              echo "::error::Scoop bin list missing '$bin'"
-              exit 1
-            }
-          done
-          echo "Scoop release-asset URL and bins look good."
-
-      - name: Assert Scoop git package tracks main archive
-        run: |
-          set -euo pipefail
-          manifest=packaging/scoop/millennium-helpers-git.json
-          version="$(jq -r .version "$manifest")"
-          [[ "$version" == "nightly" ]] || {
-            echo "::error::Scoop git package version must be 'nightly', got: $version"
-            exit 1
-          }
-          url="$(jq -r .url "$manifest")"
-          [[ "$url" == *"archive/refs/heads/main.zip" ]] || {
-            echo "::error::Scoop git url must be the main branch archive, got: $url"
-            exit 1
-          }
-          extract_dir="$(jq -r .extract_dir "$manifest")"
-          [[ "$extract_dir" == "millenium-helpers-main" ]] || {
-            echo "::error::Scoop git extract_dir must be millenium-helpers-main, got: $extract_dir"
-            exit 1
-          }
-          for bin in millennium millennium-mcp millennium-diag; do
-            jq -e --arg b "$bin" '.bin | flatten | index($b)' "$manifest" >/dev/null || {
-              echo "::error::Scoop git bin list missing '$bin'"
-              exit 1
-            }
-          done
-          echo "Scoop git/main archive manifest looks good."
 
       - name: Set up Python
-        if: needs.changes.outputs.winget == 'true'
         uses: actions/setup-python@v6
         with:
-          python-version: '3.x'
+          python-version: "3.x"
 
       - name: Install dependencies
-        if: needs.changes.outputs.winget == 'true'
         run: pip install pyyaml
 
-      - name: Validate Winget YAMLs (parse)
-        if: needs.changes.outputs.winget == 'true'
-        run: |
-          python3 -c "
-          import yaml, glob
-          for f in glob.glob('packaging/winget/*.yaml'):
-              print(f'Checking {f}...')
-              with open(f, 'r', encoding='utf-8') as file:
-                  yaml.safe_load(file)
-          "
-          echo "All Winget YAMLs are valid!"
+      - name: Validate Scoop / Winget / Chocolatey / deb / rpm / Formula
+        run: bash scripts/ci/check-packaging-manifests.sh
 
-      - name: Validate Winget manifests (structure)
-        if: needs.changes.outputs.winget == 'true'
+  scoop-shape:
+    name: Validate Scoop matrix shapes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Assert Scoop from-source / bin / git roles
+        run: |
+          set -euo pipefail
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          src=packaging/scoop/millennium-helpers.json
+          bin=packaging/scoop/millennium-helpers-bin.json
+          gitm=packaging/scoop/millennium-helpers-git.json
+
+          jq -e --arg v "$VERSION" '
+            .version == $v
+            and (.url | endswith("/releases/download/v\($v)/millennium-helpers-v\($v)-src.zip"))
+            and .extract_dir == ("millenium-helpers-" + $v)
+          ' "$src" >/dev/null
+
+          jq -e --arg v "$VERSION" '
+            .version == $v
+            and (.url | endswith("/releases/download/v\($v)/millennium-helpers-v\($v)-windows-amd64.zip"))
+            and (.autoupdate.hash.url | endswith("millennium-helpers-v$version-windows-amd64.zip.sha256"))
+          ' "$bin" >/dev/null
+
+          jq -e '
+            .version == "nightly"
+            and (.url | contains("archive/refs/heads/main.zip"))
+            and .extract_dir == "millenium-helpers-main"
+          ' "$gitm" >/dev/null
+
+          for m in "$src" "$bin" "$gitm"; do
+            for cmd in millennium millennium-mcp millennium-diag; do
+              jq -e --arg b "$cmd" '.bin | flatten | index($b)' "$m" >/dev/null
+            done
+          done
+          echo "Scoop matrix shapes OK"
+
+  winget:
+    name: Validate Winget manifests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.x"
+
+      - name: Install dependencies
+        run: pip install pyyaml
+
+      - name: Validate Winget release manifests
         run: bash scripts/ci/check-winget-manifests.sh
+
+      - name: Validate Winget-git YAML parse + main.zip
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import glob
+          import yaml
+          from pathlib import Path
+
+          files = sorted(glob.glob("packaging/winget-git/*.yaml"))
+          if len(files) < 2:
+              raise SystemExit("expected winget-git manifests")
+          for f in files:
+              data = yaml.safe_load(Path(f).read_text(encoding="utf-8"))
+              if not isinstance(data, dict):
+                  raise SystemExit(f"{f}: not a mapping")
+              print(f"OK {f}")
+          PY
+          grep -q 'archive/refs/heads/main.zip' packaging/winget-git/bolens.millenniumhelpers.git.installer.yaml
+          echo "Winget-git OK"
+
+  chocolatey:
+    name: Validate Chocolatey package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Validate nuspec + install scripts
+        run: |
+          set -euo pipefail
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          nuspec=packaging/chocolatey/millennium-helpers/millennium-helpers.nuspec
+          install=packaging/chocolatey/millennium-helpers/tools/chocolateyInstall.ps1
+          python3 - "$nuspec" "$VERSION" <<'PY'
+          import sys
+          import xml.etree.ElementTree as ET
+          path, ver = sys.argv[1], sys.argv[2]
+          root = ET.parse(path).getroot()
+          ns = {"n": "http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd"}
+          found = root.findtext("n:metadata/n:version", namespaces=ns)
+          if found != ver:
+              raise SystemExit(f"nuspec version {found!r} != {ver!r}")
+          print(f"nuspec OK version={found}")
+          PY
+          # Match PowerShell literal $version in chocolateyInstall.ps1
+          # shellcheck disable=SC2016
+          grep -qE 'millennium-helpers-v\$version-windows-amd64\.zip' "$install"
+          grep -qE "\\\$version\s*=\s*'${VERSION}'" "$install"
+          grep -q 'millennium.exe' "$install"
+          echo "Chocolatey package OK"
+
+  deb-rpm:
+    name: Validate deb / rpm recipes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Validate control / spec metadata
+        run: |
+          set -euo pipefail
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          for ctrl in packaging/deb/millennium-helpers/DEBIAN/control packaging/deb/millennium-helpers-bin/DEBIAN/control; do
+            grep -qE "^Version: ${VERSION}$" "$ctrl"
+            grep -qE '^Package:' "$ctrl"
+            grep -qE '^Architecture:' "$ctrl"
+          done
+          grep -q '^Package: millennium-helpers$' packaging/deb/millennium-helpers/DEBIAN/control
+          grep -q '^Package: millennium-helpers-bin$' packaging/deb/millennium-helpers-bin/DEBIAN/control
+          test -x packaging/deb/build-from-source.sh
+          test -x packaging/deb/build-bin.sh
+
+          for spec in packaging/rpm/millennium-helpers.spec packaging/rpm/millennium-helpers-bin.spec; do
+            grep -qE "^Version:[[:space:]]*${VERSION}$" "$spec"
+            grep -qE '^Source0:' "$spec"
+          done
+          grep -q 'millennium-helpers-v%{version}-src.tar.gz' packaging/rpm/millennium-helpers.spec
+          grep -q 'millennium-helpers-v%{version}-linux-amd64.tar.gz' packaging/rpm/millennium-helpers-bin.spec
+          echo "deb/rpm recipe metadata OK"
+
+  deb-build:
+    name: Build deb from-source
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.22.x"
+
+      - name: Install dpkg tooling
+        run: sudo apt-get update && sudo apt-get install -y dpkg-dev
+
+      - name: Build from-source .deb
+        run: |
+          set -euo pipefail
+          bash packaging/deb/build-from-source.sh
+          ls -la dist/millennium-helpers_*.deb
+          dpkg-deb -I dist/millennium-helpers_*.deb | tee /tmp/deb-info.txt
+          grep -q 'Package: millennium-helpers' /tmp/deb-info.txt
+          dpkg-deb -c dist/millennium-helpers_*.deb | grep 'usr/bin/millennium' >/dev/null

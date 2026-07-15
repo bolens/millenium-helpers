@@ -1,0 +1,630 @@
+name: "CI: Go CLI"
+
+on:
+  push:
+    branches: [ main ]
+    # Tag pushes always run (GitHub skips path filters for tags) so the
+    # release workflow gate can wait on Go CI for the tag SHA.
+    tags: [ 'v*' ]
+    paths:
+      - 'go/**'
+      - 'VERSION'
+      - 'spec/cli-contract.yaml'
+      - 'scripts/ci/check-cli-contract.py'
+      - 'scripts/ci/check-govulncheck.sh'
+      - '.golangci.yml'
+      - '.github/workflows/go.yml'
+      - 'Makefile'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'go/**'
+      - 'VERSION'
+      - 'spec/cli-contract.yaml'
+      - 'scripts/ci/check-cli-contract.py'
+      - 'scripts/ci/check-govulncheck.sh'
+      - '.golangci.yml'
+      - '.github/workflows/go.yml'
+      - 'Makefile'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Exact patch: stdlib CVEs need ≥1.25.12; golangci-lint must be built with ≥ that Go.
+  GO_VERSION: "1.25.12"
+
+jobs:
+  quality:
+    name: Go quality (vet/fmt/lint/vuln)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: go/go.sum
+
+      - name: go vet
+        working-directory: go
+        run: go vet ./...
+
+      - name: gofmt
+        working-directory: go
+        run: |
+          set -euo pipefail
+          out="$(find . -name '*.go' -print0 | xargs -0 gofmt -l)"
+          if [ -n "$out" ]; then
+            printf 'gofmt needed:\n%s\n' "$out" >&2
+            exit 1
+          fi
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.12.2
+          working-directory: go
+          args: --config=../.golangci.yml
+
+      - name: govulncheck
+        run: bash scripts/ci/check-govulncheck.sh
+
+      - name: Windows compile tests (Linux runner)
+        working-directory: go
+        run: |
+          set -euo pipefail
+          for pkg in $(go list ./...); do
+            GOOS=windows GOARCH=amd64 go test -buildvcs=false -c -o /dev/null "$pkg"
+          done
+
+  test:
+    name: Go test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: go/go.sum
+
+      - name: Test
+        shell: bash
+        env:
+          CGO_ENABLED: '0'
+        run: |
+          set -euo pipefail
+          cd go
+          go test -buildvcs=false ./...
+
+      - name: Build
+        shell: bash
+        env:
+          CGO_ENABLED: '0'
+        run: |
+          set -euo pipefail
+          ver="$(tr -d '\n' < VERSION)"
+          mkdir -p bin
+          cd go
+          go build -buildvcs=false -ldflags "-X github.com/bolens/millenium-helpers/internal/version.Version=${ver}" \
+            -o ../bin/millennium ./cmd/millennium
+          ../bin/millennium version
+
+      - name: Smoke dispatcher meta (dual-OS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bin/millennium version | grep -F 'millennium version'
+          bin/millennium -V | grep -F 'millennium version'
+          bin/millennium --help | grep -E 'Available Commands|schedule|mcp'
+          bin/millennium help | grep -E 'Available Commands|schedule|mcp'
+          set +e
+          suggest_out="$(bin/millennium upgrad 2>&1)"
+          suggest_rc=$?
+          set -e
+          test "$suggest_rc" -ne 0
+          echo "$suggest_out" | grep -F "Did you mean 'upgrade'"
+
+      - name: Smoke schedule config (dual-OS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cfg_dir="$(mktemp -d)"
+          export MILLENNIUM_CONFIG_DIR="$cfg_dir"
+          export MILLENNIUM_CONFIG_FILE="$cfg_dir/config.json"
+          bin/millennium schedule config set update_channel beta
+          test "$(bin/millennium schedule config get update_channel | tr -d '[:space:]')" = "beta"
+          bin/millennium schedule config list | grep -F 'update_channel'
+          bin/millennium schedule config list | grep -F 'beta'
+          rm -rf "$cfg_dir"
+
+      - name: Smoke theme list (dual-OS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          skins="$(mktemp -d)"
+          export MILLENNIUM_SKINS_DIR="$skins"
+          test "$(bin/millennium theme list --json | tr -d '[:space:]')" = "[]"
+          mkdir -p "$skins/LocalSkin" "$skins/DemoTheme"
+          printf '%s\n' '{"owner":"acme","repo":"DemoTheme","commit":"abcdef123456"}' \
+            > "$skins/DemoTheme/metadata.json"
+          bin/millennium theme list | grep -F 'LocalSkin'
+          bin/millennium theme list | grep -F 'DemoTheme'
+          bin/millennium theme list | grep -F 'acme/DemoTheme'
+          json="$(bin/millennium theme list --json)"
+          echo "$json" | grep -F '"name":"LocalSkin"'
+          echo "$json" | grep -F '"type":"local"'
+          echo "$json" | grep -F '"name":"DemoTheme"'
+          echo "$json" | grep -F '"owner":"acme"'
+          echo "$json" | grep -F '"type":"github"'
+          rm -rf "$skins"
+
+      - name: Smoke theme mutate (dual-OS, offline)
+        shell: bash
+        run: |
+          set -euo pipefail
+          skins="$(mktemp -d)"
+          export MILLENNIUM_SKINS_DIR="$skins"
+          set +e
+          install_out="$(bin/millennium theme install not-a-valid 2>&1)"
+          install_rc=$?
+          set -e
+          test "$install_rc" -ne 0
+          echo "$install_out" | grep -F 'owner/repo'
+          set +e
+          remove_out="$(bin/millennium theme remove MissingTheme --yes 2>&1)"
+          remove_rc=$?
+          set -e
+          test "$remove_rc" -ne 0
+          echo "$remove_out" | grep -F 'not installed'
+          mkdir -p "$skins/LocalSkin"
+          bin/millennium theme update LocalSkin | grep -F 'does not have GitHub metadata'
+          rm -rf "$skins"
+
+      - name: Smoke schedule status (dual-OS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$(mktemp -d)"
+          export HOME="$home"
+          export XDG_CONFIG_HOME="$home/.config"
+          export LOCALAPPDATA="$home/LocalAppData"
+          export APPDATA="$home/AppData"
+          export MILLENNIUM_CONFIG_DIR="$home/cfg"
+          export MILLENNIUM_CONFIG_FILE="$home/cfg/config.json"
+          mkdir -p "$MILLENNIUM_CONFIG_DIR" "$XDG_CONFIG_HOME" "$LOCALAPPDATA" "$APPDATA"
+          out="$(bin/millennium schedule status)"
+          echo "$out" | grep -F 'Scheduler disabled'
+          echo "$out" | grep -F 'millennium schedule enable'
+          rm -rf "$home"
+
+      - name: Smoke schedule enable/disable dry-run (dual-OS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$(mktemp -d)"
+          export HOME="$home"
+          export XDG_CONFIG_HOME="$home/.config"
+          export LOCALAPPDATA="$home/LocalAppData"
+          export APPDATA="$home/AppData"
+          export MILLENNIUM_CONFIG_DIR="$home/cfg"
+          export MILLENNIUM_CONFIG_FILE="$home/cfg/config.json"
+          mkdir -p "$MILLENNIUM_CONFIG_DIR" "$XDG_CONFIG_HOME" "$LOCALAPPDATA" "$APPDATA"
+          en="$(bin/millennium schedule enable stable --dry-run)"
+          echo "$en" | grep -F 'DRY RUN'
+          echo "$en" | grep -F '[DRY RUN] Would'
+          dis="$(bin/millennium schedule disable --dry-run)"
+          echo "$dis" | grep -F 'DRY RUN'
+          echo "$dis" | grep -F '[DRY RUN] Would'
+          # Dry-run must not write systemd user units under the fake home.
+          test ! -e "$XDG_CONFIG_HOME/systemd/user/millennium-update.timer"
+          rm -rf "$home"
+
+      - name: Smoke schedule setup wizard (dual-OS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$(mktemp -d)"
+          export HOME="$home"
+          export USERPROFILE="$home"
+          export XDG_CONFIG_HOME="$home/.config"
+          export LOCALAPPDATA="$home/LocalAppData"
+          export APPDATA="$home/AppData"
+          export MILLENNIUM_CONFIG_DIR="$home/cfg"
+          export MILLENNIUM_CONFIG_FILE="$home/cfg/config.json"
+          export FORCE_WIZARD=true
+          mkdir -p "$MILLENNIUM_CONFIG_DIR" "$XDG_CONFIG_HOME" "$LOCALAPPDATA" "$APPDATA"
+          # Channel 1 (stable), decline enable, skip PAT.
+          out="$(printf '1\nn\n\n' | bin/millennium schedule setup --dry-run)"
+          echo "$out" | grep -F 'Configuration Wizard'
+          echo "$out" | grep -F '[DRY RUN] Would write config'
+          echo "$out" | grep -F 'update_channel: stable'
+          test ! -e "$MILLENNIUM_CONFIG_FILE"
+          rm -rf "$home"
+
+      - name: Smoke schedule pre/post-update hooks (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$(mktemp -d)"
+          export HOME="$home"
+          export MILLENNIUM_STATE_DIR="$home/state"
+          mkdir -p "$home/state" "$home/empty-proc" "$home/bin"
+          # Without scheduler gate → refuse.
+          set +e
+          gate_out="$(bin/millennium schedule pre-update 2>&1)"
+          gate_rc=$?
+          set -e
+          test "$gate_rc" -ne 0
+          echo "$gate_out" | grep -F 'only for the scheduler'
+          # With gate + no Steam → success.
+          printf '%s\n' '#!/bin/sh' 'exit 1' >"$home/bin/pgrep"
+          chmod +x "$home/bin/pgrep"
+          export PATH="$home/bin:$PATH"
+          export MOCK_PROC="$home/empty-proc"
+          export MILLENNIUM_SCHEDULER=1
+          bin/millennium schedule pre-update
+          # post-update with diag stubbed via missing state is ok (no relaunch).
+          # Prefer a fake diag on PATH that succeeds.
+          printf '%s\n' '#!/bin/sh' 'exit 0' >"$home/bin/millennium-diag"
+          chmod +x "$home/bin/millennium-diag"
+          bin/millennium schedule post-update
+          rm -rf "$home"
+
+      - name: Smoke purge dry-run (dual-OS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$(mktemp -d)"
+          export HOME="$home"
+          export USERPROFILE="$home"
+          export LOCALAPPDATA="$home/LocalAppData"
+          export APPDATA="$home/AppData"
+          mkdir -p "$LOCALAPPDATA" "$APPDATA"
+          out="$(bin/millennium purge --dry-run)"
+          echo "$out" | grep -F 'DRY RUN'
+          rm -rf "$home"
+
+      - name: Smoke upgrade rollback list (dual-OS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$(mktemp -d)"
+          export HOME="$home"
+          export USERPROFILE="$home"
+          export LOCALAPPDATA="$home/LocalAppData"
+          if [[ "${RUNNER_OS}" == "Windows" ]]; then
+            # Windows lists backups under MILLENNIUM_BACKUP_DIR (not MOCK_LIB_DIR bak_*).
+            bak="$home/millennium_backups"
+            mkdir -p "$bak/smoke"
+            export MILLENNIUM_BACKUP_DIR="$bak"
+          else
+            lib="$home/lib"
+            mkdir -p "$lib/millennium.bak_smoke"
+            export MOCK_LIB_DIR="$lib"
+          fi
+          out="$(bin/millennium upgrade --rollback list)"
+          echo "$out" | grep -F 'Available Backups'
+          echo "$out" | grep -F 'smoke'
+          rm -rf "$home"
+
+      - name: Smoke upgrade --file dry-run + SHA (dual-OS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$(mktemp -d)"
+          export HOME="$home"
+          export USERPROFILE="$home"
+          export LOCALAPPDATA="$home/LocalAppData"
+          export MOCK_LIB_DIR="$home/lib"
+          mkdir -p "$MOCK_LIB_DIR"
+          archive="$home/fake.tgz"
+          printf 'millennium-archive-body\n' >"$home/payload"
+          if command -v tar >/dev/null 2>&1; then
+            tar -czf "$archive" -C "$home" payload
+          else
+            # Windows runners in bash usually still have tar; fall back to raw bytes.
+            cp "$home/payload" "$archive"
+          fi
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha="$(sha256sum "$archive" | awk '{print $1}')"
+          else
+            sha="$(openssl dgst -sha256 "$archive" | awk '{print $NF}')"
+          fi
+          out="$(bin/millennium upgrade --file "$archive" --sha256 "$sha" --dry-run)"
+          echo "$out" | grep -F 'DRY RUN'
+          echo "$out" | grep -F 'Verified SHA256'
+          echo "$out" | grep -F 'Would install local archive'
+          # Fail-closed: wrong digest must exit non-zero.
+          set +e
+          bad_out="$(bin/millennium upgrade --file "$archive" --sha256 "$(printf 'a%.0s' {1..64})" --dry-run 2>&1)"
+          bad_rc=$?
+          set -e
+          test "$bad_rc" -ne 0
+          echo "$bad_out" | grep -Fi 'SHA256'
+          # Verify-only path (no dry-run) rejects bad digest before install.
+          set +e
+          bad2="$(bin/millennium upgrade --file "$archive" --sha256 "$(printf 'b%.0s' {1..64})" 2>&1)"
+          bad2_rc=$?
+          set -e
+          test "$bad2_rc" -ne 0
+          echo "$bad2" | grep -Fi 'SHA256'
+          rm -rf "$home"
+
+      - name: Smoke upgrade writable rollback apply (dual-OS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$(mktemp -d)"
+          export HOME="$home"
+          export USERPROFILE="$home"
+          export LOCALAPPDATA="$home/LocalAppData"
+          if [[ "${RUNNER_OS:-}" == "Windows" ]] || [[ "$(uname -s)" == MINGW* ]] || [[ "$(uname -s)" == MSYS* ]]; then
+            steam="$home/Steam"
+            mkdir -p "$steam/millennium" "$steam/millennium_backups/smoke_bak/millennium"
+            printf 'active\n' >"$steam/millennium/marker"
+            printf 'bak\n' >"$steam/millennium_backups/smoke_bak/millennium/marker"
+            printf '1.0.0\n' >"$steam/millennium_backups/smoke_bak/millennium/version"
+            export STEAM="$steam"
+            export MILLENNIUM_BACKUP_DIR="$steam/millennium_backups"
+            out="$(bin/millennium upgrade --rollback smoke_bak --yes)"
+            echo "$out" | grep -Ei 'Rollback|completed|successful'
+            test "$(cat "$steam/millennium/marker")" = "bak"
+          else
+            lib="$home/lib"
+            mkdir -p "$lib/millennium" "$lib/millennium.bak_1.0.0"
+            printf '2.0.0\n' >"$lib/millennium/version.txt"
+            printf 'new\n' >"$lib/millennium/marker"
+            printf '1.0.0\n' >"$lib/millennium.bak_1.0.0/version.txt"
+            printf 'old\n' >"$lib/millennium.bak_1.0.0/marker"
+            export MOCK_LIB_DIR="$lib"
+            export MILLENNIUM_LIB_DIR="$lib"
+            out="$(bin/millennium upgrade --rollback 1.0.0)"
+            echo "$out" | grep -F 'Rollback successful'
+            test "$(cat "$lib/millennium/marker")" = "old"
+          fi
+          rm -rf "$home"
+
+      - name: Smoke diag report / JSON / doctor dry-run / logs (dual-OS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$(mktemp -d)"
+          export HOME="$home"
+          export USERPROFILE="$home"
+          export LOCALAPPDATA="$home/LocalAppData"
+          export APPDATA="$home/AppData"
+          mkdir -p "$LOCALAPPDATA" "$APPDATA"
+          out="$(bin/millennium diag)"
+          echo "$out" | grep -F 'Millennium Diagnostics Report'
+          json="$(bin/millennium diag --json)"
+          echo "$json" | grep -F 'steam_running'
+          echo "$json" | grep -F 'helpers_track'
+          doctor="$(bin/millennium diag doctor --dry-run)"
+          echo "$doctor" | grep -F 'DRY RUN'
+          set +e
+          logs_out="$(bin/millennium diag logs 2>&1)"
+          logs_rc=$?
+          set -e
+          # Empty HOME: either no Steam logs (1) or filtered empty (0).
+          if [[ "$logs_rc" -eq 0 ]]; then
+            echo "$logs_out" | grep -E 'Millennium|Steam|No recent'
+          else
+            echo "$logs_out" | grep -F 'No Steam logs found'
+          fi
+          rm -rf "$home"
+
+      - name: Smoke diag share / doctor live / logs --follow (dual-OS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$(mktemp -d)"
+          export HOME="$home"
+          export USERPROFILE="$home"
+          export LOCALAPPDATA="$home/LocalAppData"
+          export APPDATA="$home/AppData"
+          mkdir -p "$LOCALAPPDATA" "$APPDATA"
+
+          # --share offline via local paste stub
+          port_file="$home/paste.port"
+          python3 - "$port_file" <<'PY' &
+          import http.server, pathlib, sys
+          port_file = sys.argv[1]
+          class H(http.server.BaseHTTPRequestHandler):
+              def do_POST(self):
+                  n = int(self.headers.get("Content-Length", "0"))
+                  _ = self.rfile.read(n)
+                  self.send_response(200)
+                  self.end_headers()
+                  self.wfile.write(b"https://paste.rs/endgame-c-smoke")
+              def log_message(self, *_args):
+                  pass
+          srv = http.server.HTTPServer(("127.0.0.1", 0), H)
+          pathlib.Path(port_file).write_text(str(srv.server_address[1]))
+          srv.handle_request()
+          PY
+          for _ in $(seq 1 50); do
+            [[ -s "$port_file" ]] && break
+            sleep 0.05
+          done
+          port="$(cat "$port_file")"
+          export MILLENNIUM_PASTE_URL="http://127.0.0.1:${port}"
+          share_out="$(bin/millennium diag --share)"
+          echo "$share_out" | grep -F 'Diagnostic report successfully shared'
+          echo "$share_out" | grep -F 'https://paste.rs/endgame-c-smoke'
+          wait || true
+
+          # doctor live — healthy-only under test bypass (no Steam/upgrade side effects)
+          doctor_live="$(DIAG_TEST_BYPASS_CHECKS=1 bin/millennium diag doctor --yes)"
+          echo "$doctor_live" | grep -F 'No issues detected'
+
+          # logs --follow with cycle cap + planted Steam log
+          if [[ "${RUNNER_OS:-}" == "Windows" ]] || [[ "$(uname -s)" == MINGW* ]] || [[ "$(uname -s)" == MSYS* ]]; then
+            steam="$home/Steam"
+            mkdir -p "$steam/logs"
+            printf 'noise\nMILLENNIUM start\n' >"$steam/logs/webhelper.txt"
+            export STEAM="$steam"
+          else
+            steam="$home/.local/share/Steam"
+            mkdir -p "$steam/logs"
+            printf 'noise\nMILLENNIUM start\n' >"$steam/logs/webhelper.txt"
+            export STEAM="$steam"
+          fi
+          follow_out="$(MILLENNIUM_FOLLOW_MAX_CYCLES=3 bin/millennium diag logs --follow)"
+          echo "$follow_out" | grep -Fi 'millennium'
+          rm -rf "$home"
+
+      - name: Smoke upgrade writable --file install (dual-OS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$(mktemp -d)"
+          export HOME="$home"
+          export USERPROFILE="$home"
+          export LOCALAPPDATA="$home/LocalAppData"
+          export APPDATA="$home/AppData"
+          mkdir -p "$LOCALAPPDATA" "$APPDATA"
+          if [[ "${RUNNER_OS:-}" == "Windows" ]] || [[ "$(uname -s)" == MINGW* ]] || [[ "$(uname -s)" == MSYS* ]]; then
+            steam="$home/Steam"
+            mkdir -p "$steam"
+            export STEAM="$steam"
+            archive="$home/millennium-win.zip"
+            python3 - "$archive" <<'PY'
+          import zipfile, sys
+          z = zipfile.ZipFile(sys.argv[1], "w")
+          z.writestr("millennium/marker", "installed\n")
+          z.writestr("wsock32.dll", "dll-stub\n")
+          z.close()
+          PY
+            if command -v sha256sum >/dev/null 2>&1; then
+              sha="$(sha256sum "$archive" | awk '{print $1}')"
+            else
+              sha="$(openssl dgst -sha256 "$archive" | awk '{print $NF}')"
+            fi
+            bin/millennium upgrade --file "$archive" --sha256 "$sha" --yes
+            test -f "$steam/millennium/version.txt"
+            test -f "$steam/millennium/marker"
+          else
+            lib="$home/lib"
+            steam="$home/.local/share/Steam"
+            mkdir -p "$lib" "$steam/ubuntu12_32" "$steam/ubuntu12_64"
+            export MOCK_LIB_DIR="$lib" MILLENNIUM_LIB_DIR="$lib" STEAM="$steam"
+            stage="$home/stage/usr/lib/millennium"
+            mkdir -p "$stage"
+            for f in libmillennium_bootstrap_x86.so libmillennium_bootstrap_hhx64.so \
+                     libmillennium_x86.so libmillennium_hhx64.so libmillennium_pvs64; do
+              printf 'stub\n' >"$stage/$f"
+            done
+            archive="$home/millennium-v9.9.9-linux-x86_64.tar.gz"
+            tar -czf "$archive" -C "$home/stage" .
+            sha="$(sha256sum "$archive" | awk '{print $1}')"
+            bin/millennium upgrade --file "$archive" --sha256 "$sha" --yes
+            test -f "$lib/millennium/version.txt"
+            test -s "$lib/millennium/version.txt"
+          fi
+          rm -rf "$home"
+
+      - name: Smoke upgrade non-root Linux sudo handoff hint
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$(mktemp -d)"
+          export HOME="$home"
+          mkdir -p "$home/bin" "$home/stage/usr/lib/millennium"
+          printf 'stub\n' >"$home/stage/usr/lib/millennium/libmillennium_bootstrap_x86.so"
+          printf 'stub\n' >"$home/stage/usr/lib/millennium/libmillennium_bootstrap_hhx64.so"
+          printf 'stub\n' >"$home/stage/usr/lib/millennium/libmillennium_x86.so"
+          printf 'stub\n' >"$home/stage/usr/lib/millennium/libmillennium_hhx64.so"
+          printf 'stub\n' >"$home/stage/usr/lib/millennium/libmillennium_pvs64"
+          archive="$home/millennium.tgz"
+          tar -czf "$archive" -C "$home/stage" .
+          sha="$(sha256sum "$archive" | awk '{print $1}')"
+          # Fake sudo fails immediately so elevating cannot hang CI.
+          printf '#!/bin/sh\nexit 1\n' >"$home/bin/sudo"
+          chmod +x "$home/bin/sudo"
+          unset MOCK_LIB_DIR MILLENNIUM_LIB_DIR || true
+          set +e
+          out="$(env -u MOCK_LIB_DIR -u MILLENNIUM_LIB_DIR PATH="$home/bin:$PATH" HOME="$home" bin/millennium upgrade --file "$archive" --sha256 "$sha" --yes 2>&1)"
+          rc=$?
+          set -e
+          test "$rc" -ne 0
+          echo "$out" | grep -F 'requires root'
+          rm -rf "$home"
+
+      - name: Smoke repair dry-run + Linux mock hooks (dual-OS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$(mktemp -d)"
+          export HOME="$home"
+          export USERPROFILE="$home"
+          export LOCALAPPDATA="$home/LocalAppData"
+          export APPDATA="$home/AppData"
+          mkdir -p "$LOCALAPPDATA" "$APPDATA"
+          out="$(bin/millennium repair --dry-run --skip-theme)"
+          echo "$out" | grep -F 'DRY RUN'
+          echo "$out" | grep -F 'Skipping theme'
+          if [[ "${RUNNER_OS:-}" == "Windows" ]] || [[ "$(uname -s)" == MINGW* ]] || [[ "$(uname -s)" == MSYS* ]]; then
+            echo "$out" | grep -F 'upgrade --force'
+          else
+            lib="$home/lib"
+            steam="$home/.local/share/Steam"
+            mkdir -p "$lib/millennium" "$steam/ubuntu12_32" "$steam/ubuntu12_64"
+            printf 'stub\n' >"$lib/millennium/libmillennium_bootstrap_x86.so"
+            printf 'stub\n' >"$lib/millennium/libmillennium_bootstrap_hhx64.so"
+            export STEAM="$steam"
+            export MOCK_LIB_DIR="$lib"
+            dry2="$(bin/millennium repair --dry-run --skip-theme)"
+            echo "$dry2" | grep -F 'Would link hook'
+            bin/millennium repair --yes --skip-theme
+            test -L "$steam/ubuntu12_32/libXtst.so.6"
+            test -L "$steam/ubuntu12_64/libXtst.so.6"
+          fi
+          rm -rf "$home"
+
+      - name: Smoke MCP initialize (dual-OS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$(printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' | bin/millennium mcp)"
+          echo "$out" | grep -F 'protocolVersion'
+          echo "$out" | grep -F '2024-11-05'
+          echo "$out" | grep -F 'millennium-helpers-mcp'
+
+      - name: Smoke native upgrade/diag/doctor help (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          bin/millennium upgrade --help | grep -F 'Usage:'
+          bin/millennium diag --help | grep -F 'Usage:'
+          bin/millennium doctor --help | grep -F 'Usage:'
+          bin/millennium doctor --dry-run | grep -F 'DRY RUN'
+
+  contract:
+    name: CLI contract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: check-cli-contract
+        run: make check-cli-contract

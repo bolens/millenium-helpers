@@ -31,6 +31,8 @@ export extern "millennium-schedule" [
   action?: string@"_millennium_schedule_actions" # Scheduler action
   channel?: string@"_millennium_schedule_channels" # Update channel or config action
   --cron(-c)     # Force use of crontab instead of systemd
+  --system       # Linux: force systemd system units
+  --user         # Linux: force systemd user units
   --dry-run(-d)  # Simulation mode
   --quiet(-q)    # Suppress informational output
   --version(-V)  # Show version information
