@@ -15,41 +15,6 @@
         [
             "scripts\\windows\\millennium.exe",
             "millennium"
-        ],
-        [
-            "scripts\\windows\\millennium.exe",
-            "millennium-diag",
-            "diag"
-        ],
-        [
-            "scripts\\windows\\millennium.exe",
-            "millennium-mcp",
-            "mcp"
-        ],
-        [
-            "scripts\\windows\\millennium.exe",
-            "millennium-purge",
-            "purge"
-        ],
-        [
-            "scripts\\windows\\millennium.exe",
-            "millennium-repair",
-            "repair"
-        ],
-        [
-            "scripts\\windows\\millennium.exe",
-            "millennium-schedule",
-            "schedule"
-        ],
-        [
-            "scripts\\windows\\millennium.exe",
-            "millennium-theme",
-            "theme"
-        ],
-        [
-            "scripts\\windows\\millennium.exe",
-            "millennium-upgrade",
-            "upgrade"
         ]
     ],
     "post_install": [

@@ -60,7 +60,7 @@ Local checks: `make test-go` (feature parity) + `make test` / `make test-windows
 
 1. ~~**Finish Go installer**~~ — network download+SHA, Linux sudoers, Windows PATH/profile hooks, wizard handoff, piped Windows bootstrap (in `go/internal/install` + thin bootstraps).
 2. ~~**Delete install-time libs**~~ — `common.sh` / `common.ps1` and `scripts/lib` / `scripts/windows/lib` removed; `release_assets.sh` lives under `scripts/ci/`.
-3. **Long-name PATH twins** — stop installing `millennium-*` twins; PATH is `millennium` only (breaking; CHANGELOG).
+3. ~~**Long-name PATH twins**~~ — PATH installs `millennium` only; uninstall cleans legacy twins; argv0 still accepted when present.
 4. **Contract-driven façade sync** — completions / man / MCP schema stay hand-aligned; CI gates via `make check-cli-contract`.
 
 ---
@@ -68,10 +68,10 @@ Local checks: `make test-go` (feature parity) + `make test` / `make test-windows
 ## When changing a command
 
 1. Update [`spec/cli-contract.yaml`](../spec/cli-contract.yaml) first if flags/subcommands change.
-2. Implement in Go under `go/`; keep long-name PATH twins (`commandFromArgv0`) in sync while twins still ship.
+2. Implement in Go under `go/`; keep `commandFromArgv0` working for leftover long-name twins.
 3. Cover with `make test-go` and the Linux / Windows / macOS jobs in [`go.yml`](../.github/workflows/go.yml).
 4. Keep completions, man, and MCP schemas aligned (`make check-cli-contract`).
-5. Do not delete a long-name PATH twin until timers/sudoers/docs that still name it are migrated.
+5. PATH installs only `millennium`; do not reintroduce long-name twins.
 6. Note the change in [CHANGELOG.md](../CHANGELOG.md).
 
 ---

@@ -100,13 +100,6 @@ func runInstall(o Options) (Result, error) {
 	// Dry-run with network plan only (no local/extracted tree): destinations only.
 	if o.DryRun && sourceRoot == "" {
 		res.Plan = append(res.Plan, "install binary -> "+destMain)
-		for _, twin := range TwinNames() {
-			if runtime.GOOS == "windows" {
-				res.Plan = append(res.Plan, "install twin -> "+filepath.Join(o.TargetDir, twin+".cmd"))
-			} else {
-				res.Plan = append(res.Plan, "install twin -> "+filepath.Join(o.TargetDir, twin))
-			}
-		}
 		res.Plan = append(res.Plan, "write "+MetaPath(metaRoot))
 		res.Plan = append(res.Plan, "Millennium helpers install complete")
 		return res, nil
@@ -131,12 +124,6 @@ func runInstall(o Options) (Result, error) {
 			return res, err
 		}
 	} else {
-		for _, twin := range TwinNames() {
-			dst := filepath.Join(o.TargetDir, twin)
-			if err := planCopy(dispatcher, dst, 0o755, o.DryRun, &res.Plan); err != nil {
-				return res, err
-			}
-		}
 		if err := installUnixLibs(o, sourceRoot, &res); err != nil {
 			return res, err
 		}

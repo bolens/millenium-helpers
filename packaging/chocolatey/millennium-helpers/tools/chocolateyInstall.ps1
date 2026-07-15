@@ -28,15 +28,3 @@ if (Test-Path -LiteralPath $millenniumExe) {
 } else {
   throw 'millennium.exe (Go dispatcher) not found in release zip'
 }
-
-foreach ($pair in @(
-    @{ Name = 'millennium-diag'; Args = 'diag' },
-    @{ Name = 'millennium-mcp'; Args = 'mcp' },
-    @{ Name = 'millennium-purge'; Args = 'purge' },
-    @{ Name = 'millennium-repair'; Args = 'repair' },
-    @{ Name = 'millennium-schedule'; Args = 'schedule' },
-    @{ Name = 'millennium-theme'; Args = 'theme' },
-    @{ Name = 'millennium-upgrade'; Args = 'upgrade' }
-  )) {
-  Install-BinFile -Name $pair.Name -Path $millenniumExe -Command "$($pair.Args) %*"
-}

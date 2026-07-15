@@ -36,16 +36,6 @@ class MillenniumHelpersBin < Formula
   def install
     odie "Release archive missing bin/millennium (Go dispatcher required)" unless (buildpath/"bin/millennium").exist?
     bin.install "bin/millennium"
-    %w[
-      millennium-mcp
-      millennium-repair
-      millennium-upgrade
-      millennium-schedule
-      millennium-purge
-      millennium-diag
-      millennium-theme
-    ].each { |name| bin.install_symlink "millennium" => name }
-
     commands = %w[
       millennium
       millennium-repair
@@ -84,7 +74,7 @@ class MillenniumHelpersBin < Formula
   end
 
   test do
-    system "#{bin}/millennium-diag", "--help"
+    system "#{bin}/millennium", "diag", "--help"
     assert_path_exists lib/"millennium-helpers/VERSION"
   end
 end

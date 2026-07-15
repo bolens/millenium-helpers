@@ -3,7 +3,6 @@
 package install
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -22,29 +21,13 @@ func installWindowsExtras(o Options, dispatcher string, res *Result) error {
 		}
 	}
 
-	cmdMap := map[string]string{
-		"millennium":          "",
-		"millennium-mcp":      "mcp",
-		"millennium-diag":     "diag",
-		"millennium-purge":    "purge",
-		"millennium-repair":   "repair",
-		"millennium-schedule": "schedule",
-		"millennium-theme":    "theme",
-		"millennium-upgrade":  "upgrade",
-	}
-	for name, sub := range cmdMap {
-		path := filepath.Join(o.TargetDir, name+".cmd")
-		var body string
-		if sub == "" {
-			body = "@echo off\r\n\"%~dp0millennium.exe\" %*\r\n"
-		} else {
-			body = fmt.Sprintf("@echo off\r\n\"%%~dp0millennium.exe\" %s %%*\r\n", sub)
-		}
-		res.Plan = append(res.Plan, "write "+path)
-		if !o.DryRun {
-			if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
-				return err
-			}
+	// Optional cmd.exe shim (no long-name PATH twins).
+	cmdPath := filepath.Join(o.TargetDir, "millennium.cmd")
+	body := "@echo off\r\n\"%~dp0millennium.exe\" %*\r\n"
+	res.Plan = append(res.Plan, "write "+cmdPath)
+	if !o.DryRun {
+		if err := os.WriteFile(cmdPath, []byte(body), 0o644); err != nil {
+			return err
 		}
 	}
 

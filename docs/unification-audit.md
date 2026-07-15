@@ -17,7 +17,7 @@ Project: [README](../README.md). Index: [README.md](README.md).
 | Steam | `go/internal/steam` | Go (Unix + Windows) |
 | CLI logging | `go/internal/logging` | Go |
 | Zip extract | `go/internal/archive` | Go (theme + Windows upgrade install) |
-| Long-name argv0 | `go/cmd/millennium` `commandFromArgv0` | Go (`millennium-upgrade` → `upgrade`, …) |
+| Long-name argv0 | `go/cmd/millennium` `commandFromArgv0` | Supported for leftover twins; new installs PATH = `millennium` only |
 | MCP | `millennium mcp` / PATH `millennium-mcp` | Go |
 | Completions | [`completions/`](../completions/) | Bash / Zsh / Fish / Nushell / PowerShell |
 | Man pages | [`man/`](../man/) | mandoc |

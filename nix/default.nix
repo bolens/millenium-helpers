@@ -62,22 +62,6 @@ stdenv.mkDerivation ({
       exit 1
     fi
     install -m755 bin/millennium $out/bin/millennium
-    # Long-name PATH twins: inject subcommand (Nix wrappers change argv0).
-    for pair in \
-      "millennium-mcp:mcp" \
-      "millennium-repair:repair" \
-      "millennium-upgrade:upgrade" \
-      "millennium-schedule:schedule" \
-      "millennium-purge:purge" \
-      "millennium-diag:diag" \
-      "millennium-theme:theme"
-    do
-      twin="''${pair%%:*}"
-      cmd="''${pair#*:}"
-      makeWrapper $out/bin/millennium $out/bin/$twin \
-        --add-flags "$cmd" \
-        --prefix PATH : ${lib.makeBinPath [ bash python3 curl unzip git ]}
-    done
     wrapProgram $out/bin/millennium \
       --prefix PATH : ${lib.makeBinPath [ bash python3 curl unzip git ]}
 

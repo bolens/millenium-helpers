@@ -108,7 +108,7 @@ Feature commands live in Go only. Do not reintroduce install-time `scripts/lib` 
 ## Adding or changing a command
 
 1. Update [`spec/cli-contract.yaml`](spec/cli-contract.yaml) first (flags, platforms, MCP properties).
-2. Implement in Go under `go/` (long-name PATH twins via `commandFromArgv0`).
+2. Implement in Go under `go/` (`millennium <cmd>`; leftover argv0 twins via `commandFromArgv0`).
 3. Update dispatcher help/registration in `go/cmd/millennium` when adding commands.
 4. Keep `--help` / `-h` accurate and exit `0` on help.
 5. On unknown options, print usage and exit non-zero.

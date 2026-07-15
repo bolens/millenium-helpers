@@ -65,7 +65,8 @@ func HostUnixOS() (string, error) {
 	}
 }
 
-// TwinNames are PATH long-name argv0 twins installed beside millennium.
+// TwinNames lists legacy PATH long-name argv0 twins.
+// New installs put only `millennium` on PATH; uninstall still removes these names.
 func TwinNames() []string {
 	return []string{
 		"millennium-repair",

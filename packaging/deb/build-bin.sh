@@ -38,12 +38,7 @@ if [[ ! -x "$TREE/bin/millennium" ]]; then
   echo "error: release tree missing bin/millennium (Go dispatcher required)" >&2
   exit 1
 fi
-# Long-name PATH entries are argv0 twins of the Go dispatcher.
-for twin in millennium millennium-mcp millennium-repair millennium-upgrade \
-  millennium-schedule millennium-purge millennium-diag millennium-theme
-do
-  install -m755 "$TREE/bin/millennium" "$DEST/usr/bin/$twin"
-done
+install -m755 "$TREE/bin/millennium" "$DEST/usr/bin/millennium"
 
 install -m644 "$TREE"/VERSION "$DEST/usr/lib/millennium-helpers/VERSION"
 install -m644 "$TREE"/completions/bash/millennium-helpers "$DEST/usr/share/bash-completion/completions/millennium-helpers"

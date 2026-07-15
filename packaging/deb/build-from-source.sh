@@ -25,12 +25,7 @@ install -d "$DEST/usr/bin" "$DEST/usr/lib/millennium-helpers/lib" \
   "$DEST/usr/share/doc/millennium-helpers" \
   "$DEST/DEBIAN"
 
-# Long-name PATH entries are argv0 twins of the Go dispatcher.
-for twin in millennium millennium-mcp millennium-repair millennium-upgrade \
-  millennium-schedule millennium-purge millennium-diag millennium-theme
-do
-  install -m755 bin/millennium "$DEST/usr/bin/$twin"
-done
+install -m755 bin/millennium "$DEST/usr/bin/millennium"
 
 install -m644 VERSION "$DEST/usr/lib/millennium-helpers/VERSION"
 install -m644 completions/bash/millennium-helpers "$DEST/usr/share/bash-completion/completions/millennium-helpers"

@@ -19,13 +19,7 @@ _arch_install_unix_helpers() {
   fi
 
   install -d "${pkgdir}/usr/bin"
-  # Long-name PATH entries are argv0 twins of the Go dispatcher.
-  local twin
-  for twin in millennium millennium-mcp millennium-repair millennium-upgrade \
-    millennium-schedule millennium-purge millennium-diag millennium-theme
-  do
-    install -m755 "${dispatcher}" "${pkgdir}/usr/bin/${twin}"
-  done
+  install -m755 "${dispatcher}" "${pkgdir}/usr/bin/millennium"
 
   install -d "${pkgdir}/usr/lib/millennium-helpers"
 

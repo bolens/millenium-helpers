@@ -65,8 +65,8 @@ func TestInstallUninstallFixture(t *testing.T) {
 		t.Fatal(err)
 	}
 	if runtime.GOOS != "windows" {
-		if _, err := os.Stat(filepath.Join(target, "millennium-upgrade")); err != nil {
-			t.Fatal("missing twin:", err)
+		if _, err := os.Stat(filepath.Join(target, "millennium-upgrade")); !os.IsNotExist(err) {
+			t.Fatal("PATH twin should not be installed:", filepath.Join(target, "millennium-upgrade"))
 		}
 		if _, err := os.Stat(filepath.Join(lib, "VERSION")); err != nil {
 			t.Fatal(err)
@@ -75,8 +75,8 @@ func TestInstallUninstallFixture(t *testing.T) {
 			t.Fatal(err)
 		}
 	} else {
-		if _, err := os.Stat(filepath.Join(target, "millennium-upgrade.cmd")); err != nil {
-			t.Fatal(err)
+		if _, err := os.Stat(filepath.Join(target, "millennium-upgrade.cmd")); !os.IsNotExist(err) {
+			t.Fatal("PATH twin should not be installed")
 		}
 		if _, err := os.Stat(filepath.Join(prefix, "install-meta.json")); err != nil {
 			t.Fatal(err)

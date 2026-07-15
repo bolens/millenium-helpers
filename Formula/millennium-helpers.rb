@@ -20,15 +20,6 @@ class MillenniumHelpers < Formula
 
     odie "Go dispatcher bin/millennium missing after make build" unless (buildpath/"bin/millennium").exist?
     bin.install "bin/millennium"
-    %w[
-      millennium-mcp
-      millennium-repair
-      millennium-upgrade
-      millennium-schedule
-      millennium-purge
-      millennium-diag
-      millennium-theme
-    ].each { |name| bin.install_symlink "millennium" => name }
 
     commands = %w[
       millennium
@@ -74,7 +65,7 @@ class MillenniumHelpers < Formula
 
   test do
     system "#{bin}/millennium", "version"
-    system "#{bin}/millennium-diag", "--help"
+    system "#{bin}/millennium", "diag", "--help"
     assert_path_exists lib/"millennium-helpers/VERSION"
     assert_path_exists bash_completion/"millennium"
   end

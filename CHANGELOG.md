@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Release payloads and installers stop shipping/copying feature scripts; uninstall/wizard invoke `millennium` / `millennium.exe`
+- **Breaking:** PATH installs only `millennium` (no long-name `millennium-*` twins). Use `millennium <cmd>`; uninstall still removes legacy twins. argv0 twins remain supported if present.
 - CI feature coverage is [`go.yml`](.github/workflows/go.yml) on Linux, Windows, and macOS; [`test-suite.yml`](.github/workflows/test-suite.yml) keeps install/unit/packaging/completions
 
 ## [2.7.0] - 2026-07-15

@@ -11,7 +11,7 @@ import (
 
 const usageInstall = `Usage: millennium install [options]
 
-Install Millennium helpers (Go dispatcher, PATH twins, completions, install libs).
+Install Millennium helpers (Go dispatcher on PATH, completions, VERSION/meta).
 
 Options:
   --track release|main|tag|checkout   Helpers install track (default: release)

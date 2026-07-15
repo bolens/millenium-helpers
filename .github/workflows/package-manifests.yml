@@ -95,9 +95,7 @@ jobs:
           ' "$gitm" >/dev/null
 
           for m in "$src" "$bin" "$gitm"; do
-            for cmd in millennium millennium-mcp millennium-diag; do
-              jq -e --arg b "$cmd" '.bin | flatten | index($b)' "$m" >/dev/null
-            done
+            jq -e '.bin | flatten | index("millennium")' "$m" >/dev/null
           done
           echo "Scoop matrix shapes OK"
 

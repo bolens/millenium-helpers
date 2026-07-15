@@ -25,8 +25,7 @@ curl -fsSL https://raw.githubusercontent.com/bolens/millenium-helpers/main/insta
 irm https://raw.githubusercontent.com/bolens/millenium-helpers/main/scripts/windows/install.ps1 | iex
 ```
 
-Then use the Go CLI (`millennium`) or the installed long-name argv0 twins
-(`millennium-diag`, `millennium-upgrade`, … — same binary):
+Then use the Go CLI (`millennium <command>`):
 
 ```bash
 millennium diag                 # health check

@@ -52,7 +52,7 @@ out=$(bash "$INSTALL_SH" install --dry-run --prefix "${PREFIX}/bin" --lib-dir "$
 rc=$?
 assert_success "$rc" "install.sh install --dry-run exits 0"
 assert_contains "$out" "DRY RUN MODE" "dry-run announces mode"
-assert_contains "$out" "millennium-upgrade" "dry-run plans PATH twin"
+assert_contains "$out" "millennium" "dry-run plans millennium binary"
 assert_file_not_exists "${PREFIX}/bin/millennium" "dry-run does not write binary"
 
 # --- Live install into fixture prefix ---
@@ -60,7 +60,7 @@ out=$(bash "$INSTALL_SH" install --prefix "${PREFIX}/bin" --lib-dir "${PREFIX}/l
 rc=$?
 assert_success "$rc" "install.sh install into fixture prefix exits 0"
 assert_file_exists "${PREFIX}/bin/millennium" "install writes millennium"
-assert_file_exists "${PREFIX}/bin/millennium-upgrade" "install writes upgrade twin"
+assert_file_not_exists "${PREFIX}/bin/millennium-upgrade" "install does not write PATH twins"
 assert_file_exists "${PREFIX}/lib/VERSION" "install copies VERSION"
 assert_file_exists "${PREFIX}/lib/install-meta.json" "install writes install-meta.json"
 assert_file_exists "${PREFIX}/bash/millennium-helpers" "install copies bash completions"

@@ -1,7 +1,8 @@
 $ErrorActionPreference = 'Stop'
 
+Uninstall-BinFile -Name 'millennium'
+# Legacy long-name PATH shims from older packages.
 foreach ($name in @(
-    'millennium',
     'millennium-diag',
     'millennium-mcp',
     'millennium-purge',
