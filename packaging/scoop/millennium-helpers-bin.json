@@ -1,9 +1,9 @@
 {
-    "version": "2.6.2",
+    "version": "2.7.0",
     "description": "Millennium helpers (prebuilt release zip) \u2014 PowerShell long-name helpers/MCP + millennium.exe Go dispatcher.",
     "homepage": "https://github.com/bolens/millenium-helpers",
     "license": "MIT",
-    "url": "https://github.com/bolens/millenium-helpers/releases/download/v2.6.2/millennium-helpers-v2.6.2-windows-amd64.zip",
+    "url": "https://github.com/bolens/millenium-helpers/releases/download/v2.7.0/millennium-helpers-v2.7.0-windows-amd64.zip",
     "hash": "3d1fabe638ce2e990b7b0007ef77dd4afa1668fd558010758f0213c1c8826506",
     "bin": [
         [

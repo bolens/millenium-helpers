@@ -1,6 +1,6 @@
 Name:           millennium-helpers
-Version: 2.6.2
-Release:        1%{?dist}
+Version: 2.7.0
+Release: 1%{?dist}
 Summary:        Millennium helpers (from source) — Go strangler CLI plus shell helpers/MCP
 License:        MIT
 URL:            https://github.com/bolens/millenium-helpers

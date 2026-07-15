@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
   <metadata>
     <id>millennium-helpers</id>
-    <version>2.6.2</version>
+    <version>2.7.0</version>
     <title>Millennium Helpers</title>
     <authors>bolens</authors>
     <projectUrl>https://github.com/bolens/millenium-helpers</projectUrl>
