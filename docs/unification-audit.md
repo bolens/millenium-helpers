@@ -97,7 +97,9 @@ Tests: Go unit under `go/` · smokes in [`.github/workflows/go.yml`](../.github/
 
 ## Open gaps (non-contract)
 
-1. Completions/man/MCP schema still hand-synced with the contract (CI gates help).
+1. Marked completion lists sync from the contract (`make sync-cli-facade`); man
+   OPTIONS / MCP schemas / nested flag bodies are still mostly hand-maintained
+   (checked by `make check-cli-contract`).
 2. User-facing docs may still show long-name examples (`millennium-repair`) in places;
    packaging/sudoers/completions use `millennium <cmd>` only.
 

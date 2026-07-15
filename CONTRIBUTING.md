@@ -106,16 +106,17 @@ Feature commands live in Go only. Do not reintroduce install-time `scripts/lib` 
 
 ## Adding or changing a command
 
-1. Update [`spec/cli-contract.yaml`](spec/cli-contract.yaml) first (flags, platforms, MCP properties).
-2. Implement in Go under `go/` (`millennium <cmd>`; leftover argv0 twins via `commandFromArgv0`).
-3. Update dispatcher help/registration in `go/cmd/millennium` when adding commands.
-4. Keep `--help` / `-h` accurate and exit `0` on help.
-5. On unknown options, print usage and exit non-zero.
-6. Update matching files under `completions/` so flags stay in sync.
-7. Keep `man/millennium-<name>.1` in sync (`.TH` date like `"July 9, 2026"`; `make check-man` / CI mandoc lint).
-8. Add or extend Go tests / `go.yml` smokes for unique seams.
-9. Prefer `--dry-run` for destructive paths; require confirmation (or `-y`/`--yes`) for irreversible actions like purge.
-10. Run `make check-cli-contract` (also part of `make lint`).
+1. Update [`spec/cli-contract.yaml`](spec/cli-contract.yaml) first (flags, platforms, MCP properties; `short:` for dispatcher commands).
+2. Run `make sync-cli-facade` to refresh marked completion lists (dispatcher / subcommands / channels).
+3. Implement in Go under `go/` (`millennium <cmd>`; leftover argv0 twins via `commandFromArgv0`).
+4. Update dispatcher help/registration in `go/cmd/millennium` when adding commands.
+5. Keep `--help` / `-h` accurate and exit `0` on help.
+6. On unknown options, print usage and exit non-zero.
+7. Update remaining hand-maintained completion / man / MCP details as needed.
+8. Keep `man/millennium-<name>.1` in sync (`.TH` date like `"July 9, 2026"`; `make check-man` / CI mandoc lint).
+9. Add or extend Go tests / `go.yml` smokes for unique seams.
+10. Prefer `--dry-run` for destructive paths; require confirmation (or `-y`/`--yes`) for irreversible actions like purge.
+11. Run `make check-cli-contract` (also part of `make lint`; includes façade `--check`).
 
 ## Linux / Windows parity
 

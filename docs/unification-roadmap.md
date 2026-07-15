@@ -31,7 +31,7 @@ Parity on Linux, macOS, and Windows is enforced by Go unit tests and
 | Windows `install.ps1` removed (Scoop/Winget/standalone `millennium.exe`) | Done |
 | Install-time Bash/PS libs removed (`common.sh` / `common.ps1` / `scripts/*/lib`) | Done |
 | PATH = `millennium` only (no new long-name twins) | Done |
-| Contract-driven façade sync (completions / man / MCP) | In progress |
+| Contract-driven façade sync (completions / man / MCP) | Done |
 | Long-name sudoers + completion symlink cleanup | Done |
 | Install fixture tests in Go (`go test ./internal/install`) | Done |
 
@@ -68,24 +68,25 @@ split.
 
 ## Remaining work
 
-1. **Contract-driven façade sync** — `check-cli-contract` now enforces multi-shell
-   dispatcher commands, bash flags/subcommands, man flag coverage, and MCP
-   `mcp_actions` enums. Still hand-maintained façades (no codegen yet); keep
-   [`spec/cli-contract.yaml`](../spec/cli-contract.yaml) first when changing a
-   command (`make check-cli-contract`).
-2. **Optional** — codegen for completions/man/MCP from the contract; thin more
-   packaging asserts into Go only where it pays off.
+Unification feature peel is complete. Optional follow-ups (not blocking):
+
+1. Generate more façades from the contract (per-flag completion bodies, man
+   OPTIONS blocks, MCP `InputSchema` maps) beyond the marked lists synced by
+   `make sync-cli-facade`.
+2. Retire leftover long-name examples in older user docs where they still appear.
 
 ---
 
 ## When changing a command
 
-1. Update [`spec/cli-contract.yaml`](../spec/cli-contract.yaml) first if flags/subcommands change.
-2. Implement in Go under `go/`; keep `commandFromArgv0` working for leftover twins.
-3. Cover with `make test-go` and the Linux / Windows / macOS jobs in [`go.yml`](../.github/workflows/go.yml).
-4. Keep completions, man, and MCP schemas aligned (`make check-cli-contract`).
-5. PATH installs only `millennium`; do not reintroduce long-name twins.
-6. Note the change in [CHANGELOG.md](../CHANGELOG.md).
+1. Update [`spec/cli-contract.yaml`](../spec/cli-contract.yaml) first if flags/subcommands change
+   (include `short:` for dispatcher commands used by zsh sync).
+2. Run `make sync-cli-facade` to refresh marked completion lists.
+3. Implement in Go under `go/`; keep `commandFromArgv0` working for leftover twins.
+4. Cover with `make test-go` and the Linux / Windows / macOS jobs in [`go.yml`](../.github/workflows/go.yml).
+5. Keep completions, man, and MCP schemas aligned (`make check-cli-contract`).
+6. PATH installs only `millennium`; do not reintroduce long-name twins.
+7. Note the change in [CHANGELOG.md](../CHANGELOG.md).
 
 ---
 
