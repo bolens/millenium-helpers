@@ -89,7 +89,7 @@ Tests: Go unit under `go/` · smokes in [`.github/workflows/go.yml`](../.github/
 | `schedule --cron` | Y | — | Linux/macOS only | Y (Unix smoke) | Contract OS-only |
 | `theme` list/install/update/remove | Y | Y | Native | Go `theme`/`archive` + smokes | Zip-slip in Go `archive` |
 | `mcp` tools surface | Y | Y | Native | Go MCP package + tools smokes | |
-| Install / uninstall helpers | Y | Y | Native (`millennium install`) | Go + `test_install` / Pester bootstrap | Thin shell bootstraps; sudoers/PATH polish still expanding |
+| Install / uninstall helpers | Y | Y | Native (`millennium install`) | Go + `test_install` / Pester / extract-download units | Thin shell bootstraps; network/SHA + Windows PATH/hooks + wizard + piped Win bootstrap |
 
 ---
 

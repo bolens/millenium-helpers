@@ -26,7 +26,7 @@ Parity on Linux, macOS, and Windows is enforced by Go unit tests and
 | Release + install stop shipping/copying feature scripts | Done |
 | Feature CI = `go.yml` (ubuntu + windows + macos) | Done |
 | `test-suite.yml` = install / unit libs / packaging / completions | Done |
-| `millennium install` / `uninstall` (checkout + fixture; thin bootstraps) | In progress |
+| `millennium install` / `uninstall` (network + PATH/hooks + wizard; thin bootstraps) | Done |
 | Delete install-time Bash/PS libs | Pending |
 | PATH = `millennium` only (retire twins) | Pending |
 
@@ -58,7 +58,7 @@ Local checks: `make test-go` (feature parity) + `make test` / `make test-windows
 
 ## Remaining work
 
-1. **Finish Go installer** — network release download + SHA in `go/internal/install`; Linux sudoers; Windows PATH/profile hooks; wizard handoff; piped Windows bootstrap.
+1. ~~**Finish Go installer**~~ — network download+SHA, Linux sudoers, Windows PATH/profile hooks, wizard handoff, piped Windows bootstrap (in `go/internal/install` + thin bootstraps).
 2. **Delete install-time libs** — once packaging/bootstraps no longer need `scripts/lib/*` and `scripts/windows/lib/*` (and `common.sh` / `common.ps1`).
 3. **Long-name PATH twins** — stop installing `millennium-*` twins; PATH is `millennium` only (breaking; CHANGELOG).
 4. **Contract-driven façade sync** — completions / man / MCP schema stay hand-aligned; CI gates via `make check-cli-contract`.

@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- `millennium install` / `millennium uninstall` (Go) for checkout/fixture installs; thin `install.sh` / `install.ps1` bootstraps exec the Go commands
+- `millennium install` / `millennium uninstall` (Go): checkout/fixture installs, release/main network download + SHA verify, Linux sudoers, Windows User PATH + completion profile hooks, interactive schedule setup wizard handoff
+- Thin `install.sh` / `install.ps1` bootstraps (including piped Windows `irm|iex` download + re-exec)
 
 ### Removed
 - Checkout Bash/PowerShell feature scripts (`scripts/millennium-*.sh`, `scripts/windows/millennium-*.ps1`); PATH long-name twins and `bin/millennium` are the only feature entrypoints

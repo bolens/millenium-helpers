@@ -33,21 +33,28 @@ func runInstall(o Options) (Result, error) {
 		res.Plan = append(res.Plan, "DRY RUN MODE: No changes will be made")
 	}
 
-	sourceRoot, err := FindSourceRoot(o.SourceRoot)
+	sourceRoot, cleanup, resolved, fromNetwork, err := prepareSource(o, &res)
+	if cleanup != nil {
+		defer cleanup()
+	}
 	if err != nil {
 		return res, err
 	}
 	o.SourceRoot = sourceRoot
 
-	dispatcher, err := ResolveDispatcherBinary(sourceRoot, o.DispatcherSrc)
-	if err != nil {
-		return res, err
-	}
-
 	track := o.Track
 	ref := o.Tag
 	ver := strings.TrimSpace(version.Resolve())
-	if InferCheckoutTrack(sourceRoot) && o.SourceURL == "" && (track == "release" || track == "") {
+	if fromNetwork {
+		track = resolved.Track
+		ref = resolved.Ref
+		if resolved.Version != "" {
+			ver = resolved.Version
+		}
+		if o.SourceURL == "" {
+			o.SourceURL = resolved.URL
+		}
+	} else if InferCheckoutTrack(sourceRoot) && o.SourceURL == "" && (track == "release" || track == "") {
 		track = "checkout"
 		if short, err := runGitRevParse(sourceRoot); err == nil && short != "" {
 			ref = short
@@ -89,12 +96,38 @@ func runInstall(o Options) (Result, error) {
 		exeName = "millennium.exe"
 	}
 	destMain := filepath.Join(o.TargetDir, exeName)
+
+	// Dry-run with network plan only (no local/extracted tree): destinations only.
+	if o.DryRun && sourceRoot == "" {
+		res.Plan = append(res.Plan, "install binary -> "+destMain)
+		for _, twin := range TwinNames() {
+			if runtime.GOOS == "windows" {
+				res.Plan = append(res.Plan, "install twin -> "+filepath.Join(o.TargetDir, twin+".cmd"))
+			} else {
+				res.Plan = append(res.Plan, "install twin -> "+filepath.Join(o.TargetDir, twin))
+			}
+		}
+		res.Plan = append(res.Plan, "write "+MetaPath(metaRoot))
+		res.Plan = append(res.Plan, "Millennium helpers install complete")
+		return res, nil
+	}
+
+	dispatcher, err := ResolveDispatcherBinary(sourceRoot, o.DispatcherSrc)
+	if err != nil {
+		return res, err
+	}
 	if err := planCopy(dispatcher, destMain, 0o755, o.DryRun, &res.Plan); err != nil {
 		return res, err
 	}
 
 	if runtime.GOOS == "windows" {
 		if err := installWindowsExtras(o, dispatcher, &res); err != nil {
+			return res, err
+		}
+		if err := installWindowsPATH(o, &res); err != nil {
+			return res, err
+		}
+		if err := installWindowsCompletionHooks(o, &res); err != nil {
 			return res, err
 		}
 	} else {
@@ -131,6 +164,47 @@ func runInstall(o Options) (Result, error) {
 
 	res.Plan = append(res.Plan, "Millennium helpers install complete")
 	return res, nil
+}
+
+// prepareSource finds a local helpers tree or downloads one for the selected track.
+func prepareSource(o Options, res *Result) (sourceRoot string, cleanup func(), resolved ResolvedTrack, fromNetwork bool, err error) {
+	cleanup = func() {}
+	if o.SourceRoot != "" {
+		root, e := FindSourceRoot(o.SourceRoot)
+		return root, cleanup, resolved, false, e
+	}
+	if root, e := FindSourceRoot(""); e == nil {
+		return root, cleanup, resolved, false, nil
+	}
+
+	if o.Track == "checkout" {
+		return "", cleanup, resolved, false, fmt.Errorf("could not find helpers source root for track=checkout (set --source-root)")
+	}
+
+	platform := "linux"
+	if runtime.GOOS == "windows" {
+		platform = "windows"
+	}
+	resolved, err = ResolveTrackURLs(o.Track, o.Tag, platform)
+	if err != nil {
+		return "", cleanup, resolved, false, err
+	}
+	if resolved.Track == "main" && !o.AllowUnsignedMain {
+		return "", cleanup, resolved, false, fmt.Errorf("track main requires --allow-unsigned-main (unsigned tip-of-main archive)")
+	}
+	res.Plan = append(res.Plan, "download "+resolved.URL)
+	if resolved.NeedsSHA {
+		res.Plan = append(res.Plan, "verify sha256 "+resolved.SHAURL)
+	}
+	if o.DryRun {
+		return "", cleanup, resolved, true, nil
+	}
+	root, tmp, resolved, err := FetchHelpersTree(o)
+	if err != nil {
+		return "", cleanup, resolved, true, err
+	}
+	cleanup = func() { _ = os.RemoveAll(tmp) }
+	return root, cleanup, resolved, true, nil
 }
 
 func installUnixLibs(o Options, sourceRoot string, res *Result) error {
@@ -181,6 +255,8 @@ func runUninstall(o Options) (Result, error) {
 	}
 	_ = planRemove(filepath.Join(o.TargetDir, exeName), o.DryRun, &res.Plan)
 	if runtime.GOOS == "windows" {
+		removeWindowsPATH(o, &res)
+		removeWindowsCompletionHooks(o, &res)
 		for _, twin := range TwinNames() {
 			_ = planRemove(filepath.Join(o.TargetDir, twin+".cmd"), o.DryRun, &res.Plan)
 		}

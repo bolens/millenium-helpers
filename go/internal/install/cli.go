@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/bolens/millenium-helpers/internal/schedule"
 	"github.com/bolens/millenium-helpers/internal/version"
 )
 
@@ -65,7 +66,33 @@ func RunCLI(action string, args []string) int {
 		fmt.Fprintln(os.Stderr, "Error:", err.Error())
 		return 1
 	}
+	if code := maybeRunWizard(o); code != 0 {
+		return code
+	}
 	return 0
+}
+
+func maybeRunWizard(o Options) int {
+	if o.Action != "install" || o.DryRun || o.SkipWizard {
+		return 0
+	}
+	if !stdinIsInteractive() {
+		return 0
+	}
+	fmt.Println()
+	fmt.Println("Launching schedule setup wizard (re-run install with --skip-wizard to skip)...")
+	return schedule.RunCLI(schedule.Options{Action: "setup"})
+}
+
+func stdinIsInteractive() bool {
+	if os.Getenv("FORCE_WIZARD") == "true" {
+		return true
+	}
+	fi, err := os.Stdin.Stat()
+	if err != nil {
+		return false
+	}
+	return (fi.Mode() & os.ModeCharDevice) != 0
 }
 
 // UsageSnippet is listed from root help.
