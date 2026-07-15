@@ -31,10 +31,11 @@ to include the copyright and permission notice with redistributed copies. Releas
 packages for Millennium itself do not always ship a license file inside the archive;
 helpers supply the vendored text (or fetch upstream, or use an embedded fallback).
 
-Implementation: `scripts/lib/millennium_license.sh` and
-`Install-MillenniumLicense` in `scripts/windows/lib/License.ps1`. The vendored file is
-installed beside the helpers (e.g. `/usr/lib/millennium-helpers/MILLENNIUM-LICENSE.md`)
-via `install.sh`, Homebrew, Nix, Arch PKGBUILDs, and the Windows installer.
+Implementation: Go `InstallLicense` in `go/internal/upgrade` (see that package for the
+client-side LICENSE placement). The vendored helpers copy
+(`third_party/MILLENNIUM-LICENSE.md`) is installed beside the helpers (e.g.
+`/usr/lib/millennium-helpers/MILLENNIUM-LICENSE.md`) via `millennium install`,
+Homebrew, Nix, Arch PKGBUILDs, and the Windows installer.
 
 ## Docs & man pages
 

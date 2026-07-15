@@ -81,9 +81,7 @@ stdenv.mkDerivation ({
     wrapProgram $out/bin/millennium \
       --prefix PATH : ${lib.makeBinPath [ bash python3 curl unzip git ]}
 
-    mkdir -p $out/lib/millennium-helpers/lib
-    install -m644 scripts/common.sh $out/lib/millennium-helpers/common.sh
-    install -m644 scripts/lib/*.sh $out/lib/millennium-helpers/lib/
+    mkdir -p $out/lib/millennium-helpers
 
     mkdir -p $out/share/bash-completion/completions
     install -m644 completions/bash/millennium-helpers $out/share/bash-completion/completions/millennium-helpers

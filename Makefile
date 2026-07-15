@@ -114,7 +114,7 @@ lint-go:
 	bash scripts/ci/check-govulncheck.sh
 
 lint:
-	shellcheck *.sh scripts/*.sh scripts/lib/*.sh scripts/ci/*.sh tests/*.sh tests/lib/*.sh tests/unit/*.sh tests/behavioral/*.sh
+	shellcheck *.sh scripts/*.sh scripts/ci/*.sh tests/*.sh tests/lib/*.sh tests/unit/*.sh tests/behavioral/*.sh
 	ruff check scripts/ci/check-cli-contract.py
 	@test -s VERSION || (echo "VERSION file missing or empty" >&2; exit 1)
 	@$(MAKE) check-version

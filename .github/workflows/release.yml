@@ -205,8 +205,8 @@ jobs:
         id: assets
         run: |
           set -euo pipefail
-          # shellcheck source=scripts/lib/release_assets.sh
-          source scripts/lib/release_assets.sh
+          # shellcheck source=scripts/ci/release_assets.sh
+          source scripts/ci/release_assets.sh
           VERSION="${{ steps.meta.outputs.version }}"
           TAG="${{ steps.meta.outputs.tag }}"
           LDFLAGS="-X github.com/bolens/millenium-helpers/internal/version.Version=${VERSION}"
@@ -232,8 +232,6 @@ jobs:
             README.md
             third_party/MILLENNIUM-LICENSE.md
             bin/millennium
-            scripts/common.sh
-            scripts/lib
             completions
             man
           )
@@ -256,12 +254,10 @@ jobs:
           WIN_GO="$(release_asset_go "$VERSION" windows amd64)"
           WIN_ZIP="$(release_asset_helpers "$VERSION" windows amd64 zip)"
           cp "dist/$WIN_GO" scripts/windows/millennium.exe
-          # Feature millennium-*.ps1 scripts are not shipped; keep installer + libs + exe.
+          # Feature millennium-*.ps1 scripts and install-time libs are not shipped.
           zip -r "$WIN_ZIP" \
             scripts/windows/install.ps1 \
-            scripts/windows/common.ps1 \
             scripts/windows/millennium.exe \
-            scripts/windows/lib/ \
             completions/powershell/ \
             VERSION \
             LICENSE \
@@ -497,8 +493,8 @@ jobs:
           SRC_ZIP_SHA: ${{ needs.build-release.outputs.src_zip_sha }}
         run: |
           set -euo pipefail
-          # shellcheck source=scripts/lib/release_assets.sh
-          source scripts/lib/release_assets.sh
+          # shellcheck source=scripts/ci/release_assets.sh
+          source scripts/ci/release_assets.sh
           mkdir -p /tmp/release-assets
           LINUX_ASSET="$(release_asset_helpers "$VERSION" linux amd64 tar.gz)"
           WINDOWS_ASSET="$(release_asset_helpers "$VERSION" windows amd64 zip)"

@@ -25,7 +25,7 @@ make build
 
 %install
 install -d %{buildroot}%{_bindir} \
-  %{buildroot}%{_libdir}/millennium-helpers/lib \
+  %{buildroot}%{_libdir}/millennium-helpers \
   %{buildroot}%{_datadir}/bash-completion/completions \
   %{buildroot}%{_datadir}/zsh/site-functions \
   %{buildroot}%{_datadir}/fish/vendor_completions.d \
@@ -39,8 +39,6 @@ for twin in millennium millennium-mcp millennium-repair millennium-upgrade \
 do
   install -m755 bin/millennium %{buildroot}%{_bindir}/$twin
 done
-install -m644 scripts/common.sh %{buildroot}%{_libdir}/millennium-helpers/common.sh
-install -m644 scripts/lib/*.sh %{buildroot}%{_libdir}/millennium-helpers/lib/
 install -m644 VERSION %{buildroot}%{_libdir}/millennium-helpers/VERSION
 install -m644 completions/bash/millennium-helpers %{buildroot}%{_datadir}/bash-completion/completions/millennium-helpers
 for s in millennium millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp; do

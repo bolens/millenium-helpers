@@ -18,9 +18,8 @@ func TestExtractTarGzAndFindRoot(t *testing.T) {
 	gz := gzip.NewWriter(f)
 	tw := tar.NewWriter(gz)
 	files := map[string]string{
-		"millenium-helpers-2.7.0/VERSION":            "2.7.0\n",
-		"millenium-helpers-2.7.0/bin/millennium":     "#!/bin/sh\n",
-		"millenium-helpers-2.7.0/scripts/common.sh":  "# lib\n",
+		"millenium-helpers-2.7.0/VERSION":        "2.7.0\n",
+		"millenium-helpers-2.7.0/bin/millennium": "#!/bin/sh\n",
 	}
 	for name, body := range files {
 		hdr := &tar.Header{Name: name, Mode: 0o644, Size: int64(len(body))}

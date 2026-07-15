@@ -32,8 +32,6 @@ do
   install -m755 bin/millennium "$DEST/usr/bin/$twin"
 done
 
-install -m644 scripts/common.sh "$DEST/usr/lib/millennium-helpers/common.sh"
-install -m644 scripts/lib/*.sh "$DEST/usr/lib/millennium-helpers/lib/"
 install -m644 VERSION "$DEST/usr/lib/millennium-helpers/VERSION"
 install -m644 completions/bash/millennium-helpers "$DEST/usr/share/bash-completion/completions/millennium-helpers"
 for s in millennium millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp; do

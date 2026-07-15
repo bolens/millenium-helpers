@@ -16,7 +16,7 @@ var FeatureCommands = []string{
 // ScriptDir locates an install or checkout helpers directory for this OS.
 // Preference order: MILLENNIUM_SCRIPTS_DIR, then peers of the running binary,
 // then a walk from the working directory. Discovery keys on install layout
-// (common.sh / common.ps1 / millennium.exe), not feature script names.
+// (install.ps1 / millennium.exe / VERSION markers), not feature script names.
 func ScriptDir() string {
 	if v := os.Getenv("MILLENNIUM_SCRIPTS_DIR"); v != "" {
 		return v
@@ -92,7 +92,7 @@ func dirLooksLikeScripts(dir string) bool {
 		return false
 	}
 	if runtime.GOOS == "windows" {
-		for _, name := range []string{"install.ps1", "common.ps1", "millennium.exe"} {
+		for _, name := range []string{"install.ps1", "millennium.exe"} {
 			if _, err := os.Stat(filepath.Join(dir, name)); err == nil {
 				return true
 			}
@@ -100,8 +100,20 @@ func dirLooksLikeScripts(dir string) bool {
 		_, err := os.Stat(filepath.Join(dir, "windows", "install.ps1"))
 		return err == nil
 	}
-	for _, name := range []string{"common.sh", "lib"} {
-		if _, err := os.Stat(filepath.Join(dir, name)); err == nil {
+	// Installed lib dir (/usr/lib/millennium-helpers) or extract root.
+	if _, err := os.Stat(filepath.Join(dir, "VERSION")); err == nil {
+		return true
+	}
+	if _, err := os.Stat(filepath.Join(dir, "install.sh")); err == nil {
+		return true
+	}
+	// Checkout: ScriptDir candidates are often …/scripts; markers live on parent.
+	if filepath.Base(dir) == "scripts" {
+		parent := filepath.Dir(dir)
+		if _, err := os.Stat(filepath.Join(parent, "VERSION")); err == nil {
+			return true
+		}
+		if _, err := os.Stat(filepath.Join(parent, "install.sh")); err == nil {
 			return true
 		}
 	}

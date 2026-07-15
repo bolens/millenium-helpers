@@ -59,7 +59,7 @@ Local checks: `make test-go` (feature parity) + `make test` / `make test-windows
 ## Remaining work
 
 1. ~~**Finish Go installer**~~ — network download+SHA, Linux sudoers, Windows PATH/profile hooks, wizard handoff, piped Windows bootstrap (in `go/internal/install` + thin bootstraps).
-2. **Delete install-time libs** — once packaging/bootstraps no longer need `scripts/lib/*` and `scripts/windows/lib/*` (and `common.sh` / `common.ps1`).
+2. ~~**Delete install-time libs**~~ — `common.sh` / `common.ps1` and `scripts/lib` / `scripts/windows/lib` removed; `release_assets.sh` lives under `scripts/ci/`.
 3. **Long-name PATH twins** — stop installing `millennium-*` twins; PATH is `millennium` only (breaking; CHANGELOG).
 4. **Contract-driven façade sync** — completions / man / MCP schema stay hand-aligned; CI gates via `make check-cli-contract`.
 

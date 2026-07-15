@@ -117,12 +117,10 @@ jobs:
       matrix:
         distro: [debian, ubuntu, fedora, archlinux]
         # Feature coverage lives in go.yml (Linux / Windows / macOS). This
-        # workflow keeps install-time Bash, unit libs, packaging, and completions.
+        # workflow keeps install bootstrap, packaging, and completions.
         suite:
-          - tests/unit/test_common.sh
           - tests/unit/test_mocks.sh
           - tests/unit/test_completions.sh
-          - tests/unit/test_install_track.sh
           - tests/behavioral/test_install.sh
           - tests/behavioral/test_packaging_ci.sh
         include:
@@ -231,10 +229,7 @@ jobs:
       fail-fast: false
       matrix:
         suite:
-          - tests/windows/common.Tests.ps1
-          - tests/windows/Args.Tests.ps1
           - tests/windows/install.Tests.ps1
-          - tests/windows/InstallTrack.Tests.ps1
           - tests/windows/completions.Tests.ps1
     steps:
       - name: Checkout code
@@ -261,10 +256,8 @@ jobs:
       fail-fast: false
       matrix:
         suite:
-          - tests/unit/test_common.sh
           - tests/unit/test_mocks.sh
           - tests/unit/test_completions.sh
-          - tests/unit/test_install_track.sh
           - tests/behavioral/test_install.sh
           - tests/behavioral/test_packaging_ci.sh
     steps:

@@ -112,22 +112,17 @@ jobs:
           $ErrorActionPreference = "Stop"
           $env:PATH += ";$HOME\scoop\shims"
           $prefix = scoop prefix millennium-helpers-bin
-          $loggingLib = Join-Path $prefix "scripts\windows\lib\Logging.ps1"
-          if (-not (Test-Path $loggingLib)) {
-            throw "Missing shared Logging.ps1 at $loggingLib (scripts/windows/lib not packaged)"
+          $exe = Join-Path $prefix "scripts\windows\millennium.exe"
+          if (-not (Test-Path $exe)) {
+            throw "Missing millennium.exe at $exe"
           }
-          Write-Host "Shared lib OK: $loggingLib"
-          if (Test-Path (Join-Path $prefix "scripts\windows\lib\UpgradeRollback.ps1")) {
-            throw "UpgradeRollback.ps1 must not ship in packaging"
+          if (Test-Path (Join-Path $prefix "scripts\windows\lib")) {
+            throw "scripts/windows/lib must not ship in packaging"
           }
-          Get-ChildItem (Join-Path $prefix "scripts\windows\lib\*.ps1") | ForEach-Object {
-            $errs = $null
-            $null = [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$null, [ref]$errs)
-            if ($errs -and $errs.Count -gt 0) {
-              throw "Parse error in $($_.Name): $($errs[0])"
-            }
+          if (Test-Path (Join-Path $prefix "scripts\windows\common.ps1")) {
+            throw "common.ps1 must not ship in packaging"
           }
-          Write-Host "Diag lib parse OK (Windows PowerShell)"
+          Write-Host "Windows package layout OK: $exe"
           millennium help
           millennium-mcp -Help
           millennium-diag -DryRun

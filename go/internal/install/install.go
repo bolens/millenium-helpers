@@ -208,26 +208,6 @@ func prepareSource(o Options, res *Result) (sourceRoot string, cleanup func(), r
 }
 
 func installUnixLibs(o Options, sourceRoot string, res *Result) error {
-	common := filepath.Join(sourceRoot, "scripts", "common.sh")
-	if _, err := os.Stat(common); err == nil {
-		if err := planCopy(common, filepath.Join(o.LibDir, "common.sh"), 0o644, o.DryRun, &res.Plan); err != nil {
-			return err
-		}
-	}
-	libSrc := filepath.Join(sourceRoot, "scripts", "lib")
-	libDst := filepath.Join(o.LibDir, "lib")
-	if st, err := os.Stat(libSrc); err == nil && st.IsDir() {
-		if err := ensureDir(libDst, o.DryRun, &res.Plan); err != nil {
-			return err
-		}
-		if o.DryRun {
-			res.Plan = append(res.Plan, "install scripts/lib/*.sh → "+libDst)
-		} else {
-			if err := copyTreeFiles(libSrc, libDst, "*.sh"); err != nil {
-				return err
-			}
-		}
-	}
 	verSrc := filepath.Join(sourceRoot, "VERSION")
 	if _, err := os.Stat(verSrc); err == nil {
 		if err := planCopy(verSrc, filepath.Join(o.LibDir, "VERSION"), 0o644, o.DryRun, &res.Plan); err != nil {

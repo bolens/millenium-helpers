@@ -89,13 +89,10 @@ Guide index: **[docs/README.md](docs/README.md)**. When adding or renaming a gui
 
 | Path | Role |
 | --- | --- |
-| `install.sh` | Linux/macOS installer / uninstall |
-| `scripts/common.sh` | Shared Bash entry for install (locale + sources `scripts/lib/*`) |
-| `scripts/lib/` | Install/shared Bash helpers (`logging`, `install_track`, …); features are Go |
-| `scripts/windows/install.ps1` | Windows installer / uninstall |
-| `scripts/windows/common.ps1` | Shared PowerShell entry for install/tests (culture/colors + lib modules) |
-| `scripts/windows/lib/` | Install/shared PS helpers (`Logging`, `Args`, …); features are Go |
-| `go/` | Go CLI (`cmd/millennium`); feature implementations under `go/internal/` |
+| `install.sh` | Thin Linux/macOS bootstrap → `millennium install` / `uninstall` |
+| `scripts/windows/install.ps1` | Thin Windows bootstrap (incl. piped `irm\|iex`) → `millennium.exe` |
+| `scripts/ci/` | Release/packaging CI helpers (e.g. `release_assets.sh`) |
+| `go/` | Go CLI (`cmd/millennium`); features + installer under `go/internal/` |
 | `go/` + PATH `millennium-mcp` | Native MCP stdio server (`millennium mcp`) |
 | `spec/cli-contract.yaml` | **Source of truth** for commands / flags / platforms |
 | `man/` | Manual pages (`millennium-*.1`) for every user-facing command |
@@ -103,10 +100,10 @@ Guide index: **[docs/README.md](docs/README.md)**. When adding or renaming a gui
 | `Formula/` | Homebrew formulas (`millennium-helpers.rb` from-source + `head`; `millennium-helpers-bin.rb`) |
 | `packaging/` | Arch / Scoop / Winget / deb / rpm / Chocolatey — see [`packaging/README.md`](packaging/README.md) |
 | `completions/` | Bash / Zsh / Fish / Nushell / PowerShell completions |
-| `tests/` | Install-time unit + behavioral suites (`tests/run_tests.sh`) |
-| `tests/windows/` | Pester tests for install libs / installer / completions (`make test-windows`) |
+| `tests/` | Install/packaging suites (`tests/run_tests.sh`); feature coverage in `go.yml` |
+| `tests/windows/` | Pester tests for Windows install bootstrap / completions |
 
-**No thin aggregators.** Install modules are sourced (or dot-sourced) by `common.sh` / `common.ps1`. Do not add pass-through-only loader files that only re-source other modules. Feature commands live in Go only.
+Feature commands live in Go only. Do not reintroduce install-time `scripts/lib` / `scripts/windows/lib` trees.
 
 ## Adding or changing a command
 
@@ -277,7 +274,7 @@ pre-commit install --hook-type pre-push
 
 ## Style
 
-- Bash: `set -euo pipefail`; source `common.sh` / `scripts/lib/*` rather than duplicating helpers.
+- Bash: `set -euo pipefail` in remaining bootstraps/CI scripts; prefer Go for product logic.
 - macOS ships Bash 3.2: under `set -u`, empty `"${arr[@]}"` / `"${arr[*]}"` is unbound. Prefer `${arr[@]+"${arr[@]}"}` (or a length guard) when an array may be empty. Avoid `"${arr[@]:-}"` (it iterates once with an empty value).
 - Honor `NO_COLOR` (and `FORCE_COLOR` when forcing color).
 - PowerShell: `Set-StrictMode -Version Latest`; gate debug noise behind `MILLENNIUM_DEBUG` or `-Verbose`.

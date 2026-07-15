@@ -197,7 +197,7 @@ need_file "LICENSE"
 need_file "docs/licensing.md"
 need_file "third_party/MILLENNIUM-LICENSE.md"
 need_file "third_party/README.md"
-need_file "scripts/lib/millennium_license.sh"
+need_file "go/internal/upgrade/install.go"
 
 need_contains "third_party/MILLENNIUM-LICENSE.md" "MIT License" \
   "third_party/MILLENNIUM-LICENSE.md must be an MIT license text"
@@ -277,9 +277,9 @@ need_contains "packaging/winget-git/bolens.millenniumhelpers.git.locale.en-US.ya
 need_contains ".github/workflows/release.yml" "third_party/MILLENNIUM-LICENSE.md" \
   "release.yml must package third_party/MILLENNIUM-LICENSE.md"
 
-need_contains "scripts/lib/millennium_license.sh" "docs/licensing.md" \
-  "scripts/lib/millennium_license.sh must reference docs/licensing.md"
-need_contains "scripts/windows/lib/License.ps1" "docs/licensing.md" \
-  "scripts/windows/lib/License.ps1 must reference docs/licensing.md"
+need_contains "go/internal/upgrade/install.go" "docs/licensing.md" \
+  "go/internal/upgrade/install.go must reference docs/licensing.md"
+need_contains "docs/licensing.md" "go/internal/upgrade" \
+  "docs/licensing.md must mention Go upgrade license install"
 
 echo "Documentation cross-links OK."

@@ -13,7 +13,7 @@ Project: [README](../README.md). Index: [README.md](README.md).
 | --- | --- | --- |
 | PATH CLI | `bin/millennium` (`go/cmd/millennium`) | Go |
 | Long-name helpers | PATH argv0 twins of `bin/millennium` | Go (`commandFromArgv0`) |
-| Shared libs | [`scripts/lib/`](../scripts/lib/), [`scripts/windows/lib/`](../scripts/windows/lib/) | Bash / PowerShell (install-only); Steam, CLI logging, zip extract, GitHub API in Go |
+| Shared libs | Go (`go/internal/*`); CI helpers in [`scripts/ci/`](../scripts/ci/) | Install-time Bash/PS libs removed |
 | Steam | `go/internal/steam` | Go (Unix + Windows) |
 | CLI logging | `go/internal/logging` | Go |
 | Zip extract | `go/internal/archive` | Go (theme + Windows upgrade install) |

@@ -68,7 +68,7 @@ func TestInstallUninstallFixture(t *testing.T) {
 		if _, err := os.Stat(filepath.Join(target, "millennium-upgrade")); err != nil {
 			t.Fatal("missing twin:", err)
 		}
-		if _, err := os.Stat(filepath.Join(lib, "common.sh")); err != nil {
+		if _, err := os.Stat(filepath.Join(lib, "VERSION")); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := os.Stat(filepath.Join(lib, "install-meta.json")); err != nil {

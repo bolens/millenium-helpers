@@ -12,8 +12,8 @@
   - changed-files:
       - any-glob-to-any-file:
           - "scripts/*.sh"
-          - "scripts/lib/**"
-          - "scripts/common.sh"
+          - "scripts/ci/**"
+          - "install.sh"
 
 "area: packaging":
   - any:

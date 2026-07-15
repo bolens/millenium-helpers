@@ -61,7 +61,7 @@ rc=$?
 assert_success "$rc" "install.sh install into fixture prefix exits 0"
 assert_file_exists "${PREFIX}/bin/millennium" "install writes millennium"
 assert_file_exists "${PREFIX}/bin/millennium-upgrade" "install writes upgrade twin"
-assert_file_exists "${PREFIX}/lib/common.sh" "install copies common.sh"
+assert_file_exists "${PREFIX}/lib/VERSION" "install copies VERSION"
 assert_file_exists "${PREFIX}/lib/install-meta.json" "install writes install-meta.json"
 assert_file_exists "${PREFIX}/bash/millennium-helpers" "install copies bash completions"
 assert_contains "$(cat "${PREFIX}/lib/install-meta.json")" '"track"' "install-meta includes track"
@@ -76,7 +76,7 @@ out=$(bash "$INSTALL_SH" uninstall --prefix "${PREFIX}/bin" --lib-dir "${PREFIX}
 rc=$?
 assert_success "$rc" "uninstall removes fixture install"
 assert_file_not_exists "${PREFIX}/bin/millennium" "uninstall removes millennium"
-assert_file_not_exists "${PREFIX}/lib/common.sh" "uninstall removes lib tree"
+assert_file_not_exists "${PREFIX}/lib/VERSION" "uninstall removes lib tree"
 
 rm -rf "$PREFIX"
 

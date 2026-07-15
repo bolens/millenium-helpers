@@ -9,25 +9,6 @@ import (
 )
 
 func installWindowsExtras(o Options, dispatcher string, res *Result) error {
-	srcDir := filepath.Join(o.SourceRoot, "scripts", "windows")
-	common := filepath.Join(srcDir, "common.ps1")
-	if _, err := os.Stat(common); err == nil {
-		if err := planCopy(common, filepath.Join(o.TargetDir, "common.ps1"), 0o644, o.DryRun, &res.Plan); err != nil {
-			return err
-		}
-	}
-	libSrc := filepath.Join(srcDir, "lib")
-	libDst := filepath.Join(o.TargetDir, "lib")
-	if st, err := os.Stat(libSrc); err == nil && st.IsDir() {
-		if err := ensureDir(libDst, o.DryRun, &res.Plan); err != nil {
-			return err
-		}
-		if o.DryRun {
-			res.Plan = append(res.Plan, "install scripts/windows/lib/*.ps1 → "+libDst)
-		} else if err := copyTreeFiles(libSrc, libDst, "*.ps1"); err != nil {
-			return err
-		}
-	}
 	verSrc := filepath.Join(o.SourceRoot, "VERSION")
 	if _, err := os.Stat(verSrc); err == nil {
 		if err := planCopy(verSrc, filepath.Join(o.TargetDir, "VERSION"), 0o644, o.DryRun, &res.Plan); err != nil {

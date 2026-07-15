@@ -17,8 +17,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
-# shellcheck source=scripts/lib/release_assets.sh
-source "$ROOT/scripts/lib/release_assets.sh"
+# shellcheck source=scripts/ci/release_assets.sh
+source "$ROOT/scripts/ci/release_assets.sh"
 
 VERSION="${1:?version required (e.g. 2.2.0)}"
 LINUX_SHA="${2:?linux-amd64 release-asset sha256 required}"

@@ -30,9 +30,6 @@ class MillenniumHelpers < Formula
       millennium-theme
     ].each { |name| bin.install_symlink "millennium" => name }
 
-    (lib/"millennium-helpers").install "scripts/common.sh"
-    (lib/"millennium-helpers/lib").install Dir["scripts/lib/*.sh"]
-
     commands = %w[
       millennium
       millennium-repair
@@ -78,7 +75,7 @@ class MillenniumHelpers < Formula
   test do
     system "#{bin}/millennium", "version"
     system "#{bin}/millennium-diag", "--help"
-    assert_path_exists lib/"millennium-helpers/common.sh"
+    assert_path_exists lib/"millennium-helpers/VERSION"
     assert_path_exists bash_completion/"millennium"
   end
 end

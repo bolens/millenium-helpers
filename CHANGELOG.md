@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Checkout Bash/PowerShell feature scripts (`scripts/millennium-*.sh`, `scripts/windows/millennium-*.ps1`); PATH long-name twins and `bin/millennium` are the only feature entrypoints
 - Feature Bash/Pester suites retired in favor of Go unit tests and `go.yml` smokes
 - Fat Bash/PowerShell installer bodies (replaced by thin bootstrap + Go install)
+- Install-time shared libs (`scripts/common.sh`, `scripts/lib/*`, `scripts/windows/common.ps1`, `scripts/windows/lib/*`); release asset helpers moved to `scripts/ci/release_assets.sh`
 
 ### Changed
 - Release payloads and installers stop shipping/copying feature scripts; uninstall/wizard invoke `millennium` / `millennium.exe`
