@@ -11,6 +11,7 @@ on:
       - 'scripts/ci/sync-git-srcinfo.sh'
       - 'scripts/ci/sync-stable-srcinfo.sh'
       - 'scripts/ci/sync-bin-srcinfo.sh'
+      - 'scripts/ci/rewrite-git-pkgbuild-for-ci.py'
       - 'VERSION'
       - 'scripts/millennium*.sh'
       - 'scripts/common.sh'
@@ -29,6 +30,7 @@ on:
       - 'scripts/ci/sync-git-srcinfo.sh'
       - 'scripts/ci/sync-stable-srcinfo.sh'
       - 'scripts/ci/sync-bin-srcinfo.sh'
+      - 'scripts/ci/rewrite-git-pkgbuild-for-ci.py'
       - 'VERSION'
       - 'scripts/millennium*.sh'
       - 'scripts/common.sh'
@@ -116,11 +118,9 @@ jobs:
             WORK="/home/builduser/millenium-helpers"
             PKGBUILD_PATH="${PKG_DIR}/PKGBUILD"
             SUDOERS_SUM="$(sha256sum "${PKG_DIR}/millennium-helpers.sudoers" | awk '{print $1}')"
-            # Drop VCS source; keep sudoers. Pre-seed src/ for --noextract.
-            sed -i \
-              -e 's|^source=.*|source=("millennium-helpers.sudoers")|' \
-              -e "s|^sha256sums=.*|sha256sums=('${SUDOERS_SUM}')|" \
-              "$PKGBUILD_PATH"
+            # Drop multiline VCS source; keep sudoers. Pre-seed src/ for --noextract.
+            python3 "${WORK}/scripts/ci/rewrite-git-pkgbuild-for-ci.py" \
+              "$PKGBUILD_PATH" "$SUDOERS_SUM"
             mkdir -p "${PKG_DIR}/src/millennium-helpers"
             # PKG_DIR lives under WORK; exclude self to avoid recursive cp.
             tar -C "$WORK" \
