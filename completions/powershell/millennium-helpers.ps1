@@ -75,95 +75,54 @@ function Global:Complete-MillenniumNative {
 
     $candidates = @()
 
-    switch -Regex ($CommandName) {
-        '^millennium$' {
-            if ($args.Count -eq 0) {
-                $candidates = Get-MillenniumDispatcherCommands
-            } else {
-                switch ($args[0]) {
-                    { $_ -in @('diag', 'doctor') } {
-                        if ($args.Count -eq 1) {
-                            $candidates = Get-MillenniumDiagActions
-                        } else {
-                            $candidates = @('--json', '--fix', '-f', '--force', '--follow', '-l', '--yes', '-y', '--share', '-s', '--dry-run', '-d', '--quiet', '-q', '--version', '-V', '--help', '-h')
-                        }
-                    }
-                    'upgrade' {
-                        $candidates = @('--channel', '-c', '--stable', '--beta', '--main', '--rollback', '-r', '--file', '--force', '-f', '--yes', '-y', '--dry-run', '-d', '--quiet', '-q', '--version', '-V', '--help', '-h')
-                        if ($args.Count -ge 2 -and $args[-1] -in @('--channel', '-c')) {
-                            $candidates = Get-MillenniumScheduleChannels
-                        }
-                    }
-                    'schedule' {
-                        if ($args.Count -eq 1) {
-                            $candidates = Get-MillenniumScheduleActions
-                        } elseif ($args.Count -eq 2 -and $args[1] -eq 'enable') {
-                            $candidates = Get-MillenniumScheduleChannels
-                        } elseif ($args.Count -eq 2 -and $args[1] -eq 'config') {
-                            $candidates = Get-MillenniumConfigActions
-                        } else {
-                            $candidates = @('--dry-run', '-d', '--quiet', '-q', '--version', '-V', '--help', '-h')
-                        }
-                    }
-                    'theme' {
-                        if ($args.Count -eq 1) {
-                            $candidates = Get-MillenniumThemeActions
-                        } else {
-                            $candidates = @('--all', '-a', '--json', '--yes', '-y', '--dry-run', '-d', '--quiet', '-q', '--version', '-V', '--help', '-h')
-                        }
-                    }
-                    'repair' {
-                        $candidates = @('--skip-theme', '-s', '--yes', '-y', '--dry-run', '-d', '--quiet', '-q', '--version', '-V', '--help', '-h')
-                    }
-                    'purge' {
-                        $candidates = @('--yes', '-y', '--dry-run', '-d', '--quiet', '-q', '--version', '-V', '--help', '-h')
-                    }
-                    'mcp' {
-                        $candidates = @('--register', '-r', '--version', '-V', '--help', '-h')
-                    }
+    if ($CommandName -ne 'millennium') {
+        return
+    }
+
+    if ($args.Count -eq 0) {
+        $candidates = Get-MillenniumDispatcherCommands
+    } else {
+        switch ($args[0]) {
+            { $_ -in @('diag', 'doctor') } {
+                if ($args.Count -eq 1) {
+                    $candidates = Get-MillenniumDiagActions
+                } else {
+                    $candidates = @('--json', '--fix', '-f', '--force', '--follow', '-l', '--yes', '-y', '--share', '-s', '--dry-run', '-d', '--quiet', '-q', '--version', '-V', '--help', '-h')
                 }
             }
-        }
-        '^millennium-schedule$' {
-            if ($args.Count -eq 0) {
-                $candidates = @(Get-MillenniumScheduleActions) + @('--dry-run', '-d', '--quiet', '-q', '--version', '-V', '--help', '-h')
-            } elseif ($args.Count -eq 1 -and $args[0] -eq 'enable') {
-                $candidates = Get-MillenniumScheduleChannels
-            } elseif ($args.Count -eq 1 -and $args[0] -eq 'config') {
-                $candidates = Get-MillenniumConfigActions
-            } else {
-                $candidates = @('--dry-run', '-d', '--quiet', '-q', '--version', '-V', '--help', '-h')
-            }
-        }
-        '^millennium-diag$' {
-            if ($args.Count -eq 0) {
-                $candidates = @(Get-MillenniumDiagActions) + @('--force', '--json', '--follow', '-l', '--yes', '-y', '--share', '-s', '--dry-run', '-d', '--quiet', '-q', '--version', '-V', '--help', '-h')
-            } else {
-                $candidates = @('--force', '--json', '--follow', '-l', '--yes', '-y', '--share', '-s', '--dry-run', '-d', '--quiet', '-q', '--version', '-V', '--help', '-h')
-            }
-        }
-        '^millennium-upgrade$' {
-            if ($args.Count -ge 1 -and $args[-1] -in @('--channel', '-c')) {
-                $candidates = Get-MillenniumScheduleChannels
-            } else {
+            'upgrade' {
                 $candidates = @('--channel', '-c', '--stable', '--beta', '--main', '--rollback', '-r', '--file', '--force', '-f', '--yes', '-y', '--dry-run', '-d', '--quiet', '-q', '--version', '-V', '--help', '-h')
+                if ($args.Count -ge 2 -and $args[-1] -in @('--channel', '-c')) {
+                    $candidates = Get-MillenniumScheduleChannels
+                }
             }
-        }
-        '^millennium-theme$' {
-            if ($args.Count -eq 0) {
-                $candidates = @(Get-MillenniumThemeActions) + @('--json', '--all', '-a', '--yes', '-y', '--dry-run', '-d', '--quiet', '-q', '--version', '-V', '--help', '-h')
-            } else {
-                $candidates = @('--json', '--all', '-a', '--yes', '-y', '--dry-run', '-d', '--quiet', '-q', '--version', '-V', '--help', '-h')
+            'schedule' {
+                if ($args.Count -eq 1) {
+                    $candidates = Get-MillenniumScheduleActions
+                } elseif ($args.Count -eq 2 -and $args[1] -eq 'enable') {
+                    $candidates = Get-MillenniumScheduleChannels
+                } elseif ($args.Count -eq 2 -and $args[1] -eq 'config') {
+                    $candidates = Get-MillenniumConfigActions
+                } else {
+                    $candidates = @('--dry-run', '-d', '--quiet', '-q', '--version', '-V', '--help', '-h')
+                }
             }
-        }
-        '^millennium-repair$' {
-            $candidates = @('--skip-theme', '-s', '--yes', '-y', '--dry-run', '-d', '--quiet', '-q', '--version', '-V', '--help', '-h')
-        }
-        '^millennium-purge$' {
-            $candidates = @('--yes', '-y', '--dry-run', '-d', '--quiet', '-q', '--version', '-V', '--help', '-h')
-        }
-        '^millennium-mcp$' {
-            $candidates = @('--register', '-r', '--version', '-V', '--help', '-h')
+            'theme' {
+                if ($args.Count -eq 1) {
+                    $candidates = Get-MillenniumThemeActions
+                } else {
+                    $candidates = @('--all', '-a', '--json', '--yes', '-y', '--dry-run', '-d', '--quiet', '-q', '--version', '-V', '--help', '-h')
+                }
+            }
+            'repair' {
+                $candidates = @('--skip-theme', '-s', '--yes', '-y', '--dry-run', '-d', '--quiet', '-q', '--version', '-V', '--help', '-h')
+            }
+            'purge' {
+                $candidates = @('--yes', '-y', '--dry-run', '-d', '--quiet', '-q', '--version', '-V', '--help', '-h')
+            }
+            'mcp' {
+                $candidates = @('--register', '-r', '--version', '-V', '--help', '-h')
+            }
         }
     }
 
@@ -173,24 +132,11 @@ function Global:Complete-MillenniumNative {
     }
 }
 
-$script:MillenniumCompleterCommands = @(
-    'millennium',
-    'millennium-diag',
-    'millennium-mcp',
-    'millennium-purge',
-    'millennium-repair',
-    'millennium-schedule',
-    'millennium-theme',
-    'millennium-upgrade'
-)
-
-foreach ($cmd in $script:MillenniumCompleterCommands) {
-    Register-ArgumentCompleter -Native -CommandName $cmd -ScriptBlock {
-        param($wordToComplete, $commandAst, $cursorPosition)
-        $name = $commandAst.GetCommandName()
-        if ([string]::IsNullOrEmpty($name) -and $commandAst.CommandElements.Count -gt 0) {
-            $name = $commandAst.CommandElements[0].Extent.Text
-        }
-        Complete-MillenniumNative -CommandName $name -WordToComplete $wordToComplete -CommandAst $commandAst -CursorPosition $cursorPosition
+Register-ArgumentCompleter -Native -CommandName 'millennium' -ScriptBlock {
+    param($wordToComplete, $commandAst, $cursorPosition)
+    $name = $commandAst.GetCommandName()
+    if ([string]::IsNullOrEmpty($name) -and $commandAst.CommandElements.Count -gt 0) {
+        $name = $commandAst.CommandElements[0].Extent.Text
     }
+    Complete-MillenniumNative -CommandName $name -WordToComplete $wordToComplete -CommandAst $commandAst -CursorPosition $cursorPosition
 }

@@ -1,4 +1,4 @@
-#compdef millennium-repair millennium-upgrade millennium-schedule millennium-purge millennium-diag millennium-theme millennium-mcp millennium
+#compdef millennium
 
 _millennium_theme_names() {
   local -a themes
@@ -34,172 +34,98 @@ _millennium_helpers() {
   local curcontext="$curcontext" state line
   typeset -A opt_args
 
-  case "$service" in
-    millennium-repair)
-      _arguments \
-        {-s,--skip-theme}'[Skip theme refresh during repair]' \
-        {-y,--yes}'[Skip confirmation when closing Steam]' \
-        {-d,--dry-run}'[Simulation mode]' \
-        {-V,--version}'[Show version information]' \
-        {-h,--help}'[Show help message]'
-      ;;
-    millennium-upgrade)
-      _arguments \
-        {-c,--channel}'[Update channel (stable, beta, or main)]:(stable beta main)' \
-        '--stable[Alias for --channel stable]' \
-        '--beta[Alias for --channel beta]' \
-        '--main[Alias for --channel main]' \
-        {-r,--rollback}'[Rollback to a specific version or list backups]:backup:_millennium_backup_ids' \
-        '--file[Install from a local archive]:archive:_files' \
-        {-f,--force}'[Force reinstall]' \
-        {-y,--yes}'[Skip confirmation when closing Steam]' \
-        {-d,--dry-run}'[Simulation mode]' \
-        {-V,--version}'[Show version information]' \
-        {-h,--help}'[Show help message]'
-      ;;
-    millennium-schedule)
-      _arguments \
-        '1:subcommand:(enable disable status setup config)' \
-        '2:arg:(stable beta main get set list)' \
-        {-c,--cron}'[Force use of crontab instead of systemd]' \
-        --system'[Linux: force systemd system units]' \
-        --user'[Linux: force systemd user units]' \
-        {-d,--dry-run}'[Simulation mode]' \
-        {-q,--quiet}'[Suppress informational output]' \
-        {-V,--version}'[Show version information]' \
-        {-h,--help}'[Show help message]'
-      ;;
-    millennium-purge)
-      _arguments \
-        {-d,--dry-run}'[Simulation mode]' \
-        {-y,--yes}'[Skip confirmation prompt]' \
-        {-V,--version}'[Show version information]' \
-        {-h,--help}'[Show help message]'
-      ;;
-    millennium-diag)
-      _arguments \
-        '1:subcommand:(doctor logs --fix)' \
-        '--force[Force all doctor repairs even if system is healthy]' \
-        '--json[Output diagnostics report in structured JSON format]' \
-        {-l,--follow}'[Follow real-time log output]' \
-        {-y,--yes}'[Skip confirmation when doctor closes Steam]' \
-        {-s,--share}'[Upload diagnostic report to a pastebin]' \
-        {-d,--dry-run}'[Simulation mode]' \
-        {-V,--version}'[Show version information]' \
-        {-h,--help}'[Show help message]'
-      ;;
-    millennium-theme)
-      _arguments \
-        '1:subcommand:(list install remove update)' \
-        '2:theme:_millennium_theme_names' \
-        {-a,--all}'[Update all themes]' \
-        '--json[Output list command results in structured JSON format]' \
-        {-y,--yes}'[Skip confirmation when removing a theme]' \
-        {-d,--dry-run}'[Simulation mode]' \
-        {-V,--version}'[Show version information]' \
-        {-h,--help}'[Show help message]'
-      ;;
-    millennium-mcp)
-      _arguments \
-        {-r,--register}'[Register MCP server with Claude Desktop, Windsurf, and Cursor]' \
-        {-V,--version}'[Show version information]' \
-        {-h,--help}'[Show help message]'
-      ;;
-    millennium)
-      local -a cmds
-      cmds=(
-        'diag:Run diagnostics'
-        'doctor:Alias for diag doctor'
-        'upgrade:Upgrade / install Millennium'
-        'schedule:Manage auto-update scheduler'
-        'theme:Manage skins/themes'
-        'repair:Repair hooks and ownership'
-        'purge:Uninstall Millennium'
-        'mcp:Run / register MCP server'
-        'help:Show help'
-      )
-      _arguments -C \
-        '1:command:((${cmds}))' \
-        '*::arg:->args'
-      case $state in
-        (args)
-          case $line[1] in
-            (diag|doctor)
-              _arguments \
-                '1:command:(doctor logs)' \
-                '--json[Output diagnostics report in structured JSON format]' \
-                {-f,--fix}'[Alias for the doctor command]' \
-                '--force[Force all doctor repairs]' \
-                {-l,--follow}'[Follow real-time log output]' \
-                {-y,--yes}'[Skip confirmation when doctor closes Steam]' \
-                {-d,--dry-run}'[Simulate doctor repairs]' \
-                {-q,--quiet}'[Suppress informational output]' \
-                {-s,--share}'[Upload diagnostic report]' \
-                {-V,--version}'[Show version information]' \
-                {-h,--help}'[Show help message]'
-              ;;
-            (upgrade)
-              _arguments \
-                {-c,--channel}'[Update channel]:channel:(stable beta main)' \
-                '--stable[Alias for --channel stable]' \
-                '--beta[Alias for --channel beta]' \
-                '--main[Alias for --channel main]' \
-                {-r,--rollback}'[Roll back to a previous backup]:backup:_millennium_backup_ids' \
-                '--file[Install from a local archive]:file:_files' \
-                {-f,--force}'[Force reinstall]' \
-                {-y,--yes}'[Skip confirmation when closing Steam]' \
-                {-d,--dry-run}'[Simulation mode]' \
-                {-q,--quiet}'[Suppress informational output]' \
-                {-V,--version}'[Show version information]' \
-                {-h,--help}'[Show help message]'
-              ;;
-            (schedule)
-              _arguments \
-                '1:command:(enable disable status setup config)' \
-                {-c,--cron}'[Force use of crontab instead of systemd]' \
-                --system'[Linux: force systemd system units]' \
-                --user'[Linux: force systemd user units]' \
-                {-d,--dry-run}'[Simulation mode]' \
-                {-q,--quiet}'[Suppress informational output]' \
-                {-V,--version}'[Show version information]' \
-                {-h,--help}'[Show help message]'
-              ;;
-            (theme)
-              _arguments \
-                '1:command:(list install update remove)' \
-                '2:theme:_millennium_theme_names' \
-                {-a,--all}'[Update all themes]' \
-                '--json[Output list as JSON]' \
-                {-y,--yes}'[Skip confirmation when removing]' \
-                {-d,--dry-run}'[Simulation mode]' \
-                {-q,--quiet}'[Suppress informational output]' \
-                {-V,--version}'[Show version information]' \
-                {-h,--help}'[Show help message]'
-              ;;
-            (repair)
-              _arguments \
-                {-s,--skip-theme}'[Skip theme refresh]' \
-                {-y,--yes}'[Skip confirmation when closing Steam]' \
-                {-d,--dry-run}'[Simulation mode]' \
-                {-q,--quiet}'[Suppress informational output]' \
-                {-V,--version}'[Show version information]' \
-                {-h,--help}'[Show help message]'
-              ;;
-            (purge)
-              _arguments \
-                {-y,--yes}'[Skip confirmation]' \
-                {-d,--dry-run}'[Simulation mode]' \
-                {-q,--quiet}'[Suppress informational output]' \
-                {-V,--version}'[Show version information]' \
-                {-h,--help}'[Show help message]'
-              ;;
-            (mcp)
-              _arguments \
-                {-r,--register}'[Register MCP server with AI clients]' \
-                {-V,--version}'[Show version information]' \
-                {-h,--help}'[Show help message]'
-              ;;
-          esac
+  local -a cmds
+  cmds=(
+    'diag:Run diagnostics'
+    'doctor:Alias for diag doctor'
+    'upgrade:Upgrade / install Millennium'
+    'schedule:Manage auto-update scheduler'
+    'theme:Manage skins/themes'
+    'repair:Repair hooks and ownership'
+    'purge:Uninstall Millennium'
+    'mcp:Run / register MCP server'
+    'help:Show help'
+  )
+  _arguments -C \
+    '1:command:((${cmds}))' \
+    '*::arg:->args'
+  case $state in
+    (args)
+      case $line[1] in
+        (diag|doctor)
+          _arguments \
+            '1:command:(doctor logs)' \
+            '--json[Output diagnostics report in structured JSON format]' \
+            {-f,--fix}'[Alias for the doctor command]' \
+            '--force[Force all doctor repairs]' \
+            {-l,--follow}'[Follow real-time log output]' \
+            {-y,--yes}'[Skip confirmation when doctor closes Steam]' \
+            {-d,--dry-run}'[Simulate doctor repairs]' \
+            {-q,--quiet}'[Suppress informational output]' \
+            {-s,--share}'[Upload diagnostic report]' \
+            {-V,--version}'[Show version information]' \
+            {-h,--help}'[Show help message]'
+          ;;
+        (upgrade)
+          _arguments \
+            {-c,--channel}'[Update channel]:channel:(stable beta main)' \
+            '--stable[Alias for --channel stable]' \
+            '--beta[Alias for --channel beta]' \
+            '--main[Alias for --channel main]' \
+            {-r,--rollback}'[Roll back to a previous backup]:backup:_millennium_backup_ids' \
+            '--file[Install from a local archive]:file:_files' \
+            {-f,--force}'[Force reinstall]' \
+            {-y,--yes}'[Skip confirmation when closing Steam]' \
+            {-d,--dry-run}'[Simulation mode]' \
+            {-q,--quiet}'[Suppress informational output]' \
+            {-V,--version}'[Show version information]' \
+            {-h,--help}'[Show help message]'
+          ;;
+        (schedule)
+          _arguments \
+            '1:command:(enable disable status setup config)' \
+            {-c,--cron}'[Force use of crontab instead of systemd]' \
+            --system'[Linux: force systemd system units]' \
+            --user'[Linux: force systemd user units]' \
+            {-d,--dry-run}'[Simulation mode]' \
+            {-q,--quiet}'[Suppress informational output]' \
+            {-V,--version}'[Show version information]' \
+            {-h,--help}'[Show help message]'
+          ;;
+        (theme)
+          _arguments \
+            '1:command:(list install update remove)' \
+            '2:theme:_millennium_theme_names' \
+            {-a,--all}'[Update all themes]' \
+            '--json[Output list as JSON]' \
+            {-y,--yes}'[Skip confirmation when removing]' \
+            {-d,--dry-run}'[Simulation mode]' \
+            {-q,--quiet}'[Suppress informational output]' \
+            {-V,--version}'[Show version information]' \
+            {-h,--help}'[Show help message]'
+          ;;
+        (repair)
+          _arguments \
+            {-s,--skip-theme}'[Skip theme refresh]' \
+            {-y,--yes}'[Skip confirmation when closing Steam]' \
+            {-d,--dry-run}'[Simulation mode]' \
+            {-q,--quiet}'[Suppress informational output]' \
+            {-V,--version}'[Show version information]' \
+            {-h,--help}'[Show help message]'
+          ;;
+        (purge)
+          _arguments \
+            {-y,--yes}'[Skip confirmation]' \
+            {-d,--dry-run}'[Simulation mode]' \
+            {-q,--quiet}'[Suppress informational output]' \
+            {-V,--version}'[Show version information]' \
+            {-h,--help}'[Show help message]'
+          ;;
+        (mcp)
+          _arguments \
+            {-r,--register}'[Register MCP server with AI clients]' \
+            {-V,--version}'[Show version information]' \
+            {-h,--help}'[Show help message]'
           ;;
       esac
       ;;

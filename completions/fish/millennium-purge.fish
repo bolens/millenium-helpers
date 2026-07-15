@@ -1,5 +1,0 @@
-complete -c millennium-purge -s d -l dry-run -d 'Simulation mode'
-complete -c millennium-purge -s y -l yes -d 'Skip confirmation prompt'
-complete -c millennium-purge -s q -l quiet -d 'Suppress informational output'
-complete -c millennium-purge -s h -l help -d 'Show help message'
-complete -c millennium-purge -s V -l version -d 'Show version information'

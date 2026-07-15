@@ -1,17 +1,44 @@
-# Millennium Helper Script Nushell Completions
+# Millennium dispatcher Nushell completions (millennium <command> …)
 
-# Run Millennium theme and hook link repair
-export extern "millennium-repair" [
-  --skip-theme(-s) # Skip theme refresh during repair
-  --yes(-y)      # Skip confirmation when closing Steam
+def _millennium_dispatcher_commands [] {
+  [ "diag", "doctor", "upgrade", "schedule", "theme", "repair", "purge", "mcp", "help" ]
+}
+
+def _millennium_schedule_actions [] {
+  [ "enable", "disable", "status", "setup", "config" ]
+}
+
+def _millennium_schedule_channels [] {
+  [ "stable", "beta", "main", "get", "set", "list" ]
+}
+
+def _millennium_diag_actions [] {
+  [ "doctor", "logs", "--fix" ]
+}
+
+def _millennium_theme_actions [] {
+  [ "list", "install", "remove", "update" ]
+}
+
+export extern "millennium" [
+  command?: string@"_millennium_dispatcher_commands"
+  --version(-V)
+  --help(-h)
+]
+
+export extern "millennium schedule" [
+  action?: string@"_millennium_schedule_actions"
+  channel?: string@"_millennium_schedule_channels"
+  --cron(-c)     # Force use of crontab instead of systemd
+  --system       # Linux: force systemd system units
+  --user         # Linux: force systemd user units
   --dry-run(-d)  # Simulation mode
   --quiet(-q)    # Suppress informational output
   --version(-V)  # Show version information
   --help(-h)     # Show help message
 ]
 
-# Upgrade Millennium client using specified channel
-export extern "millennium-upgrade" [
+export extern "millennium upgrade" [
   --channel(-c): string # Update channel (stable, beta, main)
   --stable       # Alias for --channel stable
   --beta         # Alias for --channel beta
@@ -26,39 +53,8 @@ export extern "millennium-upgrade" [
   --help(-h)     # Show help message
 ]
 
-# Manage daily auto-update scheduler
-export extern "millennium-schedule" [
-  action?: string@"_millennium_schedule_actions" # Scheduler action
-  channel?: string@"_millennium_schedule_channels" # Update channel or config action
-  --cron(-c)     # Force use of crontab instead of systemd
-  --system       # Linux: force systemd system units
-  --user         # Linux: force systemd user units
-  --dry-run(-d)  # Simulation mode
-  --quiet(-q)    # Suppress informational output
-  --version(-V)  # Show version information
-  --help(-h)     # Show help message
-]
-
-def _millennium_schedule_actions [] {
-  [ "enable", "disable", "status", "setup", "config" ]
-}
-
-def _millennium_schedule_channels [] {
-  [ "stable", "beta", "main", "get", "set", "list" ]
-}
-
-# Purge Millennium files and restore original Steam client
-export extern "millennium-purge" [
-  --dry-run(-d)  # Simulation mode
-  --quiet(-q)    # Suppress informational output
-  --yes(-y)      # Skip confirmation prompt
-  --version(-V)  # Show version information
-  --help(-h)     # Show help message
-]
-
-# Diagnostics utility for Millennium environment
-export extern "millennium-diag" [
-  action?: string@"_millennium_diag_actions" # Diagnostics command
+export extern "millennium diag" [
+  action?: string@"_millennium_diag_actions"
   --force        # Force all doctor repairs even if system is healthy
   --json         # Output diagnostics report in structured JSON format
   --follow(-l)   # Follow real-time log output
@@ -70,13 +66,8 @@ export extern "millennium-diag" [
   --help(-h)     # Show help message
 ]
 
-def _millennium_diag_actions [] {
-  [ "doctor", "logs", "--fix" ]
-}
-
-# Manage Millennium skins and themes
-export extern "millennium-theme" [
-  action?: string@"_millennium_theme_actions" # Theme action (list, install, remove, update)
+export extern "millennium theme" [
+  action?: string@"_millennium_theme_actions"
   theme?: string # Theme name or GitHub repository URL
   --all(-a) # Update all themes (only applicable if action is update)
   --json # Output list command results as structured JSON
@@ -87,24 +78,25 @@ export extern "millennium-theme" [
   --help(-h)     # Show help message
 ]
 
-def _millennium_theme_actions [] {
-  [ "list", "install", "remove", "update" ]
-}
-
-# Run Model Context Protocol (MCP) server
-export extern "millennium-mcp" [
-  --register(-r) # Register MCP server with Claude Desktop, Windsurf, and Cursor
+export extern "millennium repair" [
+  --skip-theme(-s) # Skip theme refresh during repair
+  --yes(-y)      # Skip confirmation when closing Steam
+  --dry-run(-d)  # Simulation mode
+  --quiet(-q)    # Suppress informational output
   --version(-V)  # Show version information
   --help(-h)     # Show help message
 ]
 
-# Unified dispatcher
-export extern "millennium" [
-  command?: string@"_millennium_dispatcher_commands"
-  --version(-V)
-  --help(-h)
+export extern "millennium purge" [
+  --dry-run(-d)  # Simulation mode
+  --quiet(-q)    # Suppress informational output
+  --yes(-y)      # Skip confirmation prompt
+  --version(-V)  # Show version information
+  --help(-h)     # Show help message
 ]
 
-def _millennium_dispatcher_commands [] {
-  [ "diag", "doctor", "upgrade", "schedule", "theme", "repair", "purge", "mcp", "help" ]
-}
+export extern "millennium mcp" [
+  --register(-r) # Register MCP server with Claude Desktop, Windsurf, and Cursor
+  --version(-V)  # Show version information
+  --help(-h)     # Show help message
+]

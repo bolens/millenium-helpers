@@ -1,4 +1,4 @@
-# Bash completions for Millennium helper scripts
+# Bash completions for the millennium dispatcher (millennium <command> …)
 
 _millennium_skins_dir() {
   local home="${HOME:-}"
@@ -37,6 +37,7 @@ _millennium_backup_ids() {
   echo "list"
 }
 
+# Nested helpers expect COMP_WORDS[0]=millennium and COMP_WORDS[1]=subcommand.
 _millennium_repair_comp() {
   COMPREPLY=()
   local cur="${COMP_WORDS[COMP_CWORD]}"
@@ -44,7 +45,6 @@ _millennium_repair_comp() {
   COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
   return 0
 }
-complete -F _millennium_repair_comp millennium-repair
 
 _millennium_upgrade_comp() {
   COMPREPLY=()
@@ -70,7 +70,6 @@ _millennium_upgrade_comp() {
   COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
   return 0
 }
-complete -F _millennium_upgrade_comp millennium-upgrade
 
 _millennium_schedule_comp() {
   COMPREPLY=()
@@ -96,7 +95,6 @@ _millennium_schedule_comp() {
   COMPREPLY=( $(compgen -W "${subcmds} -c --cron --system --user -d --dry-run -q --quiet -V --version -h --help" -- "${cur}") )
   return 0
 }
-complete -F _millennium_schedule_comp millennium-schedule
 
 _millennium_purge_comp() {
   COMPREPLY=()
@@ -105,7 +103,6 @@ _millennium_purge_comp() {
   COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
   return 0
 }
-complete -F _millennium_purge_comp millennium-purge
 
 _millennium_diag_comp() {
   COMPREPLY=()
@@ -114,7 +111,6 @@ _millennium_diag_comp() {
   COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
   return 0
 }
-complete -F _millennium_diag_comp millennium-diag
 
 _millennium_theme_comp() {
   COMPREPLY=()
@@ -144,7 +140,6 @@ _millennium_theme_comp() {
   COMPREPLY=( $(compgen -W "${subcmds} --json -y --yes -d --dry-run -q --quiet -V --version -h --help" -- "${cur}") )
   return 0
 }
-complete -F _millennium_theme_comp millennium-theme
 
 _millennium_mcp_comp() {
   COMPREPLY=()
@@ -153,7 +148,14 @@ _millennium_mcp_comp() {
   COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
   return 0
 }
-complete -F _millennium_mcp_comp millennium-mcp
+
+_millennium_install_comp() {
+  COMPREPLY=()
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+  local opts="--track --tag --allow-unsigned-main --prefix --target-dir --lib-dir --source-root --skip-wizard --purge -p -d --dry-run -f --force -V --version -h --help"
+  COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+  return 0
+}
 
 _millennium_dispatcher_comp() {
   COMPREPLY=()
@@ -173,13 +175,5 @@ _millennium_dispatcher_comp() {
     mcp) _millennium_mcp_comp ;;
     install|uninstall) _millennium_install_comp ;;
   esac
-}
-
-_millennium_install_comp() {
-  COMPREPLY=()
-  local cur="${COMP_WORDS[COMP_CWORD]}"
-  local opts="--track --tag --allow-unsigned-main --prefix --target-dir --lib-dir --source-root --skip-wizard --purge -p -d --dry-run -f --force -V --version -h --help"
-  COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
-  return 0
 }
 complete -F _millennium_dispatcher_comp millennium

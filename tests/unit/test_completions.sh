@@ -13,17 +13,7 @@ BASH_COMP="${COMP_DIR}/bash/millennium-helpers"
 ZSH_COMP="${COMP_DIR}/zsh/_millennium-helpers"
 NU_COMP="${COMP_DIR}/nushell/millennium-helpers.nu"
 FISH_DIR="${COMP_DIR}/fish"
-
-CLIS=(
-  millennium
-  millennium-repair
-  millennium-upgrade
-  millennium-schedule
-  millennium-purge
-  millennium-diag
-  millennium-theme
-  millennium-mcp
-)
+FISH_COMP="${FISH_DIR}/millennium.fish"
 
 echo -e "${YELLOW}=== Unit tests: shell completions ===${NC}"
 
@@ -35,14 +25,13 @@ else
   _report false "completions have no bare VERSION_PLACEHOLDER lines" "$placeholder_hits"
 fi
 
-# --- Static: fish has no bare ALL-CAPS placeholder commands (e.g. VERSION_PLACEHOLDER) ---
+# --- Static: fish has no bare ALL-CAPS placeholder commands ---
 fish_bad_lines=""
 for f in "${FISH_DIR}"/*.fish; do
   while IFS= read -r line || [[ -n "$line" ]]; do
     trimmed="${line#"${line%%[![:space:]]*}"}"
     [[ -z "$trimmed" ]] && continue
     [[ "$trimmed" =~ ^# ]] && continue
-    # Bare ALL_CAPS identifier is never valid fish (complete/function/end/set/…).
     if [[ "$trimmed" =~ ^[A-Z][A-Z0-9_]*$ ]]; then
       fish_bad_lines+="${f#"$REPO_ROOT"/}: ${trimmed}"$'\n'
     fi
@@ -54,43 +43,44 @@ else
   _report false "fish completions have no bare ALL-CAPS placeholder commands" "$fish_bad_lines"
 fi
 
-# --- Static: inventory across shells ---
+# --- Static: no long-name twin registration (PATH is millennium only) ---
+longname_hits=$(grep -REn 'millennium-(repair|upgrade|schedule|purge|diag|theme|mcp)' \
+  "$BASH_COMP" "$ZSH_COMP" "$NU_COMP" "$FISH_DIR" "${COMP_DIR}/powershell/millennium-helpers.ps1" \
+  2>/dev/null | grep -vE 'millennium\.bak|bak_|millennium\.1' || true)
+if [[ -z "$longname_hits" ]]; then
+  _report true "completions do not register long-name PATH twins"
+else
+  _report false "completions do not register long-name PATH twins" "$longname_hits"
+fi
+
+assert_file_exists "$FISH_COMP" "fish completion file exists for millennium"
+
 bash_text=$(cat "$BASH_COMP")
 zsh_text=$(cat "$ZSH_COMP")
 nu_text=$(cat "$NU_COMP")
 fish_all=$(cat "${FISH_DIR}"/*.fish)
 
-for cli in "${CLIS[@]}"; do
-  assert_contains "$bash_text" "$cli" "bash completions mention ${cli}"
-  assert_contains "$zsh_text" "$cli" "zsh completions mention ${cli}"
-  assert_contains "$nu_text" "$cli" "nushell completions mention ${cli}"
-  assert_file_exists "${FISH_DIR}/${cli}.fish" "fish completion file exists for ${cli}"
-done
+assert_contains "$bash_text" "millennium" "bash completions mention millennium"
+assert_contains "$zsh_text" "millennium" "zsh completions mention millennium"
+assert_contains "$nu_text" "millennium" "nushell completions mention millennium"
 
-for cli in "${CLIS[@]}"; do
-  if grep -qE "complete -F [^ ]+ ${cli}([[:space:]]|$)" "$BASH_COMP"; then
-    _report true "bash complete -F registers ${cli}"
-  else
-    _report false "bash complete -F registers ${cli}"
-  fi
-done
+if grep -qE "complete -F [^ ]+ millennium([[:space:]]|$)" "$BASH_COMP"; then
+  _report true "bash complete -F registers millennium"
+else
+  _report false "bash complete -F registers millennium"
+fi
 
 compdef_line=$(grep -E '^#compdef ' "$ZSH_COMP" | head -1)
-for cli in "${CLIS[@]}"; do
-  assert_contains "$compdef_line" "$cli" "zsh #compdef lists ${cli}"
-done
+assert_contains "$compdef_line" "millennium" "zsh #compdef lists millennium"
+assert_not_contains "$compdef_line" "millennium-upgrade" "zsh #compdef omits long-name twins"
 
-for cli in "${CLIS[@]}"; do
-  if grep -qE "export extern \"${cli}\"" "$NU_COMP"; then
-    _report true "nushell export extern \"${cli}\""
-  else
-    _report false "nushell export extern \"${cli}\""
-  fi
-done
+if grep -qE 'export extern "millennium"' "$NU_COMP"; then
+  _report true 'nushell export extern "millennium"'
+else
+  _report false 'nushell export extern "millennium"'
+fi
 
 # --- Static: shared core tokens across bash/zsh/fish/nu ---
-# Fish uses `-l dry-run` rather than the literal `--dry-run`, so flag checks
-# look for the flag name without requiring a leading `--` in fish files.
 assert_token_in_shells() {
   local token="$1"
   local fish_token="${2:-$1}"
@@ -131,19 +121,19 @@ bash_runtime_out=$(
   _millennium_dispatcher_comp
   printf 'DISPATCH:%s\n' "${COMPREPLY[*]}"
 
-  COMP_WORDS=(millennium-schedule "")
-  COMP_CWORD=1
-  _millennium_schedule_comp
+  COMP_WORDS=(millennium schedule "")
+  COMP_CWORD=2
+  _millennium_dispatcher_comp
   printf 'SCHEDULE:%s\n' "${COMPREPLY[*]}"
 
-  COMP_WORDS=(millennium-schedule enable "")
-  COMP_CWORD=2
-  _millennium_schedule_comp
+  COMP_WORDS=(millennium schedule enable "")
+  COMP_CWORD=3
+  _millennium_dispatcher_comp
   printf 'ENABLE:%s\n' "${COMPREPLY[*]}"
 
-  COMP_WORDS=(millennium-upgrade --channel "")
-  COMP_CWORD=2
-  _millennium_upgrade_comp
+  COMP_WORDS=(millennium upgrade --channel "")
+  COMP_CWORD=3
+  _millennium_dispatcher_comp
   printf 'CHANNEL:%s\n' "${COMPREPLY[*]}"
 ) || bash_runtime_ok=false
 
@@ -162,45 +152,39 @@ assert_contains "$dispatch_line" "diag" "bash millennium completer offers diag"
 assert_contains "$dispatch_line" "schedule" "bash millennium completer offers schedule"
 assert_contains "$dispatch_line" "doctor" "bash millennium completer offers doctor"
 
-assert_contains "$schedule_line" "enable" "bash millennium-schedule completer offers enable"
-assert_contains "$schedule_line" "status" "bash millennium-schedule completer offers status"
-assert_contains "$schedule_line" "setup" "bash millennium-schedule completer offers setup"
-assert_contains "$schedule_line" "--cron" "bash millennium-schedule completer offers --cron"
+assert_contains "$schedule_line" "enable" "bash millennium schedule completer offers enable"
+assert_contains "$schedule_line" "status" "bash millennium schedule completer offers status"
+assert_contains "$schedule_line" "setup" "bash millennium schedule completer offers setup"
+assert_contains "$schedule_line" "--cron" "bash millennium schedule completer offers --cron"
 
-assert_contains "$enable_line" "stable" "bash millennium-schedule enable offers stable"
-assert_contains "$enable_line" "beta" "bash millennium-schedule enable offers beta"
+assert_contains "$enable_line" "stable" "bash millennium schedule enable offers stable"
+assert_contains "$enable_line" "beta" "bash millennium schedule enable offers beta"
 
-assert_contains "$channel_line" "stable" "bash millennium-upgrade --channel offers stable"
-assert_contains "$channel_line" "beta" "bash millennium-upgrade --channel offers beta"
-assert_contains "$channel_line" "main" "bash millennium-upgrade --channel offers main"
+assert_contains "$channel_line" "stable" "bash millennium upgrade --channel offers stable"
+assert_contains "$channel_line" "beta" "bash millennium upgrade --channel offers beta"
+assert_contains "$channel_line" "main" "bash millennium upgrade --channel offers main"
 
 # --- Fish runtime: complete -C ---
 if command -v fish >/dev/null 2>&1; then
-  for f in "${FISH_DIR}"/*.fish; do
-    if fish -n "$f" 2>/dev/null; then
-      _report true "fish -n ${f#"$REPO_ROOT"/}"
-    else
-      _report false "fish -n ${f#"$REPO_ROOT"/}"
-    fi
-  done
+  if fish -n "$FISH_COMP" 2>/dev/null; then
+    _report true "fish -n completions/fish/millennium.fish"
+  else
+    _report false "fish -n completions/fish/millennium.fish"
+  fi
 
   fish_schedule=$(
     fish -c "
-      for f in ${FISH_DIR}/*.fish
-        source \$f
-      end
-      complete -C 'millennium-schedule '
+      source ${FISH_COMP}
+      complete -C 'millennium schedule '
     " 2>/dev/null
   ) || true
-  assert_contains "$fish_schedule" "enable" "fish complete -C millennium-schedule offers enable"
-  assert_contains "$fish_schedule" "status" "fish complete -C millennium-schedule offers status"
-  assert_contains "$fish_schedule" "config" "fish complete -C millennium-schedule offers config"
+  assert_contains "$fish_schedule" "enable" "fish complete -C millennium schedule offers enable"
+  assert_contains "$fish_schedule" "status" "fish complete -C millennium schedule offers status"
+  assert_contains "$fish_schedule" "config" "fish complete -C millennium schedule offers config"
 
   fish_dispatch=$(
     fish -c "
-      for f in ${FISH_DIR}/*.fish
-        source \$f
-      end
+      source ${FISH_COMP}
       complete -C 'millennium '
     " 2>/dev/null
   ) || true
@@ -210,13 +194,11 @@ if command -v fish >/dev/null 2>&1; then
 
   fish_cron=$(
     fish -c "
-      for f in ${FISH_DIR}/*.fish
-        source \$f
-      end
-      complete -C 'millennium-schedule -'
+      source ${FISH_COMP}
+      complete -C 'millennium schedule -'
     " 2>/dev/null
   ) || true
-  assert_contains "$fish_cron" "cron" "fish complete -C millennium-schedule - offers cron"
+  assert_contains "$fish_cron" "cron" "fish complete -C millennium schedule - offers cron"
 else
   echo -e "  ${YELLOW}SKIP:${NC} fish not installed; fish runtime smokes skipped"
 fi
@@ -252,24 +234,21 @@ if command -v nu >/dev/null 2>&1; then
   fi
 
   NU_BIN=$(mktemp -d)
-  for c in millennium millennium-schedule millennium-upgrade millennium-diag \
-           millennium-theme millennium-repair millennium-purge millennium-mcp; do
-    printf '#!/bin/sh\nexit 0\n' > "${NU_BIN}/${c}"
-    chmod +x "${NU_BIN}/${c}"
-  done
+  printf '#!/bin/sh\nexit 0\n' > "${NU_BIN}/millennium"
+  chmod +x "${NU_BIN}/millennium"
   nu_out=$(
     PATH="${NU_BIN}:${PATH}" nu -c "
       source ${NU_COMP}
       print 'DISPATCH:'
       print ('millennium ' | commandline complete | str join ' ')
       print 'SCHEDULE:'
-      print ('millennium-schedule ' | commandline complete | str join ' ')
+      print ('millennium schedule ' | commandline complete | str join ' ')
       print 'SCHEDULE_EN:'
-      print ('millennium-schedule en' | commandline complete | str join ' ')
+      print ('millennium schedule en' | commandline complete | str join ' ')
       print 'SCHEDULE_FLAGS:'
-      print ('millennium-schedule -' | commandline complete | str join ' ')
+      print ('millennium schedule -' | commandline complete | str join ' ')
       print 'DIAG:'
-      print ('millennium-diag ' | commandline complete | str join ' ')
+      print ('millennium diag ' | commandline complete | str join ' ')
     " 2>&1
   ) || true
   rm -rf "$NU_BIN"
@@ -288,12 +267,12 @@ if command -v nu >/dev/null 2>&1; then
   else
     assert_contains "$dispatch_nu" "diag" "nu commandline complete millennium offers diag"
     assert_contains "$dispatch_nu" "schedule" "nu commandline complete millennium offers schedule"
-    assert_contains "$schedule_nu" "enable" "nu commandline complete millennium-schedule offers enable"
-    assert_contains "$schedule_nu" "status" "nu commandline complete millennium-schedule offers status"
-    assert_contains "$schedule_en_nu" "enable" "nu commandline complete filters millennium-schedule en"
+    assert_contains "$schedule_nu" "enable" "nu commandline complete millennium schedule offers enable"
+    assert_contains "$schedule_nu" "status" "nu commandline complete millennium schedule offers status"
+    assert_contains "$schedule_en_nu" "enable" "nu commandline complete filters millennium schedule en"
     assert_contains "$schedule_flags_nu" "--cron" "nu commandline complete offers --cron"
-    assert_contains "$diag_nu" "doctor" "nu commandline complete millennium-diag offers doctor"
-    assert_contains "$diag_nu" "logs" "nu commandline complete millennium-diag offers logs"
+    assert_contains "$diag_nu" "doctor" "nu commandline complete millennium diag offers doctor"
+    assert_contains "$diag_nu" "logs" "nu commandline complete millennium diag offers logs"
   fi
 else
   echo -e "  ${YELLOW}SKIP:${NC} nu not installed; nushell interactive completions skipped"
