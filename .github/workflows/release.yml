@@ -352,8 +352,15 @@ jobs:
             "dist/$GO_WINDOWS_AMD64"
           do
             base="$(basename "$f")"
-            sha256sum "$f" | awk '{print $1"  '"$base"'"}' > "${base}.sha256"
-            sha256sum -c "${base}.sha256"
+            [[ -s "$f" ]] || {
+              echo "::error::Go dispatcher missing or empty: $f"
+              exit 1
+            }
+            sha="$(sha256sum "$f" | cut -d' ' -f1)"
+            # Sidecar lives at repo root (release upload path) and names the basename
+            # so clients can verify after downloading binary + .sha256 into one dir.
+            printf '%s  %s\n' "$sha" "$base" > "${base}.sha256"
+            echo "${sha}  ${f}" | sha256sum -c -
           done
 
           {
