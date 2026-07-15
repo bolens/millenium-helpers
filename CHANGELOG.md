@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Arch PKGBUILD/`.SRCINFO` `millennium-helpers.sudoers` sha256sums after the v3.0.0 peel (makepkg validity check)
 - `check-version` asserts Arch sudoers checksums stay in sync (skips absent package trees in CI fixtures)
+- MCP JSON spacing helper no longer sizes buffers with `len+N` (CodeQL `go/allocation-size-overflow`)
 
 ## [3.0.0] - 2026-07-15
 
