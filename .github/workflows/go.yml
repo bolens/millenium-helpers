@@ -487,7 +487,8 @@ jobs:
           echo "$out" | grep -F 'Skipping theme'
           if [[ "${RUNNER_OS:-}" == "Windows" ]] || [[ "$(uname -s)" == MINGW* ]] || [[ "$(uname -s)" == MSYS* ]]; then
             echo "$out" | grep -F 'upgrade --force'
-          else
+          elif [[ "${RUNNER_OS:-}" == "Linux" ]] || [[ "$(uname -s)" == Linux ]]; then
+            # Bootstrap hooks are Linux-only (PlanHooks is a no-op on Darwin).
             lib="$home/lib"
             steam="$home/.local/share/Steam"
             mkdir -p "$lib/millennium" "$steam/ubuntu12_32" "$steam/ubuntu12_64"
@@ -500,6 +501,9 @@ jobs:
             bin/millennium repair --yes --skip-theme
             test -L "$steam/ubuntu12_32/libXtst.so.6"
             test -L "$steam/ubuntu12_64/libXtst.so.6"
+          else
+            # macOS: dry-run assertions above are enough (no Steam hook symlinks).
+            echo "$out" | grep -F 'Would restore bootstrap hooks'
           fi
           rm -rf "$home"
 
