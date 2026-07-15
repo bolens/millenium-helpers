@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.7.0] - 2026-07-15
+
 ### Added
 - Unified Go CLI (`make build` → `bin/millennium`) for schedule, theme, diag/doctor, upgrade, purge, repair, and MCP (`millennium mcp` / PATH `millennium-mcp`)
 - Machine-readable CLI contract ([`spec/cli-contract.yaml`](spec/cli-contract.yaml)) with `make check-cli-contract`, dual-OS `go.yml` smokes, and Linux quality gates (`go vet`, `gofmt`, golangci-lint, govulncheck)
