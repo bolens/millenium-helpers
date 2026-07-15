@@ -10,6 +10,7 @@ import (
 // FeatureCommands are dispatcher feature names used for typo suggestions.
 var FeatureCommands = []string{
 	"diag", "doctor", "upgrade", "schedule", "theme", "repair", "purge", "mcp",
+	"install", "uninstall",
 }
 
 // ScriptDir locates an install or checkout helpers directory for this OS.

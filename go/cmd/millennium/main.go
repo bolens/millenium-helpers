@@ -9,6 +9,7 @@ import (
 
 	"github.com/bolens/millenium-helpers/internal/config"
 	"github.com/bolens/millenium-helpers/internal/diag"
+	"github.com/bolens/millenium-helpers/internal/install"
 	"github.com/bolens/millenium-helpers/internal/legacy"
 	"github.com/bolens/millenium-helpers/internal/mcp"
 	"github.com/bolens/millenium-helpers/internal/purge"
@@ -65,8 +66,8 @@ func run(args []string) int {
 		Long: `Millennium helpers — unified Go dispatcher.
 
 Implements schedule, theme, diag (report/json/share/logs/doctor), upgrade
-(download/SHA/install/rollback + Linux sudo handoff), purge, repair, and
-mcp JSON-RPC (see docs/unification-roadmap.md).
+(download/SHA/install/rollback + Linux sudo handoff), purge, repair,
+install/uninstall helpers, and mcp JSON-RPC (see docs/unification-roadmap.md).
 
 MILLENNIUM_LEGACY=1 is obsolete for Go-owned commands (they stay native).`,
 		SilenceUsage:  true,
@@ -97,6 +98,8 @@ MILLENNIUM_LEGACY=1 is obsolete for Go-owned commands (they stay native).`,
 	root.AddCommand(newPurgeCmd())
 	root.AddCommand(newRepairCmd())
 	root.AddCommand(newMcpCmd())
+	root.AddCommand(newInstallCmd())
+	root.AddCommand(newUninstallCmd())
 
 	root.AddCommand(&cobra.Command{
 		Use:                "doctor",
@@ -400,6 +403,30 @@ func newMcpCmd() *cobra.Command {
 				return nil
 			}
 			os.Exit(mcp.RunCLI(opts))
+			return nil
+		},
+	}
+}
+
+func newInstallCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:                "install",
+		Short:              "Install helpers (dispatcher, twins, completions, libs)",
+		DisableFlagParsing: true,
+		RunE: func(cmd *cobra.Command, a []string) error {
+			os.Exit(install.RunCLI("install", a))
+			return nil
+		},
+	}
+}
+
+func newUninstallCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:                "uninstall",
+		Short:              "Uninstall helpers",
+		DisableFlagParsing: true,
+		RunE: func(cmd *cobra.Command, a []string) error {
+			os.Exit(install.RunCLI("uninstall", a))
 			return nil
 		},
 	}

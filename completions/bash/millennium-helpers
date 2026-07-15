@@ -159,7 +159,7 @@ _millennium_dispatcher_comp() {
   COMPREPLY=()
   local cur="${COMP_WORDS[COMP_CWORD]}"
   if [[ ${COMP_CWORD} -eq 1 ]]; then
-    COMPREPLY=( $(compgen -W "diag doctor upgrade schedule theme repair purge mcp help" -- "${cur}") )
+    COMPREPLY=( $(compgen -W "diag doctor upgrade schedule theme repair purge mcp install uninstall help" -- "${cur}") )
     return 0
   fi
   local sub="${COMP_WORDS[1]}"
@@ -171,6 +171,15 @@ _millennium_dispatcher_comp() {
     repair) _millennium_repair_comp ;;
     purge) _millennium_purge_comp ;;
     mcp) _millennium_mcp_comp ;;
+    install|uninstall) _millennium_install_comp ;;
   esac
+}
+
+_millennium_install_comp() {
+  COMPREPLY=()
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+  local opts="--track --tag --allow-unsigned-main --prefix --target-dir --lib-dir --source-root --skip-wizard --purge -p -d --dry-run -f --force -V --version -h --help"
+  COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+  return 0
 }
 complete -F _millennium_dispatcher_comp millennium

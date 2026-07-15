@@ -34,7 +34,7 @@ global_flags:
   - { name: yes, long: --yes, short: -y, aliases_windows: [-Yes] }
 
 dispatcher:
-  commands: [diag, doctor, upgrade, schedule, theme, repair, purge, mcp, help]
+  commands: [diag, doctor, upgrade, schedule, theme, repair, purge, mcp, install, uninstall, help]
   # doctor is an alias route to diag doctor
 
 commands:
@@ -154,6 +154,41 @@ commands:
     man: millennium-mcp.1
     mcp: null
     notes: "Go millennium mcp; tools self-exec millennium <feature>; sudoers allowlists Go verbs + long-names"
+
+  install:
+    platforms: [linux, darwin, windows]
+    binary: null
+    man: null
+    mcp: null
+    notes: "Install helpers on this machine; thin install.sh/ps1 bootstrap execs this"
+    flags:
+      - { name: track, long: --track, aliases_windows: [-Track], enum: [release, main, tag, checkout] }
+      - { name: tag, long: --tag, aliases_windows: [-Tag] }
+      - { name: allow_unsigned_main, long: --allow-unsigned-main, aliases_windows: [-AllowUnsignedMain] }
+      - { name: prefix, long: --prefix }
+      - { name: target_dir, long: --target-dir }
+      - { name: lib_dir, long: --lib-dir }
+      - { name: source_root, long: --source-root }
+      - { name: skip_wizard, long: --skip-wizard }
+      - { name: dry_run, long: --dry-run, short: -d, aliases_windows: [-DryRun] }
+      - { name: force, long: --force, short: -f, aliases_windows: [-Force] }
+      - { name: version, long: --version, short: -V }
+      - { name: help, long: --help, short: -h }
+
+  uninstall:
+    platforms: [linux, darwin, windows]
+    binary: null
+    man: null
+    mcp: null
+    notes: "Remove helpers installed by millennium install"
+    flags:
+      - { name: purge, long: --purge, short: -p, aliases_windows: [-Purge] }
+      - { name: prefix, long: --prefix }
+      - { name: target_dir, long: --target-dir }
+      - { name: lib_dir, long: --lib-dir }
+      - { name: dry_run, long: --dry-run, short: -d, aliases_windows: [-DryRun] }
+      - { name: version, long: --version, short: -V }
+      - { name: help, long: --help, short: -h }
 
   doctor:
     platforms: [linux, darwin, windows]

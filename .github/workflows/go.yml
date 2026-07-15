@@ -138,6 +138,23 @@ jobs:
           test "$suggest_rc" -ne 0
           echo "$suggest_out" | grep -F "Did you mean 'upgrade'"
 
+      - name: Smoke helpers install/uninstall dry-run (dual-OS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          prefix="$(mktemp -d)"
+          export MILLENNIUM_BASH_COMPLETION_DIR="$prefix/bash"
+          export MILLENNIUM_ZSH_COMPLETION_DIR="$prefix/zsh"
+          export MILLENNIUM_FISH_COMPLETION_DIR="$prefix/fish"
+          export MILLENNIUM_NUSHELL_COMPLETION_DIR="$prefix/nu"
+          export MILLENNIUM_MAN_DIR="$prefix/man"
+          out="$(bin/millennium install --dry-run --source-root "$PWD" --prefix "$prefix/bin" --lib-dir "$prefix/lib" --skip-wizard)"
+          echo "$out" | grep -F 'DRY RUN MODE'
+          echo "$out" | grep -F 'millennium'
+          out2="$(bin/millennium uninstall --dry-run --prefix "$prefix/bin" --lib-dir "$prefix/lib")"
+          echo "$out2" | grep -F 'DRY RUN MODE'
+          rm -rf "$prefix"
+
       - name: Smoke schedule config (dual-OS)
         shell: bash
         run: |
