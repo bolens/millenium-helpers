@@ -1,6 +1,6 @@
 pkgbase = millennium-helpers-bin
 	pkgdesc = Millennium helpers (prebuilt release assets) — Go dispatcher when present, plus shell helpers/MCP
-	pkgver = 2.7.0
+	pkgver = 3.0.0
 	pkgrel = 1
 	url = https://github.com/bolens/millenium-helpers
 	install = millennium-helpers.install
@@ -20,7 +20,7 @@ pkgbase = millennium-helpers-bin
 	conflicts = millennium-helpers
 	conflicts = millennium-helpers-git
 	backup = etc/sudoers.d/millennium-helpers
-	source = https://github.com/bolens/millenium-helpers/releases/download/v2.7.0/millennium-helpers-v2.7.0-linux-amd64.tar.gz
+	source = https://github.com/bolens/millenium-helpers/releases/download/v3.0.0/millennium-helpers-v3.0.0-linux-amd64.tar.gz
 	source = millennium-helpers.sudoers
 	sha256sums = 96baa9285be191a136aab460ba4e75edc426842333b7df8f719c8de724730ca1
 	sha256sums = 68a0e3cfd6cbc860d4c936ee0eba10506a6ec64d260a44ab8f4b92b067a658af

@@ -107,16 +107,16 @@ Feature commands live in Go only. Do not reintroduce install-time `scripts/lib` 
 
 1. Update [`spec/cli-contract.yaml`](spec/cli-contract.yaml) first (flags, platforms, MCP properties; `short:` for dispatcher commands).
 2. Run `make sync-cli-facade` to refresh marked façades (dispatcher /
-   subcommands / channels / bash+PS flags / man OPTIONS / MCP `InputSchema`).
+   subcommands / channels / bash+PS flags / man OPTIONS / MCP `InputSchema` /
+   MCP dispatch allowlists).
 3. Implement in Go under `go/` (`millennium <cmd>`; leftover argv0 twins via `commandFromArgv0`).
 4. Update dispatcher help/registration in `go/cmd/millennium` when adding commands.
 5. Keep `--help` / `-h` accurate and exit `0` on help.
 6. On unknown options, print usage and exit non-zero.
-7. Update remaining hand-maintained completion / man / MCP details as needed.
-8. Keep `man/millennium-<name>.1` in sync (`.TH` date like `"July 9, 2026"`; `make check-man` / CI mandoc lint).
-9. Add or extend Go tests / `go.yml` smokes for unique seams.
-10. Prefer `--dry-run` for destructive paths; require confirmation (or `-y`/`--yes`) for irreversible actions like purge.
-11. Run `make check-cli-contract` (also part of `make lint`; includes façade `--check`).
+7. Keep `man/millennium-<name>.1` NAME/DESCRIPTION/EXAMPLES prose accurate (OPTIONS sync via façade; `.TH` date like `"July 9, 2026"`; `make check-man`).
+8. Add or extend Go tests / `go.yml` smokes for unique seams.
+9. Prefer `--dry-run` for destructive paths; require confirmation (or `-y`/`--yes`) for irreversible actions like purge.
+10. Run `make check-cli-contract` (also part of `make lint`; includes façade `--check`).
 
 ## Linux / Windows parity
 
@@ -136,8 +136,8 @@ aligned and cover Linux / Windows / macOS in [`.github/workflows/go.yml`](.githu
 - [ ] Unique seams fail `go.yml` (or Go unit tests) when not covered by existing smokes
 - [ ] Contract + completions/man/MCP stay aligned (`make check-cli-contract`)
 
-PATH installs only `millennium`; do not reintroduce long-name twins. Leave
-`commandFromArgv0` working for leftover binaries until sudoers/docs cleanup.
+PATH installs only `millennium`; do not reintroduce long-name twins. Keep
+`commandFromArgv0` working for leftover binaries from older installs.
 
 ## Testing
 

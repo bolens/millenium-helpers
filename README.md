@@ -54,7 +54,7 @@ $ millennium diag
 ## Features
 
 - **Go CLI** — One `bin/millennium` binary owns schedule, theme, diag/doctor, upgrade, purge, repair, and MCP on Linux and Windows
-- **Long-name twins** — PATH `millennium-*` entries are argv0 twins of the same Go binary (Windows `.cmd` shims invoke `millennium.exe`)
+- **Single PATH entry** — New installs put only `millennium` on PATH (`millennium <cmd>…`); leftover long-name argv0 twins still dispatch if present
 - **Guided install** — Interactive wizard for Millennium **client** channel, background updates, and optional GitHub PAT (helpers **track** is set separately with `--track` / `-Track`)
 - **Scheduled updates** — `systemd` (system/user), launchd/cron, or Task Scheduler; timers call `millennium …`
 - **Secure elevation** — `/etc/sudoers.d/` drop-in (Linux) or UAC / `RunAs` (Windows)
@@ -73,7 +73,7 @@ $ millennium diag
 | --- | --- |
 | **curl (recommended)** | `curl -fsSL https://raw.githubusercontent.com/bolens/millenium-helpers/main/install.sh \| bash -s -- install` |
 | curl (tip of `main`) | `curl -fsSL …/install.sh \| bash -s -- install --track main` |
-| curl (pinned tag) | `curl -fsSL …/install.sh \| bash -s -- install --tag v2.7.0` |
+| curl (pinned tag) | `curl -fsSL …/install.sh \| bash -s -- install --tag v3.0.0` |
 | Clone | `git clone … && sudo ./install.sh` (needs Go, or a release tree with `bin/millennium`) |
 | Nix (from-source) | `nix profile install github:bolens/millenium-helpers` |
 | Nix (prebuilt `-bin`) | `nix profile install github:bolens/millenium-helpers#millennium-helpers-bin` |
@@ -102,7 +102,7 @@ sudo ./install.sh install
 # Tip-of-main helpers:
 sudo ./install.sh install --track main
 # Pin helpers to a release tag:
-sudo ./install.sh install --tag v2.7.0
+sudo ./install.sh install --tag v3.0.0
 ```
 
 Install requires the Go dispatcher (`bin/millennium`) — present in release/from-source
@@ -114,7 +114,7 @@ archives, or built via `make build` when installing from a checkout.
 nix profile install github:bolens/millenium-helpers
 nix profile install github:bolens/millenium-helpers#millennium-helpers-bin
 nix profile install github:bolens/millenium-helpers#millennium-helpers-git
-# Or pin a tag: nix profile install github:bolens/millenium-helpers/v2.7.0
+# Or pin a tag: nix profile install github:bolens/millenium-helpers/v3.0.0
 ```
 
 **Homebrew** (formulas at `Formula/millennium-helpers.rb` and

@@ -16,6 +16,7 @@ Keys:
   commands.<name>.man_options
   channels
   mcp.tools
+  mcp.dispatch_allowlists
 
 Usage:
   python3 scripts/ci/sync-cli-facade.py          # write
@@ -49,6 +50,7 @@ TARGETS = [
     ROOT / "man" / "millennium-purge.1",
     ROOT / "man" / "millennium-mcp.1",
     ROOT / "go" / "internal" / "mcp" / "tools.go",
+    ROOT / "go" / "internal" / "mcp" / "dispatch.go",
 ]
 
 # Preserve historical tools/list order for MCP clients.
@@ -191,6 +193,37 @@ def resolve_mcp_enum(
     fail(f"commands.{cmd}: mcp_schema.{prop}.enum unsupported: {enum!r}")
 
 
+def render_mcp_dispatch_allowlists(contract: dict) -> str:
+    commands = contract.get("commands") or {}
+    theme = commands.get("theme") or {}
+    schedule = commands.get("schedule") or {}
+    if not isinstance(theme, dict) or not isinstance(schedule, dict):
+        fail("commands.theme and commands.schedule required for MCP dispatch sync")
+    theme_actions = theme.get("mcp_actions") or theme.get("subcommands")
+    schedule_actions = schedule.get("mcp_actions")
+    channels = contract.get("channels") or []
+    if not theme_actions:
+        fail(
+            "commands.theme.mcp_actions (or subcommands) required for MCP dispatch sync"
+        )
+    if not schedule_actions:
+        fail("commands.schedule.mcp_actions required for MCP dispatch sync")
+    if not channels:
+        fail("channels empty")
+
+    rows = [
+        ("validThemeActions", [str(x) for x in theme_actions]),
+        ("validScheduleActions", [str(x) for x in schedule_actions]),
+        ("validChannels", [str(x) for x in channels]),
+    ]
+    width = max(len(name) for name, _ in rows)
+    lines: list[str] = []
+    for name, values in rows:
+        inner = ", ".join(f"{json.dumps(v)}: true" for v in values)
+        lines.append(f"\t{name.ljust(width)} = map[string]bool{{{inner}}}")
+    return "\n".join(lines) + "\n"
+
+
 def render_mcp_tools(contract: dict) -> str:
     commands = contract.get("commands") or {}
     names = [n for n in MCP_TOOL_ORDER if n in commands]
@@ -330,6 +363,14 @@ def render_key(contract: dict, key: str, path: Path) -> str:
             )
         return render_mcp_tools(contract)
 
+    if key == "mcp.dispatch_allowlists":
+        if path.name != "dispatch.go":
+            fail(
+                "mcp.dispatch_allowlists only valid in go/internal/mcp/dispatch.go "
+                f"(got {path.relative_to(ROOT)})"
+            )
+        return render_mcp_dispatch_allowlists(contract)
+
     m = re.fullmatch(r"commands\.([a-z_]+)\.man_options", key)
     if m:
         cmd = m.group(1)
@@ -406,16 +447,27 @@ def render_key(contract: dict, key: str, path: Path) -> str:
 
 def gofmt_marked_body(prefix: str, key: str, body: str) -> str:
     """Return gofmt-normalized body for a marked Go region."""
-    wrapper = (
-        "package mcp\n\n"
-        "func _() {\n"
-        "\t_ = []any{\n"
-        f"{prefix}@@cli-contract:{key}@@\n"
-        f"{body}"
-        f"{prefix}@@/cli-contract:{key}@@\n"
-        "\t}\n"
-        "}\n"
-    )
+    if key == "mcp.dispatch_allowlists":
+        # Variable declarations (name = expr), not composite literals.
+        wrapper = (
+            "package mcp\n\n"
+            "var (\n"
+            f"{prefix}@@cli-contract:{key}@@\n"
+            f"{body}"
+            f"{prefix}@@/cli-contract:{key}@@\n"
+            ")\n"
+        )
+    else:
+        wrapper = (
+            "package mcp\n\n"
+            "func _() {\n"
+            "\t_ = []any{\n"
+            f"{prefix}@@cli-contract:{key}@@\n"
+            f"{body}"
+            f"{prefix}@@/cli-contract:{key}@@\n"
+            "\t}\n"
+            "}\n"
+        )
     proc = subprocess.run(
         ["gofmt"],
         input=wrapper,

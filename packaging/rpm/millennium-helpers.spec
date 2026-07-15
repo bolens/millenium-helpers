@@ -1,5 +1,5 @@
 Name:           millennium-helpers
-Version: 2.7.0
+Version: 3.0.0
 Release: 1%{?dist}
 Summary:        Millennium helpers (from source) — Go strangler CLI plus shell helpers/MCP
 License:        MIT

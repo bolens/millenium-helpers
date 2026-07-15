@@ -1,5 +1,5 @@
 Package: millennium-helpers-bin
-Version: 2.7.0
+Version: 3.0.0
 Section: utils
 Priority: optional
 Architecture: amd64

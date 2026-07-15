@@ -411,7 +411,7 @@ func newMcpCmd() *cobra.Command {
 func newInstallCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:                "install",
-		Short:              "Install helpers (dispatcher, twins, completions, libs)",
+		Short:              "Install helpers (dispatcher, completions, libs)",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
 			os.Exit(install.RunCLI("install", a))

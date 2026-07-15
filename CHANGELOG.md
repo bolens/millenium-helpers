@@ -7,9 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-07-15
+
 ### Added
 - `millennium install` / `millennium uninstall` (Go): checkout/fixture installs, release/main network download + SHA verify, Linux sudoers, Windows User PATH + completion profile hooks, interactive schedule setup wizard handoff
 - Thin Unix `install.sh` bootstrap to `millennium install` (piped Windows `install.ps1` removed; use Scoop/Winget/standalone `millennium.exe`)
+- Contract-driven façade sync (`make sync-cli-facade`): completion lists/flags, man OPTIONS, MCP `InputSchema`, and MCP dispatch allowlists from [`spec/cli-contract.yaml`](spec/cli-contract.yaml)
 
 ### Removed
 - Checkout Bash/PowerShell feature scripts (`scripts/millennium-*.sh`, `scripts/windows/millennium-*.ps1`); feature entrypoint is `millennium` only
@@ -17,11 +20,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fat Bash/PowerShell installer bodies (replaced by Go `millennium install`; Unix keeps thin `install.sh`)
 - Install-time shared libs (`scripts/common.sh`, `scripts/lib/*`, `scripts/windows/common.ps1`, `scripts/windows/lib/*`); release asset helpers moved to `scripts/ci/release_assets.sh`
 - Windows `scripts/windows/install.ps1` bootstrap (Scoop/Winget/Chocolatey / standalone `millennium.exe` replace it)
+- Unification roadmap/audit maintainer trackers (Go peel complete; see contract + CONTRIBUTING)
 
 ### Changed
 - Release payloads and installers stop shipping/copying feature scripts; uninstall/wizard invoke `millennium` / `millennium.exe`
 - **Breaking:** PATH installs only `millennium` (no long-name `millennium-*` twins). Use `millennium <cmd>`; uninstall still removes legacy twins. argv0 twins remain supported if present.
+- Completions and sudoers allowlist `millennium` / `millennium <cmd>` only (no new long-name registration)
 - CI feature coverage is [`go.yml`](.github/workflows/go.yml) on Linux, Windows, and macOS; [`test-suite.yml`](.github/workflows/test-suite.yml) keeps install/unit/packaging/completions
+- User docs and packaging post-install messages prefer `millennium <cmd>` (man filenames and MCP host `command: millennium-mcp` unchanged)
 
 ## [2.7.0] - 2026-07-15
 
