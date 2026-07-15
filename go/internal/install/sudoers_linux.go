@@ -10,15 +10,6 @@ import (
 	"path/filepath"
 )
 
-// SudoersLine builds the NOPASSWD line for helpers + twins.
-func SudoersLine(userName, targetDir string) string {
-	m := filepath.Join(targetDir, "millennium")
-	return fmt.Sprintf(
-		"%s ALL=(ALL) NOPASSWD: %s upgrade, %s upgrade *, %s diag, %s diag *, %s repair, %s repair *, %s purge, %s purge *, %s/millennium-upgrade, %s/millennium-diag, %s/millennium-purge, %s/millennium-repair\n",
-		userName, m, m, m, m, m, m, m, m, targetDir, targetDir, targetDir, targetDir,
-	)
-}
-
 func sudoersPath() string {
 	if v := os.Getenv("MOCK_SUDOERS_FILE"); v != "" {
 		return v

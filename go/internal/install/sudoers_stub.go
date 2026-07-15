@@ -8,8 +8,3 @@ func installSudoers(o Options, res *Result) error {
 }
 
 func removeSudoers(o Options, res *Result) {}
-
-// SudoersLine is exported for tests on all platforms.
-func SudoersLine(userName, targetDir string) string {
-	return userName + " ALL=(ALL) NOPASSWD: " + targetDir + "/millennium upgrade\n"
-}
