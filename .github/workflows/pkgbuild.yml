@@ -121,9 +121,12 @@ jobs:
               -e 's|^source=.*|source=("millennium-helpers.sudoers")|' \
               -e "s|^sha256sums=.*|sha256sums=('${SUDOERS_SUM}')|" \
               "$PKGBUILD_PATH"
-            mkdir -p "${PKG_DIR}/src"
-            rm -rf "${PKG_DIR}/src/millennium-helpers"
-            cp -a "$WORK" "${PKG_DIR}/src/millennium-helpers"
+            mkdir -p "${PKG_DIR}/src/millennium-helpers"
+            # PKG_DIR lives under WORK; exclude self to avoid recursive cp.
+            tar -C "$WORK" \
+              --exclude='./packaging/millennium-helpers-git/src' \
+              -cf - . \
+              | tar -C "${PKG_DIR}/src/millennium-helpers" -xf -
             chown -R builduser:builduser "${PKG_DIR}/src"
             git config --system --add safe.directory '*'
             git config --system --add safe.directory "${WORK}"

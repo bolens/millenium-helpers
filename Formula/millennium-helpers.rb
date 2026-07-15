@@ -13,6 +13,8 @@ class MillenniumHelpers < Formula
   depends_on "python"
   depends_on "unzip"
 
+  conflicts_with "millennium-helpers-bin", because: "both install the millennium helper tools"
+
   def install
     system "make", "build"
 

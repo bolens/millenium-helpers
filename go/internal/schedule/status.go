@@ -213,10 +213,10 @@ func FormatStatus(st Status) string {
 		return b.String()
 	}
 	b.WriteString("\n=== Scheduler summary ===\n")
-	b.WriteString(fmt.Sprintf("  Channel     : %s\n", st.Channel))
+	fmt.Fprintf(&b, "  Channel     : %s\n", st.Channel)
 	log := LogPath()
 	if _, err := os.Stat(log); err == nil {
-		b.WriteString(fmt.Sprintf("  Last log    : %s\n", log))
+		fmt.Fprintf(&b, "  Last log    : %s\n", log)
 		b.WriteString("  View logs   : millennium diag logs\n")
 	} else {
 		b.WriteString("  Last log    : (none yet — runs after the first scheduled update)\n")

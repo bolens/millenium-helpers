@@ -9,8 +9,6 @@ class MillenniumHelpersBin < Formula
   depends_on "python"
   depends_on "unzip"
 
-  conflicts_with "millennium-helpers", because: "both install the millennium helper tools"
-
   on_macos do
     on_arm do
       url "https://github.com/bolens/millenium-helpers/releases/download/v2.6.2/millennium-helpers-v2.6.2-darwin-arm64.tar.gz"
@@ -32,6 +30,8 @@ class MillenniumHelpersBin < Formula
       sha256 "c077c3f536e751e776fabb329600b18d7452d455a2e2dd1908491332569f4e55"
     end
   end
+
+  conflicts_with "millennium-helpers", because: "both install the millennium helper tools"
 
   def install
     odie "Release archive missing bin/millennium (Go dispatcher required)" unless (buildpath/"bin/millennium").exist?

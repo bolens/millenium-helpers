@@ -468,7 +468,7 @@ func FormatDoctorDryRun(r Report, force bool) string {
 	for _, s := range steps {
 		b.WriteString("[DRY RUN] Would: " + s.Detail + "\n")
 	}
-	b.WriteString(fmt.Sprintf("Dry run completed (%d planned actions). Re-run doctor without --dry-run for live repairs.\n", len(steps)))
+	fmt.Fprintf(&b, "Dry run completed (%d planned actions). Re-run doctor without --dry-run for live repairs.\n", len(steps))
 	return b.String()
 }
 

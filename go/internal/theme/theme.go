@@ -155,9 +155,9 @@ func FormatText(themes []Info, skins string) string {
 			if len(commit) > 7 {
 				commit = commit[:7]
 			}
-			b.WriteString(fmt.Sprintf("  %s  %-20s - %s/%s @ %s (GitHub)\n", flag, t.Name, t.Owner, t.Repo, commit))
+			fmt.Fprintf(&b, "  %s  %-20s - %s/%s @ %s (GitHub)\n", flag, t.Name, t.Owner, t.Repo, commit)
 		} else {
-			b.WriteString(fmt.Sprintf("  %s  %-20s - Local / Manual Installation\n", flag, t.Name))
+			fmt.Fprintf(&b, "  %s  %-20s - Local / Manual Installation\n", flag, t.Name)
 		}
 	}
 	return b.String()

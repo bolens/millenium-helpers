@@ -101,7 +101,7 @@ func FormatPlan(actions []Action) string {
 		b.WriteString("No Millennium hooks or system install paths detected.\n")
 	}
 	for _, a := range actions {
-		b.WriteString(fmt.Sprintf("[DRY RUN] Would remove (%s): %s — %s\n", a.Kind, a.Path, a.Detail))
+		fmt.Fprintf(&b, "[DRY RUN] Would remove (%s): %s — %s\n", a.Kind, a.Path, a.Detail)
 	}
 	b.WriteString("Dry run completed successfully!\n")
 	return b.String()

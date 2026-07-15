@@ -72,14 +72,14 @@ func FormatPlan(targets []Target, skipTheme bool) string {
 	b.WriteString("=== DRY RUN MODE: No changes will be made ===\n")
 	b.WriteString("[DRY RUN] Would capture Steam's environment and close it if running.\n")
 	if runtime.GOOS == "windows" {
-		b.WriteString(fmt.Sprintf("[DRY RUN] Would run: millennium upgrade --force --channel %s\n", updateChannel()))
+		fmt.Fprintf(&b, "[DRY RUN] Would run: millennium upgrade --force --channel %s\n", updateChannel())
 	} else {
 		hooks := PlanHooks()
 		if len(hooks) == 0 {
 			b.WriteString("[DRY RUN] Would restore bootstrap hooks (no Steam tree found yet).\n")
 		} else {
 			for _, h := range hooks {
-				b.WriteString(fmt.Sprintf("[DRY RUN] Would link hook: %s -> %s\n", h.Hook, h.Target))
+				fmt.Fprintf(&b, "[DRY RUN] Would link hook: %s -> %s\n", h.Hook, h.Target)
 			}
 		}
 	}
@@ -87,7 +87,7 @@ func FormatPlan(targets []Target, skipTheme bool) string {
 		b.WriteString("[DRY RUN] No Millennium user/Steam paths found to repair.\n")
 	}
 	for _, t := range targets {
-		b.WriteString(fmt.Sprintf("[DRY RUN] Would fix (%s): %s\n", t.Kind, t.Path))
+		fmt.Fprintf(&b, "[DRY RUN] Would fix (%s): %s\n", t.Kind, t.Path)
 	}
 	if skipTheme {
 		b.WriteString("[DRY RUN] Skipping theme refresh (--skip-theme).\n")
