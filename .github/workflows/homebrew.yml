@@ -36,8 +36,22 @@ jobs:
         uses: Homebrew/actions/setup-homebrew@main
 
       - name: Audit Formula
+        env:
+          # local/* is a CI-only tap; allow loading sibling formulas for conflicts_with.
+          HOMEBREW_NO_REQUIRE_TAP_TRUST: "1"
         run: |
           set -euo pipefail
-          # Audit formula files in-tree so conflicts_with resolves without an
-          # "untrusted" third-party tap (local/* is never a Homebrew org tap).
-          brew audit --strict "Formula/${{ matrix.formula }}.rb"
+          TAP="$(brew --repository)/Library/Taps/local/homebrew-local"
+          mkdir -p "$TAP/Formula"
+          # Both formulas must be present so conflicts_with can resolve locally.
+          cp Formula/*.rb "$TAP/Formula/"
+          # Homebrew refuses to load sibling formulas from a non-git tap.
+          git -C "$TAP" init
+          git -C "$TAP" config user.email "ci@example.com"
+          git -C "$TAP" config user.name "ci"
+          git -C "$TAP" add Formula
+          git -C "$TAP" commit -m "ci formulas"
+          # Prefer explicit trust when Homebrew enforces tap trust (6.x+).
+          brew trust --formula "local/local/millennium-helpers" || true
+          brew trust --formula "local/local/millennium-helpers-bin" || true
+          brew audit --formula "local/local/${{ matrix.formula }}"

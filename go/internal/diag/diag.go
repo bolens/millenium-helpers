@@ -63,7 +63,7 @@ func FormatReport(results []Result) string {
 		if !r.OK {
 			mark = "[✘]"
 		}
-		b.WriteString(fmt.Sprintf("  %s %-40s : %s\n", mark, r.Label, r.Detail))
+		fmt.Fprintf(&b, "  %s %-40s : %s\n", mark, r.Label, r.Detail)
 	}
 	return b.String()
 }
@@ -79,7 +79,7 @@ func FormatReportFromCollect(r Report) string {
 		} else if !ok {
 			mark = "[✘]"
 		}
-		b.WriteString(fmt.Sprintf("  %s %-40s : %s\n", mark, label, detail))
+		fmt.Fprintf(&b, "  %s %-40s : %s\n", mark, label, detail)
 	}
 	row(true, "Steam Client", r.SteamDetail, !r.SteamRunning)
 	row(r.BinariesOK, "Millennium Binary Version", r.BinariesDetail, false)

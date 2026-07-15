@@ -180,7 +180,7 @@ func FormatList(data Data) string {
 		} else {
 			valStr = Get(data, k)
 		}
-		b.WriteString(fmt.Sprintf("  %-20s : %s\n", k, valStr))
+		fmt.Fprintf(&b, "  %-20s : %s\n", k, valStr)
 	}
 	return b.String()
 }

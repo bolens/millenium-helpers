@@ -38,6 +38,6 @@ jobs:
         run: python3 -m py_compile scripts/ci/check-cli-contract.py
 
       - name: Run ruff check
-        uses: astral-sh/ruff-action@v4
+        uses: astral-sh/ruff-action@v4.1.0
         with:
           src: scripts/ci/check-cli-contract.py

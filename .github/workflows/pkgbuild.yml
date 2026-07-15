@@ -111,15 +111,24 @@ jobs:
             fi
           fi
           if [[ "$PKG" == "millennium-helpers-git" ]]; then
-            # Makepkg clones github.com main by default; for PRs use this checkout
-            # so we validate the branch under test (pkgbuild + make build).
+            # Makepkg clones github.com main by default; for PRs prepare a local
+            # srcdir tree so we validate the branch under test without git+file://.
             WORK="/home/builduser/millenium-helpers"
             PKGBUILD_PATH="${PKG_DIR}/PKGBUILD"
-            # Use a plain file:// directory source (copy), not git+file:// clone —
-            # cloning hits "dubious ownership" even with safe.directory under makepkg.
-            sed -i "s|git+\${url}.git|file://${WORK}|" "$PKGBUILD_PATH"
-            # System gitconfig: makepkg may not load builduser's ~/.gitconfig.
+            SUDOERS_SUM="$(sha256sum "${PKG_DIR}/millennium-helpers.sudoers" | awk '{print $1}')"
+            # Drop VCS source; keep sudoers. Pre-seed src/ for --noextract.
+            sed -i \
+              -e 's|^source=.*|source=("millennium-helpers.sudoers")|' \
+              -e "s|^sha256sums=.*|sha256sums=('${SUDOERS_SUM}')|" \
+              "$PKGBUILD_PATH"
+            mkdir -p "${PKG_DIR}/src"
+            rm -rf "${PKG_DIR}/src/millennium-helpers"
+            cp -a "$WORK" "${PKG_DIR}/src/millennium-helpers"
+            chown -R builduser:builduser "${PKG_DIR}/src"
             git config --system --add safe.directory '*'
             git config --system --add safe.directory "${WORK}"
+            git config --system --add safe.directory "${PKG_DIR}/src/millennium-helpers"
+            su builduser -c "cd '${PKG_DIR}' && makepkg --noextract -s --noconfirm"
+          else
+            su builduser -c "cd '${PKG_DIR}' && makepkg -s --noconfirm"
           fi
-          su builduser -c "cd '${PKG_DIR}' && makepkg -s --noconfirm"

@@ -30,9 +30,6 @@ func TestBuildSystemdServiceUnitSystemHasUser(t *testing.T) {
 }
 
 func TestResolveSystemdScopePrefersSystem(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("linux scope")
-	}
 	dir := t.TempDir()
 	t.Setenv("MILLENNIUM_SYSTEMD_SYSTEM_DIR", dir)
 	scope, err := ResolveSystemdScope(ScopeAuto)
