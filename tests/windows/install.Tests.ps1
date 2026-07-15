@@ -1,4 +1,4 @@
-Describe "Windows millennium install (Go)" {
+Describe "Windows millennium install bootstrap (Go)" {
     BeforeAll {
         $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
         $binDir = Join-Path $repoRoot "bin"
@@ -17,7 +17,6 @@ Describe "Windows millennium install (Go)" {
                 Pop-Location
             }
         }
-        $env:PSTESTS = "true"
         $script:exe = $outExe
     }
 
@@ -27,27 +26,9 @@ Describe "Windows millennium install (Go)" {
         $out | Should -BeLike "*--track*"
     }
 
-    It "installs into a fixture USERPROFILE prefix" {
-        $tempHome = Join-Path ([System.IO.Path]::GetTempPath()) ("mh-install-" + [guid]::NewGuid().ToString("n"))
-        New-Item -ItemType Directory -Force -Path $tempHome | Out-Null
-        try {
-            $prevProfile = $env:USERPROFILE
-            $env:USERPROFILE = $tempHome
-            $env:MILLENNIUM_SOURCE_ROOT = "$repoRoot"
-            $prefix = Join-Path $tempHome ".millennium-helpers"
-            $target = Join-Path $prefix "bin"
-            & $script:exe install --prefix $target --skip-wizard
-            $LASTEXITCODE | Should -Be 0
-            Test-Path -LiteralPath (Join-Path $target "millennium.exe") | Should -Be $true
-            Test-Path -LiteralPath (Join-Path $target "millennium-upgrade.cmd") | Should -Be $false
-            Test-Path -LiteralPath (Join-Path $prefix "install-meta.json") | Should -Be $true
-
-            & $script:exe uninstall --prefix $target
-            $LASTEXITCODE | Should -Be 0
-            Test-Path -LiteralPath (Join-Path $target "millennium.exe") | Should -Be $false
-        } finally {
-            $env:USERPROFILE = $prevProfile
-            Remove-Item -Recurse -Force -LiteralPath $tempHome -ErrorAction SilentlyContinue
-        }
+    It "millennium uninstall --help documents purge" {
+        $out = (& $script:exe uninstall --help *>&1) | Out-String
+        $out | Should -BeLike "*millennium uninstall*"
+        $out | Should -BeLike "*--purge*"
     }
 }

@@ -33,6 +33,7 @@ Parity on Linux, macOS, and Windows is enforced by Go unit tests and
 | PATH = `millennium` only (no new long-name twins) | Done |
 | Contract-driven façade sync (completions / man / MCP) | In progress |
 | Long-name sudoers + completion symlink cleanup | Done |
+| Install fixture tests in Go (`go test ./internal/install`) | Done |
 
 `make build` → `bin/millennium`. Release CD embeds per-OS/arch Go binaries and
 waits on a green required-CI gate (`go.yml` + `test-suite.yml` + other packaging
@@ -59,8 +60,9 @@ checks). **Feature regressions must fail `go.yml`.**
 | Schedule timers | systemd / launchd / cron / Task Scheduler invoke `millennium <cmd>` |
 | `MILLENNIUM_LEGACY=1` | Obsolete for Go-owned commands |
 
-Local checks: `make test-go` (features) + `make test` / `make test-windows`
-(install/packaging/completions). CI mirrors that split.
+Local checks: `make test-go` (features + install fixtures) + `make test` /
+`make test-windows` (bootstrap / packaging / shell completions). CI mirrors that
+split.
 
 ---
 
@@ -71,6 +73,8 @@ Local checks: `make test-go` (features) + `make test` / `make test-windows`
    `mcp_actions` enums. Still hand-maintained façades (no codegen yet); keep
    [`spec/cli-contract.yaml`](../spec/cli-contract.yaml) first when changing a
    command (`make check-cli-contract`).
+2. **Optional** — codegen for completions/man/MCP from the contract; thin more
+   packaging asserts into Go only where it pays off.
 
 ---
 

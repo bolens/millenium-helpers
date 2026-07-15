@@ -91,7 +91,7 @@ Tests: Go unit under `go/` · smokes in [`.github/workflows/go.yml`](../.github/
 | `schedule --cron` | Y | — | Linux/macOS only | Y (Unix smoke) | Contract OS-only |
 | `theme` list/install/update/remove | Y | Y | Native | Go `theme`/`archive` + smokes | Zip-slip in Go `archive` |
 | `mcp` tools surface | Y | Y | Native | Go MCP package + tools smokes | |
-| Install / uninstall helpers | Y | Y | Native | Go units + `test_install` / Pester | Network/SHA, sudoers, Win PATH/hooks, wizard; Windows entry via packaging / `millennium.exe` |
+| Install / uninstall helpers | Y | Y | Native | Go `internal/install` fixtures (+ PATH/hook/sudoers); `test_install` / Pester = bootstrap help only | Network/SHA, wizard; Windows entry via packaging / `millennium.exe` |
 
 ---
 

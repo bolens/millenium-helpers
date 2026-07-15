@@ -127,6 +127,6 @@ lint:
 format:
 	ruff format scripts/ci/check-cli-contract.py
 
-# Feature / CLI parity: test-go (+ CI go.yml on Linux/Windows/macOS).
-# test = install-time Bash unit/behavioral (install, libs, packaging, completions).
+# Feature / CLI / install fixtures: test-go (+ CI go.yml on Linux/Windows/macOS).
+# test = bootstrap / packaging / shell completion suites (test-suite.yml).
 check-all: lint test-go test
