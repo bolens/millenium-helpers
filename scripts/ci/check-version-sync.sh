@@ -207,11 +207,16 @@ for pkg in (
     "millennium-helpers-git",
 ):
     pkg_dir = Path("packaging") / pkg
+    if not pkg_dir.is_dir():
+        continue
     sudoers = pkg_dir / "millennium-helpers.sudoers"
     pkgbuild = pkg_dir / "PKGBUILD"
     srcinfo = pkg_dir / ".SRCINFO"
     if not sudoers.is_file():
         errors.append(f"missing {sudoers}")
+        continue
+    if not pkgbuild.is_file():
+        errors.append(f"missing {pkgbuild}")
         continue
     actual = hashlib.sha256(sudoers.read_bytes()).hexdigest()
     text = pkgbuild.read_text(encoding="utf-8")
