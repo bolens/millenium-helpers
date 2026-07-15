@@ -14,7 +14,8 @@ fail() {
 [[ -d man ]] || fail "man/ directory is missing"
 
 missing=0
-# PATH millennium + long-name argv0 twins (Go) each need a man page.
+# man/millennium.1 plus per-command pages (basename millennium-<cmd>.1).
+# PATH ships only `millennium`; long-name pages document `millennium <cmd>`.
 REQUIRED_MAN=(
   millennium
   millennium-mcp

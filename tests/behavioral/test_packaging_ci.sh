@@ -584,9 +584,25 @@ for sudoers_pkg in millennium-helpers millennium-helpers-bin millennium-helpers-
   sudoers_body=$(cat "${REPO_ROOT}/packaging/${sudoers_pkg}/millennium-helpers.sudoers")
   assert_contains "$sudoers_body" "/usr/bin/millennium upgrade" \
     "${sudoers_pkg} sudoers allowlists Go millennium upgrade"
-  assert_contains "$sudoers_body" "/usr/bin/millennium-upgrade" \
-    "${sudoers_pkg} sudoers keeps long-name millennium-upgrade"
+  assert_not_contains "$sudoers_body" "/usr/bin/millennium-upgrade" \
+    "${sudoers_pkg} sudoers omits retired long-name millennium-upgrade"
 done
+
+# Completions install only millennium (+ shared millennium-helpers file), not twin names.
+arch_install=$(cat "${REPO_ROOT}/packaging/lib/arch-unix-install.sh")
+# Intentional literal ${pkgdir} — must match packaging/lib/arch-unix-install.sh source text.
+# shellcheck disable=SC2016
+assert_contains "$arch_install" \
+  'ln -sf millennium-helpers "${pkgdir}/usr/share/bash-completion/completions/millennium"' \
+  "Arch packaging symlinks bash completion for millennium only"
+assert_not_contains "$arch_install" "for script in millennium-repair" \
+  "Arch packaging no longer loops long-name bash completion symlinks"
+formula=$(cat "${REPO_ROOT}/Formula/millennium-helpers.rb")
+# shellcheck disable=SC2016
+assert_contains "$formula" 'bash_completion/"millennium"' \
+  "Homebrew formula installs bash completion for millennium"
+assert_not_contains "$formula" "millennium-repair" \
+  "Homebrew formula no longer lists long-name completion twins"
 
 assert_file_exists "${REPO_ROOT}/scripts/ci/check-packaging-manifests.sh" "check-packaging-manifests.sh exists"
 assert_contains "$(cat "${REPO_ROOT}/Makefile")" "sync-git-srcinfo" "Makefile exposes sync-git-srcinfo target"

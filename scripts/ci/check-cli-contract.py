@@ -124,11 +124,12 @@ def check_completions(contract: dict) -> None:
     if not BASH_COMP.is_file():
         fail(f"missing bash completions: {BASH_COMP.relative_to(ROOT)}")
     text = BASH_COMP.read_text(encoding="utf-8")
+    if "complete -F" not in text or "millennium" not in text:
+        fail("bash completions must register the millennium dispatcher")
     dispatcher = (contract.get("dispatcher") or {}).get("commands") or []
-    # Top-level millennium completer should list feature commands.
+    # Completions cover millennium <cmd> (no long-name PATH twin registration).
     for cmd in dispatcher:
-        if cmd in ("help", "doctor", "mcp"):
-            # doctor is alias; mcp may be completed via binary name only
+        if cmd == "help":
             continue
         if cmd not in text:
             fail(f"bash completions missing dispatcher command {cmd!r}")
@@ -137,11 +138,18 @@ def check_completions(contract: dict) -> None:
     for name, meta in commands.items():
         if not isinstance(meta, dict):
             continue
-        binary = meta.get("binary")
-        if binary and f"millennium-{name}" not in text and binary not in text:
-            # Some commands share the millennium-helpers completer file via binary name.
-            if binary not in text:
-                fail(f"bash completions missing binary reference {binary!r}")
+        # binary: documents legacy argv0 / man basenames; PATH is millennium only.
+        if (
+            meta.get("binary")
+            and name not in text
+            and name
+            not in (
+                "help",
+                "install",
+                "uninstall",
+            )
+        ):
+            fail(f"bash completions missing subcommand {name!r}")
 
         for flag in meta.get("flags") or []:
             if not isinstance(flag, dict):
@@ -151,7 +159,6 @@ def check_completions(contract: dict) -> None:
                 continue
             # Flag should appear somewhere in bash completions for its command family.
             if long not in text:
-                # Global-ish flags may only appear on some binaries; require on major cmds.
                 if name in ("upgrade", "schedule", "diag", "theme", "repair", "purge"):
                     fail(
                         f"bash completions missing flag {long!r} (from command {name})"
