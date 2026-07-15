@@ -95,7 +95,21 @@ func dirLooksLikeScripts(dir string) bool {
 		if _, err := os.Stat(filepath.Join(dir, "millennium.exe")); err == nil {
 			return true
 		}
-		_, err := os.Stat(filepath.Join(dir, "windows", "millennium.exe"))
+		if _, err := os.Stat(filepath.Join(dir, "windows", "millennium.exe")); err == nil {
+			return true
+		}
+		// Checkout: …/scripts or …/scripts/windows with VERSION / install.sh on repo root.
+		base := filepath.Base(dir)
+		parent := filepath.Dir(dir)
+		if base == "windows" && filepath.Base(parent) == "scripts" {
+			parent = filepath.Dir(parent)
+		} else if base != "scripts" {
+			return false
+		}
+		if _, err := os.Stat(filepath.Join(parent, "VERSION")); err == nil {
+			return true
+		}
+		_, err := os.Stat(filepath.Join(parent, "install.sh"))
 		return err == nil
 	}
 	// Installed lib dir (/usr/lib/millennium-helpers) or extract root.

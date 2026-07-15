@@ -1,6 +1,6 @@
-# Millennium Helpers CLI contract — source of truth for Bash/PS + Go migration.
+# Millennium Helpers CLI contract — source of truth for commands, flags, channels, and MCP.
 # Validated by scripts/ci/check-cli-contract.py (make check-cli-contract).
-# Façades synced by scripts/ci/sync-cli-facade.py (completions, man OPTIONS, MCP tools).
+# Façades synced by scripts/ci/sync-cli-facade.py (completions, man OPTIONS, MCP tools/allowlists).
 version: 1
 
 platforms: [linux, darwin, windows]

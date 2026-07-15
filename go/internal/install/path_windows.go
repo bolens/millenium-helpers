@@ -5,7 +5,6 @@ package install
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"golang.org/x/sys/windows/registry"
 )
