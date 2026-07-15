@@ -12,22 +12,22 @@ class MillenniumHelpersBin < Formula
   on_macos do
     on_arm do
       url "https://github.com/bolens/millenium-helpers/releases/download/v2.7.0/millennium-helpers-v2.7.0-darwin-arm64.tar.gz"
-sha256 "bb3532ec10271709638cca737ae05cbe55673a508923c8a4d2f106e6bbae07c6"
+      sha256 "bb3532ec10271709638cca737ae05cbe55673a508923c8a4d2f106e6bbae07c6"
     end
     on_intel do
       url "https://github.com/bolens/millenium-helpers/releases/download/v2.7.0/millennium-helpers-v2.7.0-darwin-amd64.tar.gz"
-sha256 "10a75d831d9648c487a5cc303e615902a9565f9e1689403fc5dd4a9ba90db6e6"
+      sha256 "10a75d831d9648c487a5cc303e615902a9565f9e1689403fc5dd4a9ba90db6e6"
     end
   end
 
   on_linux do
     on_arm do
       url "https://github.com/bolens/millenium-helpers/releases/download/v2.7.0/millennium-helpers-v2.7.0-linux-arm64.tar.gz"
-sha256 "5067b7592df4c06b20406c0e8da50cad76c541c401c4b6d6df8cee6d90833535"
+      sha256 "5067b7592df4c06b20406c0e8da50cad76c541c401c4b6d6df8cee6d90833535"
     end
     on_intel do
       url "https://github.com/bolens/millenium-helpers/releases/download/v2.7.0/millennium-helpers-v2.7.0-linux-amd64.tar.gz"
-sha256 "96baa9285be191a136aab460ba4e75edc426842333b7df8f719c8de724730ca1"
+      sha256 "96baa9285be191a136aab460ba4e75edc426842333b7df8f719c8de724730ca1"
     end
   end
 
