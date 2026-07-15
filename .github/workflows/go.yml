@@ -331,10 +331,12 @@ jobs:
           mkdir -p "$LOCALAPPDATA" "$APPDATA"
 
           # --share offline via local paste stub (file + bg; heredoc+& races on macOS).
+          # Avoid HTTPServer.getfqdn() — reverse DNS hangs on macOS runners before bind returns.
           port_file="$home/paste.port"
           stub="$home/paste_stub.py"
           cat >"$stub" <<'PY'
-          import http.server, pathlib, sys
+          import http.server, pathlib, socket, sys
+          socket.getfqdn = lambda name="": "localhost"
           port_file = sys.argv[1]
           class H(http.server.BaseHTTPRequestHandler):
               def do_POST(self):
@@ -346,18 +348,23 @@ jobs:
               def log_message(self, *_args):
                   pass
           srv = http.server.HTTPServer(("127.0.0.1", 0), H)
-          pathlib.Path(port_file).write_text(str(srv.server_address[1]))
+          pathlib.Path(port_file).write_text(str(srv.server_address[1]), encoding="utf-8")
           srv.handle_request()
           PY
           python3 "$stub" "$port_file" &
           paste_pid=$!
+          cleanup_paste() { kill "$paste_pid" 2>/dev/null || true; wait "$paste_pid" 2>/dev/null || true; }
           for _ in $(seq 1 100); do
             [[ -s "$port_file" ]] && break
+            if ! kill -0 "$paste_pid" 2>/dev/null; then
+              echo "paste stub exited before bind; python3=$(command -v python3 || true)" >&2
+              exit 1
+            fi
             sleep 0.05
           done
           if [[ ! -s "$port_file" ]]; then
             echo "paste stub failed to bind; python3=$(command -v python3 || true)" >&2
-            wait "$paste_pid" || true
+            cleanup_paste
             exit 1
           fi
           port="$(cat "$port_file")"
@@ -365,7 +372,7 @@ jobs:
           share_out="$(bin/millennium diag --share)"
           echo "$share_out" | grep -F 'Diagnostic report successfully shared'
           echo "$share_out" | grep -F 'https://paste.rs/endgame-c-smoke'
-          wait "$paste_pid" || true
+          cleanup_paste
 
           # doctor live — healthy-only under test bypass (no Steam/upgrade side effects)
           doctor_live="$(DIAG_TEST_BYPASS_CHECKS=1 bin/millennium diag doctor --yes)"
