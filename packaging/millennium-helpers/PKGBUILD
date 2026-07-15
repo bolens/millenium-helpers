@@ -1,7 +1,7 @@
 # Maintainer: bolens <https://github.com/bolens>
 # From-source package: builds the Go dispatcher from the tagged source tree.
 pkgname=millennium-helpers
-pkgver=3.0.0
+pkgver=3.0.1
 pkgrel=1
 pkgdesc="Millennium helpers (from source) — Go strangler CLI plus shell helpers/MCP"
 arch=('x86_64' 'aarch64')

@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Stop'
 $toolsDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
-$version = '3.0.0'
+$version = '3.0.1'
 $url = "https://github.com/bolens/millenium-helpers/releases/download/v$version/millennium-helpers-v$version-windows-amd64.zip"
 $checksum = '665ad4d697a643cc02fb3cd8cbd6c779bff475ee80d86804f41099941ee67507'
 
