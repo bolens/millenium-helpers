@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Millennium Helpers local test runner
 # Thin orchestrator: syntax checks + unit/behavioral suites.
-# Packaging/Homebrew/Winget gates live in dedicated CI workflows / make targets.
+# Feature/CLI coverage: make test-go / go.yml. Packaging/Homebrew/Winget: dedicated CI.
 set -euo pipefail
 
 THIS_TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -233,9 +233,50 @@ def check_completions(contract: dict) -> None:
             fail(f"missing {shell} completions: {path.relative_to(ROOT)}")
         texts[shell] = path.read_text(encoding="utf-8")
 
+    # No unresolved placeholders left in committed completions.
+    for shell, text in texts.items():
+        if re.search(r"(?m)^VERSION_PLACEHOLDER$", text):
+            fail(f"{shell} completions still contain VERSION_PLACEHOLDER")
+
+    fish_dir = ROOT / "completions" / "fish"
+    for fish_path in sorted(fish_dir.glob("*.fish")):
+        for line in fish_path.read_text(encoding="utf-8").splitlines():
+            trimmed = line.strip()
+            if not trimmed or trimmed.startswith("#"):
+                continue
+            if re.fullmatch(r"[A-Z][A-Z0-9_]*", trimmed):
+                fail(
+                    f"fish completions have bare ALL-CAPS placeholder "
+                    f"{trimmed!r} in {fish_path.relative_to(ROOT)}"
+                )
+
+    # PATH is millennium only — completions must not register long-name twins.
+    twin_re = re.compile(r"millennium-(repair|upgrade|schedule|purge|diag|theme|mcp)\b")
+    for shell, text in texts.items():
+        for match in twin_re.finditer(text):
+            # Allow prose about backups / man page stems if ever present.
+            line = text[: match.start()].rsplit("\n", 1)[-1] + match.group(0)
+            if "bak_" in line or "millennium.bak" in line:
+                continue
+            fail(f"{shell} completions register long-name PATH twin {match.group(0)!r}")
+
     bash = texts["bash"]
-    if "complete -F" not in bash or re.search(r"\bmillennium\b", bash) is None:
-        fail("bash completions must register the millennium dispatcher")
+    if not re.search(r"complete -F \S+ millennium(\s|$)", bash):
+        fail("bash completions must register the millennium dispatcher via complete -F")
+
+    zsh = texts["zsh"]
+    compdef = ""
+    for line in zsh.splitlines():
+        if line.startswith("#compdef "):
+            compdef = line
+            break
+    if "millennium" not in compdef:
+        fail("zsh #compdef must list millennium")
+    if twin_re.search(compdef):
+        fail(f"zsh #compdef must omit long-name twins (got {compdef!r})")
+
+    if 'export extern "millennium"' not in texts["nushell"]:
+        fail('nushell completions must export extern "millennium"')
 
     dispatcher = (contract.get("dispatcher") or {}).get("commands") or []
     for cmd in dispatcher:
@@ -262,6 +303,11 @@ def check_completions(contract: dict) -> None:
                 continue
             if long not in bash:
                 fail(f"bash completions missing flag {long!r} (from command {name})")
+
+    for channel in contract.get("channels") or []:
+        for shell, text in texts.items():
+            if channel not in text:
+                fail(f"{shell} completions missing channel {channel!r}")
 
 
 def main() -> None:

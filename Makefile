@@ -133,5 +133,5 @@ format:
 	ruff format scripts/ci/check-cli-contract.py scripts/ci/sync-cli-facade.py
 
 # Feature / CLI / install fixtures: test-go (+ CI go.yml on Linux/Windows/macOS).
-# test = bootstrap / packaging / shell completion suites (test-suite.yml).
+# Remaining shell suites: completion runtime + packaging CI helpers (test-suite.yml).
 check-all: lint test-go test

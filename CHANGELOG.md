@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `millennium install` / `millennium uninstall` (Go): checkout/fixture installs, release/main network download + SHA verify, Linux sudoers, Windows User PATH + completion profile hooks, interactive schedule setup wizard handoff
 - Thin Unix `install.sh` bootstrap to `millennium install` (piped Windows `install.ps1` removed; use Scoop/Winget/standalone `millennium.exe`)
 - Contract-driven façade sync (`make sync-cli-facade`): completion lists/flags, man OPTIONS, MCP `InputSchema`, and MCP dispatch allowlists from [`spec/cli-contract.yaml`](spec/cli-contract.yaml)
+- Go owns install.sh bootstrap and CLI smoke coverage formerly under shell/Pester (`test_install.sh`, `install.Tests.ps1`, feature greps in `go.yml`)
 
 ### Removed
 - Checkout Bash/PowerShell feature scripts (`scripts/millennium-*.sh`, `scripts/windows/millennium-*.ps1`); feature entrypoint is `millennium` only

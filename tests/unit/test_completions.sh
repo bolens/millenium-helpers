@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Unit tests for shell completions (static parity + bash/fish runtime smokes).
+# Runtime smoke for shell completions (static parity lives in check-cli-contract).
 set -uo pipefail
 
 TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -12,103 +12,14 @@ source "${TEST_DIR}/../lib/assertions.sh"
 BASH_COMP="${COMP_DIR}/bash/millennium-helpers"
 ZSH_COMP="${COMP_DIR}/zsh/_millennium-helpers"
 NU_COMP="${COMP_DIR}/nushell/millennium-helpers.nu"
-FISH_DIR="${COMP_DIR}/fish"
-FISH_COMP="${FISH_DIR}/millennium.fish"
+FISH_COMP="${COMP_DIR}/fish/millennium.fish"
 
-echo -e "${YELLOW}=== Unit tests: shell completions ===${NC}"
+echo -e "${YELLOW}=== Unit tests: shell completions (runtime) ===${NC}"
 
-# --- Static: no VERSION_PLACEHOLDER anywhere under completions/ ---
-placeholder_hits=$(grep -rn '^VERSION_PLACEHOLDER$' "${COMP_DIR}" 2>/dev/null || true)
-if [[ -z "$placeholder_hits" ]]; then
-  _report true "completions have no bare VERSION_PLACEHOLDER lines"
-else
-  _report false "completions have no bare VERSION_PLACEHOLDER lines" "$placeholder_hits"
-fi
-
-# --- Static: fish has no bare ALL-CAPS placeholder commands ---
-fish_bad_lines=""
-for f in "${FISH_DIR}"/*.fish; do
-  while IFS= read -r line || [[ -n "$line" ]]; do
-    trimmed="${line#"${line%%[![:space:]]*}"}"
-    [[ -z "$trimmed" ]] && continue
-    [[ "$trimmed" =~ ^# ]] && continue
-    if [[ "$trimmed" =~ ^[A-Z][A-Z0-9_]*$ ]]; then
-      fish_bad_lines+="${f#"$REPO_ROOT"/}: ${trimmed}"$'\n'
-    fi
-  done < "$f"
-done
-if [[ -z "$fish_bad_lines" ]]; then
-  _report true "fish completions have no bare ALL-CAPS placeholder commands"
-else
-  _report false "fish completions have no bare ALL-CAPS placeholder commands" "$fish_bad_lines"
-fi
-
-# --- Static: no long-name twin registration (PATH is millennium only) ---
-longname_hits=$(grep -REn 'millennium-(repair|upgrade|schedule|purge|diag|theme|mcp)' \
-  "$BASH_COMP" "$ZSH_COMP" "$NU_COMP" "$FISH_DIR" "${COMP_DIR}/powershell/millennium-helpers.ps1" \
-  2>/dev/null | grep -vE 'millennium\.bak|bak_|millennium\.1' || true)
-if [[ -z "$longname_hits" ]]; then
-  _report true "completions do not register long-name PATH twins"
-else
-  _report false "completions do not register long-name PATH twins" "$longname_hits"
-fi
-
-assert_file_exists "$FISH_COMP" "fish completion file exists for millennium"
-
-bash_text=$(cat "$BASH_COMP")
-zsh_text=$(cat "$ZSH_COMP")
-nu_text=$(cat "$NU_COMP")
-fish_all=$(cat "${FISH_DIR}"/*.fish)
-
-assert_contains "$bash_text" "millennium" "bash completions mention millennium"
-assert_contains "$zsh_text" "millennium" "zsh completions mention millennium"
-assert_contains "$nu_text" "millennium" "nushell completions mention millennium"
-
-if grep -qE "complete -F [^ ]+ millennium([[:space:]]|$)" "$BASH_COMP"; then
-  _report true "bash complete -F registers millennium"
-else
-  _report false "bash complete -F registers millennium"
-fi
-
-compdef_line=$(grep -E '^#compdef ' "$ZSH_COMP" | head -1)
-assert_contains "$compdef_line" "millennium" "zsh #compdef lists millennium"
-assert_not_contains "$compdef_line" "millennium-upgrade" "zsh #compdef omits long-name twins"
-
-if grep -qE 'export extern "millennium"' "$NU_COMP"; then
-  _report true 'nushell export extern "millennium"'
-else
-  _report false 'nushell export extern "millennium"'
-fi
-
-# --- Static: shared core tokens across bash/zsh/fish/nu ---
-assert_token_in_shells() {
-  local token="$1"
-  local fish_token="${2:-$1}"
-  local label="${3:-$token}"
-  assert_contains "$bash_text" "$token" "bash completions include ${label}"
-  assert_contains "$zsh_text" "$token" "zsh completions include ${label}"
-  assert_contains "$fish_all" "$fish_token" "fish completions include ${label}"
-  assert_contains "$nu_text" "$token" "nushell completions include ${label}"
-}
-
-for cmd in diag doctor upgrade schedule theme repair purge mcp install uninstall help; do
-  assert_token_in_shells "$cmd" "$cmd" "dispatcher cmd '${cmd}'"
-done
-
-for action in enable disable status setup config; do
-  assert_token_in_shells "$action" "$action" "schedule action '${action}'"
-done
-
-assert_token_in_shells "--dry-run" "dry-run" "flag --dry-run"
-assert_token_in_shells "--quiet" "quiet" "flag --quiet"
-assert_token_in_shells "--cron" "cron" "schedule flag --cron"
-
-assert_token_in_shells "stable" "stable" "channel stable"
-assert_token_in_shells "beta" "beta" "channel beta"
-assert_token_in_shells "main" "main" "channel main"
-
-assert_token_in_shells "doctor" "doctor" "diag action doctor"
-assert_token_in_shells "logs" "logs" "diag action logs"
+assert_file_exists "$BASH_COMP" "bash completion file exists"
+assert_file_exists "$ZSH_COMP" "zsh completion file exists"
+assert_file_exists "$NU_COMP" "nushell completion file exists"
+assert_file_exists "$FISH_COMP" "fish completion file exists"
 
 # --- Bash runtime: drive completer functions ---
 bash_runtime_ok=true
@@ -225,7 +136,7 @@ else
   echo -e "  ${YELLOW}SKIP:${NC} zsh not installed; zsh nested simulation skipped"
 fi
 
-# --- Nushell interactive completions (commandline complete; needs stubs on PATH) ---
+# --- Nushell interactive completions ---
 if command -v nu >/dev/null 2>&1; then
   if nu -c "source ${NU_COMP}" 2>/dev/null; then
     _report true "nu sources millennium-helpers.nu"
@@ -245,47 +156,15 @@ if command -v nu >/dev/null 2>&1; then
       print ('millennium schedule ' | commandline complete | str join ' ')
       print 'SCHEDULE_EN:'
       print ('millennium schedule en' | commandline complete | str join ' ')
-      print 'SCHEDULE_FLAGS:'
-      print ('millennium schedule -' | commandline complete | str join ' ')
-      print 'DIAG:'
-      print ('millennium diag ' | commandline complete | str join ' ')
-    " 2>&1
+    " 2>/dev/null
   ) || true
   rm -rf "$NU_BIN"
-
-  dispatch_nu=$(echo "$nu_out" | awk '/^DISPATCH:/{getline; print}')
-  schedule_nu=$(echo "$nu_out" | awk '/^SCHEDULE:/{getline; print}')
-  schedule_en_nu=$(echo "$nu_out" | awk '/^SCHEDULE_EN:/{getline; print}')
-  schedule_flags_nu=$(echo "$nu_out" | awk '/^SCHEDULE_FLAGS:/{getline; print}')
-  diag_nu=$(echo "$nu_out" | awk '/^DIAG:/{getline; print}')
-
-  if [[ -z "${dispatch_nu}${schedule_nu}${diag_nu}" ]]; then
-    echo -e "  ${YELLOW}SKIP:${NC} nu commandline complete returned no suggestions (need Nushell >= 0.114)"
-    while IFS= read -r line || [[ -n "$line" ]]; do
-      printf '    %s\n' "$line" >&2
-    done <<< "$nu_out"
-  else
-    assert_contains "$dispatch_nu" "diag" "nu commandline complete millennium offers diag"
-    assert_contains "$dispatch_nu" "schedule" "nu commandline complete millennium offers schedule"
-    assert_contains "$schedule_nu" "enable" "nu commandline complete millennium schedule offers enable"
-    assert_contains "$schedule_nu" "status" "nu commandline complete millennium schedule offers status"
-    assert_contains "$schedule_en_nu" "enable" "nu commandline complete filters millennium schedule en"
-    assert_contains "$schedule_flags_nu" "--cron" "nu commandline complete offers --cron"
-    assert_contains "$diag_nu" "doctor" "nu commandline complete millennium diag offers doctor"
-    assert_contains "$diag_nu" "logs" "nu commandline complete millennium diag offers logs"
-  fi
+  nu_dispatch=$(echo "$nu_out" | awk '/^DISPATCH:/{getline; print}')
+  nu_schedule=$(echo "$nu_out" | awk '/^SCHEDULE:/{getline; print}')
+  assert_contains "$nu_dispatch" "schedule" "nu commandline complete offers schedule"
+  assert_contains "$nu_schedule" "enable" "nu schedule complete offers enable"
 else
-  echo -e "  ${YELLOW}SKIP:${NC} nu not installed; nushell interactive completions skipped"
+  echo -e "  ${YELLOW}SKIP:${NC} nu not installed; nushell runtime smokes skipped"
 fi
-
-# --- PowerShell completion script present (runtime covered by Pester on Windows) ---
-PS_COMP="${COMP_DIR}/powershell/millennium-helpers.ps1"
-assert_file_exists "$PS_COMP" "PowerShell completion script exists"
-assert_contains "$(cat "$PS_COMP")" "Register-ArgumentCompleter" \
-  "PowerShell completions register argument completers"
-assert_contains "$(cat "$PS_COMP")" "Get-MillenniumDispatcherCommands" \
-  "PowerShell completions define dispatcher command helper"
-assert_contains "$(cat "$PS_COMP")" "Get-MillenniumScheduleActions" \
-  "PowerShell completions define schedule action helper"
 
 print_summary

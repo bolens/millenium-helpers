@@ -3,16 +3,15 @@
 package upgrade
 
 import (
-	"archive/tar"
-	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/bolens/millenium-helpers/internal/archive"
 )
 
 func installPlatform(archivePath, version string, o Options) error {
@@ -22,7 +21,7 @@ func installPlatform(archivePath, version string, o Options) error {
 	}
 	defer func() { _ = os.RemoveAll(tmp) }()
 
-	if err := extractTarGz(archivePath, tmp); err != nil {
+	if err := archive.SafeExtractTarGz(archivePath, tmp); err != nil {
 		return err
 	}
 	src := filepath.Join(tmp, "usr", "lib", "millennium")
@@ -68,58 +67,6 @@ func installPlatform(archivePath, version string, o Options) error {
 	PruneBackups()
 	linkHooksCurrentUser(o.AllUsers)
 	_ = runtime.GOOS
-	return nil
-}
-
-func extractTarGz(archivePath, dest string) error {
-	f, err := os.Open(archivePath)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = f.Close() }()
-	gz, err := gzip.NewReader(f)
-	if err != nil {
-		return fmt.Errorf("not a gzip archive: %w", err)
-	}
-	defer func() { _ = gz.Close() }()
-	tr := tar.NewReader(gz)
-	destAbs, _ := filepath.Abs(dest)
-	for {
-		hdr, err := tr.Next()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-		name := filepath.Clean(hdr.Name)
-		if strings.HasPrefix(name, "..") || filepath.IsAbs(name) {
-			return fmt.Errorf("refusing unsafe tar member %q", hdr.Name)
-		}
-		target := filepath.Join(destAbs, name)
-		if !strings.HasPrefix(target, destAbs+string(os.PathSeparator)) && target != destAbs {
-			return fmt.Errorf("refusing tar slip member %q", hdr.Name)
-		}
-		switch hdr.Typeflag {
-		case tar.TypeDir:
-			if err := os.MkdirAll(target, 0o755); err != nil {
-				return err
-			}
-		case tar.TypeReg:
-			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-				return err
-			}
-			out, err := os.OpenFile(target, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, hdr.FileInfo().Mode())
-			if err != nil {
-				return err
-			}
-			if _, err := io.Copy(out, tr); err != nil {
-				_ = out.Close()
-				return err
-			}
-			_ = out.Close()
-		}
-	}
 	return nil
 }
 

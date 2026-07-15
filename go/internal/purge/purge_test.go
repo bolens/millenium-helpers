@@ -93,7 +93,7 @@ func TestConfirmOrRefuseNonInteractive(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	err = ConfirmOrRefuse(false, f)
 	if err == nil {
 		t.Fatal("expected refusal without --yes on non-TTY")

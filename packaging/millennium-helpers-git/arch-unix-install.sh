@@ -24,7 +24,6 @@ _arch_install_unix_helpers() {
   install -d "${pkgdir}/usr/lib/millennium-helpers"
 
   install -Dm644 completions/bash/millennium-helpers "${pkgdir}/usr/share/bash-completion/completions/millennium-helpers"
-  local script
   ln -sf millennium-helpers "${pkgdir}/usr/share/bash-completion/completions/millennium"
 
   install -Dm644 completions/zsh/_millennium-helpers "${pkgdir}/usr/share/zsh/site-functions/_millennium-helpers"

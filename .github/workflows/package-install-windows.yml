@@ -56,17 +56,15 @@ jobs:
           $version = (Get-Content VERSION -Raw).Trim()
           $zipPath = Join-Path $env:TEMP "millennium-helpers-v$version-windows-amd64.zip"
           Remove-Item -Recurse -Force $stage, $zipPath -ErrorAction SilentlyContinue
-          New-Item -ItemType Directory -Path (Join-Path $stage "scripts") | Out-Null
-          New-Item -ItemType Directory -Path (Join-Path $stage "completions") | Out-Null
+          New-Item -ItemType Directory -Force -Path (Join-Path $stage "scripts\windows") | Out-Null
+          New-Item -ItemType Directory -Force -Path (Join-Path $stage "completions") | Out-Null
 
-          # Match release.yml Windows payload layout (MCP + PowerShell completions).
-          Copy-Item -Recurse scripts\windows (Join-Path $stage "scripts\windows")
+          # Match release.yml Windows payload: Go exe under scripts/windows/ + PowerShell completions.
           Copy-Item -Recurse completions\powershell (Join-Path $stage "completions\powershell")
           Copy-Item VERSION, LICENSE, README.md $stage\
           New-Item -ItemType Directory -Force -Path (Join-Path $stage "third_party") | Out-Null
           Copy-Item third_party\MILLENNIUM-LICENSE.md (Join-Path $stage "third_party\MILLENNIUM-LICENSE.md")
 
-          # Build Go dispatcher into the zip (release.yml embeds scripts/windows/millennium.exe).
           $ver = $version
           Push-Location go
           try {
