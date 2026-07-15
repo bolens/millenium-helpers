@@ -120,6 +120,7 @@ commands:
     mcp: millennium_theme
     subcommands: [list, install, update, remove]
     flags:
+      - { name: all, long: --all, short: -a, notes: "with update: update every installed theme" }
       - { name: json, long: --json, aliases_windows: [-Json] }
       - { name: yes, long: --yes, short: -y }
       - { name: dry_run, long: --dry-run, short: -d }

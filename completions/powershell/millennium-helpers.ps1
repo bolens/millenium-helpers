@@ -38,6 +38,60 @@ function Global:Get-MillenniumThemeActions {
 # @@/cli-contract:commands.theme.subcommands@@
 }
 
+function Global:Get-MillenniumDiagFlags {
+# @@cli-contract:commands.diag.flags@@
+    @('-f', '--fix', '--force', '--json', '-l', '--follow', '-s', '--share', '-y', '--yes', '-d', '--dry-run', '-q', '--quiet', '-V', '--version', '-h', '--help')
+# @@/cli-contract:commands.diag.flags@@
+}
+
+function Global:Get-MillenniumUpgradeFlags {
+# @@cli-contract:commands.upgrade.flags@@
+    @('-c', '--channel', '--stable', '--beta', '--main', '-r', '--rollback', '--file', '--sha256', '--insecure-skip-verify', '--all-users', '-f', '--force', '-y', '--yes', '-d', '--dry-run', '-q', '--quiet', '-V', '--version', '-h', '--help')
+# @@/cli-contract:commands.upgrade.flags@@
+}
+
+function Global:Get-MillenniumScheduleFlags {
+# @@cli-contract:commands.schedule.flags@@
+    @('-c', '--cron', '--system', '--user', '-d', '--dry-run', '-q', '--quiet', '-V', '--version', '-h', '--help')
+# @@/cli-contract:commands.schedule.flags@@
+}
+
+function Global:Get-MillenniumThemeFlags {
+# @@cli-contract:commands.theme.flags@@
+    @('-a', '--all', '--json', '-y', '--yes', '-d', '--dry-run', '-q', '--quiet', '-V', '--version', '-h', '--help')
+# @@/cli-contract:commands.theme.flags@@
+}
+
+function Global:Get-MillenniumRepairFlags {
+# @@cli-contract:commands.repair.flags@@
+    @('-s', '--skip-theme', '-y', '--yes', '-d', '--dry-run', '-q', '--quiet', '-V', '--version', '-h', '--help')
+# @@/cli-contract:commands.repair.flags@@
+}
+
+function Global:Get-MillenniumPurgeFlags {
+# @@cli-contract:commands.purge.flags@@
+    @('-d', '--dry-run', '-y', '--yes', '-q', '--quiet', '-V', '--version', '-h', '--help')
+# @@/cli-contract:commands.purge.flags@@
+}
+
+function Global:Get-MillenniumMcpFlags {
+# @@cli-contract:commands.mcp.flags@@
+    @('-r', '--register', '-V', '--version', '-h', '--help')
+# @@/cli-contract:commands.mcp.flags@@
+}
+
+function Global:Get-MillenniumInstallFlags {
+# @@cli-contract:commands.install.flags@@
+    @('--track', '--tag', '--allow-unsigned-main', '--prefix', '--target-dir', '--lib-dir', '--source-root', '--skip-wizard', '-d', '--dry-run', '-f', '--force', '-V', '--version', '-h', '--help')
+# @@/cli-contract:commands.install.flags@@
+}
+
+function Global:Get-MillenniumUninstallFlags {
+# @@cli-contract:commands.uninstall.flags@@
+    @('-p', '--purge', '--prefix', '--target-dir', '--lib-dir', '-d', '--dry-run', '-V', '--version', '-h', '--help')
+# @@/cli-contract:commands.uninstall.flags@@
+}
+
 function script:Filter-Completions {
     param(
         [string[]]$Candidates,
@@ -97,11 +151,11 @@ function Global:Complete-MillenniumNative {
                 if ($args.Count -eq 1) {
                     $candidates = Get-MillenniumDiagActions
                 } else {
-                    $candidates = @('--json', '--fix', '-f', '--force', '--follow', '-l', '--yes', '-y', '--share', '-s', '--dry-run', '-d', '--quiet', '-q', '--version', '-V', '--help', '-h')
+                    $candidates = Get-MillenniumDiagFlags
                 }
             }
             'upgrade' {
-                $candidates = @('--channel', '-c', '--stable', '--beta', '--main', '--rollback', '-r', '--file', '--sha256', '--insecure-skip-verify', '--all-users', '--force', '-f', '--yes', '-y', '--dry-run', '-d', '--quiet', '-q', '--version', '-V', '--help', '-h')
+                $candidates = Get-MillenniumUpgradeFlags
                 if ($args.Count -ge 2 -and $args[-1] -in @('--channel', '-c')) {
                     $candidates = Get-MillenniumScheduleChannels
                 }
@@ -114,30 +168,30 @@ function Global:Complete-MillenniumNative {
                 } elseif ($args.Count -eq 2 -and $args[1] -eq 'config') {
                     $candidates = Get-MillenniumConfigActions
                 } else {
-                    $candidates = @('--dry-run', '-d', '--quiet', '-q', '--version', '-V', '--help', '-h')
+                    $candidates = Get-MillenniumScheduleFlags
                 }
             }
             'theme' {
                 if ($args.Count -eq 1) {
                     $candidates = Get-MillenniumThemeActions
                 } else {
-                    $candidates = @('--all', '-a', '--json', '--yes', '-y', '--dry-run', '-d', '--quiet', '-q', '--version', '-V', '--help', '-h')
+                    $candidates = Get-MillenniumThemeFlags
                 }
             }
             'repair' {
-                $candidates = @('--skip-theme', '-s', '--yes', '-y', '--dry-run', '-d', '--quiet', '-q', '--version', '-V', '--help', '-h')
+                $candidates = Get-MillenniumRepairFlags
             }
             'purge' {
-                $candidates = @('--yes', '-y', '--dry-run', '-d', '--quiet', '-q', '--version', '-V', '--help', '-h')
+                $candidates = Get-MillenniumPurgeFlags
             }
             'mcp' {
-                $candidates = @('--register', '-r', '--version', '-V', '--help', '-h')
+                $candidates = Get-MillenniumMcpFlags
             }
             'install' {
-                $candidates = @('--track', '--tag', '--allow-unsigned-main', '--prefix', '--target-dir', '--lib-dir', '--source-root', '--skip-wizard', '--dry-run', '-d', '--force', '-f', '--version', '-V', '--help', '-h')
+                $candidates = Get-MillenniumInstallFlags
             }
             'uninstall' {
-                $candidates = @('--purge', '-p', '--prefix', '--target-dir', '--lib-dir', '--dry-run', '-d', '--version', '-V', '--help', '-h')
+                $candidates = Get-MillenniumUninstallFlags
             }
         }
     }

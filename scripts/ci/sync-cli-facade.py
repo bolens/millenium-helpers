@@ -9,6 +9,8 @@ Marked blocks use:
 Keys:
   dispatcher.commands
   commands.<name>.subcommands
+  commands.<name>.flags
+  commands.install_uninstall.flags   # bash shared install|uninstall completer
   channels
 
 Usage:
@@ -64,6 +66,43 @@ def marker_re(key: str) -> re.Pattern[str]:
     )
 
 
+def flag_tokens(flags: object) -> list[str]:
+    """Ordered completion tokens: short then long for each flag."""
+    if not isinstance(flags, list):
+        return []
+    out: list[str] = []
+    seen: set[str] = set()
+    for item in flags:
+        if not isinstance(item, dict):
+            continue
+        for key in ("short", "long"):
+            tok = item.get(key)
+            if isinstance(tok, str) and tok and tok not in seen:
+                seen.add(tok)
+                out.append(tok)
+    return out
+
+
+def command_flags(commands: dict, name: str) -> list[str]:
+    meta = commands.get(name) or {}
+    if not isinstance(meta, dict):
+        fail(f"commands.{name} missing")
+    tokens = flag_tokens(meta.get("flags"))
+    if not tokens:
+        fail(f"commands.{name}.flags empty")
+    return tokens
+
+
+def render_flag_body(tokens: list[str], path: Path) -> str:
+    name = path.name
+    if name == "millennium-helpers" and "bash" in str(path):
+        return f'  local flagopts="{" ".join(tokens)}"\n'
+    if name == "millennium-helpers.ps1":
+        inner = ", ".join(f"'{t}'" for t in tokens)
+        return f"    @({inner})\n"
+    fail(f"no flag renderer for {path.relative_to(ROOT)}")
+
+
 def render_key(contract: dict, key: str, path: Path) -> str:
     """Return the body (no marker lines) for a key in a given file."""
     name = path.name
@@ -99,6 +138,10 @@ def render_key(contract: dict, key: str, path: Path) -> str:
 
     if key == "channels":
         channels = contract.get("channels") or []
+        if not channels:
+            fail("channels empty")
+        if name == "millennium-helpers" and "bash" in str(path):
+            return f'  local channels="{" ".join(channels)}"\n'
         if name == "millennium-helpers.ps1":
             inner = ", ".join(f"'{c}'" for c in channels)
             return f"    @({inner})\n"
@@ -107,6 +150,21 @@ def render_key(contract: dict, key: str, path: Path) -> str:
             inner = ", ".join(f'"{c}"' for c in channels)
             return f'  [ {inner}, "get", "set", "list" ]\n'
         fail(f"no renderer for channels in {path.relative_to(ROOT)}")
+
+    if key == "commands.install_uninstall.flags":
+        tokens: list[str] = []
+        seen: set[str] = set()
+        for cmd in ("install", "uninstall"):
+            for tok in command_flags(commands, cmd):
+                if tok not in seen:
+                    seen.add(tok)
+                    tokens.append(tok)
+        return render_flag_body(tokens, path)
+
+    m = re.fullmatch(r"commands\.([a-z_]+)\.flags", key)
+    if m:
+        tokens = command_flags(commands, m.group(1))
+        return render_flag_body(tokens, path)
 
     m = re.fullmatch(r"commands\.([a-z_]+)\.subcommands", key)
     if m:
@@ -118,15 +176,7 @@ def render_key(contract: dict, key: str, path: Path) -> str:
         if not subs:
             fail(f"commands.{cmd}.subcommands empty")
         if name == "millennium-helpers" and "bash" in str(path):
-            if cmd == "schedule":
-                return f'  local subcmds="{" ".join(subs)}"\n'
-            if cmd == "theme":
-                return f'  local subcmds="{" ".join(subs)}"\n'
-            if cmd == "diag":
-                # diag completer mixes subcommands + flags in one opts string; only sync the verb list comment+vars is awkward.
-                # Keep diag bash via scheduler/theme pattern unused — prefer PS/nu/zsh schedule/theme.
-                fail("bash diag subcommands use mixed opts; skip")
-            fail(f"no bash renderer for {key}")
+            return f'  local subcmds="{" ".join(subs)}"\n'
         if name == "_millennium-helpers":
             if cmd == "schedule":
                 return f"                '1:command:({' '.join(subs)})' \\\n"
@@ -185,18 +235,25 @@ def sync_file(path: Path, contract: dict, *, write: bool) -> list[str]:
     new_text = text
     for key in keys:
         pat = marker_re(key)
-        m = pat.search(new_text)
-        if not m:
+        matches = list(pat.finditer(new_text))
+        if not matches:
             fail(f"{path.relative_to(ROOT)}: malformed markers for {key}")
         body = render_key(contract, key, path)
-        # Preserve indentation of body if prefix is a comment starter on same indent.
-        prefix = m.group("prefix")
-        replacement = (
-            f"{prefix}@@cli-contract:{key}@@\n{body}{prefix}@@/cli-contract:{key}@@"
-        )
-        if m.group(0) != replacement:
+        key_dirty = False
+
+        def _repl(m: re.Match[str], b: str = body, k: str = key) -> str:
+            nonlocal key_dirty
+            prefix = m.group("prefix")
+            replacement = (
+                f"{prefix}@@cli-contract:{k}@@\n{b}{prefix}@@/cli-contract:{k}@@"
+            )
+            if m.group(0) != replacement:
+                key_dirty = True
+            return replacement
+
+        new_text = pat.sub(_repl, new_text)
+        if key_dirty:
             dirty.append(key)
-            new_text = pat.sub(lambda _m, r=replacement: r, new_text, count=1)
     if dirty and write:
         path.write_text(new_text, encoding="utf-8")
     return dirty
