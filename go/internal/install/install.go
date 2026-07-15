@@ -125,6 +125,10 @@ func runInstall(o Options) (Result, error) {
 		}
 	}
 
+	if err := installSudoers(o, &res); err != nil {
+		return res, err
+	}
+
 	res.Plan = append(res.Plan, "Millennium helpers install complete")
 	return res, nil
 }
@@ -194,6 +198,7 @@ func runUninstall(o Options) (Result, error) {
 		}
 		_ = planRemove(o.LibDir, o.DryRun, &res.Plan)
 		removeUnixCompletionsAndMan(o, &res)
+		removeSudoers(o, &res)
 	}
 
 	res.Plan = append(res.Plan, "Millennium helpers uninstall complete")

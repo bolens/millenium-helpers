@@ -40,6 +40,10 @@ func TestInstallUninstallFixture(t *testing.T) {
 	t.Setenv("MILLENNIUM_FISH_COMPLETION_DIR", filepath.Join(prefix, "fish"))
 	t.Setenv("MILLENNIUM_NUSHELL_COMPLETION_DIR", filepath.Join(prefix, "nu"))
 	t.Setenv("MILLENNIUM_MAN_DIR", filepath.Join(prefix, "man"))
+	if runtime.GOOS == "linux" {
+		t.Setenv("MOCK_SUDOERS_FILE", filepath.Join(prefix, "sudoers.d", "millennium-helpers"))
+		t.Setenv("SUDO_USER", "testuser")
+	}
 	o := Options{
 		Action:        "install",
 		Track:         "checkout",
