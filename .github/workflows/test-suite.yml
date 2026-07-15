@@ -116,21 +116,15 @@ jobs:
       fail-fast: false
       matrix:
         distro: [debian, ubuntu, fedora, archlinux]
+        # Feature coverage lives in go.yml (Linux / Windows / macOS). This
+        # workflow keeps install-time Bash, unit libs, packaging, and completions.
         suite:
           - tests/unit/test_common.sh
           - tests/unit/test_mocks.sh
           - tests/unit/test_completions.sh
           - tests/unit/test_install_track.sh
           - tests/behavioral/test_install.sh
-          - tests/behavioral/test_theme.sh
-          - tests/behavioral/test_schedule.sh
-          - tests/behavioral/test_purge.sh
-          - tests/behavioral/test_repair.sh
-          - tests/behavioral/test_upgrade.sh
-          - tests/behavioral/test_diag.sh
-          - tests/behavioral/test_mcp.sh
           - tests/behavioral/test_packaging_ci.sh
-          - tests/behavioral/test_security.sh
         include:
           - distro: debian
             image: debian:12
@@ -149,7 +143,7 @@ jobs:
           for attempt in 1 2 3 4 5; do
             if apt-get update -qq && apt-get install -y -qq \
               git jq python3 python3-yaml curl unzip tar coreutils procps util-linux \
-              sudo bash cron >/dev/null; then
+              sudo bash >/dev/null; then
               exit 0
             fi
             echo "apt install attempt ${attempt} failed; retrying in $((attempt * 5))s..." >&2
@@ -166,7 +160,7 @@ jobs:
           for attempt in 1 2 3 4 5; do
             if dnf install -y -q \
               git jq python3 python3-pyyaml curl unzip tar coreutils procps-ng util-linux \
-              sudo bash cronie shadow-utils; then
+              sudo bash shadow-utils; then
               exit 0
             fi
             echo "dnf install attempt ${attempt} failed; retrying in $((attempt * 5))s..." >&2
@@ -183,7 +177,7 @@ jobs:
           for attempt in 1 2 3 4 5; do
             if pacman -Sy --noconfirm --quiet \
               git jq python python-yaml curl unzip tar coreutils procps-ng util-linux \
-              sudo bash cronie shadow; then
+              sudo bash shadow; then
               exit 0
             fi
             echo "pacman install attempt ${attempt} failed; retrying in $((attempt * 5))s..." >&2
@@ -195,18 +189,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
 
-      # Suites that build or invoke bin/millennium (Go 1.22+).
+      # Install suite requires bin/millennium (Go dispatcher).
       - name: Set up Go
-        if: >-
-          matrix.suite == 'tests/behavioral/test_schedule.sh' ||
-          matrix.suite == 'tests/behavioral/test_theme.sh' ||
-          matrix.suite == 'tests/behavioral/test_purge.sh' ||
-          matrix.suite == 'tests/behavioral/test_upgrade.sh' ||
-          matrix.suite == 'tests/behavioral/test_diag.sh' ||
-          matrix.suite == 'tests/behavioral/test_security.sh' ||
-          matrix.suite == 'tests/behavioral/test_repair.sh' ||
-          matrix.suite == 'tests/behavioral/test_mcp.sh' ||
-          matrix.suite == 'tests/behavioral/test_install.sh'
+        if: matrix.suite == 'tests/behavioral/test_install.sh'
         uses: actions/setup-go@v6
         with:
           go-version: "1.25.12"
@@ -219,16 +204,7 @@ jobs:
 
       # Build as root (setup-go cache paths) then hand the binary to testuser.
       - name: Build Go dispatcher
-        if: >-
-          matrix.suite == 'tests/behavioral/test_schedule.sh' ||
-          matrix.suite == 'tests/behavioral/test_theme.sh' ||
-          matrix.suite == 'tests/behavioral/test_purge.sh' ||
-          matrix.suite == 'tests/behavioral/test_upgrade.sh' ||
-          matrix.suite == 'tests/behavioral/test_diag.sh' ||
-          matrix.suite == 'tests/behavioral/test_security.sh' ||
-          matrix.suite == 'tests/behavioral/test_repair.sh' ||
-          matrix.suite == 'tests/behavioral/test_mcp.sh' ||
-          matrix.suite == 'tests/behavioral/test_install.sh'
+        if: matrix.suite == 'tests/behavioral/test_install.sh'
         shell: bash
         run: |
           set -euo pipefail
@@ -257,28 +233,16 @@ jobs:
         suite:
           - tests/windows/common.Tests.ps1
           - tests/windows/Args.Tests.ps1
-          - tests/windows/millennium-diag.Tests.ps1
-          - tests/windows/millennium-upgrade.Tests.ps1
-          - tests/windows/millennium-theme.Tests.ps1
-          - tests/windows/millennium-schedule.Tests.ps1
           - tests/windows/install.Tests.ps1
           - tests/windows/InstallTrack.Tests.ps1
           - tests/windows/completions.Tests.ps1
-          - tests/windows/millennium-repair.Tests.ps1
-          - tests/windows/millennium-purge.Tests.ps1
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
 
-      # Schedule config / theme list thin-wrap to Go; Pester builds bin/millennium.exe.
+      # Install suite builds / requires bin/millennium.exe.
       - name: Set up Go
-        if: >-
-          matrix.suite == 'tests/windows/millennium-schedule.Tests.ps1' ||
-          matrix.suite == 'tests/windows/millennium-theme.Tests.ps1' ||
-          matrix.suite == 'tests/windows/millennium-purge.Tests.ps1' ||
-          matrix.suite == 'tests/windows/millennium-upgrade.Tests.ps1' ||
-          matrix.suite == 'tests/windows/millennium-diag.Tests.ps1' ||
-          matrix.suite == 'tests/windows/millennium-repair.Tests.ps1'
+        if: matrix.suite == 'tests/windows/install.Tests.ps1'
         uses: actions/setup-go@v6
         with:
           go-version: "1.25.12"
@@ -302,15 +266,7 @@ jobs:
           - tests/unit/test_completions.sh
           - tests/unit/test_install_track.sh
           - tests/behavioral/test_install.sh
-          - tests/behavioral/test_theme.sh
-          - tests/behavioral/test_schedule.sh
-          - tests/behavioral/test_purge.sh
-          - tests/behavioral/test_repair.sh
-          - tests/behavioral/test_upgrade.sh
-          - tests/behavioral/test_diag.sh
-          - tests/behavioral/test_mcp.sh
           - tests/behavioral/test_packaging_ci.sh
-          - tests/behavioral/test_security.sh
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -323,18 +279,9 @@ jobs:
           "$RUNNER_TEMP/mh-pyyaml/bin/pip" install --quiet pyyaml
           echo "$RUNNER_TEMP/mh-pyyaml/bin" >> "$GITHUB_PATH"
 
-      # Suites that build or invoke bin/millennium.
+      # Install suite requires bin/millennium.
       - name: Set up Go
-        if: >-
-          matrix.suite == 'tests/behavioral/test_schedule.sh' ||
-          matrix.suite == 'tests/behavioral/test_theme.sh' ||
-          matrix.suite == 'tests/behavioral/test_purge.sh' ||
-          matrix.suite == 'tests/behavioral/test_upgrade.sh' ||
-          matrix.suite == 'tests/behavioral/test_diag.sh' ||
-          matrix.suite == 'tests/behavioral/test_security.sh' ||
-          matrix.suite == 'tests/behavioral/test_repair.sh' ||
-          matrix.suite == 'tests/behavioral/test_mcp.sh' ||
-          matrix.suite == 'tests/behavioral/test_install.sh'
+        if: matrix.suite == 'tests/behavioral/test_install.sh'
         uses: actions/setup-go@v6
         with:
           go-version: "1.25.12"
