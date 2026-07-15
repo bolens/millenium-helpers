@@ -318,6 +318,8 @@ jobs:
           rm -rf "$home"
 
       - name: Smoke diag share / doctor live / logs --follow (dual-OS)
+        # Collect()/sudo on macOS has hung runners before; keep this smoke bounded.
+        timeout-minutes: 2
         shell: bash
         run: |
           set -euo pipefail
