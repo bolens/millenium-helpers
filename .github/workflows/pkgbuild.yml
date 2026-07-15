@@ -115,11 +115,11 @@ jobs:
             # so we validate the branch under test (pkgbuild + make build).
             WORK="/home/builduser/millenium-helpers"
             PKGBUILD_PATH="${PKG_DIR}/PKGBUILD"
-            COMMIT="$(git -C "$WORK" rev-parse HEAD)"
-            # Switch source to local file:// of this checkout (pinned commit).
-            sed -i "s|git+\${url}.git|git+file://${WORK}#commit=${COMMIT}|" "$PKGBUILD_PATH"
-            # git clone file:// still checks ownership of the source repo.
-            su builduser -c "git config --global --add safe.directory '*'"
-            su builduser -c "git config --global --add safe.directory '${WORK}'"
+            # Use a plain file:// directory source (copy), not git+file:// clone —
+            # cloning hits "dubious ownership" even with safe.directory under makepkg.
+            sed -i "s|git+\${url}.git|file://${WORK}|" "$PKGBUILD_PATH"
+            # System gitconfig: makepkg may not load builduser's ~/.gitconfig.
+            git config --system --add safe.directory '*'
+            git config --system --add safe.directory "${WORK}"
           fi
           su builduser -c "cd '${PKG_DIR}' && makepkg -s --noconfirm"

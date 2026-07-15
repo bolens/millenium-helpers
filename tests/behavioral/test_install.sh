@@ -386,8 +386,13 @@ PREFIX_FAIL=$(mktemp -d)
 mkdir -p "${PREFIX_FAIL}/bin" "${PREFIX_FAIL}/bash" "${PREFIX_FAIL}/zsh" "${PREFIX_FAIL}/fish" "${PREFIX_FAIL}/nu" "${PREFIX_FAIL}/man" "${PREFIX_FAIL}/sudoers.d"
 GO_HIDE=""
 if [[ -x "${REPO_ROOT}/bin/millennium" ]]; then
-  GO_HIDE="${REPO_ROOT}/bin/millennium.endgame_b_hide"
-  mv "${REPO_ROOT}/bin/millennium" "$GO_HIDE"
+  # Prefer hiding outside the repo so root-owned CI build artifacts can still be removed.
+  GO_HIDE="$(mktemp "${TMPDIR:-/tmp}/millennium.endgame_b_hide.XXXXXX")"
+  if ! mv "${REPO_ROOT}/bin/millennium" "$GO_HIDE" 2>/dev/null; then
+    cp -a "${REPO_ROOT}/bin/millennium" "$GO_HIDE"
+    rm -f "${REPO_ROOT}/bin/millennium" || chmod u+w "${REPO_ROOT}/bin" 2>/dev/null || true
+    rm -f "${REPO_ROOT}/bin/millennium"
+  fi
 fi
 mock_cmd "go" "echo 'go: mocked unavailable' >&2; exit 127"
 out=$(
@@ -405,8 +410,10 @@ out=$(
 )
 rc=$?
 rm -f "${MOCK_BIN}/go"
-if [[ -n "$GO_HIDE" ]]; then
-  mv "$GO_HIDE" "${REPO_ROOT}/bin/millennium"
+if [[ -n "$GO_HIDE" && -e "$GO_HIDE" ]]; then
+  mkdir -p "${REPO_ROOT}/bin"
+  mv "$GO_HIDE" "${REPO_ROOT}/bin/millennium" || cp -a "$GO_HIDE" "${REPO_ROOT}/bin/millennium"
+  rm -f "$GO_HIDE"
 fi
 assert_failure "$rc" "install.sh without Go toolchain or bin/millennium exits non-zero"
 assert_contains "$out" "Go dispatcher" "hard-require error names Go dispatcher"

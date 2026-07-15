@@ -35,7 +35,8 @@ permissions:
   contents: read
 
 env:
-  GO_VERSION: "1.25.x"
+  # Exact patch: stdlib CVEs need ≥1.25.12; golangci-lint must be built with ≥ that Go.
+  GO_VERSION: "1.25.12"
 
 jobs:
   quality:
@@ -66,9 +67,9 @@ jobs:
           fi
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v8
+        uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.1.6
+          version: v2.12.2
           working-directory: go
           args: --config=../.golangci.yml
 
@@ -303,12 +304,19 @@ jobs:
         run: |
           set -euo pipefail
           home="$(mktemp -d)"
-          lib="$home/lib"
-          mkdir -p "$lib/millennium.bak_smoke"
           export HOME="$home"
           export USERPROFILE="$home"
           export LOCALAPPDATA="$home/LocalAppData"
-          export MOCK_LIB_DIR="$lib"
+          if [[ "${RUNNER_OS}" == "Windows" ]]; then
+            # Windows lists backups under MILLENNIUM_BACKUP_DIR (not MOCK_LIB_DIR bak_*).
+            bak="$home/millennium_backups"
+            mkdir -p "$bak/smoke"
+            export MILLENNIUM_BACKUP_DIR="$bak"
+          else
+            lib="$home/lib"
+            mkdir -p "$lib/millennium.bak_smoke"
+            export MOCK_LIB_DIR="$lib"
+          fi
           out="$(bin/millennium upgrade --rollback list)"
           echo "$out" | grep -F 'Available Backups'
           echo "$out" | grep -F 'smoke'

@@ -7,6 +7,7 @@
 , python3
 , git
 , go
+, buildGoModule
 , src
 , version
 , pname ? "millennium-helpers"
@@ -16,6 +17,24 @@
 , buildGoDispatcher ? false
 }:
 
+let
+  # Fixed-output module fetch (sandbox-safe). Source tree must include go/go.mod.
+  millenniumDispatcher = buildGoModule {
+    pname = "${pname}-dispatcher";
+    inherit version src;
+    modRoot = "go";
+    vendorHash = "sha256-5HKVipTHytOwJIDbEfw3mm593Qkt7T8NW/R6mUkwx9Q=";
+    subPackages = [ "cmd/millennium" ];
+    env.CGO_ENABLED = "0";
+    ldflags = [
+      "-X github.com/bolens/millenium-helpers/internal/version.Version=${version}"
+    ];
+    # Avoid VCS stamping when src is not a clean .git checkout for the builder.
+    allowGoReference = false;
+    # Offline after vendor FOD.
+    proxyVendor = true;
+  };
+in
 stdenv.mkDerivation ({
   inherit pname version src;
 
@@ -27,12 +46,10 @@ stdenv.mkDerivation ({
 
   buildPhase = lib.optionalString buildGoDispatcher ''
     runHook preBuild
-    export CGO_ENABLED=0
-    export HOME="$TMPDIR"
-    export GOCACHE="$TMPDIR/go-cache"
-    export GOPATH="$TMPDIR/gopath"
-    mkdir -p "$GOCACHE" "$GOPATH"
-    make build
+    mkdir -p bin
+    # Copy prefetched/prebuilt dispatcher (modules resolved in a fixed-output drv).
+    cp ${millenniumDispatcher}/bin/millennium bin/millennium
+    chmod +x bin/millennium
     runHook postBuild
   '';
 

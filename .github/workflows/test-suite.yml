@@ -209,7 +209,7 @@ jobs:
           matrix.suite == 'tests/behavioral/test_install.sh'
         uses: actions/setup-go@v6
         with:
-          go-version: "1.25.x"
+          go-version: "1.25.12"
           cache-dependency-path: go/go.sum
 
       - name: Create non-root test user
@@ -237,7 +237,8 @@ jobs:
           (cd go && CGO_ENABLED=0 go build -buildvcs=false \
             -ldflags "-X github.com/bolens/millenium-helpers/internal/version.Version=${ver}" \
             -o ../bin/millennium ./cmd/millennium)
-          chown testuser:testuser bin/millennium
+          # Root-owned build outputs must be fully writable by testuser (mv/hide in install suite).
+          chown -R testuser:testuser bin "$GITHUB_WORKSPACE"
 
       # Scripts distinguish root vs non-root behavior (e.g. sudo hints,
       # passwordless-sudo setup being skipped). Running as a regular user
@@ -280,7 +281,7 @@ jobs:
           matrix.suite == 'tests/windows/millennium-repair.Tests.ps1'
         uses: actions/setup-go@v6
         with:
-          go-version: "1.25.x"
+          go-version: "1.25.12"
           cache-dependency-path: go/go.sum
 
       - name: Run Pester tests
@@ -336,7 +337,7 @@ jobs:
           matrix.suite == 'tests/behavioral/test_install.sh'
         uses: actions/setup-go@v6
         with:
-          go-version: "1.25.x"
+          go-version: "1.25.12"
           cache-dependency-path: go/go.sum
 
       - name: Run ${{ matrix.suite }}
