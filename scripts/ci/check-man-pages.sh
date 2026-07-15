@@ -14,18 +14,13 @@ fail() {
 [[ -d man ]] || fail "man/ directory is missing"
 
 missing=0
-# man/millennium.1 plus per-command pages (basename millennium-<cmd>.1).
+# Required pages come from spec/cli-contract.yaml (commands.*.man).
 # PATH ships only `millennium`; long-name pages document `millennium <cmd>`.
-REQUIRED_MAN=(
-  millennium
-  millennium-mcp
-  millennium-repair
-  millennium-upgrade
-  millennium-schedule
-  millennium-purge
-  millennium-diag
-  millennium-theme
-)
+if ! command -v python3 >/dev/null 2>&1; then
+  fail "python3 is required to load man page list from cli-contract.yaml"
+fi
+mapfile -t REQUIRED_MAN < <(python3 scripts/ci/check-cli-contract.py --list-man-bases)
+[[ ${#REQUIRED_MAN[@]} -gt 0 ]] || fail "cli-contract.yaml produced no man page basenames"
 
 for base in "${REQUIRED_MAN[@]}"; do
   page="man/${base}.1"

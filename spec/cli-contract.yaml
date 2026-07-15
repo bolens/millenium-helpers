@@ -48,7 +48,7 @@ commands:
     binary: millennium-diag
     man: millennium-diag.1
     mcp: millennium_diag
-    subcommands: [doctor]
+    subcommands: [doctor, logs]
     flags:
       - { name: fix, long: --fix, short: -f, aliases_windows: [-Fix], notes: "alias for doctor" }
       - { name: force, long: --force, aliases_windows: [-Force] }
@@ -101,6 +101,8 @@ commands:
       - { name: version, long: --version, short: -V }
       - { name: help, long: --help, short: -h }
     mcp_properties: [action, channel, cron, system, user]
+    # MCP exposes a subset of schedule actions (setup/config stay CLI-only).
+    mcp_actions: [enable, disable, status]
     mcp_os_only_properties:
       cron: [linux]
       system: [linux]
@@ -153,14 +155,18 @@ commands:
     binary: millennium-mcp
     man: millennium-mcp.1
     mcp: null
-    notes: "Go millennium mcp; tools self-exec millennium <feature>; sudoers allowlists Go verbs + long-names"
+    notes: "Go millennium mcp; tools self-exec millennium <feature>"
+    flags:
+      - { name: register, long: --register, short: -r, aliases_windows: [-Register] }
+      - { name: version, long: --version, short: -V }
+      - { name: help, long: --help, short: -h }
 
   install:
     platforms: [linux, darwin, windows]
     binary: null
     man: null
     mcp: null
-    notes: "Install helpers on this machine; thin install.sh/ps1 bootstrap execs this"
+    notes: "Install helpers on this machine; Unix thin install.sh bootstraps into this"
     flags:
       - { name: track, long: --track, aliases_windows: [-Track], enum: [release, main, tag, checkout] }
       - { name: tag, long: --tag, aliases_windows: [-Tag] }

@@ -31,7 +31,7 @@ Parity on Linux, macOS, and Windows is enforced by Go unit tests and
 | Windows `install.ps1` removed (Scoop/Winget/standalone `millennium.exe`) | Done |
 | Install-time Bash/PS libs removed (`common.sh` / `common.ps1` / `scripts/*/lib`) | Done |
 | PATH = `millennium` only (no new long-name twins) | Done |
-| Contract-driven façade sync (completions / man / MCP) | Ongoing |
+| Contract-driven façade sync (completions / man / MCP) | In progress |
 | Long-name sudoers + completion symlink cleanup | Done |
 
 `make build` → `bin/millennium`. Release CD embeds per-OS/arch Go binaries and
@@ -66,9 +66,11 @@ Local checks: `make test-go` (features) + `make test` / `make test-windows`
 
 ## Remaining work
 
-1. **Contract-driven façade sync** — keep completions, man pages, and MCP schema
-   aligned with [`spec/cli-contract.yaml`](../spec/cli-contract.yaml)
-   (`make check-cli-contract`).
+1. **Contract-driven façade sync** — `check-cli-contract` now enforces multi-shell
+   dispatcher commands, bash flags/subcommands, man flag coverage, and MCP
+   `mcp_actions` enums. Still hand-maintained façades (no codegen yet); keep
+   [`spec/cli-contract.yaml`](../spec/cli-contract.yaml) first when changing a
+   command (`make check-cli-contract`).
 
 ---
 
