@@ -12,7 +12,7 @@ func installUnixCompletionsAndMan(o Options, sourceRoot string, res *Result) err
 	compRoot := filepath.Join(sourceRoot, "completions")
 	bashSrc := filepath.Join(compRoot, "bash", "millennium-helpers")
 	zshSrc := filepath.Join(compRoot, "zsh", "_millennium-helpers")
-	fishSrc := filepath.Join(compRoot, "fish", "millennium-helpers.fish")
+	fishSrc := filepath.Join(compRoot, "fish", "millennium.fish")
 	nuSrc := filepath.Join(compRoot, "nushell", "millennium-helpers.nu")
 
 	bashDir := envOr("MILLENNIUM_BASH_COMPLETION_DIR", defaultBashCompDir())
@@ -41,7 +41,7 @@ func installUnixCompletionsAndMan(o Options, sourceRoot string, res *Result) err
 		if err := ensureDir(fishDir, o.DryRun, &res.Plan); err != nil {
 			return err
 		}
-		if err := planCopy(fishSrc, filepath.Join(fishDir, "millennium-helpers.fish"), 0o644, o.DryRun, &res.Plan); err != nil {
+		if err := planCopy(fishSrc, filepath.Join(fishDir, "millennium.fish"), 0o644, o.DryRun, &res.Plan); err != nil {
 			return err
 		}
 	}
@@ -78,7 +78,8 @@ func removeUnixCompletionsAndMan(o Options, res *Result) {
 	manDir := envOr("MILLENNIUM_MAN_DIR", defaultManDir())
 	_ = planRemove(filepath.Join(bashDir, "millennium-helpers"), o.DryRun, &res.Plan)
 	_ = planRemove(filepath.Join(zshDir, "_millennium-helpers"), o.DryRun, &res.Plan)
-	_ = planRemove(filepath.Join(fishDir, "millennium-helpers.fish"), o.DryRun, &res.Plan)
+	_ = planRemove(filepath.Join(fishDir, "millennium.fish"), o.DryRun, &res.Plan)
+	_ = planRemove(filepath.Join(fishDir, "millennium-helpers.fish"), o.DryRun, &res.Plan) // legacy name
 	_ = planRemove(filepath.Join(nuDir, "millennium-helpers.nu"), o.DryRun, &res.Plan)
 	for _, page := range []string{
 		"millennium.1", "millennium-diag.1", "millennium-mcp.1", "millennium-purge.1",
