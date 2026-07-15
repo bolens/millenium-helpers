@@ -28,20 +28,10 @@ func installWindowsPATH(o Options, res *Result) error {
 	if err != nil && err != registry.ErrNotExist {
 		return err
 	}
-	parts := splitPath(cur)
-	for _, p := range parts {
-		if strings.EqualFold(p, o.TargetDir) {
-			res.Plan = append(res.Plan, "User PATH already contains "+o.TargetDir)
-			return nil
-		}
-	}
-	newPath := o.TargetDir
-	if cur != "" {
-		if strings.HasSuffix(cur, ";") {
-			newPath = cur + o.TargetDir
-		} else {
-			newPath = cur + ";" + o.TargetDir
-		}
+	newPath, added := pathWithDir(cur, o.TargetDir)
+	if !added {
+		res.Plan = append(res.Plan, "User PATH already contains "+o.TargetDir)
+		return nil
 	}
 	return k.SetStringValue("Path", newPath)
 }
@@ -64,19 +54,5 @@ func removeWindowsPATH(o Options, res *Result) {
 	if err != nil {
 		return
 	}
-	var keep []string
-	for _, p := range splitPath(cur) {
-		if p == "" || strings.EqualFold(p, o.TargetDir) {
-			continue
-		}
-		keep = append(keep, p)
-	}
-	_ = k.SetStringValue("Path", strings.Join(keep, ";"))
-}
-
-func splitPath(p string) []string {
-	if p == "" {
-		return nil
-	}
-	return strings.Split(p, ";")
+	_ = k.SetStringValue("Path", pathWithoutDir(cur, o.TargetDir))
 }
