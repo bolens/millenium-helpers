@@ -67,7 +67,7 @@ func run(args []string) int {
 
 Implements schedule, theme, diag (report/json/share/logs/doctor), upgrade
 (download/SHA/install/rollback + Linux sudo handoff), purge, repair,
-install/uninstall helpers, and mcp JSON-RPC (see docs/unification-roadmap.md).
+install/uninstall helpers, and mcp JSON-RPC (see spec/cli-contract.yaml).
 
 MILLENNIUM_LEGACY=1 is obsolete for Go-owned commands (they stay native).`,
 		SilenceUsage:  true,

@@ -151,20 +151,8 @@ need_contains "docs/licensing.md" "uninstall_dryrun.md" \
   "docs/licensing.md must link to uninstall_dryrun.md"
 need_contains "docs/licensing.md" "release_runbook.md" \
   "docs/licensing.md must link to release_runbook.md"
-need_contains "docs/licensing.md" "unification-audit.md" \
-  "docs/licensing.md must link to unification-audit.md"
-need_contains "docs/licensing.md" "unification-roadmap.md" \
-  "docs/licensing.md must link to unification-roadmap.md"
 need_contains "docs/licensing.md" "](README.md)" \
   "docs/licensing.md must link to the docs index"
-
-# unification guides
-need_contains "docs/unification-audit.md" "unification-roadmap.md" \
-  "docs/unification-audit.md must link to unification-roadmap.md"
-need_contains "docs/unification-roadmap.md" "unification-audit.md" \
-  "docs/unification-roadmap.md must link to unification-audit.md"
-need_contains "docs/unification-roadmap.md" "../spec/cli-contract.yaml" \
-  "docs/unification-roadmap.md must link to the CLI contract"
 
 # ---------------------------------------------------------------------------
 # Man pages → matching guides

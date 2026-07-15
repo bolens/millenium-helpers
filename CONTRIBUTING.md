@@ -77,8 +77,7 @@ Guide index: **[docs/README.md](docs/README.md)**. When adding or renaming a gui
 | Doc | When to read |
 | --- | --- |
 | [docs/release_runbook.md](docs/release_runbook.md) | Cutting a release |
-| [docs/unification-audit.md](docs/unification-audit.md) | Go inventory + go.yml parity matrix |
-| [docs/unification-roadmap.md](docs/unification-roadmap.md) | Go unification notes + definition of done |
+| [spec/cli-contract.yaml](spec/cli-contract.yaml) | Commands / flags / MCP / façades (`make sync-cli-facade`) |
 | [docs/licensing.md](docs/licensing.md) | Attribution / Millennium client MIT |
 | [docs/mcp.md](docs/mcp.md) | MCP tool surface |
 | [docs/security_troubleshooting.md](docs/security_troubleshooting.md) | Sudoers / scheduler / doctor FAQs |
@@ -121,8 +120,8 @@ Feature commands live in Go only. Do not reintroduce install-time `scripts/lib` 
 
 ## Linux / Windows parity
 
-Prefer one Go implementation. See [docs/unification-roadmap.md](docs/unification-roadmap.md)
-and the matrix in [docs/unification-audit.md](docs/unification-audit.md).
+Prefer one Go implementation. Keep [`spec/cli-contract.yaml`](spec/cli-contract.yaml)
+aligned and cover Linux / Windows / macOS in [`.github/workflows/go.yml`](.github/workflows/go.yml).
 
 **Go surfaces:**
 

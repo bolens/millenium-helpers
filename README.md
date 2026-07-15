@@ -235,9 +235,9 @@ New installs put only `millennium` / `millennium.exe` on PATH. Prefer
 | `millennium mcp` | MCP server for AI assistants ([docs/mcp.md](docs/mcp.md)) |
 | `millennium install` / `uninstall` | Install helpers (Go); thin [`install.sh`](install.sh) on Unix; Windows via Scoop/Winget/standalone `millennium.exe` |
 
-Feature commands ship as the Go CLI only (no Bash/PS feature-script
-fallbacks). Ownership / parity notes:
-[docs/unification-audit.md](docs/unification-audit.md).
+Feature commands ship as the Go CLI only. Contract and OS coverage:
+[`spec/cli-contract.yaml`](spec/cli-contract.yaml) and
+[`.github/workflows/go.yml`](.github/workflows/go.yml).
 
 ---
 
@@ -301,8 +301,7 @@ Manage with `millennium schedule config list|get|set`. File mode is set to `600`
 | --- | --- |
 | Documentation index | [docs/README.md](docs/README.md) |
 | Licensing (helpers + Millennium) | [docs/licensing.md](docs/licensing.md) |
-| Go CLI ownership + OS/test parity | [docs/unification-audit.md](docs/unification-audit.md) |
-| Unification notes + remaining trim | [docs/unification-roadmap.md](docs/unification-roadmap.md) |
+| CLI contract (commands / flags / MCP) | [spec/cli-contract.yaml](spec/cli-contract.yaml) |
 | Packaging matrix (from-source / bin / git) | [packaging/README.md](packaging/README.md) |
 | Dry-run & manual uninstall | [docs/uninstall_dryrun.md](docs/uninstall_dryrun.md) |
 | Release runbook | [docs/release_runbook.md](docs/release_runbook.md) |
@@ -331,7 +330,7 @@ make test-go       # Go unit + dispatcher smokes
 # make test-all-distros            # optional; requires Docker
 ```
 
-Helpers report version via `--version` / `-V` (from the repo `VERSION` file). A Dev Container (includes `pwsh` + Docker-in-Docker) and a Nix `devShell` (lint tools only) are available for a reproducible environment. Go owns the installed CLI; feature CI is [`go.yml`](.github/workflows/go.yml) (Linux / Windows / macOS). Install-time Bash/PS notes: [docs/unification-roadmap.md](docs/unification-roadmap.md).
+Helpers report version via `--version` / `-V` (from the repo `VERSION` file). A Dev Container (includes `pwsh` + Docker-in-Docker) and a Nix `devShell` (lint tools only) are available for a reproducible environment. Go owns the installed CLI; feature CI is [`go.yml`](.github/workflows/go.yml) (Linux / Windows / macOS). See [CONTRIBUTING.md](CONTRIBUTING.md) for layout and install bootstrap notes.
 
 ---
 
