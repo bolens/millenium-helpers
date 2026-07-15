@@ -193,4 +193,64 @@ if errors:
 print("Release-asset URL shape OK")
 PY
 
+# --- Arch sudoers source checksums (second sha256sums entry) ---
+python3 - <<'PY' || fail "Arch sudoers sha256sums checks failed"
+import hashlib
+import re
+import sys
+from pathlib import Path
+
+errors = []
+for pkg in (
+    "millennium-helpers",
+    "millennium-helpers-bin",
+    "millennium-helpers-git",
+):
+    pkg_dir = Path("packaging") / pkg
+    if not pkg_dir.is_dir():
+        continue
+    sudoers = pkg_dir / "millennium-helpers.sudoers"
+    pkgbuild = pkg_dir / "PKGBUILD"
+    srcinfo = pkg_dir / ".SRCINFO"
+    if not sudoers.is_file():
+        errors.append(f"missing {sudoers}")
+        continue
+    if not pkgbuild.is_file():
+        errors.append(f"missing {pkgbuild}")
+        continue
+    actual = hashlib.sha256(sudoers.read_bytes()).hexdigest()
+    text = pkgbuild.read_text(encoding="utf-8")
+    block = re.search(r"(?ms)^sha256sums=\((.*?)\)\s*$", text)
+    if not block:
+        errors.append(f"{pkgbuild}: missing sha256sums=()")
+        continue
+    sums = re.findall(r"'([0-9a-fA-F]{64}|SKIP)'", block.group(1))
+    if len(sums) < 2:
+        errors.append(f"{pkgbuild}: expected >=2 sha256sums entries, got {sums!r}")
+        continue
+    expected = sums[1].lower()
+    if expected != actual:
+        errors.append(
+            f"{pkgbuild}: sudoers sha256 '{expected}' != file '{actual}' "
+            f"(update after editing millennium-helpers.sudoers)"
+        )
+    if srcinfo.is_file():
+        info_sums = re.findall(
+            r"(?m)^\tsha256sums = ([0-9a-fA-F]{64}|SKIP)$",
+            srcinfo.read_text(encoding="utf-8"),
+        )
+        if len(info_sums) < 2:
+            errors.append(f"{srcinfo}: expected >=2 sha256sums lines")
+        elif info_sums[1].lower() != actual:
+            errors.append(
+                f"{srcinfo}: sudoers sha256 '{info_sums[1]}' != file '{actual}'"
+            )
+
+if errors:
+    for err in errors:
+        print(f"error: {err}", file=sys.stderr)
+    raise SystemExit(1)
+print("Arch sudoers sha256sums OK")
+PY
+
 echo "All packaging versions match VERSION ($VERSION)."
