@@ -24,7 +24,7 @@ jobs:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update Flake Lock and Create PR
-        uses: determinateSystems/update-flake-lock@v21
+        uses: determinateSystems/update-flake-lock@v28
         with:
           pr-title: "chore(nix): update flake.lock"
           pr-body: |
