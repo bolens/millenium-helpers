@@ -35,7 +35,7 @@ jobs:
           skip-delete: true
 
       - name: Apply path and branch labels
-        uses: actions/labeler@v6
+        uses: actions/labeler@v7
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           configuration-path: .github/labeler.yml
