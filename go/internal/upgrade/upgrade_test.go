@@ -231,6 +231,22 @@ func TestPruneBackupsEnforcesAgeAndCount(t *testing.T) {
 	}
 }
 
+func TestWindowsBackupName(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		want bool
+	}{
+		{"3.0.1_20260805213000", true},
+		{"version_with_underscore_20260805213000", true},
+		{"unrelated", false},
+		{"3.0.1_not-a-timestamp", false},
+	} {
+		if got := isWindowsBackupName(tc.name); got != tc.want {
+			t.Errorf("isWindowsBackupName(%q)=%v, want %v", tc.name, got, tc.want)
+		}
+	}
+}
+
 func TestApplyRollbackUnix(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("unix rollback")

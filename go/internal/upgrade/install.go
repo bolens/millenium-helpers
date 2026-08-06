@@ -104,7 +104,9 @@ func PruneBackups() error {
 	maxAgeDays := 0
 	data, err := config.Load()
 	if err != nil {
-		return fmt.Errorf("load backup retention config: %w", err)
+		// Retention is cleanup; malformed config must not block an otherwise
+		// successful install or risk pruning with unintended defaults.
+		return nil
 	}
 	if v := config.Get(data, "backup_limit"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
@@ -139,6 +141,9 @@ func PruneBackups() error {
 	var backs []backup
 	for _, entry := range entries {
 		if !entry.IsDir() {
+			continue
+		}
+		if windowsLayout && !isWindowsBackupName(entry.Name()) {
 			continue
 		}
 		if !windowsLayout && entry.Name() != "millennium.bak" && !strings.HasPrefix(entry.Name(), "millennium.bak_") {
@@ -177,6 +182,19 @@ func PruneBackups() error {
 		backs = backs[1:]
 	}
 	return nil
+}
+
+func isWindowsBackupName(name string) bool {
+	i := strings.LastIndexByte(name, '_')
+	if i <= 0 || len(name)-i-1 != len("20060102150405") {
+		return false
+	}
+	for _, r := range name[i+1:] {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 // TryNativeInstall installs from a verified local archive when CanNativeInstall.

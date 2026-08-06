@@ -50,6 +50,9 @@ func removeWindowsPATH(o Options, res *Result) error {
 	}
 	defer k.Close()
 	cur, _, err := k.GetStringValue("Path")
+	if err == registry.ErrNotExist {
+		return nil
+	}
 	if err != nil {
 		return fmt.Errorf("read User PATH: %w", err)
 	}

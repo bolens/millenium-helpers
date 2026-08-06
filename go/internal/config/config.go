@@ -52,7 +52,7 @@ func Dir() string {
 	return filepath.Join(xdg, "millennium-helpers")
 }
 
-// Load reads config.json (empty map if missing/invalid).
+// Load reads config.json (empty map if missing; error if unreadable or invalid).
 func Load() (Data, error) {
 	path := Path()
 	b, err := os.ReadFile(path)
