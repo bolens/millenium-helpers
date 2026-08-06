@@ -44,3 +44,32 @@ func TestRegisterWritesCursorAndClaude(t *testing.T) {
 		t.Fatalf("cursor command: %#v", entry)
 	}
 }
+
+func TestRegisterPreservesInvalidConfig(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	t.Setenv("APPDATA", filepath.Join(home, "AppData"))
+
+	cursorDir := filepath.Join(home, ".cursor")
+	if err := os.MkdirAll(cursorDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(cursorDir, "mcp.json")
+	const invalid = "{not-json\n"
+	if err := os.WriteFile(path, []byte(invalid), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	res := Register()
+	if res.RegisteredAny {
+		t.Fatalf("invalid-only config should not register: %v", res.Lines)
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(raw) != invalid {
+		t.Fatalf("invalid config was overwritten: %q", raw)
+	}
+}
