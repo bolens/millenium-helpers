@@ -4,6 +4,7 @@ package upgrade
 
 import (
 	"archive/zip"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -33,6 +34,43 @@ func TestNativeInstallWindows(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(steam, "millennium", "marker")); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestRestoreWindowsBackup(t *testing.T) {
+	root := t.TempDir()
+	steam := filepath.Join(root, "Steam")
+	bak := filepath.Join(root, "backup")
+	stage := filepath.Join(root, "stage")
+	for _, dir := range []string{
+		filepath.Join(steam, "millennium"),
+		filepath.Join(bak, "millennium"),
+		filepath.Join(stage, "millennium"),
+	} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(steam, "millennium", "marker"), []byte("partial"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(bak, "millennium", "marker"), []byte("original"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(stage)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = restoreWindowsBackup(steam, bak, entries, errors.New("install failed"))
+	if err == nil || !strings.Contains(err.Error(), "previous installation restored") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	body, err := os.ReadFile(filepath.Join(steam, "millennium", "marker"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(body) != "original" {
+		t.Fatalf("got %q", body)
 	}
 }
 
