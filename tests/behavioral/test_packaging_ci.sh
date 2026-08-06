@@ -487,13 +487,14 @@ assert_contains "$release_gate" "actionlint.yml" "release gate waits on actionli
 assert_contains "$release_gate" "python-lint.yml" "release gate waits on python-lint.yml"
 assert_contains "$release_gate" "powershell-lint.yml" "release gate waits on powershell-lint.yml"
 assert_contains "$release_gate" "man-pages.yml" "release gate waits on man-pages.yml"
+assert_contains "$release_gate" "codeql.yml" "release gate waits on codeql.yml"
 assert_contains "$release_gate" "sort_by(.createdAt) | last" "release gate requires latest completed CI run"
 
 release_yml=$(cat "${REPO_ROOT}/.github/workflows/release.yml")
 assert_contains "$release_yml" "name: Assert skip CI policy" "release refuses skip_ci_gate abuse via assert job"
 assert_contains "$release_yml" "skip_ci_gate is only allowed for tag_name=v-draft" "release documents skip_ci_gate=v-draft-only"
 
-for gate_wf in version-sync package-manifests actionlint python-lint powershell-lint man-pages go; do
+for gate_wf in version-sync package-manifests actionlint python-lint powershell-lint man-pages go codeql; do
   wf_body=$(cat "${REPO_ROOT}/.github/workflows/${gate_wf}.yml")
   assert_contains "$wf_body" "tags: [ 'v*' ]" "${gate_wf}.yml declares tags: [v*] for release gate"
 done

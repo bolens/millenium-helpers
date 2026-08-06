@@ -139,7 +139,7 @@ gh run list --commit "$SHA" --limit 30
 for wf in \
   test-suite.yml shellcheck.yml completions.yml go.yml \
   version-sync.yml package-manifests.yml actionlint.yml \
-  python-lint.yml powershell-lint.yml man-pages.yml
+  python-lint.yml powershell-lint.yml man-pages.yml codeql.yml
 do
   echo "=== $wf ==="
   gh run list --commit "$SHA" --workflow "$wf" --limit 3
@@ -164,6 +164,7 @@ Critical workflows for a release commit (**CD pre-build gate** — all must pass
 - **CI: Python Lint**
 - **CI: PowerShell Script Analysis**
 - **CI: Man Pages**
+- **CI: CodeQL**
 
 `skip_ci_gate` on workflow_dispatch is allowed only for `tag_name=v-draft`. Real `vX.Y.Z` tags always wait for the gate before building assets.
 
@@ -181,10 +182,11 @@ git push origin "vX.Y.Z"
 This starts **CD: Deployment & Release Automation**, which:
 
 1. Waits for **Test Suite + ShellCheck + Completions** success on that commit SHA
-2. Builds versioned OS/arch bin packs, `-src` archives, standalone Go binaries + checksums
-3. Creates a **draft** GitHub release
-4. Opens a packaging PR with real SHA256s
-5. Auto-merges the packaging PR and publishes the draft when packaging CI is green
+2. Builds versioned OS/arch bin packs, `-src` archives, standalone Go binaries, checksums, and an SPDX JSON SBOM
+3. Creates GitHub build-provenance attestations for real-tag release assets
+4. Creates a **draft** GitHub release
+5. Opens a packaging PR with real SHA256s
+6. Auto-merges the packaging PR and publishes the draft when packaging CI is green
 
 Monitor:
 
@@ -200,6 +202,7 @@ gh pr list --search "packaging" --state open
 
 - [ ] Draft release is **published** (not still draft)
 - [ ] `gh release view vX.Y.Z` shows both archives and `.sha256` sidecars
+- [ ] SPDX SBOM and `.sha256` sidecar are attached; `gh attestation verify <asset> --repo bolens/millenium-helpers` succeeds
 - [ ] `main` Formula / Scoop / Winget / versioned Arch hashes match the published assets (`make check-version`)
 - [ ] Spot-check: piped installer dry-run or `brew audit` / Scoop manifest sanity
 
