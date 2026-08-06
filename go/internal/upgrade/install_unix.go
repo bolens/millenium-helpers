@@ -65,7 +65,9 @@ func installPlatform(archivePath, version string, o Options) error {
 		}
 		return err
 	}
-	PruneBackups()
+	if err := PruneBackups(); err != nil {
+		return err
+	}
 	if err := linkHooksCurrentUser(o.AllUsers); err != nil {
 		return err
 	}

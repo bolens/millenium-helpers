@@ -98,6 +98,9 @@ func installPlatform(archivePath, version string, o Options) error {
 		_ = os.RemoveAll(bak)
 	}
 	InstallLicense(mill)
+	if err := PruneBackups(); err != nil {
+		return err
+	}
 	_ = o
 	return nil
 }

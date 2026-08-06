@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestParseChannel(t *testing.T) {
@@ -187,6 +188,46 @@ func TestResolveBackupName(t *testing.T) {
 	}
 	if _, err := ResolveBackupName("missing"); err == nil {
 		t.Fatal("expected missing")
+	}
+}
+
+func TestPruneBackupsEnforcesAgeAndCount(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("unix backup layout")
+	}
+	root := t.TempDir()
+	cfgDir := t.TempDir()
+	t.Setenv("MOCK_LIB_DIR", root)
+	t.Setenv("MILLENNIUM_LIB_DIR", root)
+	t.Setenv("MILLENNIUM_CONFIG_DIR", cfgDir)
+	t.Setenv("MILLENNIUM_CONFIG_FILE", "")
+	if err := os.WriteFile(filepath.Join(cfgDir, "config.json"), []byte(`{"backup_limit":2,"backup_max_age_days":10}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	ages := []time.Duration{20 * 24 * time.Hour, 9 * 24 * time.Hour, 5 * 24 * time.Hour, 24 * time.Hour}
+	for i, name := range []string{"millennium.bak_expired", "millennium.bak_old", "millennium.bak_mid", "millennium.bak_new"} {
+		path := filepath.Join(root, name)
+		if err := os.Mkdir(path, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		age := ages[i]
+		if err := os.Chtimes(path, now.Add(-age), now.Add(-age)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := PruneBackups(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "millennium.bak_expired")); !os.IsNotExist(err) {
+		t.Fatalf("expired backup was not removed: %v", err)
+	}
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 2 {
+		t.Fatalf("backups remaining=%d, want 2", len(entries))
 	}
 }
 
