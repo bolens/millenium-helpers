@@ -52,7 +52,7 @@ func installWindowsCompletionHooks(o Options, res *Result) error {
 	return nil
 }
 
-func removeWindowsCompletionHooks(o Options, res *Result) {
+func removeWindowsCompletionHooks(o Options, res *Result) error {
 	home := os.Getenv("USERPROFILE")
 	if home == "" {
 		home, _ = os.UserHomeDir()
@@ -68,7 +68,10 @@ func removeWindowsCompletionHooks(o Options, res *Result) {
 		}
 		b, err := os.ReadFile(profilePath)
 		if err != nil {
-			continue
+			if os.IsNotExist(err) {
+				continue
+			}
+			return err
 		}
 		lines := strings.Split(string(b), "\n")
 		var keep []string
@@ -87,6 +90,9 @@ func removeWindowsCompletionHooks(o Options, res *Result) {
 			}
 			keep = append(keep, line)
 		}
-		_ = os.WriteFile(profilePath, []byte(strings.Join(keep, "\n")), 0o644)
+		if err := os.WriteFile(profilePath, []byte(strings.Join(keep, "\n")), 0o644); err != nil {
+			return err
+		}
 	}
+	return nil
 }

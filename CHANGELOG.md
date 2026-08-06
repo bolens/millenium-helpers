@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.2] - 2026-08-05
+
+### Changed
+- Repository agent guidance documents safe contribution and validation practices
+- Release CI pins third-party actions, verifies downloaded tooling, and publishes build-provenance attestations
+
+### Fixed
+- Remote archives, bootstrap downloads, and GitHub API responses enforce path, entry-count, and size limits
+- MCP child processes terminate as a process tree when requests time out
+- Configuration updates and the setup wizard preserve malformed or unreadable state instead of overwriting it
+- Linux all-users upgrades link hooks for the target user
+- Failed Windows installs and rollbacks restore the previous installation transactionally
+- Backup retention applies configured count and maximum age on Linux and Windows
+- Theme bulk updates and uninstall cleanup report partial failures
+
 ## [3.0.1] - 2026-07-15
 
 ### Fixed

@@ -5,6 +5,7 @@ package upgrade
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -64,8 +65,12 @@ func installPlatform(archivePath, version string, o Options) error {
 		}
 		return err
 	}
-	PruneBackups()
-	linkHooksCurrentUser(o.AllUsers)
+	if err := PruneBackups(); err != nil {
+		return err
+	}
+	if err := linkHooksCurrentUser(o.AllUsers); err != nil {
+		return err
+	}
 	_ = runtime.GOOS
 	return nil
 }
@@ -137,21 +142,23 @@ func writeChecksums(dir string) {
 	}
 }
 
-func linkHooksCurrentUser(allUsers bool) {
+func linkHooksCurrentUser(allUsers bool) error {
 	if runtime.GOOS == "darwin" {
-		return
+		return nil
 	}
-	homes := []string{}
-	if home, err := os.UserHomeDir(); err == nil {
-		homes = append(homes, home)
+	homes, err := hookHomes(allUsers)
+	if err != nil {
+		return err
 	}
-	_ = allUsers // multi-UID enumeration deferred; current user covers default path
 	for _, home := range homes {
-		linkHooksForHome(home)
+		if err := linkHooksForHome(home); err != nil {
+			return fmt.Errorf("link hooks for %s: %w", home, err)
+		}
 	}
+	return nil
 }
 
-func linkHooksForHome(home string) {
+func linkHooksForHome(home string) error {
 	var steam string
 	for _, cand := range []string{
 		filepath.Join(home, ".local/share/Steam"),
@@ -165,16 +172,24 @@ func linkHooksForHome(home string) {
 		}
 	}
 	if steam == "" {
-		return
+		return nil
 	}
 	root := InstallRoot()
-	_ = os.MkdirAll(filepath.Join(steam, "ubuntu12_32"), 0o755)
-	_ = os.MkdirAll(filepath.Join(steam, "ubuntu12_64"), 0o755)
-	forceSymlink(filepath.Join(root, "libmillennium_bootstrap_x86.so"), filepath.Join(steam, "ubuntu12_32", "libXtst.so.6"))
-	forceSymlink(filepath.Join(root, "libmillennium_bootstrap_hhx64.so"), filepath.Join(steam, "ubuntu12_64", "libXtst.so.6"))
+	if err := os.MkdirAll(filepath.Join(steam, "ubuntu12_32"), 0o755); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Join(steam, "ubuntu12_64"), 0o755); err != nil {
+		return err
+	}
+	if err := forceSymlink(filepath.Join(root, "libmillennium_bootstrap_x86.so"), filepath.Join(steam, "ubuntu12_32", "libXtst.so.6")); err != nil {
+		return err
+	}
+	return forceSymlink(filepath.Join(root, "libmillennium_bootstrap_hhx64.so"), filepath.Join(steam, "ubuntu12_64", "libXtst.so.6"))
 }
 
-func forceSymlink(target, link string) {
-	_ = os.Remove(link)
-	_ = os.Symlink(target, link)
+func forceSymlink(target, link string) error {
+	if err := os.Remove(link); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return os.Symlink(target, link)
 }

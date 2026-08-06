@@ -121,3 +121,20 @@ func TestParseArgsTheme(t *testing.T) {
 		t.Fatalf("%+v %v", o, err)
 	}
 }
+
+func TestUpdateAllReturnsThemeFailures(t *testing.T) {
+	skins := t.TempDir()
+	broken := filepath.Join(skins, "BrokenTheme")
+	if err := os.MkdirAll(broken, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	meta := `{"owner":"owner","repo":"repo","commit":"old"}`
+	if err := os.WriteFile(filepath.Join(broken, "metadata.json"), []byte(meta), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("MILLENNIUM_SKINS_DIR", skins)
+	t.Setenv("MILLENNIUM_THEME_MOCK_COMMIT", "fail")
+	if err := UpdateAll(false); err == nil {
+		t.Fatal("expected bulk update failure")
+	}
+}

@@ -4,13 +4,13 @@
 # track the trimmed Windows release zip URL/hash for docs; CI does not run
 # ``winget validate``.
 PackageIdentifier: bolens.millenniumhelpers
-PackageVersion: 3.0.1
+PackageVersion: 3.0.2
 MinimumOSVersion: 10.0.0.0
-ReleaseDate: 2026-07-15
+ReleaseDate: 2026-08-06
 Installers:
 - Architecture: neutral
   InstallerType: zip
-  InstallerUrl: https://github.com/bolens/millenium-helpers/releases/download/v3.0.1/millennium-helpers-v3.0.1-windows-amd64.zip
+  InstallerUrl: https://github.com/bolens/millenium-helpers/releases/download/v3.0.2/millennium-helpers-v3.0.2-windows-amd64.zip
   InstallerSha256: "9BF4DC9E48BE808A8A38478D10979E09E59B69A1A309452F7EE2093451782A97"
   UpgradeBehavior: uninstallPrevious
 ManifestType: installer

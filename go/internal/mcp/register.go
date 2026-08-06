@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+
+	"github.com/bolens/millenium-helpers/internal/atomicfile"
 )
 
 const (
@@ -57,9 +59,9 @@ func Register() RegisterResult {
 		if raw, err := os.ReadFile(cfg.Path); err == nil && len(raw) > 0 {
 			if err := json.Unmarshal(raw, &data); err != nil {
 				out.Lines = append(out.Lines, fmt.Sprintf(
-					"  Warning: failed to read existing config at %s: %v. Creating new.", cfg.Path, err,
+					"  Error: existing config at %s is invalid JSON: %v. File left unchanged.", cfg.Path, err,
 				))
-				data = map[string]any{}
+				continue
 			}
 		}
 
@@ -83,7 +85,11 @@ func Register() RegisterResult {
 			out.Lines = append(out.Lines, fmt.Sprintf("  Error: failed to encode config for %s: %v", cfg.Path, err))
 			continue
 		}
-		if err := os.WriteFile(cfg.Path, append(raw, '\n'), 0o644); err != nil {
+		mode := os.FileMode(0o644)
+		if st, err := os.Stat(cfg.Path); err == nil {
+			mode = st.Mode().Perm()
+		}
+		if err := atomicfile.WriteFile(cfg.Path, append(raw, '\n'), mode); err != nil {
 			out.Lines = append(out.Lines, fmt.Sprintf("  Error: failed to write config to %s: %v", cfg.Path, err))
 			continue
 		}

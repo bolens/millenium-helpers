@@ -74,7 +74,7 @@ if [[ ! -f "${SCRIPT_DIR}/VERSION" ]]; then
             [[ -n "$_tag" ]] || { echo "Error: --tag required for track=tag" >&2; exit 1; }
           else
             _tag="$(
-              curl -fsSL --retry 2 --retry-delay 1 \
+              curl -fsSL --max-filesize 4194304 --retry 2 --retry-delay 1 \
                 -H "User-Agent: millennium-helpers" \
                 -H "Accept: application/vnd.github+json" \
                 "https://api.github.com/repos/${HELPERS_REPO}/releases/latest" 2>/dev/null \
@@ -91,13 +91,13 @@ if [[ ! -f "${SCRIPT_DIR}/VERSION" ]]; then
     fi
 
     ARCHIVE="$TEMP_DIR/helpers-download.tar.gz"
-    curl -fsSL "$RELEASE_URL" -o "$ARCHIVE" || {
+    curl -fsSL --max-filesize 536870912 "$RELEASE_URL" -o "$ARCHIVE" || {
       echo "Error: Failed to download $RELEASE_URL" >&2
       exit 1
     }
     if [[ "$NEEDS_SHA" -eq 1 ]]; then
       SHA_FILE="$TEMP_DIR/helpers.sha256"
-      curl -fsSL "$SHA_URL" -o "$SHA_FILE" || {
+      curl -fsSL --max-filesize 4096 "$SHA_URL" -o "$SHA_FILE" || {
         echo "Error: Failed to download $SHA_URL" >&2
         exit 1
       }
@@ -108,7 +108,47 @@ if [[ ! -f "${SCRIPT_DIR}/VERSION" ]]; then
         exit 1
       }
     fi
-    tar -xzf "$ARCHIVE" -C "$TEMP_DIR"
+    python3 - "$ARCHIVE" "$TEMP_DIR" <<'PY'
+import os
+import pathlib
+import shutil
+import sys
+import tarfile
+
+archive, destination = sys.argv[1:]
+base = pathlib.Path(destination).resolve()
+max_entries = 100_000
+max_expanded = 1 << 30
+with tarfile.open(archive, "r:gz") as bundle:
+    members = bundle.getmembers()
+    if len(members) > max_entries:
+        raise SystemExit("Error: archive contains too many entries")
+    total = 0
+    for member in members:
+        path = pathlib.PurePosixPath(member.name)
+        if path.is_absolute() or ".." in path.parts or "\\" in member.name:
+            raise SystemExit(f"Error: unsafe archive path: {member.name}")
+        if not (member.isdir() or member.isfile()):
+            raise SystemExit(f"Error: unsupported archive entry: {member.name}")
+        total += member.size
+        if total > max_expanded:
+            raise SystemExit("Error: expanded archive exceeds size limit")
+        target = (base / pathlib.Path(*path.parts)).resolve()
+        if os.path.commonpath((base, target)) != str(base):
+            raise SystemExit(f"Error: archive entry escapes destination: {member.name}")
+    for member in members:
+        target = base / pathlib.Path(*pathlib.PurePosixPath(member.name).parts)
+        if member.isdir():
+            target.mkdir(parents=True, exist_ok=True)
+            continue
+        target.parent.mkdir(parents=True, exist_ok=True)
+        source = bundle.extractfile(member)
+        if source is None:
+            raise SystemExit(f"Error: could not read archive entry: {member.name}")
+        with source, target.open("wb") as output:
+            shutil.copyfileobj(source, output, length=1024 * 1024)
+        target.chmod(member.mode & 0o777)
+PY
     EXTRACT_ROOT="$TEMP_DIR"
     if [[ "$IS_SOURCE" -eq 1 ]]; then
       for cand in "$TEMP_DIR"/millenium-helpers-main "$TEMP_DIR"/millenium-helpers-*; do
@@ -125,6 +165,14 @@ if [[ ! -f "${SCRIPT_DIR}/VERSION" ]]; then
 fi
 
 ensure_millennium() {
+  if [[ -n "${MILLENNIUM_BOOTSTRAP_BIN:-}" ]]; then
+    if [[ -x "$MILLENNIUM_BOOTSTRAP_BIN" ]]; then
+      printf '%s' "$MILLENNIUM_BOOTSTRAP_BIN"
+      return 0
+    fi
+    echo "Error: MILLENNIUM_BOOTSTRAP_BIN is not executable: $MILLENNIUM_BOOTSTRAP_BIN" >&2
+    exit 1
+  fi
   local out="${SCRIPT_DIR}/bin/millennium"
   if [[ -x "$out" ]]; then
     printf '%s' "$out"

@@ -1,9 +1,12 @@
 package githubapi
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -70,5 +73,68 @@ func TestFetchFirstFieldSHA(t *testing.T) {
 	}
 	if got != "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789" {
 		t.Fatalf("%s", got)
+	}
+}
+
+func TestDownloadWithLimit(t *testing.T) {
+	const body = "12345678"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(body))
+	}))
+	t.Cleanup(srv.Close)
+
+	dest := filepath.Join(t.TempDir(), "asset")
+	if err := downloadWithLimit(srv.URL, dest, int64(len(body))); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(dest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != body {
+		t.Fatalf("got %q want %q", got, body)
+	}
+}
+
+func TestDownloadWithLimitRejectsOversize(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Length", "8")
+		_, _ = w.Write([]byte("12345678"))
+	}))
+	t.Cleanup(srv.Close)
+
+	dest := filepath.Join(t.TempDir(), "asset")
+	err := downloadWithLimit(srv.URL, dest, 4)
+	if err == nil || !strings.Contains(err.Error(), "exceeds") {
+		t.Fatalf("expected size-limit error, got %v", err)
+	}
+}
+
+func TestDownloadWithLimitRejectsChunkedOversize(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if flusher, ok := w.(http.Flusher); ok {
+			flusher.Flush()
+		}
+		_, _ = w.Write([]byte("12345678"))
+	}))
+	t.Cleanup(srv.Close)
+
+	dest := filepath.Join(t.TempDir(), "asset")
+	err := downloadWithLimit(srv.URL, dest, 4)
+	if err == nil || !strings.Contains(err.Error(), "exceeds") {
+		t.Fatalf("expected streaming size-limit error, got %v", err)
+	}
+	if _, statErr := os.Stat(dest); !os.IsNotExist(statErr) {
+		t.Fatalf("partial download was not removed: %v", statErr)
+	}
+}
+
+func TestReadAllLimited(t *testing.T) {
+	got, err := readAllLimited(bytes.NewBufferString("1234"), 4)
+	if err != nil || string(got) != "1234" {
+		t.Fatalf("got %q, %v", got, err)
+	}
+	if _, err := readAllLimited(bytes.NewBufferString("12345"), 4); err == nil {
+		t.Fatal("expected response size-limit error")
 	}
 }

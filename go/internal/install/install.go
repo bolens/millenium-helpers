@@ -1,6 +1,7 @@
 package install
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -212,6 +213,12 @@ func installUnixLibs(o Options, sourceRoot string, res *Result) error {
 
 func runUninstall(o Options) (Result, error) {
 	var res Result
+	var errs []error
+	remove := func(path string) {
+		if err := planRemove(path, o.DryRun, &res.Plan); err != nil {
+			errs = append(errs, fmt.Errorf("remove %s: %w", path, err))
+		}
+	}
 	if o.DryRun {
 		res.Plan = append(res.Plan, "DRY RUN MODE: No changes will be made")
 	}
@@ -220,33 +227,31 @@ func runUninstall(o Options) (Result, error) {
 	if runtime.GOOS == "windows" {
 		exeName = "millennium.exe"
 	}
-	_ = planRemove(filepath.Join(o.TargetDir, exeName), o.DryRun, &res.Plan)
+	remove(filepath.Join(o.TargetDir, exeName))
 	if runtime.GOOS == "windows" {
-		removeWindowsPATH(o, &res)
-		removeWindowsCompletionHooks(o, &res)
+		errs = append(errs, removeWindowsPATH(o, &res), removeWindowsCompletionHooks(o, &res))
 		for _, twin := range TwinNames() {
-			_ = planRemove(filepath.Join(o.TargetDir, twin+".cmd"), o.DryRun, &res.Plan)
+			remove(filepath.Join(o.TargetDir, twin+".cmd"))
 		}
-		_ = planRemove(filepath.Join(o.TargetDir, "common.ps1"), o.DryRun, &res.Plan)
-		_ = planRemove(filepath.Join(o.TargetDir, "lib"), o.DryRun, &res.Plan)
-		_ = planRemove(filepath.Join(o.TargetDir, "millennium-helpers.completion.ps1"), o.DryRun, &res.Plan)
+		remove(filepath.Join(o.TargetDir, "common.ps1"))
+		remove(filepath.Join(o.TargetDir, "lib"))
+		remove(filepath.Join(o.TargetDir, "millennium-helpers.completion.ps1"))
 		root := o.InstallRoot
 		if root == "" {
 			root = filepath.Dir(o.TargetDir)
 		}
-		_ = planRemove(root, o.DryRun, &res.Plan)
+		remove(root)
 	} else {
 		for _, twin := range TwinNames() {
-			_ = planRemove(filepath.Join(o.TargetDir, twin), o.DryRun, &res.Plan)
+			remove(filepath.Join(o.TargetDir, twin))
 		}
-		_ = planRemove(o.LibDir, o.DryRun, &res.Plan)
-		removeUnixCompletionsAndMan(o, &res)
-		removeSudoers(o, &res)
+		remove(o.LibDir)
+		errs = append(errs, removeUnixCompletionsAndMan(o, &res), removeSudoers(o, &res))
 	}
 
 	res.Plan = append(res.Plan, "Millennium helpers uninstall complete")
 	if o.Purge {
 		res.Plan = append(res.Plan, "note: --purge requests client purge (run: millennium purge --yes)")
 	}
-	return res, nil
+	return res, errors.Join(errs...)
 }

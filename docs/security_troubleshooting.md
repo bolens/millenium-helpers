@@ -18,10 +18,11 @@ This setup achieves this securely:
 3. **Task Scheduler (Windows)**: Scheduled tasks are registered with elevated credentials using native Windows Task Scheduler security boundaries.
 4. **Channel allow-list**: Scheduler enable paths only accept `stable|beta|main`. Poisoned `update_channel` values in config are ignored on load and rejected before embedding into cron/systemd/Task Scheduler command lines.
 5. **Scheduler-only hooks**: `pre-update` / `post-update` require `MILLENNIUM_SCHEDULER=1` (set by the unit/cron). Manual invocation is refused.
-6. **Release checksums**: Non-`main` helper/client downloads hard-fail if the `.sha256` sidecar is missing or mismatches. Tip-of-main installs require `--allow-unsigned-main` / `-AllowUnsignedMain`. Same-origin GitHub sidecars are TOFU, not independent attestation.
-7. **Local archives**: `millennium upgrade --file` requires `--sha256` or explicit `--insecure-skip-verify`.
-8. **Doctor**: Syncing helper scripts over root-owned install paths requires `millennium diag doctor --yes` after a verified release download.
-9. **Archive extract**: Theme and Windows client zips reject path-traversal members (`..` / absolute paths).
+6. **Release checksums and provenance**: Non-`main` helper/client downloads hard-fail if the `.sha256` sidecar is missing or mismatches. Tip-of-main installs require `--allow-unsigned-main` / `-AllowUnsignedMain`. Same-origin GitHub sidecars are TOFU; published helper releases additionally include a checksummed SPDX SBOM and GitHub build-provenance attestations.
+7. **Resource ceilings**: Go HTTP downloads are capped at 512 MiB and API responses at 4 MiB. Go archive extraction rejects more than 100,000 entries, any file larger than 512 MiB, or more than 2 GiB of total extracted data.
+8. **Local archives**: `millennium upgrade --file` requires `--sha256` or explicit `--insecure-skip-verify`.
+9. **Doctor**: Syncing helper scripts over root-owned install paths requires `millennium diag doctor --yes` after a verified release download.
+10. **Archive extract**: Theme and Windows client zips reject path-traversal members (`..` / absolute paths).
 
 Arch packages ship `%wheel` NOPASSWD for the four privileged commands; that is intentional for multi-admin Wheel hosts—prefer the curl-installer user-specific sudoers drop-in on shared desktops if wheel membership is broad.
 

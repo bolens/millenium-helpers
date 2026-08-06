@@ -12,8 +12,12 @@ Full docs index: [README.md](README.md). Licensing / release payload notice:
 ## 0. Preconditions
 
 - [ ] Working tree is clean except for intentional release changes
-- [ ] On `main`, up to date with `origin/main`
+- [ ] Release branch is based on the latest `origin/main`
 - [ ] You know the target version (semver; bump minor for features, patch for fixes)
+- [ ] GitHub CLI authentication works: `gh auth status`
+- [ ] CodeQL default setup is disabled when `.github/workflows/codeql.yml` is present:
+  `gh api repos/bolens/millenium-helpers/code-scanning/default-setup`
+  must report `"state": "not-configured"` (advanced and default setup cannot run together)
 - [ ] `PACKAGING_PAT` is configured in repo secrets (required for auto packaging PR + publish).
   Verify (repo admin): Settings → Secrets and variables → Actions → `PACKAGING_PAT` exists.
   Optional smoke: `gh workflow run "CD: Deployment & Release Automation" -f tag_name=v-draft -f skip_ci_gate=true`
@@ -112,7 +116,7 @@ skip the `-bin` tarball build until after the tag — that is expected.
 
 ---
 
-## 3. Commit on main
+## 3. Open and merge the release PR
 
 ```bash
 git add -A
@@ -122,14 +126,26 @@ release: vX.Y.Z <short summary>
 
 EOF
 )"
-git push origin main
+git push -u origin HEAD
+gh pr create --base main --fill
+gh pr checks --watch
+```
+
+Merge only after required PR checks pass. Do not push the release commit directly
+to `main` or bypass branch protection. After merging:
+
+```bash
+gh pr merge --squash --delete-branch
+git switch main
+git pull --ff-only origin main
 ```
 
 ---
 
-## 4. Wait for CI on the release commit
+## 4. Wait for CI on the merged release commit
 
-Before tagging, confirm the push to `main` is green (or understand any expected failures).
+Before tagging, confirm the merged commit on `main` is green. PR checks alone are
+not sufficient because the release gate queries runs for the exact tag SHA.
 
 ```bash
 SHA="$(git rev-parse HEAD)"
@@ -139,7 +155,7 @@ gh run list --commit "$SHA" --limit 30
 for wf in \
   test-suite.yml shellcheck.yml completions.yml go.yml \
   version-sync.yml package-manifests.yml actionlint.yml \
-  python-lint.yml powershell-lint.yml man-pages.yml
+  python-lint.yml powershell-lint.yml man-pages.yml codeql.yml
 do
   echo "=== $wf ==="
   gh run list --commit "$SHA" --workflow "$wf" --limit 3
@@ -164,6 +180,7 @@ Critical workflows for a release commit (**CD pre-build gate** — all must pass
 - **CI: Python Lint**
 - **CI: PowerShell Script Analysis**
 - **CI: Man Pages**
+- **CI: CodeQL**
 
 `skip_ci_gate` on workflow_dispatch is allowed only for `tag_name=v-draft`. Real `vX.Y.Z` tags always wait for the gate before building assets.
 
@@ -181,10 +198,11 @@ git push origin "vX.Y.Z"
 This starts **CD: Deployment & Release Automation**, which:
 
 1. Waits for **Test Suite + ShellCheck + Completions** success on that commit SHA
-2. Builds versioned OS/arch bin packs, `-src` archives, standalone Go binaries + checksums
-3. Creates a **draft** GitHub release
-4. Opens a packaging PR with real SHA256s
-5. Auto-merges the packaging PR and publishes the draft when packaging CI is green
+2. Builds versioned OS/arch bin packs, `-src` archives, standalone Go binaries, checksums, and an SPDX JSON SBOM
+3. Creates GitHub build-provenance attestations for real-tag release assets
+4. Creates a **draft** GitHub release
+5. Opens a packaging PR with real SHA256s
+6. Auto-merges the packaging PR and publishes the draft when packaging CI is green
 
 Monitor:
 
@@ -200,6 +218,7 @@ gh pr list --search "packaging" --state open
 
 - [ ] Draft release is **published** (not still draft)
 - [ ] `gh release view vX.Y.Z` shows both archives and `.sha256` sidecars
+- [ ] SPDX SBOM and `.sha256` sidecar are attached; `gh attestation verify <asset> --repo bolens/millenium-helpers` succeeds
 - [ ] `main` Formula / Scoop / Winget / versioned Arch hashes match the published assets (`make check-version`)
 - [ ] Spot-check: piped installer dry-run or `brew audit` / Scoop manifest sanity
 
@@ -236,7 +255,12 @@ make check-version
 make lint
 make test
 
-git add -A && git commit -m "release: vX.Y.Z …" && git push origin main
+git add -A && git commit -m "release: vX.Y.Z …"
+git push -u origin HEAD
+gh pr create --base main --fill
+gh pr checks --watch
+gh pr merge --squash --delete-branch
+git switch main && git pull --ff-only origin main
 SHA="$(git rev-parse HEAD)"
 gh run list --commit "$SHA" --limit 30
 for wf in \

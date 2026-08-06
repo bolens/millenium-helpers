@@ -43,9 +43,14 @@ func TestRunCmdTimeout(t *testing.T) {
 
 	// Avoid TEST_SUITE_RUN skip path
 	t.Setenv("TEST_SUITE_RUN", "")
+	start := time.Now()
 	r := RunCmd([]string{"mcp-hang-test"}, false, time.Second)
+	elapsed := time.Since(start)
 	if !r.IsError || !strings.Contains(r.Content[0]["text"], "timed out") {
 		t.Fatalf("timeout: %+v", r)
+	}
+	if elapsed > 3*time.Second {
+		t.Fatalf("timeout left child process running: elapsed=%s", elapsed)
 	}
 }
 

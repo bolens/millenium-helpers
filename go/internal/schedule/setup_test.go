@@ -144,6 +144,16 @@ func TestSetupRejectsNonInteractive(t *testing.T) {
 	}
 }
 
+func TestLoadSetupConfigRejectsMalformedConfig(t *testing.T) {
+	cfgDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(cfgDir, "config.json"), []byte("{not-json"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadSetupConfig(cfgDir); err == nil {
+		t.Fatal("expected malformed configuration to be rejected")
+	}
+}
+
 func TestPromptChannelDefaults(t *testing.T) {
 	answers := []string{""}
 	idx := 0

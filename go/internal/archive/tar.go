@@ -11,6 +11,10 @@ import (
 
 // SafeExtractTarGz extracts a .tar.gz into destDir, rejecting Zip Slip members.
 func SafeExtractTarGz(archivePath, destDir string) error {
+	return safeExtractTarGz(archivePath, destDir, defaultExtractionLimits)
+}
+
+func safeExtractTarGz(archivePath, destDir string, limits extractionLimits) error {
 	if archivePath == "" || destDir == "" {
 		return fmt.Errorf("Error: SafeExtractTarGz requires archive path and destination directory.")
 	}
@@ -40,6 +44,8 @@ func SafeExtractTarGz(archivePath, destDir string) error {
 	defer func() { _ = gz.Close() }()
 
 	tr := tar.NewReader(gz)
+	var entries int
+	var totalBytes int64
 	for {
 		hdr, err := tr.Next()
 		if err == io.EOF {
@@ -47,6 +53,10 @@ func SafeExtractTarGz(archivePath, destDir string) error {
 		}
 		if err != nil {
 			return err
+		}
+		entries++
+		if entries > limits.maxEntries {
+			return fmt.Errorf("archive exceeds %d-entry limit", limits.maxEntries)
 		}
 		target, err := SafeJoinDest(destAbs, hdr.Name)
 		if err != nil {
@@ -58,6 +68,12 @@ func SafeExtractTarGz(archivePath, destDir string) error {
 				return err
 			}
 		case tar.TypeReg:
+			if hdr.Size < 0 || hdr.Size > limits.maxFileBytes {
+				return fmt.Errorf("archive member %q exceeds %d-byte file limit", hdr.Name, limits.maxFileBytes)
+			}
+			if hdr.Size > limits.maxTotalBytes-totalBytes {
+				return fmt.Errorf("archive exceeds %d-byte extracted-size limit", limits.maxTotalBytes)
+			}
 			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 				return err
 			}
@@ -65,10 +81,16 @@ func SafeExtractTarGz(archivePath, destDir string) error {
 			if err != nil {
 				return err
 			}
-			if _, err := io.Copy(out, tr); err != nil {
+			n, err := io.Copy(out, io.LimitReader(tr, hdr.Size+1))
+			if err != nil {
 				_ = out.Close()
 				return err
 			}
+			if n != hdr.Size {
+				_ = out.Close()
+				return fmt.Errorf("archive member %q size mismatch", hdr.Name)
+			}
+			totalBytes += n
 			if err := out.Close(); err != nil {
 				return err
 			}

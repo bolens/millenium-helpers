@@ -98,28 +98,103 @@ func InstallLicense(destDir string) {
 	_ = os.WriteFile(filepath.Join(destDir, "LICENSE"), []byte(licenseFallback), 0o644)
 }
 
-// PruneBackups removes oldest millennium.bak_* dirs under LibDir beyond limit.
-func PruneBackups() {
+// PruneBackups removes expired backups and then enforces the configured count.
+func PruneBackups() error {
 	limit := 5
-	if data, err := config.Load(); err == nil {
-		if v := config.Get(data, "backup_limit"); v != "" {
-			if n, err := strconv.Atoi(v); err == nil && n > 0 {
-				limit = n
-			}
+	maxAgeDays := 0
+	data, err := config.Load()
+	if err != nil {
+		// Retention is cleanup; malformed config must not block an otherwise
+		// successful install or risk pruning with unintended defaults.
+		return nil
+	}
+	if v := config.Get(data, "backup_limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			limit = n
 		}
 	}
-	lib := LibDir()
-	var backs []string
-	matches, _ := filepath.Glob(filepath.Join(lib, "millennium.bak_*"))
-	backs = append(backs, matches...)
-	if st, err := os.Stat(filepath.Join(lib, "millennium.bak")); err == nil && st.IsDir() {
-		backs = append(backs, filepath.Join(lib, "millennium.bak"))
+	if v := config.Get(data, "backup_max_age_days"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			maxAgeDays = n
+		}
 	}
-	sort.Strings(backs)
+
+	root := LibDir()
+	windowsLayout := runtime.GOOS == "windows"
+	if windowsLayout {
+		root = EffectiveBackupDir()
+	}
+	if root == "" {
+		return nil
+	}
+	entries, err := os.ReadDir(root)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("read backup directory: %w", err)
+	}
+	type backup struct {
+		path    string
+		modTime time.Time
+	}
+	var backs []backup
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		if windowsLayout && !isWindowsBackupName(entry.Name()) {
+			continue
+		}
+		if !windowsLayout && entry.Name() != "millennium.bak" && !strings.HasPrefix(entry.Name(), "millennium.bak_") {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return fmt.Errorf("inspect backup %s: %w", entry.Name(), err)
+		}
+		backs = append(backs, backup{path: filepath.Join(root, entry.Name()), modTime: info.ModTime()})
+	}
+	if maxAgeDays > 0 {
+		cutoff := time.Now().Add(-time.Duration(maxAgeDays) * 24 * time.Hour)
+		kept := backs[:0]
+		for _, b := range backs {
+			if b.modTime.Before(cutoff) {
+				if err := os.RemoveAll(b.path); err != nil {
+					return fmt.Errorf("remove expired backup %s: %w", b.path, err)
+				}
+				continue
+			}
+			kept = append(kept, b)
+		}
+		backs = kept
+	}
+	sort.Slice(backs, func(i, j int) bool {
+		if backs[i].modTime.Equal(backs[j].modTime) {
+			return backs[i].path < backs[j].path
+		}
+		return backs[i].modTime.Before(backs[j].modTime)
+	})
 	for len(backs) > limit {
-		_ = os.RemoveAll(backs[0])
+		if err := os.RemoveAll(backs[0].path); err != nil {
+			return fmt.Errorf("remove excess backup %s: %w", backs[0].path, err)
+		}
 		backs = backs[1:]
 	}
+	return nil
+}
+
+func isWindowsBackupName(name string) bool {
+	i := strings.LastIndexByte(name, '_')
+	if i <= 0 || len(name)-i-1 != len("20060102150405") {
+		return false
+	}
+	for _, r := range name[i+1:] {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 // TryNativeInstall installs from a verified local archive when CanNativeInstall.

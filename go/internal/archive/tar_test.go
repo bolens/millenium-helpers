@@ -74,3 +74,65 @@ func TestSafeExtractTarGzAcceptsSafe(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestSafeExtractTarGzRejectsLimits(t *testing.T) {
+	tests := []struct {
+		name   string
+		files  map[string]string
+		limits extractionLimits
+	}{
+		{
+			name:   "file size",
+			files:  map[string]string{"large": "12345"},
+			limits: extractionLimits{maxEntries: 10, maxFileBytes: 4, maxTotalBytes: 10},
+		},
+		{
+			name:   "total size",
+			files:  map[string]string{"one": "123", "two": "456"},
+			limits: extractionLimits{maxEntries: 10, maxFileBytes: 4, maxTotalBytes: 5},
+		},
+		{
+			name:   "entry count",
+			files:  map[string]string{"one": "1", "two": "2"},
+			limits: extractionLimits{maxEntries: 1, maxFileBytes: 4, maxTotalBytes: 5},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			archivePath := filepath.Join(dir, "limited.tar.gz")
+			writeTestTarGz(t, archivePath, tt.files)
+			if err := safeExtractTarGz(archivePath, filepath.Join(dir, "out"), tt.limits); err == nil {
+				t.Fatal("expected extraction limit error")
+			}
+		})
+	}
+}
+
+func writeTestTarGz(t *testing.T, archivePath string, files map[string]string) {
+	t.Helper()
+	f, err := os.Create(archivePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gz := gzip.NewWriter(f)
+	tw := tar.NewWriter(gz)
+	for name, text := range files {
+		body := []byte(text)
+		if err := tw.WriteHeader(&tar.Header{Name: name, Mode: 0o644, Size: int64(len(body)), Typeflag: tar.TypeReg}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := tw.Write(body); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := gz.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+}

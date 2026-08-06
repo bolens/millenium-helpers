@@ -64,6 +64,19 @@ func TestRunCLI(t *testing.T) {
 	}
 }
 
+func TestLoadRejectsInvalidJSON(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.json")
+	t.Setenv("MILLENNIUM_CONFIG_DIR", dir)
+	t.Setenv("MILLENNIUM_CONFIG_FILE", path)
+	if err := os.WriteFile(path, []byte("{invalid"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Load(); err == nil {
+		t.Fatal("expected invalid JSON error")
+	}
+}
+
 func contains(s, sub string) bool {
 	return len(s) >= len(sub) && (s == sub || len(sub) == 0 ||
 		(func() bool {

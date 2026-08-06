@@ -7,4 +7,4 @@ func installSudoers(o Options, res *Result) error {
 	return nil
 }
 
-func removeSudoers(o Options, res *Result) {}
+func removeSudoers(o Options, res *Result) error { return nil }

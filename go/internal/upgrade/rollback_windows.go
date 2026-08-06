@@ -33,23 +33,31 @@ func rollbackPlatform(backupName string, o Options) error {
 	if err != nil {
 		return err
 	}
-	millDest := filepath.Join(steamDir, "millennium")
-	wsockDest := filepath.Join(steamDir, "wsock32.dll")
-
 	if !o.Quiet {
 		fmt.Printf("Rolling back Millennium installation to %s...\n", backupName)
 	}
-	_ = os.RemoveAll(millDest)
-	_ = os.Remove(wsockDest)
-	if err := copyDirTree(millSrc, millDest); err != nil {
-		return fmt.Errorf("Error: Failed to restore millennium: %w", err)
+	stage, err := os.MkdirTemp(steamDir, ".millennium-rollback-stage-*")
+	if err != nil {
+		return fmt.Errorf("Error: Failed to create rollback staging directory: %w", err)
 	}
+	defer os.RemoveAll(stage)
+	stagedMill := filepath.Join(stage, "millennium")
+	if err := copyDirTree(millSrc, stagedMill); err != nil {
+		return fmt.Errorf("Error: Failed to stage millennium restore: %w", err)
+	}
+	stagedWsock := ""
 	if wsockSrc != "" {
-		if err := copyFile(wsockSrc, wsockDest); err != nil {
-			return fmt.Errorf("Error: Failed to restore wsock32.dll: %w", err)
+		stagedWsock = filepath.Join(stage, "wsock32.dll")
+		if err := copyFile(wsockSrc, stagedWsock); err != nil {
+			return fmt.Errorf("Error: Failed to stage wsock32.dll restore: %w", err)
 		}
 	}
-	_ = os.RemoveAll(targetBackup)
+	if err := swapWindowsRollback(steamDir, stagedMill, stagedWsock); err != nil {
+		return err
+	}
+	if err := os.RemoveAll(targetBackup); err != nil {
+		return fmt.Errorf("Error: Rollback succeeded but failed to remove consumed backup: %w", err)
+	}
 	if !o.Quiet {
 		fmt.Println("Rollback completed successfully.")
 	}
@@ -60,6 +68,67 @@ func rollbackPlatform(backupName string, o Options) error {
 		}
 	}
 	return nil
+}
+
+func swapWindowsRollback(steamDir, stagedMill, stagedWsock string) error {
+	previous, err := os.MkdirTemp(steamDir, ".millennium-rollback-previous-*")
+	if err != nil {
+		return fmt.Errorf("Error: Failed to create rollback transaction: %w", err)
+	}
+	defer os.RemoveAll(previous)
+
+	millDest := filepath.Join(steamDir, "millennium")
+	wsockDest := filepath.Join(steamDir, "wsock32.dll")
+	oldMill := filepath.Join(previous, "millennium")
+	oldWsock := filepath.Join(previous, "wsock32.dll")
+	hadMill, err := moveIfPresent(millDest, oldMill)
+	if err != nil {
+		return fmt.Errorf("Error: Failed to preserve current millennium: %w", err)
+	}
+	hadWsock, err := moveIfPresent(wsockDest, oldWsock)
+	if err != nil {
+		if hadMill {
+			_ = os.Rename(oldMill, millDest)
+		}
+		return fmt.Errorf("Error: Failed to preserve current wsock32.dll: %w", err)
+	}
+
+	restorePrevious := func(cause error) error {
+		_ = os.RemoveAll(millDest)
+		_ = os.Remove(wsockDest)
+		var restoreErr error
+		if hadMill {
+			restoreErr = os.Rename(oldMill, millDest)
+		}
+		if hadWsock {
+			if err := os.Rename(oldWsock, wsockDest); err != nil && restoreErr == nil {
+				restoreErr = err
+			}
+		}
+		if restoreErr != nil {
+			return fmt.Errorf("%w; restoring the previous installation also failed: %v", cause, restoreErr)
+		}
+		return fmt.Errorf("%w; previous installation restored", cause)
+	}
+	if err := os.Rename(stagedMill, millDest); err != nil {
+		return restorePrevious(fmt.Errorf("Error: Failed to activate restored millennium: %w", err))
+	}
+	if stagedWsock != "" {
+		if err := os.Rename(stagedWsock, wsockDest); err != nil {
+			return restorePrevious(fmt.Errorf("Error: Failed to activate restored wsock32.dll: %w", err))
+		}
+	}
+	return nil
+}
+
+func moveIfPresent(src, dst string) (bool, error) {
+	if _, err := os.Lstat(src); err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, os.Rename(src, dst)
 }
 
 // resolveWindowsBackupContents finds millennium tree + optional wsock32 in a backup dir.

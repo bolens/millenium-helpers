@@ -28,27 +28,6 @@ func installPlatform(archivePath, version string, o Options) error {
 		return err
 	}
 
-	mill := filepath.Join(steam, "millennium")
-	if st, err := os.Stat(mill); err == nil && st.IsDir() {
-		bakRoot := EffectiveBackupDir()
-		if bakRoot == "" {
-			bakRoot = filepath.Join(steam, "millennium_backups")
-		}
-		_ = os.MkdirAll(bakRoot, 0o755)
-		oldVer := version
-		if b, err := os.ReadFile(filepath.Join(mill, "version.txt")); err == nil {
-			oldVer = strings.TrimSpace(string(b))
-		}
-		// Match PowerShell layout: millennium_backups/<ver>_<ts>/{millennium,wsock32.dll}
-		bak := filepath.Join(bakRoot, oldVer+"_"+time.Now().Format("20060102150405"))
-		_ = os.MkdirAll(bak, 0o755)
-		_ = copyDirTree(mill, filepath.Join(bak, "millennium"))
-		wsock := filepath.Join(steam, "wsock32.dll")
-		if _, err := os.Stat(wsock); err == nil {
-			_ = copyFile(wsock, filepath.Join(bak, "wsock32.dll"))
-		}
-	}
-
 	entries, err := os.ReadDir(stage)
 	if err != nil {
 		return err
@@ -60,26 +39,102 @@ func installPlatform(archivePath, version string, o Options) error {
 			return err
 		}
 	}
+	oldVer := version
+	mill := filepath.Join(steam, "millennium")
+	if b, err := os.ReadFile(filepath.Join(mill, "version.txt")); err == nil {
+		oldVer = strings.TrimSpace(string(b))
+	}
+	bakRoot := EffectiveBackupDir()
+	if bakRoot == "" {
+		bakRoot = filepath.Join(steam, "millennium_backups")
+	}
+	if err := os.MkdirAll(bakRoot, 0o755); err != nil {
+		return fmt.Errorf("create backup root: %w", err)
+	}
+	// Back up every destination the archive will replace before mutating Steam.
+	bak := filepath.Join(bakRoot, oldVer+"_"+time.Now().Format("20060102150405"))
+	if err := os.Mkdir(bak, 0o755); err != nil {
+		return fmt.Errorf("create backup: %w", err)
+	}
+	backedUp := false
+	for _, e := range entries {
+		dest := filepath.Join(steam, e.Name())
+		if _, err := os.Lstat(dest); err == nil {
+			if err := copyPath(dest, filepath.Join(bak, e.Name())); err != nil {
+				_ = os.RemoveAll(bak)
+				return fmt.Errorf("back up %s: %w", dest, err)
+			}
+			backedUp = true
+		} else if !os.IsNotExist(err) {
+			_ = os.RemoveAll(bak)
+			return fmt.Errorf("inspect %s before backup: %w", dest, err)
+		}
+	}
+
 	for _, e := range entries {
 		src := filepath.Join(stage, e.Name())
 		dest := filepath.Join(steam, e.Name())
+		if err := os.RemoveAll(dest); err != nil {
+			return restoreWindowsBackup(steam, bak, entries, fmt.Errorf("remove %s: %w", dest, err))
+		}
 		if e.IsDir() {
-			_ = os.RemoveAll(dest)
 			if err := copyDirTree(src, dest); err != nil {
-				return err
+				return restoreWindowsBackup(steam, bak, entries, fmt.Errorf("install %s: %w", dest, err))
 			}
 		} else {
 			if err := copyFile(src, dest); err != nil {
-				return err
+				return restoreWindowsBackup(steam, bak, entries, fmt.Errorf("install %s: %w", dest, err))
 			}
 		}
 	}
 	mill = filepath.Join(steam, "millennium")
-	_ = os.MkdirAll(mill, 0o755)
-	_ = os.WriteFile(filepath.Join(mill, "version.txt"), []byte(version+"\n"), 0o644)
+	if err := os.MkdirAll(mill, 0o755); err != nil {
+		return restoreWindowsBackup(steam, bak, entries, err)
+	}
+	if err := os.WriteFile(filepath.Join(mill, "version.txt"), []byte(version+"\n"), 0o644); err != nil {
+		return restoreWindowsBackup(steam, bak, entries, err)
+	}
+	if !backedUp {
+		_ = os.RemoveAll(bak)
+	}
 	InstallLicense(mill)
+	if err := PruneBackups(); err != nil {
+		return err
+	}
 	_ = o
 	return nil
+}
+
+func copyPath(src, dst string) error {
+	st, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+	if st.IsDir() {
+		return copyDirTree(src, dst)
+	}
+	return copyFile(src, dst)
+}
+
+func restoreWindowsBackup(steam, bak string, entries []os.DirEntry, installErr error) error {
+	var restoreErrs []string
+	for _, e := range entries {
+		dest := filepath.Join(steam, e.Name())
+		if err := os.RemoveAll(dest); err != nil {
+			restoreErrs = append(restoreErrs, err.Error())
+			continue
+		}
+		backup := filepath.Join(bak, e.Name())
+		if _, err := os.Lstat(backup); err == nil {
+			if err := copyPath(backup, dest); err != nil {
+				restoreErrs = append(restoreErrs, err.Error())
+			}
+		}
+	}
+	if len(restoreErrs) > 0 {
+		return fmt.Errorf("%w; rollback also failed: %s", installErr, strings.Join(restoreErrs, "; "))
+	}
+	return fmt.Errorf("%w; previous installation restored", installErr)
 }
 
 func copyDirTree(src, dst string) error {

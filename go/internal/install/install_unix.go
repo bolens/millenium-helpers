@@ -3,6 +3,8 @@
 package install
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -70,24 +72,31 @@ func installUnixCompletionsAndMan(o Options, sourceRoot string, res *Result) err
 	return nil
 }
 
-func removeUnixCompletionsAndMan(o Options, res *Result) {
+func removeUnixCompletionsAndMan(o Options, res *Result) error {
+	var errs []error
+	remove := func(path string) {
+		if err := planRemove(path, o.DryRun, &res.Plan); err != nil {
+			errs = append(errs, fmt.Errorf("remove %s: %w", path, err))
+		}
+	}
 	bashDir := envOr("MILLENNIUM_BASH_COMPLETION_DIR", defaultBashCompDir())
 	zshDir := envOr("MILLENNIUM_ZSH_COMPLETION_DIR", defaultZshCompDir())
 	fishDir := envOr("MILLENNIUM_FISH_COMPLETION_DIR", defaultFishCompDir())
 	nuDir := envOr("MILLENNIUM_NUSHELL_COMPLETION_DIR", defaultNuCompDir())
 	manDir := envOr("MILLENNIUM_MAN_DIR", defaultManDir())
-	_ = planRemove(filepath.Join(bashDir, "millennium-helpers"), o.DryRun, &res.Plan)
-	_ = planRemove(filepath.Join(zshDir, "_millennium-helpers"), o.DryRun, &res.Plan)
-	_ = planRemove(filepath.Join(fishDir, "millennium.fish"), o.DryRun, &res.Plan)
-	_ = planRemove(filepath.Join(fishDir, "millennium-helpers.fish"), o.DryRun, &res.Plan) // legacy name
-	_ = planRemove(filepath.Join(nuDir, "millennium-helpers.nu"), o.DryRun, &res.Plan)
+	remove(filepath.Join(bashDir, "millennium-helpers"))
+	remove(filepath.Join(zshDir, "_millennium-helpers"))
+	remove(filepath.Join(fishDir, "millennium.fish"))
+	remove(filepath.Join(fishDir, "millennium-helpers.fish")) // legacy name
+	remove(filepath.Join(nuDir, "millennium-helpers.nu"))
 	for _, page := range []string{
 		"millennium.1", "millennium-diag.1", "millennium-mcp.1", "millennium-purge.1",
 		"millennium-repair.1", "millennium-schedule.1", "millennium-theme.1", "millennium-upgrade.1",
 		"millennium-install.1", "millennium-uninstall.1",
 	} {
-		_ = planRemove(filepath.Join(manDir, page), o.DryRun, &res.Plan)
+		remove(filepath.Join(manDir, page))
 	}
+	return errors.Join(errs...)
 }
 
 func defaultBashCompDir() string {

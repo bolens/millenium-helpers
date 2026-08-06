@@ -8,6 +8,8 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+
+	"github.com/bolens/millenium-helpers/internal/atomicfile"
 )
 
 // KnownKeys mirrors Bash/PowerShell schedule config.
@@ -50,7 +52,7 @@ func Dir() string {
 	return filepath.Join(xdg, "millennium-helpers")
 }
 
-// Load reads config.json (empty map if missing/invalid).
+// Load reads config.json (empty map if missing; error if unreadable or invalid).
 func Load() (Data, error) {
 	path := Path()
 	b, err := os.ReadFile(path)
@@ -62,7 +64,7 @@ func Load() (Data, error) {
 	}
 	var data Data
 	if err := json.Unmarshal(b, &data); err != nil {
-		return Data{}, nil
+		return nil, fmt.Errorf("invalid config JSON at %s: %w", path, err)
 	}
 	if data == nil {
 		data = Data{}
@@ -82,7 +84,7 @@ func Save(data Data) error {
 	}
 	b = append(b, '\n')
 	path := Path()
-	if err := os.WriteFile(path, b, 0o600); err != nil {
+	if err := atomicfile.WriteFile(path, b, 0o600); err != nil {
 		return err
 	}
 	_ = os.Chmod(path, 0o600)

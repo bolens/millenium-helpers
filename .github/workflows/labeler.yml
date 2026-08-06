@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout base (label definitions)
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           # pull_request_target: use base branch only (trusted).
           ref: ${{ github.base_ref }}
@@ -27,7 +27,7 @@ jobs:
 
       - name: Sync label colors and descriptions
         if: hashFiles('.github/labels.yml') != ''
-        uses: crazy-max/ghaction-github-labeler@v6.0.0
+        uses: crazy-max/ghaction-github-labeler@548a7c3603594ec17c819e1239f281a3b801ab4d # v6.0.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           yaml-file: .github/labels.yml
@@ -35,7 +35,7 @@ jobs:
           skip-delete: true
 
       - name: Apply path and branch labels
-        uses: actions/labeler@v7
+        uses: actions/labeler@bf12e9b00b37c5c0ca2b87b79b2daf7891dbda13 # v7
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           configuration-path: .github/labeler.yml
