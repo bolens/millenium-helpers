@@ -107,11 +107,11 @@ func runSetup(o Options) int {
 	cfgDir := setupConfigDir(tu)
 	cfgPath := filepath.Join(cfgDir, "config.json")
 
-	var existing config.Data
-	_ = withSetupConfigDir(cfgDir, func() error {
-		existing, _ = config.Load()
-		return nil
-	})
+	existing, err := loadSetupConfig(cfgDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: failed to read existing configuration: %v\n", err)
+		return 1
+	}
 
 	channel, err := promptChannel(existing)
 	if err != nil {
@@ -148,7 +148,10 @@ func runSetup(o Options) int {
 		fmt.Println("(other keys such as backup_limit are preserved)")
 	} else {
 		if err := withSetupConfigDir(cfgDir, func() error {
-			data, _ := config.Load()
+			data, err := config.Load()
+			if err != nil {
+				return err
+			}
 			if data == nil {
 				data = config.Data{}
 			}
@@ -184,6 +187,16 @@ func runSetup(o Options) int {
 	fmt.Println("  millennium schedule config set backup_limit 5")
 	fmt.Println("  millennium schedule config set backup_max_age_days 30")
 	return 0
+}
+
+func loadSetupConfig(cfgDir string) (config.Data, error) {
+	var data config.Data
+	err := withSetupConfigDir(cfgDir, func() error {
+		var err error
+		data, err = config.Load()
+		return err
+	})
+	return data, err
 }
 
 func promptChannel(existing config.Data) (string, error) {
