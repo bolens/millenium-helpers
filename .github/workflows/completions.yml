@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Install zsh and fish
         run: |
@@ -40,7 +40,7 @@ jobs:
           sudo apt-get install -y -qq zsh fish
 
       - name: Install Nushell
-        uses: hustcer/setup-nu@v3
+        uses: hustcer/setup-nu@f3fd65374ffc4d60974c0dd2f7263c6c5c285f81 # v3
         with:
           # 0.114+ supports `string | commandline complete` used by test_completions.sh
           version: '0.114.0'

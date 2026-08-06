@@ -91,7 +91,7 @@ jobs:
           exit 1
 
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: bash -n all scripts
         run: |
@@ -180,7 +180,7 @@ jobs:
           exit 1
 
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Create non-root test user
         run: |
@@ -201,7 +201,7 @@ jobs:
           - tests/windows/completions.Tests.ps1
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Run Pester tests
         shell: pwsh
@@ -220,7 +220,7 @@ jobs:
           - tests/behavioral/test_packaging_ci.sh
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Install PyYAML for packaging suite
         if: matrix.suite == 'tests/behavioral/test_packaging_ci.sh'
