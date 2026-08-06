@@ -20,6 +20,16 @@ func TestResolveTrackURLsOverride(t *testing.T) {
 	}
 }
 
+func TestReadLimitedRejectsOversizedResponse(t *testing.T) {
+	if _, err := readLimited(strings.NewReader("12345"), 4); err == nil {
+		t.Fatal("expected oversized response error")
+	}
+	got, err := readLimited(strings.NewReader("1234"), 4)
+	if err != nil || string(got) != "1234" {
+		t.Fatalf("got=%q err=%v", got, err)
+	}
+}
+
 func TestResolveTrackCheckout(t *testing.T) {
 	t.Setenv("MILLENNIUM_HELPERS_RELEASE_URL", "")
 	got, err := ResolveTrackURLs("checkout", "", "linux")

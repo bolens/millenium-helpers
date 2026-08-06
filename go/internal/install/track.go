@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+const maxGitHubAPIResponse = 4 << 20
+
 // ResolvedTrack is the download plan for a helpers install track.
 type ResolvedTrack struct {
 	Track           string
@@ -115,7 +117,7 @@ func fetchLatestTag(repo string) (string, error) {
 		return "", err
 	}
 	defer func() { _ = resp.Body.Close() }()
-	body, err := io.ReadAll(resp.Body)
+	body, err := readLimited(resp.Body, maxGitHubAPIResponse)
 	if err != nil {
 		return "", err
 	}
@@ -132,4 +134,15 @@ func fetchLatestTag(repo string) (string, error) {
 		return "", fmt.Errorf("empty tag_name from GitHub")
 	}
 	return payload.TagName, nil
+}
+
+func readLimited(r io.Reader, limit int64) ([]byte, error) {
+	body, err := io.ReadAll(io.LimitReader(r, limit+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(body)) > limit {
+		return nil, fmt.Errorf("response exceeds %d bytes", limit)
+	}
+	return body, nil
 }
