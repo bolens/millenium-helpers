@@ -35,23 +35,26 @@ func installWindowsPATH(o Options, res *Result) error {
 	return k.SetStringValue("Path", newPath)
 }
 
-func removeWindowsPATH(o Options, res *Result) {
+func removeWindowsPATH(o Options, res *Result) error {
 	if os.Getenv("PSTESTS") == "true" {
 		res.Plan = append(res.Plan, "[TEST] skip User PATH remove for "+o.TargetDir)
-		return
+		return nil
 	}
 	res.Plan = append(res.Plan, "remove User PATH "+o.TargetDir)
 	if o.DryRun {
-		return
+		return nil
 	}
 	k, err := registry.OpenKey(registry.CURRENT_USER, `Environment`, registry.QUERY_VALUE|registry.SET_VALUE)
 	if err != nil {
-		return
+		return fmt.Errorf("open User Environment: %w", err)
 	}
 	defer k.Close()
 	cur, _, err := k.GetStringValue("Path")
 	if err != nil {
-		return
+		return fmt.Errorf("read User PATH: %w", err)
 	}
-	_ = k.SetStringValue("Path", pathWithoutDir(cur, o.TargetDir))
+	if err := k.SetStringValue("Path", pathWithoutDir(cur, o.TargetDir)); err != nil {
+		return fmt.Errorf("write User PATH: %w", err)
+	}
+	return nil
 }

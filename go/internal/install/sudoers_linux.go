@@ -61,6 +61,6 @@ func installSudoers(o Options, res *Result) error {
 	return nil
 }
 
-func removeSudoers(o Options, res *Result) {
-	_ = planRemove(sudoersPath(), o.DryRun, &res.Plan)
+func removeSudoers(o Options, res *Result) error {
+	return planRemove(sudoersPath(), o.DryRun, &res.Plan)
 }
