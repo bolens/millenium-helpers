@@ -125,6 +125,14 @@ if [[ ! -f "${SCRIPT_DIR}/VERSION" ]]; then
 fi
 
 ensure_millennium() {
+  if [[ -n "${MILLENNIUM_BOOTSTRAP_BIN:-}" ]]; then
+    if [[ -x "$MILLENNIUM_BOOTSTRAP_BIN" ]]; then
+      printf '%s' "$MILLENNIUM_BOOTSTRAP_BIN"
+      return 0
+    fi
+    echo "Error: MILLENNIUM_BOOTSTRAP_BIN is not executable: $MILLENNIUM_BOOTSTRAP_BIN" >&2
+    exit 1
+  fi
   local out="${SCRIPT_DIR}/bin/millennium"
   if [[ -x "$out" ]]; then
     printf '%s' "$out"

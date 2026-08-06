@@ -18,31 +18,29 @@ func TestInstallShBootstrap(t *testing.T) {
 	if _, err := os.Stat(installSh); err != nil {
 		t.Fatal(err)
 	}
-	exe := filepath.Join(root, "bin", "millennium")
-	if _, err := os.Stat(exe); err != nil {
-		verBytes, err := os.ReadFile(filepath.Join(root, "VERSION"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		ver := strings.TrimSpace(string(verBytes))
-		_ = os.MkdirAll(filepath.Join(root, "bin"), 0o755)
-		cmd := exec.Command(
-			"go", "build", "-buildvcs=false",
-			"-ldflags", "-X github.com/bolens/millenium-helpers/internal/version.Version="+ver,
-			"-o", exe, "./cmd/millennium",
-		)
-		cmd.Dir = filepath.Join(root, "go")
-		if out, err := cmd.CombinedOutput(); err != nil {
-			t.Fatalf("go build: %v\n%s", err, out)
-		}
-	}
 	verBytes, err := os.ReadFile(filepath.Join(root, "VERSION"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	ver := strings.TrimSpace(string(verBytes))
+	exe := filepath.Join(t.TempDir(), "millennium")
+	cmd := exec.Command(
+		"go", "build", "-buildvcs=false",
+		"-ldflags", "-X github.com/bolens/millenium-helpers/internal/version.Version="+ver,
+		"-o", exe, "./cmd/millennium",
+	)
+	cmd.Dir = filepath.Join(root, "go")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("go build: %v\n%s", err, out)
+	}
 
-	help, err := exec.Command("bash", installSh, "--help").CombinedOutput()
+	runInstallSh := func(args ...string) ([]byte, error) {
+		t.Helper()
+		cmd := exec.Command("bash", append([]string{installSh}, args...)...)
+		cmd.Env = append(os.Environ(), "MILLENNIUM_BOOTSTRAP_BIN="+exe)
+		return cmd.CombinedOutput()
+	}
+	help, err := runInstallSh("--help")
 	if err != nil {
 		t.Fatalf("install.sh --help: %v\n%s", err, help)
 	}
@@ -51,7 +49,7 @@ func TestInstallShBootstrap(t *testing.T) {
 		t.Fatalf("install.sh --help missing expected text:\n%s", text)
 	}
 
-	vout, err := exec.Command("bash", installSh, "--version").CombinedOutput()
+	vout, err := runInstallSh("--version")
 	if err != nil {
 		t.Fatalf("install.sh --version: %v\n%s", err, vout)
 	}
@@ -60,13 +58,13 @@ func TestInstallShBootstrap(t *testing.T) {
 	}
 
 	prefix := t.TempDir()
-	dry, err := exec.Command(
-		"bash", installSh, "install",
+	dry, err := runInstallSh(
+		"install",
 		"--dry-run",
 		"--prefix", filepath.Join(prefix, "bin"),
 		"--lib-dir", filepath.Join(prefix, "lib"),
 		"--skip-wizard",
-	).CombinedOutput()
+	)
 	if err != nil {
 		t.Fatalf("install.sh install --dry-run: %v\n%s", err, dry)
 	}
