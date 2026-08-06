@@ -44,9 +44,20 @@ jobs:
       - name: Install Scoop
         shell: powershell
         run: |
+          $ErrorActionPreference = "Stop"
           Set-ExecutionPolicy Bypass -Scope Process -Force
           [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
-          Invoke-Expression (Invoke-WebRequest -UseBasicParsing https://get.scoop.sh)
+          $commit = "b0ee913725139b816f9178163af0aecdba07a7ed"
+          $expectedHash = "48f6ea398b3a3fa26fae0093d37bd85b13e7eaa5d1d4a3e208408768408e35ae"
+          $installer = Join-Path $env:TEMP "scoop-install.ps1"
+          Invoke-WebRequest -UseBasicParsing `
+            "https://raw.githubusercontent.com/ScoopInstaller/Install/$commit/install.ps1" `
+            -OutFile $installer
+          $actualHash = (Get-FileHash -Algorithm SHA256 $installer).Hash.ToLowerInvariant()
+          if ($actualHash -ne $expectedHash) {
+            throw "Scoop installer SHA256 mismatch"
+          }
+          & $installer
 
       - name: Build trimmed Windows zip and install via Scoop-bin
         shell: powershell
