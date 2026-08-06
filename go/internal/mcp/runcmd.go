@@ -162,6 +162,7 @@ func runWithTimeout(cmd *exec.Cmd, timeout time.Duration) (string, error) {
 	var buf strings.Builder
 	cmd.Stdout = &buf
 	cmd.Stderr = &buf
+	prepareCommand(cmd)
 	if err := cmd.Start(); err != nil {
 		return "", err
 	}
@@ -171,7 +172,7 @@ func runWithTimeout(cmd *exec.Cmd, timeout time.Duration) (string, error) {
 	case err := <-done:
 		return buf.String(), err
 	case <-time.After(timeout):
-		_ = cmd.Process.Kill()
+		killCommandTree(cmd)
 		<-done
 		return buf.String(), timeoutError{}
 	}
