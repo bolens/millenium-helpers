@@ -228,15 +228,19 @@ func downloadWithLimit(url, destPath string, maxBytes int64) error {
 	if err != nil {
 		return err
 	}
-	defer func() { _ = f.Close() }()
-	n, err := io.Copy(f, io.LimitReader(resp.Body, maxBytes+1))
-	if err != nil {
+	n, copyErr := io.Copy(f, io.LimitReader(resp.Body, maxBytes+1))
+	closeErr := f.Close()
+	if copyErr != nil {
 		_ = os.Remove(destPath)
-		return err
+		return copyErr
 	}
 	if n > maxBytes {
 		_ = os.Remove(destPath)
 		return fmt.Errorf("download exceeds %d-byte limit", maxBytes)
+	}
+	if closeErr != nil {
+		_ = os.Remove(destPath)
+		return closeErr
 	}
 	return nil
 }
