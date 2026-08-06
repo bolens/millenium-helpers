@@ -2,6 +2,7 @@ package theme
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -255,19 +256,22 @@ func UpdateAll(dryRun bool) error {
 		return err
 	}
 	found := false
+	var updateErrs []error
 	for _, e := range entries {
 		if !e.IsDir() {
 			continue
 		}
 		found = true
-		_ = UpdateOne(e.Name(), dryRun)
+		if err := UpdateOne(e.Name(), dryRun); err != nil {
+			updateErrs = append(updateErrs, fmt.Errorf("%s: %w", e.Name(), err))
+		}
 		fmt.Println()
 	}
 	if !found {
 		fmt.Println("No themes installed.")
 		fmt.Println("Install one with: millennium theme install SteamClientHomebrew/millennium-steam-skin")
 	}
-	return nil
+	return errors.Join(updateErrs...)
 }
 
 // Remove deletes an installed theme directory.
