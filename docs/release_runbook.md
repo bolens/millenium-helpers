@@ -15,6 +15,9 @@ Full docs index: [README.md](README.md). Licensing / release payload notice:
 - [ ] Release branch is based on the latest `origin/main`
 - [ ] You know the target version (semver; bump minor for features, patch for fixes)
 - [ ] GitHub CLI authentication works: `gh auth status`
+- [ ] CodeQL default setup is disabled when `.github/workflows/codeql.yml` is present:
+  `gh api repos/bolens/millenium-helpers/code-scanning/default-setup`
+  must report `"state": "not-configured"` (advanced and default setup cannot run together)
 - [ ] `PACKAGING_PAT` is configured in repo secrets (required for auto packaging PR + publish).
   Verify (repo admin): Settings → Secrets and variables → Actions → `PACKAGING_PAT` exists.
   Optional smoke: `gh workflow run "CD: Deployment & Release Automation" -f tag_name=v-draft -f skip_ci_gate=true`
