@@ -11,8 +11,10 @@ import (
 )
 
 const (
-	Owner = "SteamClientHomebrew"
-	Repo  = "Millennium"
+	Owner            = "SteamClientHomebrew"
+	Repo             = "Millennium"
+	MaxAPIBytes      = 4 << 20   // 4 MiB
+	MaxDownloadBytes = 512 << 20 // 512 MiB
 )
 
 // Token returns GITHUB_TOKEN or helpers config github_token via env already loaded by caller.
@@ -39,12 +41,23 @@ func apiGet(url string) ([]byte, error) {
 		return nil, err
 	}
 	defer func() { _ = resp.Body.Close() }()
-	body, err := io.ReadAll(resp.Body)
+	body, err := readAllLimited(resp.Body, MaxAPIBytes)
 	if err != nil {
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("GitHub API request failed (HTTP %d)", resp.StatusCode)
+	}
+	return body, nil
+}
+
+func readAllLimited(r io.Reader, maxBytes int64) ([]byte, error) {
+	body, err := io.ReadAll(io.LimitReader(r, maxBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(body)) > maxBytes {
+		return nil, fmt.Errorf("response exceeds %d-byte limit", maxBytes)
 	}
 	return body, nil
 }
@@ -185,6 +198,13 @@ func CommitZipURL(owner, repo, commit string) string {
 
 // Download writes url to destPath.
 func Download(url, destPath string) error {
+	return downloadWithLimit(url, destPath, MaxDownloadBytes)
+}
+
+func downloadWithLimit(url, destPath string, maxBytes int64) error {
+	if maxBytes <= 0 {
+		return fmt.Errorf("download limit must be positive")
+	}
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return err
@@ -201,11 +221,22 @@ func Download(url, destPath string) error {
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("download failed (HTTP %d)", resp.StatusCode)
 	}
+	if resp.ContentLength > maxBytes {
+		return fmt.Errorf("download exceeds %d-byte limit (Content-Length: %d)", maxBytes, resp.ContentLength)
+	}
 	f, err := os.Create(destPath)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = f.Close() }()
-	_, err = io.Copy(f, resp.Body)
-	return err
+	n, err := io.Copy(f, io.LimitReader(resp.Body, maxBytes+1))
+	if err != nil {
+		_ = os.Remove(destPath)
+		return err
+	}
+	if n > maxBytes {
+		_ = os.Remove(destPath)
+		return fmt.Errorf("download exceeds %d-byte limit", maxBytes)
+	}
+	return nil
 }

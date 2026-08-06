@@ -23,7 +23,9 @@ Millennium Helpers manages Steam Client homebrew installs and may elevate privil
 - **Linux sudoers**: install configures a narrow NOPASSWD allow-list under `/etc/sudoers.d/millennium-helpers` for specific helper commands only
 - **Write-protected scripts**: installed binaries are root-owned (`755`) so unprivileged users cannot rewrite them
 - **Release integrity**: piped installers and Millennium upgrades verify SHA256 checksums from published `.sha256` sidecars before extracting archives. Sidecar absence is a hard failure (except tip-of-main, which requires `--allow-unsigned-main`)
+- **Resource limits**: Go HTTP downloads are capped at 512 MiB and API responses at 4 MiB; Go archive extraction rejects more than 100,000 entries, files larger than 512 MiB, or more than 2 GiB of aggregate output
 - **Checksum trust model**: `.sha256` sidecars are same-origin GitHub TOFU (archive + digest from the same release). They detect transport corruption and accidental mix-ups, not a fully compromised GitHub release. Prefer package managers (AUR, Homebrew, Scoop, Winget) when available
+- **Release provenance**: releases include a checksummed SPDX JSON SBOM and GitHub build-provenance attestations for published assets
 - **Update channel allow-list**: `update_channel` must be `stable`, `beta`, or `main` wherever it is loaded or embedded into systemd/cron/Task Scheduler jobs
 - **Config secrets**: `github_token` in helpers config is stored with restricted permissions (`chmod 600` on Unix; ACL lockdown on Windows). GitHub API auth uses curl `--config` so the token is not exposed on process argv
 - **MCP server**: tools that escalate or mutate the system require explicit confirmation / allow-lists (see `docs/mcp.md`). Windows elevation uses `-EncodedCommand` rather than string-interpolated `ArgumentList`

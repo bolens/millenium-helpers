@@ -7,6 +7,24 @@ import (
 	"strings"
 )
 
+const (
+	MaxArchiveEntries    = 100_000
+	MaxArchiveFileBytes  = 512 << 20 // 512 MiB
+	MaxArchiveTotalBytes = 2 << 30   // 2 GiB
+)
+
+type extractionLimits struct {
+	maxEntries    int
+	maxFileBytes  int64
+	maxTotalBytes int64
+}
+
+var defaultExtractionLimits = extractionLimits{
+	maxEntries:    MaxArchiveEntries,
+	maxFileBytes:  MaxArchiveFileBytes,
+	maxTotalBytes: MaxArchiveTotalBytes,
+}
+
 // SafeJoinDest joins destAbs with an archive member name, rejecting Zip Slip.
 //
 // strings.Contains(member, "..") is intentional: CodeQL's go/zipslip query

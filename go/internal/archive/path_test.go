@@ -35,3 +35,30 @@ func TestSafeJoinDestAcceptsSafe(t *testing.T) {
 		t.Fatalf("got %q want %q", got, want)
 	}
 }
+
+func FuzzSafeJoinDest(f *testing.F) {
+	for _, seed := range []string{
+		"Theme/skin.json",
+		"../evil",
+		"/absolute",
+		`C:\Windows\file`,
+		"a/b/c",
+		"",
+	} {
+		f.Add(seed)
+	}
+	dest := filepath.Join(string(filepath.Separator), "safe", "extract")
+	f.Fuzz(func(t *testing.T, member string) {
+		target, err := SafeJoinDest(dest, member)
+		if err != nil {
+			return
+		}
+		rel, err := filepath.Rel(dest, target)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if rel == ".." || filepath.IsAbs(rel) || len(rel) >= 3 && rel[:3] == ".."+string(filepath.Separator) {
+			t.Fatalf("escaped destination: member=%q target=%q", member, target)
+		}
+	})
+}

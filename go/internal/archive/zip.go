@@ -11,6 +11,10 @@ import (
 
 // SafeExtractZip extracts zipPath into destDir, rejecting zip-slip members.
 func SafeExtractZip(zipPath, destDir string) error {
+	return safeExtractZip(zipPath, destDir, defaultExtractionLimits)
+}
+
+func safeExtractZip(zipPath, destDir string, limits extractionLimits) error {
 	if zipPath == "" || destDir == "" {
 		return fmt.Errorf("Error: SafeExtractZip requires zip path and destination directory.")
 	}
@@ -34,15 +38,19 @@ func SafeExtractZip(zipPath, destDir string) error {
 	}
 	defer func() { _ = r.Close() }()
 
+	if len(r.File) > limits.maxEntries {
+		return fmt.Errorf("archive exceeds %d-entry limit", limits.maxEntries)
+	}
+	var totalBytes int64
 	for _, f := range r.File {
-		if err := extractZipFile(f, destReal); err != nil {
+		if err := extractZipFile(f, destReal, limits, &totalBytes); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func extractZipFile(f *zip.File, destReal string) error {
+func extractZipFile(f *zip.File, destReal string, limits extractionLimits, totalBytes *int64) error {
 	// Validate at the sink so CodeQL can see the Zip Slip guard.
 	target, err := SafeJoinDest(destReal, f.Name)
 	if err != nil {
@@ -50,6 +58,13 @@ func extractZipFile(f *zip.File, destReal string) error {
 	}
 	if f.FileInfo().IsDir() {
 		return os.MkdirAll(target, 0o755)
+	}
+	size := int64(f.UncompressedSize64)
+	if size < 0 || size > limits.maxFileBytes {
+		return fmt.Errorf("archive member %q exceeds %d-byte file limit", f.Name, limits.maxFileBytes)
+	}
+	if size > limits.maxTotalBytes-*totalBytes {
+		return fmt.Errorf("archive exceeds %d-byte extracted-size limit", limits.maxTotalBytes)
 	}
 	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 		return err
@@ -64,6 +79,13 @@ func extractZipFile(f *zip.File, destReal string) error {
 		return err
 	}
 	defer func() { _ = out.Close() }()
-	_, err = io.Copy(out, rc)
-	return err
+	n, err := io.Copy(out, io.LimitReader(rc, size+1))
+	if err != nil {
+		return err
+	}
+	if n != size {
+		return fmt.Errorf("archive member %q size mismatch", f.Name)
+	}
+	*totalBytes += n
+	return nil
 }
