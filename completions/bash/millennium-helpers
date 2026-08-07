@@ -177,6 +177,19 @@ _millennium_theme_comp() {
   return 0
 }
 
+_millennium_config_comp() {
+  COMPREPLY=()
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+  # @@cli-contract:commands.config.subcommands@@
+  local subcmds="show plugins themes errors enable disable theme disable-theme disable-errors"
+  # @@/cli-contract:commands.config.subcommands@@
+  # @@cli-contract:commands.config.flags@@
+  local flagopts="--json -d --dry-run -q --quiet -y --yes --plugins-only --themes-only -V --version -h --help"
+  # @@/cli-contract:commands.config.flags@@
+  COMPREPLY=( $(compgen -W "${subcmds} ${flagopts}" -- "${cur}") )
+  return 0
+}
+
 _millennium_mcp_comp() {
   COMPREPLY=()
   local cur="${COMP_WORDS[COMP_CWORD]}"
@@ -202,7 +215,7 @@ _millennium_dispatcher_comp() {
   local cur="${COMP_WORDS[COMP_CWORD]}"
   if [[ ${COMP_CWORD} -eq 1 ]]; then
     # @@cli-contract:dispatcher.commands@@
-    COMPREPLY=( $(compgen -W "diag doctor upgrade schedule theme injection repair purge mcp install uninstall help" -- "${cur}") )
+    COMPREPLY=( $(compgen -W "diag doctor upgrade schedule theme config injection repair purge mcp install uninstall help" -- "${cur}") )
     # @@/cli-contract:dispatcher.commands@@
     return 0
   fi
@@ -212,6 +225,7 @@ _millennium_dispatcher_comp() {
     upgrade) _millennium_upgrade_comp ;;
     schedule) _millennium_schedule_comp ;;
     theme) _millennium_theme_comp ;;
+    config) _millennium_config_comp ;;
     injection) _millennium_injection_comp ;;
     repair) _millennium_repair_comp ;;
     purge) _millennium_purge_comp ;;

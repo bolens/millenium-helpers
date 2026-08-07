@@ -46,6 +46,7 @@ TARGETS = [
     ROOT / "man" / "millennium-upgrade.1",
     ROOT / "man" / "millennium-schedule.1",
     ROOT / "man" / "millennium-theme.1",
+    ROOT / "man" / "millennium-config.1",
     ROOT / "man" / "millennium-injection.1",
     ROOT / "man" / "millennium-repair.1",
     ROOT / "man" / "millennium-purge.1",
@@ -55,7 +56,7 @@ TARGETS = [
 ]
 
 # Preserve historical tools/list order for MCP clients.
-MCP_TOOL_ORDER = ["diag", "theme", "upgrade", "schedule", "repair", "purge"]
+MCP_TOOL_ORDER = ["diag", "theme", "config", "upgrade", "schedule", "repair", "purge"]
 
 
 def fail(msg: str) -> None:
@@ -197,10 +198,18 @@ def resolve_mcp_enum(
 def render_mcp_dispatch_allowlists(contract: dict) -> str:
     commands = contract.get("commands") or {}
     theme = commands.get("theme") or {}
+    config = commands.get("config") or {}
     schedule = commands.get("schedule") or {}
-    if not isinstance(theme, dict) or not isinstance(schedule, dict):
-        fail("commands.theme and commands.schedule required for MCP dispatch sync")
+    if (
+        not isinstance(theme, dict)
+        or not isinstance(config, dict)
+        or not isinstance(schedule, dict)
+    ):
+        fail(
+            "commands.theme, commands.config, and commands.schedule required for MCP dispatch sync"
+        )
     theme_actions = theme.get("mcp_actions") or theme.get("subcommands")
+    config_actions = config.get("mcp_actions") or config.get("subcommands")
     schedule_actions = schedule.get("mcp_actions")
     channels = contract.get("channels") or []
     if not theme_actions:
@@ -209,11 +218,16 @@ def render_mcp_dispatch_allowlists(contract: dict) -> str:
         )
     if not schedule_actions:
         fail("commands.schedule.mcp_actions required for MCP dispatch sync")
+    if not config_actions:
+        fail(
+            "commands.config.mcp_actions (or subcommands) required for MCP dispatch sync"
+        )
     if not channels:
         fail("channels empty")
 
     rows = [
         ("validThemeActions", [str(x) for x in theme_actions]),
+        ("validConfigActions", [str(x) for x in config_actions]),
         ("validScheduleActions", [str(x) for x in schedule_actions]),
         ("validChannels", [str(x) for x in channels]),
     ]
@@ -278,6 +292,15 @@ def render_mcp_tools(contract: dict) -> str:
                 pdesc = " ".join(pdesc.split())
                 lines.append(f"\t\t\t\t\t{json.dumps(prop)}: map[string]any{{")
                 lines.append(f'\t\t\t\t\t\t"type":        {json.dumps(ptype)},')
+                if ptype == "array":
+                    items = spec.get("items")
+                    if not isinstance(items, dict) or items.get("type") != "string":
+                        fail(
+                            f"commands.{name}: mcp_schema.{prop}.items.type must be string"
+                        )
+                    lines.append(
+                        '\t\t\t\t\t\t"items":       map[string]any{"type": "string"},'
+                    )
                 enum_vals = resolve_mcp_enum(spec, meta, contract, name, prop)
                 if enum_vals is not None:
                     enum_lit = ", ".join(json.dumps(v) for v in enum_vals)
@@ -401,7 +424,7 @@ def render_key(contract: dict, key: str, path: Path) -> str:
         if name == "_millennium-helpers":
             if cmd == "schedule":
                 return f"                '1:command:({' '.join(subs)})' \\\n"
-            if cmd == "theme":
+            if cmd in {"theme", "config"}:
                 return f"                '1:command:({' '.join(subs)})' \\\n"
             if cmd == "diag":
                 return f"                '1:command:({' '.join(subs)})' \\\n"
@@ -415,6 +438,11 @@ def render_key(contract: dict, key: str, path: Path) -> str:
                 return (
                     "complete -c millennium -f -n '__fish_seen_subcommand_from theme' "
                     f"-a '{' '.join(subs)}' -d 'Theme command'\n"
+                )
+            if cmd == "config":
+                return (
+                    "complete -c millennium -f -n '__fish_seen_subcommand_from config' "
+                    f"-a '{' '.join(subs)}' -d 'Client config command'\n"
                 )
             if cmd == "diag":
                 # two -a lines exist for doctor/logs; regenerate both from subcommands

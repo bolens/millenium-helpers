@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/bolens/millenium-helpers/internal/clientconfig"
 	"github.com/bolens/millenium-helpers/internal/config"
 	"github.com/bolens/millenium-helpers/internal/diag"
 	"github.com/bolens/millenium-helpers/internal/injection"
@@ -57,6 +58,7 @@ install/uninstall helpers, and mcp JSON-RPC (see spec/cli-contract.yaml).`,
 	root.AddCommand(newHelpAliasCmd(root))
 	root.AddCommand(newScheduleCmd())
 	root.AddCommand(newThemeCmd())
+	root.AddCommand(newConfigCmd())
 	root.AddCommand(newInjectionCmd())
 	root.AddCommand(newDiagCmd())
 	root.AddCommand(newUpgradeCmd())
@@ -102,7 +104,31 @@ install/uninstall helpers, and mcp JSON-RPC (see spec/cli-contract.yaml).`,
 }
 
 func knownCommands() []string {
-	return []string{"diag", "doctor", "upgrade", "schedule", "theme", "injection", "repair", "purge", "mcp", "install", "uninstall", "help"}
+	return []string{"diag", "doctor", "upgrade", "schedule", "theme", "config", "injection", "repair", "purge", "mcp", "install", "uninstall", "help"}
+}
+
+func newConfigCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:                "config",
+		Short:              "Manage Millennium client settings without the Steam UI",
+		DisableFlagParsing: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			options, err := clientconfig.ParseArgs(args)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "Error:", err)
+				fmt.Fprintln(os.Stderr, "Try 'millennium config --help' for usage.")
+				os.Exit(1)
+				return nil
+			}
+			if options.Version {
+				version.Print("millennium config")
+				os.Exit(0)
+				return nil
+			}
+			os.Exit(clientconfig.RunCLI(options))
+			return nil
+		},
+	}
 }
 
 func newInjectionCmd() *cobra.Command {

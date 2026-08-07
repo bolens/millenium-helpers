@@ -1,0 +1,109 @@
+.TH MILLENNIUM\-CONFIG 1 "August 7, 2026" "millennium-helpers" "User Commands"
+.SH NAME
+millennium-config \- manage Millennium client settings without the Steam UI
+.SH SYNOPSIS
+.B millennium config
+\fICOMMAND\fR [\fIARGUMENTS\fR] [\fIOPTIONS\fR]
+.SH DESCRIPTION
+Reads and updates the Millennium client's own configuration while preserving
+unknown settings. Mutations use an atomic file replacement. Restart Steam
+after changing plugin or theme activation.
+.SH COMMANDS
+.TP
+.B show
+Show the active theme, update settings, and enabled plugins.
+.TP
+.B plugins
+List installed plugins and whether each one is enabled.
+.TP
+.B themes
+List installed themes and mark the active theme.
+.TP
+.B errors
+Scan the newest Steam web log and report recent errors that contain a direct
+installed plugin or theme source path.
+.TP
+.BI enable " NAME..."
+Enable one or more installed plugins.
+.TP
+.BI disable " NAME..."
+Disable one or more plugins.
+.TP
+.BI theme " NAME"
+Select an installed theme.
+.TP
+.BI disable-theme " [NAME]"
+Reset the active theme to Steam. When NAME is supplied, refuse the change if a
+different theme is active.
+.TP
+.B disable-errors
+Disable enabled plugins with directly attributed errors and reset an affected
+active theme to Steam. Requires
+.B --yes
+unless
+.B --dry-run
+is used.
+Use
+.B --plugins-only
+or
+.B --themes-only
+to limit remediation to one component kind.
+.SH OPTIONS
+.\" @@cli-contract:commands.config.man_options@@
+.TP
+.B \-\-json
+Output show, plugins, or themes results as structured JSON.
+.TP
+.BR \-d ", " \-\-dry\-run
+Show configuration changes without writing them.
+.TP
+.BR \-q ", " \-\-quiet
+Suppress informational output after configuration changes.
+.TP
+.BR \-y ", " \-\-yes
+Confirm disabling every enabled component with directly attributed errors.
+.TP
+.B \-\-plugins\-only
+With disable-errors, disable only enabled plugins with directly attributed errors.
+.TP
+.B \-\-themes\-only
+With disable-errors, disable only the active theme when it has directly attributed errors.
+.TP
+.BR \-V ", " \-\-version
+Show version information.
+.TP
+.BR \-h ", " \-\-help
+Show help message.
+.\" @@/cli-contract:commands.config.man_options@@
+.SH EXAMPLES
+.TP
+.B millennium config show
+.TP
+.B millennium config plugins
+.TP
+.B millennium config disable gratitude extendium
+.TP
+.B millennium config theme Steam
+.TP
+.B millennium config errors
+.TP
+.B millennium config disable-errors --dry-run
+.TP
+.B millennium config disable-errors --plugins-only --yes
+.TP
+.B millennium config disable-errors --themes-only --yes
+.SH FILES
+.I ~/.config/millennium/config.json
+is the usual Linux client configuration. Platform and Flatpak locations are
+detected automatically.
+.SH LICENSE
+Helpers are MIT\-licensed; the Millennium client is a separate MIT project.
+See
+.I docs/licensing.md
+and the documentation index at
+.I docs/README.md
+in the millennium\-helpers repository.
+.SH SEE ALSO
+.BR millennium (1),
+.BR millennium-theme (1),
+.BR millennium-injection (1)
