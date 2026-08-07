@@ -168,19 +168,11 @@ func DisableSchedulerBestEffort() {
 			return
 		}
 	}
-	path, err := execLookPath("millennium-schedule")
-	if err != nil {
-		return
-	}
-	cmd := execCommand(path, "disable")
-	_ = cmd.Run()
 }
 
 // test seams
-var execLookPath = execLookPathReal
 var execCommand = execCommandReal
 
-func execLookPathReal(file string) (string, error) { return exec.LookPath(file) }
 func execCommandReal(name string, arg ...string) *exec.Cmd {
 	return exec.Command(name, arg...)
 }

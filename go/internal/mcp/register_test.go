@@ -40,7 +40,8 @@ func TestRegisterWritesCursorAndClaude(t *testing.T) {
 	}
 	servers, _ := cursor["mcpServers"].(map[string]any)
 	entry, _ := servers["millennium-helpers"].(map[string]any)
-	if entry["command"] != "millennium-mcp" {
+	args, _ := entry["args"].([]any)
+	if entry["command"] != "millennium" || len(args) != 1 || args[0] != "mcp" {
 		t.Fatalf("cursor command: %#v", entry)
 	}
 }

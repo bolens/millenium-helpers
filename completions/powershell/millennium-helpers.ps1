@@ -6,7 +6,7 @@ Set-StrictMode -Version Latest
 
 function Global:Get-MillenniumDispatcherCommands {
 # @@cli-contract:dispatcher.commands@@
-    @('diag', 'doctor', 'upgrade', 'schedule', 'theme', 'repair', 'purge', 'mcp', 'install', 'uninstall', 'help')
+    @('diag', 'doctor', 'upgrade', 'schedule', 'theme', 'injection', 'repair', 'purge', 'mcp', 'install', 'uninstall', 'help')
 # @@/cli-contract:dispatcher.commands@@
 }
 
@@ -36,6 +36,14 @@ function Global:Get-MillenniumThemeActions {
 # @@cli-contract:commands.theme.subcommands@@
     @('list', 'install', 'update', 'remove')
 # @@/cli-contract:commands.theme.subcommands@@
+}
+
+function Global:Get-MillenniumInjectionActions {
+    @('status', 'disable', 'enable')
+}
+
+function Global:Get-MillenniumInjectionFlags {
+    @('-y', '--yes', '-d', '--dry-run', '-q', '--quiet', '-V', '--version', '-h', '--help')
 }
 
 function Global:Get-MillenniumDiagFlags {
@@ -176,6 +184,13 @@ function Global:Complete-MillenniumNative {
                     $candidates = Get-MillenniumThemeActions
                 } else {
                     $candidates = Get-MillenniumThemeFlags
+                }
+            }
+            'injection' {
+                if ($args.Count -eq 1) {
+                    $candidates = Get-MillenniumInjectionActions
+                } else {
+                    $candidates = Get-MillenniumInjectionFlags
                 }
             }
             'repair' {

@@ -2,24 +2,20 @@
 .SH NAME
 millennium-mcp \- Model Context Protocol server for Millennium Helpers
 .SH SYNOPSIS
-.B millennium-mcp
+.B millennium mcp
 [\fIOPTIONS\fR]
 .SH DESCRIPTION
 Exposes Millennium helper commands as MCP tools for AI assistants
 (Claude Desktop, Cursor, Windsurf, and similar clients).
 .P
 With no options, runs as a stdio JSON-RPC MCP server
-(native Go; PATH name is an argv0 twin of
-.BR millennium ).
+(native Go).
 .B \-\-register
 writes client configs using command
-.BR millennium-mcp .
+.BR "millennium mcp" .
 Tools self\-exec
 .RB ( millennium " " diag / theme / schedule / upgrade / repair / purge ),
 with elevating calls wrapped in passwordless sudo / UAC.
-Set
-.B MILLENNIUM_MCP_LONGNAMES=1
-to force the long-name helper path for tool argv.
 .SH OPTIONS
 .\" @@cli-contract:commands.mcp.man_options@@
 .TP
@@ -37,7 +33,7 @@ Show help message.
 .SH EXAMPLES
 .TP
 Register with supported AI clients and print a JSON snippet:
-.B millennium-mcp --register
+.B millennium mcp --register
 .TP
 Via the dispatcher:
 .B millennium mcp --register
@@ -47,7 +43,8 @@ Example JSON snippet (paths vary by install):
 {
   "mcpServers": {
     "millennium-helpers": {
-      "command": "millennium-mcp"
+      "command": "millennium",
+      "args": ["mcp"]
     }
   }
 }

@@ -42,6 +42,7 @@ _millennium_helpers() {
     'upgrade:Upgrade / install Millennium'
     'schedule:Manage auto-update scheduler'
     'theme:Manage skins/themes'
+    'injection:Enable or disable Millennium injection'
     'repair:Repair hooks and ownership'
     'purge:Uninstall Millennium'
     'mcp:Run / register MCP server'
@@ -106,6 +107,15 @@ _millennium_helpers() {
             {-a,--all}'[Update all themes]' \
             '--json[Output list as JSON]' \
             {-y,--yes}'[Skip confirmation when removing]' \
+            {-d,--dry-run}'[Simulation mode]' \
+            {-q,--quiet}'[Suppress informational output]' \
+            {-V,--version}'[Show version information]' \
+            {-h,--help}'[Show help message]'
+          ;;
+        (injection)
+          _arguments \
+            '1:command:(status disable enable)' \
+            {-y,--yes}'[Skip disable confirmation]' \
             {-d,--dry-run}'[Simulation mode]' \
             {-q,--quiet}'[Suppress informational output]' \
             {-V,--version}'[Show version information]' \

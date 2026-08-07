@@ -1,9 +1,9 @@
 {
-    "version": "3.0.2",
+    "version": "3.1.0",
     "description": "Millennium helpers (prebuilt release zip) \u2014 Go CLI (millennium.exe) for Millennium Steam mods.",
     "homepage": "https://github.com/bolens/millenium-helpers",
     "license": "MIT",
-    "url": "https://github.com/bolens/millenium-helpers/releases/download/v3.0.2/millennium-helpers-v3.0.2-windows-amd64.zip",
+    "url": "https://github.com/bolens/millenium-helpers/releases/download/v3.1.0/millennium-helpers-v3.1.0-windows-amd64.zip",
     "hash": "78457788321f502815aa7be0b24fcbe53c64f31d1873bfea3177e949a92a9c0c",
     "bin": [
         [

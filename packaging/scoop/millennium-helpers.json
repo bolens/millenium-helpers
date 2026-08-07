@@ -1,9 +1,9 @@
 {
-    "version": "3.0.2",
+    "version": "3.1.0",
     "description": "Millennium helpers (from source tag) \u2014 builds Go dispatcher; PATH entry is millennium.exe (millennium <cmd>).",
     "homepage": "https://github.com/bolens/millenium-helpers",
     "license": "MIT",
-    "url": "https://github.com/bolens/millenium-helpers/releases/download/v3.0.2/millennium-helpers-v3.0.2-src.zip",
+    "url": "https://github.com/bolens/millenium-helpers/releases/download/v3.1.0/millennium-helpers-v3.1.0-src.zip",
     "hash": "91859d9cb766f9566d11d1dfbc8a371be6d7994baae3f7c8d6c3bd8ec12283dd",
     "bin": [
         [
@@ -54,7 +54,7 @@
         "url": "https://github.com/bolens/millenium-helpers/releases/download/v$version/millennium-helpers-v$version-src.zip",
         "extract_dir": "millenium-helpers-$version"
     },
-    "extract_dir": "millenium-helpers-3.0.2",
+    "extract_dir": "millenium-helpers-3.1.0",
     "pre_install": [
         "$exe = Join-Path $dir 'scripts\\windows\\millennium.exe'",
         "if (!(Test-Path -LiteralPath $exe)) {",

@@ -12,7 +12,7 @@ import (
 
 const (
 	mcpServerName = "millennium-helpers"
-	mcpCommand    = "millennium-mcp"
+	mcpCommand    = "millennium"
 )
 
 // RegisterResult summarizes --register outcome.
@@ -45,7 +45,7 @@ func mcpHostConfigs() []mcpHostConfig {
 // Register writes millennium-helpers into detected AI client MCP configs.
 func Register() RegisterResult {
 	var out RegisterResult
-	serverConfig := map[string]any{"command": mcpCommand}
+	serverConfig := map[string]any{"command": mcpCommand, "args": []string{"mcp"}}
 
 	for _, cfg := range mcpHostConfigs() {
 		dir := filepath.Dir(cfg.Path)
@@ -72,7 +72,8 @@ func Register() RegisterResult {
 		}
 
 		if existing, ok := servers[mcpServerName].(map[string]any); ok {
-			if cmd, _ := existing["command"].(string); cmd == mcpCommand {
+			args, _ := existing["args"].([]any)
+			if cmd, _ := existing["command"].(string); cmd == mcpCommand && len(args) == 1 && args[0] == "mcp" {
 				out.Lines = append(out.Lines, fmt.Sprintf("  Already registered in %s.", cfg.Label))
 				out.RegisteredAny = true
 				continue

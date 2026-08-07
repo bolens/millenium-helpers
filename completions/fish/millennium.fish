@@ -1,6 +1,6 @@
 # Dispatcher: millennium <command> [args...]
 # @@cli-contract:dispatcher.commands@@
-set -l __mh_cmds diag doctor upgrade schedule theme repair purge mcp install uninstall help
+set -l __mh_cmds diag doctor upgrade schedule theme injection repair purge mcp install uninstall help
 # @@/cli-contract:dispatcher.commands@@
 
 complete -c millennium -f -n "not __fish_seen_subcommand_from $__mh_cmds" -a 'diag' -d 'Run diagnostics'
@@ -8,6 +8,7 @@ complete -c millennium -f -n "not __fish_seen_subcommand_from $__mh_cmds" -a 'do
 complete -c millennium -f -n "not __fish_seen_subcommand_from $__mh_cmds" -a 'upgrade' -d 'Upgrade / install Millennium'
 complete -c millennium -f -n "not __fish_seen_subcommand_from $__mh_cmds" -a 'schedule' -d 'Manage auto-update scheduler'
 complete -c millennium -f -n "not __fish_seen_subcommand_from $__mh_cmds" -a 'theme' -d 'Manage skins/themes'
+complete -c millennium -f -n "not __fish_seen_subcommand_from $__mh_cmds" -a 'injection' -d 'Enable or disable Millennium injection'
 complete -c millennium -f -n "not __fish_seen_subcommand_from $__mh_cmds" -a 'repair' -d 'Repair hooks and ownership'
 complete -c millennium -f -n "not __fish_seen_subcommand_from $__mh_cmds" -a 'purge' -d 'Uninstall Millennium'
 complete -c millennium -f -n "not __fish_seen_subcommand_from $__mh_cmds" -a 'mcp' -d 'Run / register MCP server'
@@ -64,6 +65,12 @@ complete -c millennium -f -n '__fish_seen_subcommand_from theme' -l json -d 'JSO
 complete -c millennium -f -n '__fish_seen_subcommand_from theme' -s y -l yes -d 'Skip remove confirmation'
 complete -c millennium -f -n '__fish_seen_subcommand_from theme' -s d -l dry-run -d 'Simulation mode'
 complete -c millennium -f -n '__fish_seen_subcommand_from theme' -s q -l quiet -d 'Suppress informational output'
+
+# injection
+complete -c millennium -f -n '__fish_seen_subcommand_from injection' -a 'status disable enable' -d 'Injection command'
+complete -c millennium -f -n '__fish_seen_subcommand_from injection' -s y -l yes -d 'Skip disable confirmation'
+complete -c millennium -f -n '__fish_seen_subcommand_from injection' -s d -l dry-run -d 'Simulation mode'
+complete -c millennium -f -n '__fish_seen_subcommand_from injection' -s q -l quiet -d 'Suppress informational output'
 
 # repair / purge / mcp
 complete -c millennium -f -n '__fish_seen_subcommand_from repair' -s s -l skip-theme -d 'Skip theme refresh'

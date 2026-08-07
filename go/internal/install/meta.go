@@ -14,12 +14,11 @@ const MetaFileName = "install-meta.json"
 
 // Meta is install-meta.json.
 type Meta struct {
-	Track        string `json:"track"`
-	Ref          string `json:"ref,omitempty"`
-	Version      string `json:"version,omitempty"`
-	SourceURL    string `json:"source_url,omitempty"`
-	InstalledAt  string `json:"installed_at"`
-	MigratedFrom string `json:"migrated_from,omitempty"`
+	Track       string `json:"track"`
+	Ref         string `json:"ref,omitempty"`
+	Version     string `json:"version,omitempty"`
+	SourceURL   string `json:"source_url,omitempty"`
+	InstalledAt string `json:"installed_at"`
 }
 
 // MetaPath returns the meta path under an install meta root (lib dir or Windows install root).
@@ -58,49 +57,6 @@ func ReadMeta(metaRoot string) (*Meta, bool, error) {
 		return nil, false, err
 	}
 	return &m, true, nil
-}
-
-// MigrateMetaIfNeeded writes meta for legacy installs without one.
-func MigrateMetaIfNeeded(metaRoot, method, checkout string) error {
-	if _, ok, err := ReadMeta(metaRoot); err != nil {
-		return err
-	} else if ok {
-		return nil
-	}
-	version := ""
-	if b, err := os.ReadFile(filepath.Join(metaRoot, "VERSION")); err == nil {
-		version = strings.TrimSpace(string(b))
-	}
-	track := "release"
-	ref := "latest"
-	switch method {
-	case "pacman-git", "scoop-git", "winget-git", "main":
-		track = "main"
-		ref = "main"
-	case "checkout":
-		track = "checkout"
-		ref = "checkout"
-		if checkout != "" {
-			if out, err := gitShortHEAD(checkout); err == nil && out != "" {
-				ref = out
-			}
-		}
-	default:
-		if version != "" {
-			ref = "v" + strings.TrimPrefix(version, "v")
-		}
-	}
-	return WriteMeta(metaRoot, Meta{
-		Track:        track,
-		Ref:          ref,
-		Version:      version,
-		MigratedFrom: "legacy",
-	})
-}
-
-func gitShortHEAD(dir string) (string, error) {
-	// Avoid importing os/exec in every path — use a tiny helper.
-	return runGitRevParse(dir)
 }
 
 // InferCheckoutTrack returns checkout when sourceRoot has .git.

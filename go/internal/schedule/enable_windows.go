@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/bolens/millenium-helpers/internal/config"
-	"github.com/bolens/millenium-helpers/internal/legacy"
 )
 
 // Test seams
@@ -102,13 +101,9 @@ func resolveWindowsHelpers() (upgrade, theme string, err error) {
 }
 
 func resolveWindowsMillenniumExe() (string, error) {
-	dir := legacy.ScriptDir()
 	candidates := []string{}
-	if dir != "" {
-		candidates = append(candidates,
-			filepath.Join(dir, "millennium.exe"),
-			filepath.Join(dir, "..", "millennium.exe"),
-		)
+	if exe, e := os.Executable(); e == nil {
+		candidates = append(candidates, exe)
 	}
 	for _, c := range candidates {
 		if st, e := os.Stat(c); e == nil && !st.IsDir() {
@@ -122,7 +117,7 @@ func resolveWindowsMillenniumExe() (string, error) {
 	if p, e := exec.LookPath("millennium"); e == nil {
 		return p, nil
 	}
-	return "", fmt.Errorf("Error: millennium.exe (Go dispatcher) not found (set MILLENNIUM_SCRIPTS_DIR or install helpers).")
+	return "", fmt.Errorf("Error: millennium.exe (Go dispatcher) not found; install Millennium Helpers first.")
 }
 
 func isWindowsAdmin() bool {

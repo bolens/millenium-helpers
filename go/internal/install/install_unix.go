@@ -90,7 +90,7 @@ func removeUnixCompletionsAndMan(o Options, res *Result) error {
 	remove(filepath.Join(fishDir, "millennium-helpers.fish")) // legacy name
 	remove(filepath.Join(nuDir, "millennium-helpers.nu"))
 	for _, page := range []string{
-		"millennium.1", "millennium-diag.1", "millennium-mcp.1", "millennium-purge.1",
+		"millennium.1", "millennium-diag.1", "millennium-injection.1", "millennium-mcp.1", "millennium-purge.1",
 		"millennium-repair.1", "millennium-schedule.1", "millennium-theme.1", "millennium-upgrade.1",
 		"millennium-install.1", "millennium-uninstall.1",
 	} {

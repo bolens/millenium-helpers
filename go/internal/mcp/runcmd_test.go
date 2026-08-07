@@ -12,7 +12,6 @@ import (
 func TestRunCmdTestSuiteSkipsWithoutMock(t *testing.T) {
 	t.Setenv("TEST_SUITE_RUN", "1")
 	t.Setenv("MOCK_BIN", t.TempDir())
-	t.Setenv("MILLENNIUM_MCP_LONGNAMES", "1")
 
 	r := RunCmd([]string{"millennium-repair"}, true, time.Second)
 	if r.IsError {
@@ -65,8 +64,6 @@ func TestRunCmdUsesMockUnderTestSuite(t *testing.T) {
 	}
 	t.Setenv("TEST_SUITE_RUN", "1")
 	t.Setenv("MOCK_BIN", dir)
-	t.Setenv("MILLENNIUM_MCP_LONGNAMES", "")
-	t.Setenv("MILLENNIUM_LEGACY", "")
 	prev := osExecutable
 	osExecutable = func() (string, error) { return mock, nil }
 	defer func() { osExecutable = prev }()

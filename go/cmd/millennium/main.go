@@ -3,14 +3,13 @@ package main
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strings"
 
 	"github.com/bolens/millenium-helpers/internal/config"
 	"github.com/bolens/millenium-helpers/internal/diag"
+	"github.com/bolens/millenium-helpers/internal/injection"
 	"github.com/bolens/millenium-helpers/internal/install"
-	"github.com/bolens/millenium-helpers/internal/legacy"
 	"github.com/bolens/millenium-helpers/internal/mcp"
 	"github.com/bolens/millenium-helpers/internal/purge"
 	"github.com/bolens/millenium-helpers/internal/repair"
@@ -23,40 +22,7 @@ import (
 )
 
 func main() {
-	args := os.Args[1:]
-	// Packaged long-name PATH twins (same binary as `millennium <cmd>`).
-	if cmd := commandFromArgv0(os.Args[0]); cmd != "" {
-		args = append([]string{cmd}, args...)
-	}
-	os.Exit(run(args))
-}
-
-// commandFromArgv0 maps PATH twins (millennium-upgrade, …) onto dispatcher commands.
-func commandFromArgv0(arg0 string) string {
-	base := strings.ToLower(filepath.Base(arg0))
-	// Windows paths may use '\' when tests run on Unix (filepath.Base won't split).
-	if i := strings.LastIndexAny(base, `/\`); i >= 0 {
-		base = base[i+1:]
-	}
-	base = strings.TrimSuffix(base, ".exe")
-	switch base {
-	case "millennium-mcp":
-		return "mcp"
-	case "millennium-upgrade":
-		return "upgrade"
-	case "millennium-schedule":
-		return "schedule"
-	case "millennium-theme":
-		return "theme"
-	case "millennium-diag":
-		return "diag"
-	case "millennium-repair":
-		return "repair"
-	case "millennium-purge":
-		return "purge"
-	default:
-		return ""
-	}
+	os.Exit(run(os.Args[1:]))
 }
 
 func run(args []string) int {
@@ -67,9 +33,7 @@ func run(args []string) int {
 
 Implements schedule, theme, diag (report/json/share/logs/doctor), upgrade
 (download/SHA/install/rollback + Linux sudo handoff), purge, repair,
-install/uninstall helpers, and mcp JSON-RPC (see spec/cli-contract.yaml).
-
-MILLENNIUM_LEGACY=1 is obsolete for Go-owned commands (they stay native).`,
+install/uninstall helpers, and mcp JSON-RPC (see spec/cli-contract.yaml).`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Args:          cobra.ArbitraryArgs,
@@ -93,6 +57,7 @@ MILLENNIUM_LEGACY=1 is obsolete for Go-owned commands (they stay native).`,
 	root.AddCommand(newHelpAliasCmd(root))
 	root.AddCommand(newScheduleCmd())
 	root.AddCommand(newThemeCmd())
+	root.AddCommand(newInjectionCmd())
 	root.AddCommand(newDiagCmd())
 	root.AddCommand(newUpgradeCmd())
 	root.AddCommand(newPurgeCmd())
@@ -119,13 +84,13 @@ MILLENNIUM_LEGACY=1 is obsolete for Go-owned commands (they stay native).`,
 		}
 		if unknown != "" {
 			fmt.Fprintf(os.Stderr, "Error: unknown command '%s'\n", unknown)
-			if s := suggest.Closest(unknown, legacy.KnownCommands()); s != "" {
+			if s := suggest.Closest(unknown, knownCommands()); s != "" {
 				fmt.Fprintf(os.Stderr, "Did you mean '%s'?\n", s)
 			}
 		} else {
 			fmt.Fprintln(os.Stderr, "Error:", msg)
 			if tok := firstToken(args); tok != "" {
-				if s := suggest.Closest(tok, legacy.KnownCommands()); s != "" {
+				if s := suggest.Closest(tok, knownCommands()); s != "" {
 					fmt.Fprintf(os.Stderr, "Did you mean '%s'?\n", s)
 				}
 			}
@@ -136,13 +101,39 @@ MILLENNIUM_LEGACY=1 is obsolete for Go-owned commands (they stay native).`,
 	return 0
 }
 
+func knownCommands() []string {
+	return []string{"diag", "doctor", "upgrade", "schedule", "theme", "injection", "repair", "purge", "mcp", "install", "uninstall", "help"}
+}
+
+func newInjectionCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:                "injection",
+		Short:              "Enable, disable, or inspect Millennium injection",
+		DisableFlagParsing: true,
+		RunE: func(cmd *cobra.Command, a []string) error {
+			opts, err := injection.ParseArgs(a)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err.Error())
+				os.Exit(1)
+				return nil
+			}
+			if opts.Version {
+				version.Print("millennium injection")
+				os.Exit(0)
+				return nil
+			}
+			os.Exit(injection.RunCLI(opts))
+			return nil
+		},
+	}
+}
+
 func newScheduleCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:                "schedule",
 		Short:              "Scheduler (config/status/enable/disable/setup/pre/post native)",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
-			// Always native — ignore MILLENNIUM_LEGACY.
 			if rest, ok := takeConfigArgs(a); ok {
 				os.Exit(config.RunCLI(rest))
 				return nil
@@ -206,7 +197,6 @@ func newThemeCmd() *cobra.Command {
 		Short:              "Themes (list/install/update/remove native Go)",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
-			// Always native — ignore MILLENNIUM_LEGACY.
 			opts, err := theme.ParseArgs(a)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err.Error())
@@ -230,7 +220,6 @@ func newDiagCmd() *cobra.Command {
 		Short:              "Diagnostics (report/json/share/logs/doctor native, including --follow)",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
-			// Always native — ignore MILLENNIUM_LEGACY.
 			opts, err := diag.ParseArgs(a)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err.Error())
@@ -254,7 +243,6 @@ func newUpgradeCmd() *cobra.Command {
 		Short:              "Upgrade Millennium (download+SHA+install+rollback; Linux sudo handoff)",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
-			// Always native — ignore MILLENNIUM_LEGACY.
 			opts, err := upgrade.ParseArgs(a)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err.Error())
@@ -337,7 +325,6 @@ func newPurgeCmd() *cobra.Command {
 		Short:              "Purge Millennium (native dry-run + live Unix/Windows)",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
-			// Always native — ignore MILLENNIUM_LEGACY.
 			dry, yes, quiet, help, ver, err := purge.ParseFlags(a)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err.Error())
@@ -366,7 +353,6 @@ func newRepairCmd() *cobra.Command {
 		Short:              "Repair Millennium (hooks/force-upgrade, ownership, htmlcache, themes)",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
-			// Always native — ignore MILLENNIUM_LEGACY.
 			dry, yes, quiet, skip, help, ver, err := repair.ParseFlags(a)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err.Error())
@@ -395,7 +381,6 @@ func newMcpCmd() *cobra.Command {
 		Short:              "MCP JSON-RPC server (stdio + --register)",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, a []string) error {
-			// Always native Go MCP — ignore MILLENNIUM_LEGACY.
 			opts, err := mcp.ParseArgs(a)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err.Error())
