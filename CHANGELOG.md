@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-08-07
+
+### Added
+- Reversible `millennium injection status|disable|enable` controls preserve configuration, plugins, themes, and installed client files
+- Injection safety checks refuse foreign or conflicting bootstrap files and report partial hook states
+
+### Changed
+- MCP registration uses `millennium mcp`, and Windows scheduled updates resolve the unified dispatcher directly
+
+### Removed
+- Retired argv0 twin dispatch, legacy execution environment switches, metadata migration, and the unused legacy Go package
+
 ## [3.0.2] - 2026-08-05
 
 ### Changed
