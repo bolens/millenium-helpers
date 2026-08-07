@@ -4,7 +4,7 @@
     "homepage": "https://github.com/bolens/millenium-helpers",
     "license": "MIT",
     "url": "https://github.com/bolens/millenium-helpers/releases/download/v3.2.0/millennium-helpers-v3.2.0-src.zip",
-    "hash": "95f27c9ea56e30d189657144456ce04e1ea782029e956d2e1b2799bef29f89fd",
+    "hash": "993a1ffc079392a549ef1faccec223899a5a0528f501208497aba643f1466a59",
     "bin": [
         [
             "scripts\\windows\\millennium.exe",
