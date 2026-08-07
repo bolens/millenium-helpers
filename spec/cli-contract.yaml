@@ -35,7 +35,7 @@ global_flags:
   - { name: yes, long: --yes, short: -y, aliases_windows: [-Yes] }
 
 dispatcher:
-  commands: [diag, doctor, upgrade, schedule, theme, repair, purge, mcp, install, uninstall, help]
+  commands: [diag, doctor, upgrade, schedule, theme, injection, repair, purge, mcp, install, uninstall, help]
   # doctor is an alias route to diag doctor
 
 commands:
@@ -45,10 +45,37 @@ commands:
     man: millennium.1
     mcp: null
 
+  injection:
+    short: "Enable or disable Millennium injection"
+    platforms: [linux, darwin, windows]
+    man: millennium-injection.1
+    mcp: null
+    subcommands: [status, disable, enable]
+    flags:
+      - name: yes
+        long: --yes
+        short: -y
+        man: Skip confirmation when disabling injection.
+      - name: dry_run
+        long: --dry-run
+        short: -d
+        man: Show the bootstrap changes without modifying files.
+      - name: quiet
+        long: --quiet
+        short: -q
+        man: Suppress informational output.
+      - name: version
+        long: --version
+        short: -V
+        man: Show version information.
+      - name: help
+        long: --help
+        short: -h
+        man: Show help message.
+
   diag:
     short: "Run diagnostics"
     platforms: [linux, darwin, windows]
-    binary: millennium-diag
     man: millennium-diag.1
     mcp: millennium_diag
     mcp_description: >-
@@ -131,7 +158,6 @@ commands:
   upgrade:
     short: "Upgrade / install Millennium"
     platforms: [linux, darwin, windows]
-    binary: millennium-upgrade
     man: millennium-upgrade.1
     mcp: millennium_upgrade
     mcp_description: >-
@@ -247,7 +273,6 @@ commands:
   schedule:
     short: "Manage auto-update scheduler"
     platforms: [linux, darwin, windows]
-    binary: millennium-schedule
     man: millennium-schedule.1
     mcp: millennium_schedule
     mcp_description: >-
@@ -327,7 +352,6 @@ commands:
   theme:
     short: "Manage skins/themes"
     platforms: [linux, darwin, windows]
-    binary: millennium-theme
     man: millennium-theme.1
     mcp: millennium_theme
     mcp_description: Manage Millennium skins/themes (install, remove, list, update).
@@ -389,7 +413,6 @@ commands:
   repair:
     short: "Repair hooks and ownership"
     platforms: [linux, darwin, windows]
-    binary: millennium-repair
     man: millennium-repair.1
     mcp: millennium_repair
     mcp_description: >-
@@ -426,7 +449,6 @@ commands:
   purge:
     short: "Uninstall Millennium"
     platforms: [linux, darwin, windows]
-    binary: millennium-purge
     man: millennium-purge.1
     mcp: millennium_purge
     mcp_description: >-
@@ -466,7 +488,6 @@ commands:
   mcp:
     short: "Run / register MCP server"
     platforms: [linux, darwin, windows]
-    binary: millennium-mcp
     man: millennium-mcp.1
     mcp: null
     notes: "Go millennium mcp; tools self-exec millennium <feature>"

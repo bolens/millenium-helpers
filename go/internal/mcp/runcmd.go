@@ -33,16 +33,8 @@ func envTruthy(name string) bool {
 	return v == "1" || strings.EqualFold(v, "true") || strings.EqualFold(v, "yes")
 }
 
-// ForceLongNames reports whether tools should use millennium-* helpers.
-func ForceLongNames() bool {
-	return envTruthy("MILLENNIUM_MCP_LONGNAMES") || envTruthy("MILLENNIUM_LEGACY")
-}
-
-// FeatureArgv builds argv preferring this process binary (Go dispatcher).
+// FeatureArgv builds argv using this process binary (Go dispatcher).
 func FeatureArgv(feature string, rest ...string) []string {
-	if ForceLongNames() {
-		return append([]string{"millennium-" + feature}, rest...)
-	}
 	exe := resolveExecutable()
 	if exe == "" {
 		return append([]string{"millennium", feature}, rest...)

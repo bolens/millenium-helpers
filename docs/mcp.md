@@ -22,11 +22,9 @@ see [security_troubleshooting.md](security_troubleshooting.md). Licensing:
 
 **Helpers track vs client channel:** MCP `channel` arguments always mean the Millennium **client** `update_channel` (`stable` / `beta` / `main`). Helpers install track (`release` / `main` / `tag`) is chosen at install time (`millennium install --track`, or Unix `install.sh --track`) and is not an MCP tool parameter.
 
-**Go MCP server:** `millennium mcp` (and PATH `millennium-mcp` argv0 twin) is the
-stdio JSON-RPC server and owns `--register`. Dual-OS `go.yml` smokes `initialize`.
-Packaging installs the Go binary (or a thin shim) as `millennium-mcp`. Tool calls
-self-exec `millennium <feature> …`, including elevating doctor/upgrade/repair/purge
-(`sudo -n` / UAC). Force long-name helpers with `MILLENNIUM_MCP_LONGNAMES=1`.
+**Go MCP server:** `millennium mcp` is the stdio JSON-RPC server and owns
+`--register`. Tool calls self-exec `millennium <feature> …`, including elevating
+doctor/upgrade/repair/purge (`sudo -n` / UAC).
 
 **Safety gates (server-side):**
 - `action` / `channel` values are allow-listed independently of the JSON schema (clients can send arbitrary strings)
@@ -43,7 +41,7 @@ Doctor mode (`millennium_diag` with `doctor=true`) escalates and may rewrite hel
 
 ### Automatic Registration
 
-To automatically register the `millennium-mcp` server with installed AI tools (Claude Desktop, Windsurf, and Cursor), run:
+To automatically register the server with installed AI tools (Claude Desktop, Windsurf, and Cursor), run:
 
 ```bash
 millennium mcp --register
@@ -53,7 +51,7 @@ This detects the config folders for Claude Desktop, Windsurf, and Cursor (`~/.cu
 
 ### Manual Configuration
 
-To manually enable these tools in your AI assistant, configure the `millennium-mcp` command:
+To manually enable these tools in your AI assistant, configure `millennium mcp`:
 
 #### Claude Desktop
 Add `millennium-helpers` to your Claude Desktop configuration file:
@@ -64,7 +62,8 @@ Add `millennium-helpers` to your Claude Desktop configuration file:
 {
   "mcpServers": {
     "millennium-helpers": {
-      "command": "millennium-mcp"
+      "command": "millennium",
+      "args": ["mcp"]
     }
   }
 }
@@ -77,19 +76,20 @@ Add `millennium-helpers` to your Claude Desktop configuration file:
 {
   "mcpServers": {
     "millennium-helpers": {
-      "command": "millennium-mcp"
+      "command": "millennium",
+      "args": ["mcp"]
     }
   }
 }
 ```
 
-Or use **Settings → MCP → Add New MCP Server** with command `millennium-mcp`.
+Or use **Settings → MCP → Add New MCP Server** with command `millennium mcp`.
 
 #### Windsurf
 Go to Settings -> Features -> MCP, click **+ Add New MCP Server**, and configure:
 - **Name**: `millennium-helpers`
 - **Type**: `command`
-- **Command**: `millennium-mcp`
+- **Command**: `millennium mcp`
 
 ## Related
 

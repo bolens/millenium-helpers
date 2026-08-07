@@ -1,0 +1,62 @@
+.TH MILLENNIUM\-INJECTION 1 "August 7, 2026" "millennium-helpers" "User Commands"
+.SH NAME
+millennium-injection \- temporarily disable or enable Millennium Steam injection
+.SH SYNOPSIS
+.B millennium injection
+\fICOMMAND\fR [\fIOPTIONS\fR]
+.SH DESCRIPTION
+Controls only Millennium's bootstrap injection. Disabling preserves the
+installed client, configuration, plugins, and themes so injection can be
+re-enabled later. Restart Steam after changing injection state.
+.SH COMMANDS
+.TP
+.B status
+Report whether all detected bootstrap hooks are enabled, disabled, or partial.
+.TP
+.B disable
+Preserve and deactivate the Millennium bootstrap hooks.
+.TP
+.B enable
+Restore previously disabled bootstrap hooks.
+.SH OPTIONS
+.\" @@cli-contract:commands.injection.man_options@@
+.TP
+.BR \-y ", " \-\-yes
+Skip confirmation when disabling injection.
+.TP
+.BR \-d ", " \-\-dry\-run
+Show the bootstrap changes without modifying files.
+.TP
+.BR \-q ", " \-\-quiet
+Suppress informational output.
+.TP
+.BR \-V ", " \-\-version
+Show version information.
+.TP
+.BR \-h ", " \-\-help
+Show help message.
+.\" @@/cli-contract:commands.injection.man_options@@
+.SH EXAMPLES
+.TP
+.B millennium injection status
+.TP
+.B millennium injection disable --dry-run
+.TP
+.B millennium injection disable --yes
+.TP
+.B millennium injection enable
+.SH NOTES
+On Linux, the bootstrap symlinks are preserved with a
+.B .millennium-disabled
+suffix. On Windows, the same suffix is applied to
+.BR wsock32.dll .
+These helpers do not install a Millennium bootstrap hook on macOS.
+.SH LICENSE
+Helpers are MIT\-licensed; the Millennium client is a separate MIT project.
+See
+.I docs/licensing.md
+in the millennium\-helpers repository.
+.SH SEE ALSO
+.BR millennium-repair (1),
+.BR millennium-upgrade (1),
+.BR millennium-purge (1)

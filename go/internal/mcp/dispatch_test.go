@@ -37,17 +37,7 @@ func TestHandleToolCallValidation(t *testing.T) {
 	}
 }
 
-func TestFeatureArgvLongNames(t *testing.T) {
-	t.Setenv("MILLENNIUM_MCP_LONGNAMES", "1")
-	got := FeatureArgv("diag", "--json")
-	if len(got) < 2 || got[0] != "millennium-diag" || got[1] != "--json" {
-		t.Fatalf("got %v", got)
-	}
-}
-
 func TestFeatureArgvSelfExec(t *testing.T) {
-	t.Setenv("MILLENNIUM_MCP_LONGNAMES", "")
-	t.Setenv("MILLENNIUM_LEGACY", "")
 	prev := osExecutable
 	osExecutable = func() (string, error) { return "/opt/millennium", nil }
 	defer func() { osExecutable = prev }()

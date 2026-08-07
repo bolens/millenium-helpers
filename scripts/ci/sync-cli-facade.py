@@ -46,6 +46,7 @@ TARGETS = [
     ROOT / "man" / "millennium-upgrade.1",
     ROOT / "man" / "millennium-schedule.1",
     ROOT / "man" / "millennium-theme.1",
+    ROOT / "man" / "millennium-injection.1",
     ROOT / "man" / "millennium-repair.1",
     ROOT / "man" / "millennium-purge.1",
     ROOT / "man" / "millennium-mcp.1",

@@ -3,20 +3,11 @@
 package schedule
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 )
 
 func TestRunEnableDisableWindows(t *testing.T) {
-	dir := t.TempDir()
-	exe := filepath.Join(dir, "millennium.exe")
-	if err := os.WriteFile(exe, []byte("MZ"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("MILLENNIUM_SCRIPTS_DIR", dir)
-
 	var scripts []string
 	windowsAdminCheck = func() bool { return true }
 	windowsPowerShell = func(script string) (string, error) {

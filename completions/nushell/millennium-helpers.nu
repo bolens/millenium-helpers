@@ -2,7 +2,7 @@
 
 def _millennium_dispatcher_commands [] {
 # @@cli-contract:dispatcher.commands@@
-  [ "diag", "doctor", "upgrade", "schedule", "theme", "repair", "purge", "mcp", "install", "uninstall", "help" ]
+  [ "diag", "doctor", "upgrade", "schedule", "theme", "injection", "repair", "purge", "mcp", "install", "uninstall", "help" ]
 # @@/cli-contract:dispatcher.commands@@
 }
 
@@ -42,6 +42,15 @@ export extern "millennium schedule" [
   --cron(-c)     # Force use of crontab instead of systemd
   --system       # Linux: force systemd system units
   --user         # Linux: force systemd user units
+  --dry-run(-d)  # Simulation mode
+  --quiet(-q)    # Suppress informational output
+  --version(-V)  # Show version information
+  --help(-h)     # Show help message
+]
+
+export extern "millennium injection" [
+  action?: string
+  --yes(-y)      # Skip disable confirmation
   --dry-run(-d)  # Simulation mode
   --quiet(-q)    # Suppress informational output
   --version(-V)  # Show version information

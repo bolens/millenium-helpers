@@ -121,6 +121,15 @@ _millennium_purge_comp() {
   return 0
 }
 
+_millennium_injection_comp() {
+  COMPREPLY=()
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+  local subcmds="status disable enable"
+  local flagopts="-y --yes -d --dry-run -q --quiet -V --version -h --help"
+  COMPREPLY=( $(compgen -W "${subcmds} ${flagopts}" -- "${cur}") )
+  return 0
+}
+
 _millennium_diag_comp() {
   COMPREPLY=()
   local cur="${COMP_WORDS[COMP_CWORD]}"
@@ -193,7 +202,7 @@ _millennium_dispatcher_comp() {
   local cur="${COMP_WORDS[COMP_CWORD]}"
   if [[ ${COMP_CWORD} -eq 1 ]]; then
     # @@cli-contract:dispatcher.commands@@
-    COMPREPLY=( $(compgen -W "diag doctor upgrade schedule theme repair purge mcp install uninstall help" -- "${cur}") )
+    COMPREPLY=( $(compgen -W "diag doctor upgrade schedule theme injection repair purge mcp install uninstall help" -- "${cur}") )
     # @@/cli-contract:dispatcher.commands@@
     return 0
   fi
@@ -203,6 +212,7 @@ _millennium_dispatcher_comp() {
     upgrade) _millennium_upgrade_comp ;;
     schedule) _millennium_schedule_comp ;;
     theme) _millennium_theme_comp ;;
+    injection) _millennium_injection_comp ;;
     repair) _millennium_repair_comp ;;
     purge) _millennium_purge_comp ;;
     mcp) _millennium_mcp_comp ;;

@@ -54,13 +54,13 @@ $ millennium diag
 ## Features
 
 - **Go CLI** — One `bin/millennium` binary owns schedule, theme, diag/doctor, upgrade, purge, repair, and MCP on Linux and Windows
-- **Single PATH entry** — New installs put only `millennium` on PATH (`millennium <cmd>…`); leftover long-name argv0 twins still dispatch if present
+- **Single PATH entry** — Installs put only `millennium` on PATH (`millennium <cmd>…`)
 - **Guided install** — Interactive wizard for Millennium **client** channel, background updates, and optional GitHub PAT (helpers **track** is set separately with `--track` / `-Track`)
 - **Scheduled updates** — `systemd` (system/user), launchd/cron, or Task Scheduler; timers call `millennium …`
 - **Secure elevation** — `/etc/sudoers.d/` drop-in (Linux) or UAC / `RunAs` (Windows)
 - **Stable, beta & main client channels** — Switch Millennium client update channel without reinstalling helpers
 - **Repair & doctor** — Ownership fixes, cache purge, hook repair, self-update
-- **MCP server** — Built-in Go stdio MCP (`millennium mcp` / `millennium-mcp`) for AI assistants ([guide](docs/mcp.md))
+- **MCP server** — Built-in Go stdio MCP (`millennium mcp`) for AI assistants ([guide](docs/mcp.md))
 - **Packaging matrix** — from-source / `-bin` / `-git` for Arch, Homebrew, Scoop, Nix; plus deb, rpm, Chocolatey, Winget ([packaging/README.md](packaging/README.md))
 
 ---
@@ -214,12 +214,13 @@ Most commands are identical on Linux and Windows. Flag casing differs where note
 | Force all repairs | `millennium doctor --force` |
 | Scheduler status | `millennium schedule status` |
 | Enable / disable updates | `millennium schedule enable` · `disable` |
+| Enable / disable Steam injection | `millennium injection enable` · `disable` (configuration is preserved) |
 | Repair install | `sudo millennium repair` / `millennium repair` (Admin) |
 | Purge Millennium | `sudo millennium purge` / `millennium purge` (Admin); skip prompts with `-y` / `-Yes` |
 | Uninstall helpers | `sudo millennium uninstall` (Unix) · `millennium uninstall` (Windows) |
 
 New installs put only `millennium` / `millennium.exe` on PATH. Prefer
-`millennium <command>` (leftover long-name argv0 twins still work if present).
+`millennium <command>`.
 
 ### Command overview
 
@@ -229,6 +230,7 @@ New installs put only `millennium` / `millennium.exe` on PATH. Prefer
 | `millennium diag` / `doctor` | Health checks, doctor, logs, pastebin share |
 | `millennium upgrade` | Download, verify, install; `--force`, `--rollback` |
 | `millennium schedule` | Timers / Task Scheduler + config / setup |
+| `millennium injection` | Temporarily disable or restore Steam bootstrap injection without deleting configuration |
 | `millennium repair` | Permissions, CEF cache, theme refresh |
 | `millennium purge` | De-register and remove Millennium from Steam |
 | `millennium theme` | List, install, update, remove skins |

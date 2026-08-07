@@ -5,8 +5,7 @@ millennium \- unified dispatcher for Millennium Helpers
 .B millennium
 \fICOMMAND\fR [\fIARGUMENTS\fR...]
 .SH DESCRIPTION
-Thin wrapper that dispatches to the individual Millennium Helper commands.
-Long command names (millennium\-diag, …) still work as aliases.
+Unified dispatcher for Millennium Helper commands.
 .SH COMMANDS
 .TP
 .B diag
@@ -29,6 +28,10 @@ Run
 .B theme
 Run
 .BR millennium-theme .
+.TP
+.B injection
+Enable, disable, or inspect Millennium's Steam bootstrap injection while
+preserving its configuration, plugins, and themes.
 .TP
 .B repair
 Run
@@ -65,6 +68,8 @@ Show dispatcher help.
 .TP
 .B millennium theme list
 .TP
+.B millennium injection status
+.TP
 .B millennium install
 .TP
 .B millennium uninstall
@@ -84,6 +89,7 @@ Documentation index:
 .BR millennium-upgrade (1),
 .BR millennium-schedule (1),
 .BR millennium-theme (1),
+.BR millennium-injection (1),
 .BR millennium-repair (1),
 .BR millennium-purge (1),
 .BR millennium-mcp (1)

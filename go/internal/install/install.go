@@ -230,7 +230,7 @@ func runUninstall(o Options) (Result, error) {
 	remove(filepath.Join(o.TargetDir, exeName))
 	if runtime.GOOS == "windows" {
 		errs = append(errs, removeWindowsPATH(o, &res), removeWindowsCompletionHooks(o, &res))
-		for _, twin := range TwinNames() {
+		for _, twin := range ObsoleteTwinNames() {
 			remove(filepath.Join(o.TargetDir, twin+".cmd"))
 		}
 		remove(filepath.Join(o.TargetDir, "common.ps1"))
@@ -242,7 +242,7 @@ func runUninstall(o Options) (Result, error) {
 		}
 		remove(root)
 	} else {
-		for _, twin := range TwinNames() {
+		for _, twin := range ObsoleteTwinNames() {
 			remove(filepath.Join(o.TargetDir, twin))
 		}
 		remove(o.LibDir)

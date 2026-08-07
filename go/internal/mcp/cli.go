@@ -51,7 +51,7 @@ Options:
 		return 0
 	}
 	if opts.Version {
-		fmt.Printf("millennium-mcp %s\n", version.Resolve())
+		fmt.Printf("millennium mcp %s\n", version.Resolve())
 		return 0
 	}
 	if opts.Register {
