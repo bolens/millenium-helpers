@@ -42,6 +42,7 @@ _millennium_helpers() {
     'upgrade:Upgrade / install Millennium'
     'schedule:Manage auto-update scheduler'
     'theme:Manage skins/themes'
+    'config:Manage Millennium client settings without the Steam UI'
     'injection:Enable or disable Millennium injection'
     'repair:Repair hooks and ownership'
     'purge:Uninstall Millennium'
@@ -109,6 +110,19 @@ _millennium_helpers() {
             {-y,--yes}'[Skip confirmation when removing]' \
             {-d,--dry-run}'[Simulation mode]' \
             {-q,--quiet}'[Suppress informational output]' \
+            {-V,--version}'[Show version information]' \
+            {-h,--help}'[Show help message]'
+          ;;
+        (config)
+          _arguments \
+            '1:command:(show plugins themes errors enable disable theme disable-theme disable-errors)' \
+            '*:name:' \
+            '--json[Output structured JSON]' \
+            {-d,--dry-run}'[Show changes without writing]' \
+            {-q,--quiet}'[Suppress mutation confirmation]' \
+            {-y,--yes}'[Confirm disabling flagged components]' \
+            --plugins-only'[Disable only flagged plugins]' \
+            --themes-only'[Disable only the flagged active theme]' \
             {-V,--version}'[Show version information]' \
             {-h,--help}'[Show help message]'
           ;;

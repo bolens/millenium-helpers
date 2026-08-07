@@ -1,6 +1,6 @@
 # Dispatcher: millennium <command> [args...]
 # @@cli-contract:dispatcher.commands@@
-set -l __mh_cmds diag doctor upgrade schedule theme injection repair purge mcp install uninstall help
+set -l __mh_cmds diag doctor upgrade schedule theme config injection repair purge mcp install uninstall help
 # @@/cli-contract:dispatcher.commands@@
 
 complete -c millennium -f -n "not __fish_seen_subcommand_from $__mh_cmds" -a 'diag' -d 'Run diagnostics'
@@ -65,6 +65,17 @@ complete -c millennium -f -n '__fish_seen_subcommand_from theme' -l json -d 'JSO
 complete -c millennium -f -n '__fish_seen_subcommand_from theme' -s y -l yes -d 'Skip remove confirmation'
 complete -c millennium -f -n '__fish_seen_subcommand_from theme' -s d -l dry-run -d 'Simulation mode'
 complete -c millennium -f -n '__fish_seen_subcommand_from theme' -s q -l quiet -d 'Suppress informational output'
+
+# config
+# @@cli-contract:commands.config.subcommands@@
+complete -c millennium -f -n '__fish_seen_subcommand_from config' -a 'show plugins themes errors enable disable theme disable-theme disable-errors' -d 'Client config command'
+# @@/cli-contract:commands.config.subcommands@@
+complete -c millennium -f -n '__fish_seen_subcommand_from config' -l json -d 'Output structured JSON'
+complete -c millennium -f -n '__fish_seen_subcommand_from config' -s d -l dry-run -d 'Show changes without writing'
+complete -c millennium -f -n '__fish_seen_subcommand_from config' -s q -l quiet -d 'Suppress mutation confirmation'
+complete -c millennium -f -n '__fish_seen_subcommand_from config' -s y -l yes -d 'Confirm disabling flagged components'
+complete -c millennium -f -n '__fish_seen_subcommand_from config' -l plugins-only -d 'Disable only flagged plugins'
+complete -c millennium -f -n '__fish_seen_subcommand_from config' -l themes-only -d 'Disable only the flagged active theme'
 
 # injection
 complete -c millennium -f -n '__fish_seen_subcommand_from injection' -a 'status disable enable' -d 'Injection command'

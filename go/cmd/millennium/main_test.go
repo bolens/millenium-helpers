@@ -37,11 +37,99 @@ func TestRootHelpSmoke(t *testing.T) {
 			t.Fatalf("%v: %v\n%s", args, err, out)
 		}
 		text := string(out)
-		for _, want := range []string{"Available Commands", "schedule", "mcp"} {
+		for _, want := range []string{"Available Commands", "schedule", "config", "mcp"} {
 			if !strings.Contains(text, want) {
 				t.Fatalf("%v missing %q in help:\n%s", args, want, text)
 			}
 		}
+	}
+}
+
+func TestClientConfigSmoke(t *testing.T) {
+	exe := buildMillennium(t)
+	root := t.TempDir()
+	configPath := filepath.Join(root, "config.json")
+	plugins := filepath.Join(root, "plugins")
+	themes := filepath.Join(root, "themes")
+	if err := os.MkdirAll(filepath.Join(plugins, "demo"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(themes, "Steam"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(configPath, []byte(`{"general":{"millenniumUpdateChannel":"beta"},"plugins":{"enabledPlugins":[]},"themes":{"activeTheme":"Steam"}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	command := func(args ...string) []byte {
+		cmd := exec.Command(exe, args...)
+		cmd.Env = append(os.Environ(),
+			"MILLENNIUM_CLIENT_CONFIG_FILE="+configPath,
+			"MILLENNIUM_PLUGINS_DIR="+plugins,
+			"MILLENNIUM_CLIENT_THEMES_DIR="+themes,
+		)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("%v: %v\n%s", args, err, out)
+		}
+		return out
+	}
+	if out := command("config", "plugins"); !strings.Contains(string(out), "disabled  demo") {
+		t.Fatalf("unexpected plugins output: %s", out)
+	}
+	command("config", "enable", "demo")
+	if out := command("config", "show", "--json"); !strings.Contains(string(out), `"enabledPlugins": [`) || !strings.Contains(string(out), `"demo"`) {
+		t.Fatalf("unexpected config JSON: %s", out)
+	}
+}
+
+func TestClientConfigScopedDisableErrors(t *testing.T) {
+	exe := buildMillennium(t)
+	for _, test := range []struct {
+		name        string
+		scope       string
+		wantPlugins string
+		wantTheme   string
+	}{
+		{name: "plugins", scope: "--plugins-only", wantPlugins: `"enabledPlugins":[]`, wantTheme: `"activeTheme":"Demo"`},
+		{name: "themes", scope: "--themes-only", wantPlugins: `"enabledPlugins":["demo"]`, wantTheme: `"activeTheme":"Steam"`},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			root := t.TempDir()
+			configPath := filepath.Join(root, "config.json")
+			plugins := filepath.Join(root, "plugins")
+			themes := filepath.Join(root, "themes")
+			logPath := filepath.Join(root, "webhelper.txt")
+			for _, path := range []string{filepath.Join(plugins, "demo"), filepath.Join(themes, "Demo"), filepath.Join(themes, "Steam")} {
+				if err := os.MkdirAll(path, 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := os.WriteFile(configPath, []byte(`{"plugins":{"enabledPlugins":["demo"]},"themes":{"activeTheme":"Demo"}}`), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			log := "Startup - webhelper launched\nError: plugin source /plugins/demo/main.js\nError: theme source /themes/Demo/main.js\n"
+			if err := os.WriteFile(logPath, []byte(log), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			cmd := exec.Command(exe, "config", "disable-errors", test.scope, "--yes", "--quiet")
+			cmd.Env = append(os.Environ(),
+				"MILLENNIUM_CLIENT_CONFIG_FILE="+configPath,
+				"MILLENNIUM_PLUGINS_DIR="+plugins,
+				"MILLENNIUM_CLIENT_THEMES_DIR="+themes,
+				"MILLENNIUM_ERROR_LOG="+logPath,
+			)
+			if out, err := cmd.CombinedOutput(); err != nil {
+				t.Fatalf("disable-errors: %v\n%s", err, out)
+			}
+			got, err := os.ReadFile(configPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			compact := strings.ReplaceAll(strings.ReplaceAll(string(got), " ", ""), "\n", "")
+			if !strings.Contains(compact, test.wantPlugins) || !strings.Contains(compact, test.wantTheme) {
+				t.Fatalf("config=%s want %s and %s", compact, test.wantPlugins, test.wantTheme)
+			}
+		})
 	}
 }
 

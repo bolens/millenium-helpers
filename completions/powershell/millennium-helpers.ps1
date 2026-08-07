@@ -6,7 +6,7 @@ Set-StrictMode -Version Latest
 
 function Global:Get-MillenniumDispatcherCommands {
 # @@cli-contract:dispatcher.commands@@
-    @('diag', 'doctor', 'upgrade', 'schedule', 'theme', 'injection', 'repair', 'purge', 'mcp', 'install', 'uninstall', 'help')
+    @('diag', 'doctor', 'upgrade', 'schedule', 'theme', 'config', 'injection', 'repair', 'purge', 'mcp', 'install', 'uninstall', 'help')
 # @@/cli-contract:dispatcher.commands@@
 }
 
@@ -22,7 +22,7 @@ function Global:Get-MillenniumScheduleChannels {
 # @@/cli-contract:channels@@
 }
 
-function Global:Get-MillenniumConfigActions {
+function Global:Get-MillenniumScheduleConfigActions {
     @('get', 'set', 'list')
 }
 
@@ -36,6 +36,18 @@ function Global:Get-MillenniumThemeActions {
 # @@cli-contract:commands.theme.subcommands@@
     @('list', 'install', 'update', 'remove')
 # @@/cli-contract:commands.theme.subcommands@@
+}
+
+function Global:Get-MillenniumClientConfigActions {
+# @@cli-contract:commands.config.subcommands@@
+    @('show', 'plugins', 'themes', 'errors', 'enable', 'disable', 'theme', 'disable-theme', 'disable-errors')
+# @@/cli-contract:commands.config.subcommands@@
+}
+
+function Global:Get-MillenniumConfigFlags {
+# @@cli-contract:commands.config.flags@@
+    @('--json', '-d', '--dry-run', '-q', '--quiet', '-y', '--yes', '--plugins-only', '--themes-only', '-V', '--version', '-h', '--help')
+# @@/cli-contract:commands.config.flags@@
 }
 
 function Global:Get-MillenniumInjectionActions {
@@ -174,7 +186,7 @@ function Global:Complete-MillenniumNative {
                 } elseif ($args.Count -eq 2 -and $args[1] -eq 'enable') {
                     $candidates = Get-MillenniumScheduleChannels
                 } elseif ($args.Count -eq 2 -and $args[1] -eq 'config') {
-                    $candidates = Get-MillenniumConfigActions
+                    $candidates = Get-MillenniumScheduleConfigActions
                 } else {
                     $candidates = Get-MillenniumScheduleFlags
                 }
@@ -184,6 +196,13 @@ function Global:Complete-MillenniumNative {
                     $candidates = Get-MillenniumThemeActions
                 } else {
                     $candidates = Get-MillenniumThemeFlags
+                }
+            }
+            'config' {
+                if ($args.Count -eq 1) {
+                    $candidates = Get-MillenniumClientConfigActions
+                } else {
+                    $candidates = Get-MillenniumConfigFlags
                 }
             }
             'injection' {

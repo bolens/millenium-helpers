@@ -2,7 +2,7 @@
 
 def _millennium_dispatcher_commands [] {
 # @@cli-contract:dispatcher.commands@@
-  [ "diag", "doctor", "upgrade", "schedule", "theme", "injection", "repair", "purge", "mcp", "install", "uninstall", "help" ]
+  [ "diag", "doctor", "upgrade", "schedule", "theme", "config", "injection", "repair", "purge", "mcp", "install", "uninstall", "help" ]
 # @@/cli-contract:dispatcher.commands@@
 }
 
@@ -30,6 +30,12 @@ def _millennium_theme_actions [] {
 # @@/cli-contract:commands.theme.subcommands@@
 }
 
+def _millennium_config_actions [] {
+# @@cli-contract:commands.config.subcommands@@
+  [ "show", "plugins", "themes", "errors", "enable", "disable", "theme", "disable-theme", "disable-errors" ]
+# @@/cli-contract:commands.config.subcommands@@
+}
+
 export extern "millennium" [
   command?: string@"_millennium_dispatcher_commands"
   --version(-V)
@@ -46,6 +52,19 @@ export extern "millennium schedule" [
   --quiet(-q)    # Suppress informational output
   --version(-V)  # Show version information
   --help(-h)     # Show help message
+]
+
+export extern "millennium config" [
+  action?: string@"_millennium_config_actions"
+  ...names: string
+  --json
+  --dry-run(-d)
+  --quiet(-q)
+  --yes(-y)
+  --plugins-only
+  --themes-only
+  --version(-V)
+  --help(-h)
 ]
 
 export extern "millennium injection" [

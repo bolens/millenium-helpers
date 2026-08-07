@@ -48,6 +48,42 @@ func ToolsList() []Tool {
 			},
 		},
 		{
+			Name:        "millennium_config",
+			Description: "Inspect Millennium client settings, manage plugin and theme activation, report directly attributed component errors, or safely disable affected components.",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"action": map[string]any{
+						"type":        "string",
+						"enum":        []string{"show", "plugins", "themes", "errors", "enable", "disable", "theme", "disable-theme", "disable-errors"},
+						"description": "Client configuration action to perform.",
+					},
+					"names": map[string]any{
+						"type":        "array",
+						"items":       map[string]any{"type": "string"},
+						"description": "Plugin names for enable/disable, one theme name for theme, or an optional expected active theme name for disable-theme.",
+					},
+					"dry_run": map[string]any{
+						"type":        "boolean",
+						"description": "Preview write actions without modifying the client configuration.",
+					},
+					"confirm": map[string]any{
+						"type":        "boolean",
+						"description": "Must be true to apply disable-errors; dry_run=true does not require confirmation.",
+					},
+					"plugins_only": map[string]any{
+						"type":        "boolean",
+						"description": "With disable-errors, affect only enabled plugins with directly attributed errors.",
+					},
+					"themes_only": map[string]any{
+						"type":        "boolean",
+						"description": "With disable-errors, affect only the active theme when it has directly attributed errors.",
+					},
+				},
+				"required": []string{"action"},
+			},
+		},
+		{
 			Name:        "millennium_upgrade",
 			Description: "Upgrade, reinstall, or roll back the Millennium client on the stable, beta, or main release channel.",
 			InputSchema: map[string]any{

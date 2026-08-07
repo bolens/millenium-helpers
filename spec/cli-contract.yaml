@@ -35,7 +35,7 @@ global_flags:
   - { name: yes, long: --yes, short: -y, aliases_windows: [-Yes] }
 
 dispatcher:
-  commands: [diag, doctor, upgrade, schedule, theme, injection, repair, purge, mcp, install, uninstall, help]
+  commands: [diag, doctor, upgrade, schedule, theme, config, injection, repair, purge, mcp, install, uninstall, help]
   # doctor is an alias route to diag doctor
 
 commands:
@@ -44,6 +44,73 @@ commands:
     platforms: [linux, darwin, windows]
     man: millennium.1
     mcp: null
+
+  config:
+    short: "Manage Millennium client settings without the Steam UI"
+    platforms: [linux, darwin, windows]
+    man: millennium-config.1
+    mcp: millennium_config
+    mcp_description: >-
+      Inspect Millennium client settings, manage plugin and theme activation,
+      report directly attributed component errors, or safely disable affected components.
+    mcp_required: [action]
+    mcp_actions: [show, plugins, themes, errors, enable, disable, theme, disable-theme, disable-errors]
+    mcp_properties: [action, names, dry_run, confirm, plugins_only, themes_only]
+    mcp_schema:
+      action:
+        type: string
+        enum: mcp_actions
+        description: Client configuration action to perform.
+      names:
+        type: array
+        items: { type: string }
+        description: >-
+          Plugin names for enable/disable, one theme name for theme, or an optional
+          expected active theme name for disable-theme.
+      dry_run:
+        type: boolean
+        description: Preview write actions without modifying the client configuration.
+      confirm:
+        type: boolean
+        description: Must be true to apply disable-errors; dry_run=true does not require confirmation.
+      plugins_only:
+        type: boolean
+        description: With disable-errors, affect only enabled plugins with directly attributed errors.
+      themes_only:
+        type: boolean
+        description: With disable-errors, affect only the active theme when it has directly attributed errors.
+    subcommands: [show, plugins, themes, errors, enable, disable, theme, disable-theme, disable-errors]
+    flags:
+      - name: json
+        long: --json
+        aliases_windows: [-Json]
+        man: Output show, plugins, themes, or errors results as structured JSON.
+      - name: dry_run
+        long: --dry-run
+        short: -d
+        man: Show configuration changes without writing them.
+      - name: quiet
+        long: --quiet
+        short: -q
+        man: Suppress informational output after configuration changes.
+      - name: yes
+        long: --yes
+        short: -y
+        man: Confirm disabling every enabled component with directly attributed errors.
+      - name: plugins_only
+        long: --plugins-only
+        man: With disable-errors, disable only enabled plugins with directly attributed errors.
+      - name: themes_only
+        long: --themes-only
+        man: With disable-errors, disable only the active theme when it has directly attributed errors.
+      - name: version
+        long: --version
+        short: -V
+        man: Show version information.
+      - name: help
+        long: --help
+        short: -h
+        man: Show help message.
 
   injection:
     short: "Enable or disable Millennium injection"

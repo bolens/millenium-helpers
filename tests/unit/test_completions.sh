@@ -42,6 +42,11 @@ bash_runtime_out=$(
   _millennium_dispatcher_comp
   printf 'ENABLE:%s\n' "${COMPREPLY[*]}"
 
+  COMP_WORDS=(millennium config "")
+  COMP_CWORD=2
+  _millennium_dispatcher_comp
+  printf 'CONFIG:%s\n' "${COMPREPLY[*]}"
+
   COMP_WORDS=(millennium upgrade --channel "")
   COMP_CWORD=3
   _millennium_dispatcher_comp
@@ -57,6 +62,7 @@ fi
 dispatch_line=$(echo "$bash_runtime_out" | grep '^DISPATCH:' | head -1)
 schedule_line=$(echo "$bash_runtime_out" | grep '^SCHEDULE:' | head -1)
 enable_line=$(echo "$bash_runtime_out" | grep '^ENABLE:' | head -1)
+config_line=$(echo "$bash_runtime_out" | grep '^CONFIG:' | head -1)
 channel_line=$(echo "$bash_runtime_out" | grep '^CHANNEL:' | head -1)
 
 assert_contains "$dispatch_line" "diag" "bash millennium completer offers diag"
@@ -70,6 +76,15 @@ assert_contains "$schedule_line" "--cron" "bash millennium schedule completer of
 
 assert_contains "$enable_line" "stable" "bash millennium schedule enable offers stable"
 assert_contains "$enable_line" "beta" "bash millennium schedule enable offers beta"
+
+assert_contains "$config_line" "plugins" "bash millennium config completer offers plugins"
+assert_contains "$config_line" "disable" "bash millennium config completer offers disable"
+assert_contains "$config_line" "errors" "bash millennium config completer offers errors"
+assert_contains "$config_line" "disable-errors" "bash millennium config completer offers disable-errors"
+assert_contains "$config_line" "--json" "bash millennium config completer offers --json"
+assert_contains "$config_line" "--yes" "bash millennium config completer offers --yes"
+assert_contains "$config_line" "--plugins-only" "bash millennium config completer offers --plugins-only"
+assert_contains "$config_line" "--themes-only" "bash millennium config completer offers --themes-only"
 
 assert_contains "$channel_line" "stable" "bash millennium upgrade --channel offers stable"
 assert_contains "$channel_line" "beta" "bash millennium upgrade --channel offers beta"
@@ -110,6 +125,14 @@ if command -v fish >/dev/null 2>&1; then
     " 2>/dev/null
   ) || true
   assert_contains "$fish_cron" "cron" "fish complete -C millennium schedule - offers cron"
+
+  fish_config=$(
+    fish -c "
+      source ${FISH_COMP}
+      complete -C 'millennium config '
+    " 2>/dev/null
+  ) || true
+  assert_contains "$fish_config" "plugins" "fish complete -C millennium config offers plugins"
 else
   echo -e "  ${YELLOW}SKIP:${NC} fish not installed; fish runtime smokes skipped"
 fi
