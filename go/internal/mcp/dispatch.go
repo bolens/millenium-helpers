@@ -83,7 +83,7 @@ func stringSliceArg(args map[string]any, key string) ([]string, bool) {
 
 func validClientName(name string) bool {
 	return name != "" && name != "." && name != ".." && len(name) <= 255 &&
-		!strings.ContainsAny(name, `/\\\x00\r\n`)
+		!strings.ContainsAny(name, "/\\\x00\r\n")
 }
 
 // HandleToolCall validates arguments and runs the underlying CLI.

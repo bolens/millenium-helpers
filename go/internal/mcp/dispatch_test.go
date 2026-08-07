@@ -66,6 +66,19 @@ func TestHandleToolCallValidation(t *testing.T) {
 	}
 }
 
+func TestValidClientName(t *testing.T) {
+	for _, name := range []string{"gratitude", "extendium", "green-theme", "plugin0"} {
+		if !validClientName(name) {
+			t.Errorf("valid name rejected: %q", name)
+		}
+	}
+	for _, name := range []string{"", ".", "..", "bad/name", "bad\\name", "bad\x00name", "bad\rname", "bad\nname"} {
+		if validClientName(name) {
+			t.Errorf("invalid name accepted: %q", name)
+		}
+	}
+}
+
 func TestConfigToolDispatch(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("shell mock is Unix-only")

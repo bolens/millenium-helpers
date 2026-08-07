@@ -210,6 +210,12 @@ func TestParseArgs(t *testing.T) {
 	}
 }
 
+func TestUsageDocumentsErrorsJSON(t *testing.T) {
+	if !strings.Contains(Usage(), "show/plugins/themes/errors") {
+		t.Fatal("config help must document JSON output for errors")
+	}
+}
+
 func TestCurrentSessionBoundary(t *testing.T) {
 	data := []byte(`Error: old source /plugins/alpha/old.js
 [2026-08-07 14:51:46] Startup - webhelper launched

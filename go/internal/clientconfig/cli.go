@@ -23,7 +23,7 @@ Commands:
   disable-errors       Disable enabled/active components with attributed errors
 
 Options:
-  --json               Output show/plugins/themes as JSON
+  --json               Output show/plugins/themes/errors as JSON
   -d, --dry-run        Show changes without writing
   -q, --quiet          Suppress mutation confirmation
   -y, --yes            Confirm disable-errors changes
