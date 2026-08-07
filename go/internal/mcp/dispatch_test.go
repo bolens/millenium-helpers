@@ -49,6 +49,17 @@ func TestHandleToolCallValidation(t *testing.T) {
 		t.Fatalf("config scopes: %+v", r)
 	}
 
+	for _, args := range []map[string]any{
+		{"action": "show", "plugins_only": true},
+		{"action": "plugins", "confirm": true},
+		{"action": "errors", "dry_run": true},
+	} {
+		r = HandleToolCall("millennium_config", args)
+		if !r.IsError || !strings.Contains(r.Content[0]["text"], "only valid") {
+			t.Fatalf("config irrelevant option args=%v result=%+v", args, r)
+		}
+	}
+
 	r = HandleToolCall("not_a_real_tool", map[string]any{})
 	if !r.IsError || !strings.Contains(r.Content[0]["text"], "Unknown tool") {
 		t.Fatalf("unknown: %+v", r)

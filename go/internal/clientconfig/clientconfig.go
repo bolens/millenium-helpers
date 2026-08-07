@@ -237,6 +237,9 @@ func Show() (Summary, error) {
 
 func directories(path string) ([]string, error) {
 	entries, err := os.ReadDir(path)
+	if os.IsNotExist(err) {
+		return []string{}, nil
+	}
 	if err != nil {
 		return nil, fmt.Errorf("could not read %s: %w", path, err)
 	}

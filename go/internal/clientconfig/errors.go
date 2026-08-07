@@ -47,6 +47,10 @@ func errorLogPaths() []string {
 			}
 		}
 	}
+	return existingLogPaths(candidates)
+}
+
+func existingLogPaths(candidates []string) []string {
 	var existing []string
 	seen := make(map[string]bool)
 	for _, path := range candidates {
@@ -82,7 +86,29 @@ func readLogTail(path string) ([]byte, error) {
 	if _, err := file.Seek(start, 0); err != nil {
 		return nil, err
 	}
-	return io.ReadAll(io.LimitReader(file, maxErrorLogBytes))
+	data, err := io.ReadAll(io.LimitReader(file, maxErrorLogBytes))
+	if err != nil {
+		return nil, err
+	}
+	return currentSession(data), nil
+}
+
+func currentSession(data []byte) []byte {
+	start := -1
+	offset := 0
+	for _, line := range strings.SplitAfter(string(data), "\n") {
+		lower := strings.ToLower(line)
+		if strings.Contains(lower, "startup - webhelper launched") ||
+			strings.Contains(lower, "this is chrome version") ||
+			(strings.Contains(lower, "srt-logger") && strings.Contains(lower, "log opened")) {
+			start = offset
+		}
+		offset += len(line)
+	}
+	if start < 0 {
+		return data
+	}
+	return data[start:]
 }
 
 func errorSourceLabel(paths []string) string {
@@ -114,12 +140,16 @@ func sanitizeEvidence(line string) string {
 	return line
 }
 
-// Errors scans the newest Steam/Millennium web log for direct component source paths.
+// Errors scans the current session in Steam/Millennium web logs for direct component source paths.
 func Errors() ([]Finding, string, error) {
 	paths := errorLogPaths()
 	if len(paths) == 0 {
 		return nil, "", fmt.Errorf("no Steam or Millennium web log found")
 	}
+	return errorsFromPaths(paths)
+}
+
+func errorsFromPaths(paths []string) ([]Finding, string, error) {
 	plugins, err := Plugins()
 	if err != nil {
 		return nil, errorSourceLabel(paths), err

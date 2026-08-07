@@ -123,6 +123,16 @@ func HandleToolCall(toolName string, arguments map[string]any) CallResult {
 		if pluginsOnly && themesOnly {
 			return textResult("Error: plugins_only and themes_only cannot both be true.", true)
 		}
+		if (pluginsOnly || themesOnly) && action != "disable-errors" {
+			return textResult("Error: plugins_only and themes_only are only valid with disable-errors.", true)
+		}
+		if confirm && action != "disable-errors" {
+			return textResult("Error: confirm is only valid with disable-errors.", true)
+		}
+		readAction := action == "show" || action == "plugins" || action == "themes" || action == "errors"
+		if dryRun && readAction {
+			return textResult("Error: dry_run is only valid with configuration changes.", true)
+		}
 		rest := []string{action}
 		switch action {
 		case "show", "plugins", "themes", "errors":

@@ -1,10 +1,12 @@
 package clientconfig
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -69,6 +71,40 @@ func TestShowPluginsAndThemes(t *testing.T) {
 	}
 	if len(themes) != 2 || themes[0].Name != "Demo" || themes[1] != (Theme{Name: "Steam", Active: true}) {
 		t.Fatalf("unexpected themes: %+v", themes)
+	}
+}
+
+func TestMissingComponentDirectoriesAreEmpty(t *testing.T) {
+	_, pluginsDir, themesDir := fixture(t)
+	if err := os.RemoveAll(pluginsDir); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(themesDir); err != nil {
+		t.Fatal(err)
+	}
+	plugins, err := Plugins()
+	if err != nil || len(plugins) != 0 {
+		t.Fatalf("plugins=%v err=%v", plugins, err)
+	}
+	themes, err := Themes()
+	if err != nil || len(themes) != 0 {
+		t.Fatalf("themes=%v err=%v", themes, err)
+	}
+}
+
+func TestErrorsContinueWhenOneComponentDirectoryIsMissing(t *testing.T) {
+	_, _, themesDir := fixture(t)
+	if err := os.RemoveAll(themesDir); err != nil {
+		t.Fatal(err)
+	}
+	logPath := filepath.Join(t.TempDir(), "cef_log.txt")
+	if err := os.WriteFile(logPath, []byte("Error: source /plugins/alpha/main.js\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("MILLENNIUM_ERROR_LOG", logPath)
+	findings, _, err := Errors()
+	if err != nil || len(findings) != 1 || findings[0].Name != "alpha" {
+		t.Fatalf("findings=%+v err=%v", findings, err)
 	}
 }
 
@@ -160,6 +196,62 @@ func TestParseArgs(t *testing.T) {
 	if _, err := ParseArgs([]string{"plugins", "--plugins-only"}); err == nil {
 		t.Fatal("expected scoped flag action error")
 	}
+	for _, args := range [][]string{
+		{"show", "--dry-run"},
+		{"errors", "--quiet"},
+		{"disable", "alpha", "--yes"},
+	} {
+		if _, err := ParseArgs(args); err == nil {
+			t.Fatalf("expected invalid option combination for %v", args)
+		}
+	}
+}
+
+func TestCurrentSessionBoundary(t *testing.T) {
+	data := []byte(`Error: old source /plugins/alpha/old.js
+[2026-08-07 14:51:46] Startup - webhelper launched
+Error: current source /plugins/beta/current.js
+`)
+	got := string(currentSession(data))
+	if strings.Contains(got, "alpha") || !strings.Contains(got, "Startup - webhelper launched") || !strings.Contains(got, "beta") {
+		t.Fatalf("unexpected current session: %q", got)
+	}
+	withoutMarker := []byte("Error: fallback /plugins/alpha/main.js\n")
+	if got := currentSession(withoutMarker); !reflect.DeepEqual(got, withoutMarker) {
+		t.Fatalf("markerless log changed: %q", got)
+	}
+}
+
+func TestReadLogTailIsBoundedToCurrentSession(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "webhelper.txt")
+	old := bytes.Repeat([]byte("Error: old /plugins/alpha/main.js\n"), maxErrorLogBytes/20)
+	data := append(old, []byte("Startup - webhelper launched\nError: current /plugins/beta/main.js\n")...)
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := readLogTail(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) > maxErrorLogBytes || bytes.Contains(got, []byte("/plugins/alpha/")) || !bytes.Contains(got, []byte("/plugins/beta/")) {
+		t.Fatalf("unexpected bounded tail length=%d", len(got))
+	}
+}
+
+func TestExistingLogPathsDeduplicatesSymlinks(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "webhelper.txt")
+	alias := filepath.Join(dir, "cef_log.txt")
+	if err := os.WriteFile(path, []byte("log"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(path, alias); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	got := existingLogPaths([]string{path, alias, path, filepath.Join(dir, "missing")})
+	if !reflect.DeepEqual(got, []string{path}) {
+		t.Fatalf("paths=%v", got)
+	}
 }
 
 func TestErrorAttributionAndDisableFlagged(t *testing.T) {
@@ -208,6 +300,79 @@ ordinary source: https://millennium.ftp/home/user/plugins/alpha/dist.js
 	enabled := data["plugins"].(map[string]any)["enabledPlugins"].([]any)
 	if !reflect.DeepEqual(enabled, []any{"alpha"}) {
 		t.Fatalf("unexpected enabled plugins: %#v", enabled)
+	}
+}
+
+func TestErrorsExcludePriorSessionAndSanitizeEvidence(t *testing.T) {
+	fixture(t)
+	logPath := filepath.Join(t.TempDir(), "webhelper.txt")
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	log := "Error: stale source /plugins/alpha/old.js\n" +
+		"[2026-08-07 14:51:46] Startup - webhelper launched\n" +
+		"Error: current source millennium.ftp" + home + "/plugins/beta/main.js\n"
+	if err := os.WriteFile(logPath, []byte(log), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("MILLENNIUM_ERROR_LOG", logPath)
+	findings, _, err := Errors()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(findings) != 1 || findings[0].Name != "beta" {
+		t.Fatalf("unexpected findings: %+v", findings)
+	}
+	if strings.Contains(findings[0].Evidence, home) || !strings.Contains(findings[0].Evidence, "millennium.ftp/~") {
+		t.Fatalf("evidence was not sanitized: %q", findings[0].Evidence)
+	}
+}
+
+func TestErrorsAggregateMultipleLogsDeterministically(t *testing.T) {
+	fixture(t)
+	dir := t.TempDir()
+	first := filepath.Join(dir, "cef_log.txt")
+	second := filepath.Join(dir, "webhelper.txt")
+	if err := os.WriteFile(first, []byte("Error: /plugins/beta/main.js\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(second, []byte("Error: /plugins/alpha/main.js\nError: /plugins/beta/again.js\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	findings, label, err := errorsFromPaths([]string{first, second})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if label != "2 detected web logs" || len(findings) != 2 || findings[0].Name != "alpha" || findings[1].Name != "beta" || findings[1].Count != 2 {
+		t.Fatalf("label=%q findings=%+v", label, findings)
+	}
+}
+
+func TestDisableFlaggedIgnoresInactiveComponentsAndDryRun(t *testing.T) {
+	configPath, _, _ := fixture(t)
+	before, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	findings := []Finding{
+		{Kind: "plugin", Name: "beta", Count: 1},
+		{Kind: "theme", Name: "Demo", Count: 1},
+		{Kind: "plugin", Name: "alpha", Enabled: true, Count: 1},
+	}
+	plugins, theme, err := DisableFlagged(findings, "all", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(plugins, []string{"alpha"}) || theme != "" {
+		t.Fatalf("plugins=%v theme=%q", plugins, theme)
+	}
+	after, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(before, after) {
+		t.Fatal("disable-errors dry-run changed config")
 	}
 }
 

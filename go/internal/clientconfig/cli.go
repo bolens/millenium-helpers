@@ -107,6 +107,16 @@ func ParseArgs(args []string) (Options, error) {
 	if result.JSON && result.Action != "show" && result.Action != "plugins" && result.Action != "themes" && result.Action != "errors" {
 		return result, fmt.Errorf("--json is only valid with show, plugins, themes, or errors")
 	}
+	mutation := result.Action == "enable" || result.Action == "disable" || result.Action == "theme" || result.Action == "disable-theme" || result.Action == "disable-errors"
+	if result.DryRun && !mutation {
+		return result, fmt.Errorf("--dry-run is only valid with configuration changes")
+	}
+	if result.Quiet && !mutation {
+		return result, fmt.Errorf("--quiet is only valid with configuration changes")
+	}
+	if result.Yes && result.Action != "disable-errors" {
+		return result, fmt.Errorf("--yes is only valid with disable-errors")
+	}
 	if result.Action == "disable-errors" && !result.DryRun && !result.Yes {
 		return result, fmt.Errorf("config disable-errors requires --yes (or use --dry-run to preview)")
 	}
