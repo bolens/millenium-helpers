@@ -36,6 +36,7 @@ millennium doctor               # auto-repair
 millennium upgrade              # install / update Millennium
 millennium schedule enable      # daily background updates (Linux)
 millennium theme list           # manage skins
+millennium config plugins       # manage client plugin/theme activation
 millennium mcp                  # MCP server for AI assistants
 millennium --help
 ```
@@ -214,6 +215,9 @@ Most commands are identical on Linux and Windows. Flag casing differs where note
 | Force all repairs | `millennium doctor --force` |
 | Scheduler status | `millennium schedule status` |
 | Enable / disable updates | `millennium schedule enable` · `disable` |
+| Show client settings | `millennium config show` |
+| Enable / disable plugins | `millennium config enable NAME` · `disable NAME` |
+| Select a client theme | `millennium config theme NAME` |
 | Enable / disable Steam injection | `millennium injection enable` · `disable` (configuration is preserved) |
 | Repair install | `sudo millennium repair` / `millennium repair` (Admin) |
 | Purge Millennium | `sudo millennium purge` / `millennium purge` (Admin); skip prompts with `-y` / `-Yes` |
@@ -230,6 +234,7 @@ New installs put only `millennium` / `millennium.exe` on PATH. Prefer
 | `millennium diag` / `doctor` | Health checks, doctor, logs, pastebin share |
 | `millennium upgrade` | Download, verify, install; `--force`, `--rollback` |
 | `millennium schedule` | Timers / Task Scheduler + config / setup |
+| `millennium config` | Inspect client settings; list or toggle plugins; list or select client themes |
 | `millennium injection` | Temporarily disable or restore Steam bootstrap injection without deleting configuration |
 | `millennium repair` | Permissions, CEF cache, theme refresh |
 | `millennium purge` | De-register and remove Millennium from Steam |
@@ -283,6 +288,31 @@ Created by `millennium schedule setup`:
 | `backup_max_age_days` | number | Optional max age (days) for backups |
 
 Manage with `millennium schedule config list|get|set`. File mode is set to `600` (owner read/write only).
+
+Millennium's separate client configuration can be managed without opening its
+Steam settings UI:
+
+```bash
+millennium config show
+millennium config plugins
+millennium config disable gratitude
+millennium config themes
+millennium config theme Steam
+millennium config errors
+millennium config disable-errors --dry-run
+```
+
+Plugin and theme changes preserve unrecognized client settings and replace the
+client config atomically. Restart Steam after a mutation. Use `--dry-run` to
+preview a change and `--json` with `show`, `plugins`, or `themes` for structured
+output.
+
+For faster fault isolation, `millennium config errors` scans the newest Steam
+web log and reports only errors directly attributed through a plugin or theme
+source path. `disable-theme [NAME]` resets the active theme to Steam, while
+`disable-errors --dry-run` previews enabled/active components that can be
+deactivated together; apply that preview with `disable-errors --yes`. Add
+`--plugins-only` or `--themes-only` to isolate one component kind.
 
 ### Shell completions
 

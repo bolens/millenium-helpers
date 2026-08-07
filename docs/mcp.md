@@ -15,6 +15,7 @@ see [security_troubleshooting.md](security_troubleshooting.md). Licensing:
 | --- | --- | --- |
 | `millennium_diag` | Runs read-only diagnostics or applies auto-repairs in doctor mode. | `doctor` (boolean, optional): set `true` to auto-repair. |
 | `millennium_theme` | Manages theme/skin directories (list, install, remove, update). | `action` (string, required): `list`, `install`, `remove`, `update`. <br> `theme` (string, optional): repo or name. <br> `all` (boolean, optional): update all themes. |
+| `millennium_config` | Inspects Millennium client settings, manages plugin/theme activation, and isolates directly attributed component errors. | `action` (string, required): `show`, `plugins`, `themes`, `errors`, `enable`, `disable`, `theme`, `disable-theme`, or `disable-errors`. <br> `names` (string array, optional): plugin/theme names required by the selected action. <br> `dry_run` (boolean, optional): preview writes. <br> `confirm` (boolean, optional): required to apply `disable-errors`. <br> `plugins_only` / `themes_only` (boolean, optional): scope `disable-errors`; mutually exclusive. |
 | `millennium_upgrade` | Upgrades, reinstalls, or rolls back the Millennium client system-wide. | `channel` (string, optional): `stable` (default), `beta`, or `main` (client channel — not the helpers install track). <br> `force` (boolean, optional): force reinstall/upgrade. <br> `rollback` (string, optional): list backups ('list') or specify backup name to roll back to. |
 | `millennium_schedule` | Manages background auto-update timers. | `action` (string, required): `enable`, `disable`, `status`. <br> `channel` (string, optional): client channel `stable`, `beta`, or `main`. <br> `cron` (boolean, optional): force crontab (Linux only). |
 | `millennium_repair` | Runs system-wide permissions and symlink repairs. | None. |
@@ -29,6 +30,8 @@ doctor/upgrade/repair/purge (`sudo -n` / UAC).
 **Safety gates (server-side):**
 - `action` / `channel` values are allow-listed independently of the JSON schema (clients can send arbitrary strings)
 - `theme` / `rollback` strings are character-class validated; path traversal (`..`) is refused
+- `millennium_config` validates every plugin/theme name and requires `confirm=true` or `dry_run=true` for error-driven bulk disabling
+- `plugins_only` and `themes_only` are mutually exclusive; omitted scope evaluates both component kinds
 - `millennium_purge` requires `confirm=true` (or `dry_run=true`)
 - Elevated Windows runs use Base64 `-EncodedCommand` + `-File` argument arrays (no shell `ArgumentList` string interpolation)
 - Internal schedule hooks `pre-update` / `post-update` are not exposed as MCP actions
