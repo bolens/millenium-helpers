@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-08-07
+
 ### Added
 - Native `millennium config` commands inspect client settings, toggle installed plugins, select or disable themes, and identify/disable components with directly attributed recent errors without relying on Steam's settings UI
 
