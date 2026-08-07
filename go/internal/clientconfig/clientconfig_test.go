@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -140,12 +141,14 @@ func TestMutationsPreserveUnknownFieldsAndMode(t *testing.T) {
 	if data["themes"].(map[string]any)["activeTheme"] != "Demo" {
 		t.Fatal("active theme was not changed")
 	}
-	info, err := os.Stat(configPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if info.Mode().Perm() != 0o640 {
-		t.Fatalf("mode changed to %o", info.Mode().Perm())
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(configPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.Mode().Perm() != 0o640 {
+			t.Fatalf("mode changed to %o", info.Mode().Perm())
+		}
 	}
 }
 

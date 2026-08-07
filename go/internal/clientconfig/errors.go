@@ -131,8 +131,10 @@ func errorIndicator(line string) bool {
 func sanitizeEvidence(line string) string {
 	line = strings.TrimSpace(line)
 	if home, err := os.UserHomeDir(); err == nil && home != "" {
-		line = strings.ReplaceAll(line, "millennium.ftp"+home, "millennium.ftp/~")
-		line = strings.ReplaceAll(line, home, "~")
+		for _, value := range []string{home, filepath.ToSlash(home)} {
+			line = strings.ReplaceAll(line, "millennium.ftp"+value, "millennium.ftp/~")
+			line = strings.ReplaceAll(line, value, "~")
+		}
 	}
 	if len(line) > 300 {
 		line = line[:300] + "..."
