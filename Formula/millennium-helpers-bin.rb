@@ -11,22 +11,22 @@ class MillenniumHelpersBin < Formula
 
   on_macos do
     on_arm do
-      url "https://github.com/bolens/millenium-helpers/releases/download/v3.1.0/millennium-helpers-v3.1.0-darwin-arm64.tar.gz"
+      url "https://github.com/bolens/millenium-helpers/releases/download/v3.2.0/millennium-helpers-v3.2.0-darwin-arm64.tar.gz"
       sha256 "10de12883e7b69af056a0937bdc1dbd2723fe6f93d29a4fa39d0ce93aae36a31"
     end
     on_intel do
-      url "https://github.com/bolens/millenium-helpers/releases/download/v3.1.0/millennium-helpers-v3.1.0-darwin-amd64.tar.gz"
+      url "https://github.com/bolens/millenium-helpers/releases/download/v3.2.0/millennium-helpers-v3.2.0-darwin-amd64.tar.gz"
       sha256 "25c944117bce660cadd4cf5304fbb82df613081b21af0ad13dc09cae40180470"
     end
   end
 
   on_linux do
     on_arm do
-      url "https://github.com/bolens/millenium-helpers/releases/download/v3.1.0/millennium-helpers-v3.1.0-linux-arm64.tar.gz"
+      url "https://github.com/bolens/millenium-helpers/releases/download/v3.2.0/millennium-helpers-v3.2.0-linux-arm64.tar.gz"
       sha256 "fcad2489126e8af827e510dd40a9e01f16325771e14ede7a1541ac5e9c187717"
     end
     on_intel do
-      url "https://github.com/bolens/millenium-helpers/releases/download/v3.1.0/millennium-helpers-v3.1.0-linux-amd64.tar.gz"
+      url "https://github.com/bolens/millenium-helpers/releases/download/v3.2.0/millennium-helpers-v3.2.0-linux-amd64.tar.gz"
       sha256 "ab0dbae309b6e750221beee8b4b05616bc535471b3268530fb90b7a174fe9b25"
     end
   end
