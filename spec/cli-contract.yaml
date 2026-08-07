@@ -84,7 +84,7 @@ commands:
       - name: json
         long: --json
         aliases_windows: [-Json]
-        man: Output show, plugins, or themes results as structured JSON.
+        man: Output show, plugins, themes, or errors results as structured JSON.
       - name: dry_run
         long: --dry-run
         short: -d

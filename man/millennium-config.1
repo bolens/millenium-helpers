@@ -20,8 +20,9 @@ List installed plugins and whether each one is enabled.
 List installed themes and mark the active theme.
 .TP
 .B errors
-Scan the newest Steam web log and report recent errors that contain a direct
-installed plugin or theme source path.
+Scan the current session in detected Steam web logs and report errors that
+contain a direct installed plugin or theme source path. Recognized startup
+markers exclude retained entries from earlier sessions.
 .TP
 .BI enable " NAME..."
 Enable one or more installed plugins.
@@ -52,7 +53,7 @@ to limit remediation to one component kind.
 .\" @@cli-contract:commands.config.man_options@@
 .TP
 .B \-\-json
-Output show, plugins, or themes results as structured JSON.
+Output show, plugins, themes, or errors results as structured JSON.
 .TP
 .BR \-d ", " \-\-dry\-run
 Show configuration changes without writing them.

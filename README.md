@@ -304,12 +304,14 @@ millennium config disable-errors --dry-run
 
 Plugin and theme changes preserve unrecognized client settings and replace the
 client config atomically. Restart Steam after a mutation. Use `--dry-run` to
-preview a change and `--json` with `show`, `plugins`, or `themes` for structured
-output.
+preview a change and `--json` with `show`, `plugins`, `themes`, or `errors` for
+structured output.
 
-For faster fault isolation, `millennium config errors` scans the newest Steam
-web log and reports only errors directly attributed through a plugin or theme
-source path. `disable-theme [NAME]` resets the active theme to Steam, while
+For faster fault isolation, `millennium config errors` scans the current session
+in detected Steam web logs and reports only errors directly attributed through
+a plugin or theme source path. Recognized startup markers exclude retained
+entries from earlier sessions; bounded logs without a marker remain available
+as a fallback. `disable-theme [NAME]` resets the active theme to Steam, while
 `disable-errors --dry-run` previews enabled/active components that can be
 deactivated together; apply that preview with `disable-errors --yes`. Add
 `--plugins-only` or `--themes-only` to isolate one component kind.
