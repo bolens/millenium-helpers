@@ -1,13 +1,12 @@
 # Dispatcher: millennium <command> [args...]
 # @@cli-contract:dispatcher.commands@@
 set -l __mh_cmds diag doctor upgrade schedule theme config injection repair purge mcp install uninstall help
-# @@/cli-contract:dispatcher.commands@@
-
 complete -c millennium -f -n "not __fish_seen_subcommand_from $__mh_cmds" -a 'diag' -d 'Run diagnostics'
 complete -c millennium -f -n "not __fish_seen_subcommand_from $__mh_cmds" -a 'doctor' -d 'Alias for diag doctor'
 complete -c millennium -f -n "not __fish_seen_subcommand_from $__mh_cmds" -a 'upgrade' -d 'Upgrade / install Millennium'
 complete -c millennium -f -n "not __fish_seen_subcommand_from $__mh_cmds" -a 'schedule' -d 'Manage auto-update scheduler'
 complete -c millennium -f -n "not __fish_seen_subcommand_from $__mh_cmds" -a 'theme' -d 'Manage skins/themes'
+complete -c millennium -f -n "not __fish_seen_subcommand_from $__mh_cmds" -a 'config' -d 'Manage Millennium client settings without the Steam UI'
 complete -c millennium -f -n "not __fish_seen_subcommand_from $__mh_cmds" -a 'injection' -d 'Enable or disable Millennium injection'
 complete -c millennium -f -n "not __fish_seen_subcommand_from $__mh_cmds" -a 'repair' -d 'Repair hooks and ownership'
 complete -c millennium -f -n "not __fish_seen_subcommand_from $__mh_cmds" -a 'purge' -d 'Uninstall Millennium'
@@ -15,6 +14,7 @@ complete -c millennium -f -n "not __fish_seen_subcommand_from $__mh_cmds" -a 'mc
 complete -c millennium -f -n "not __fish_seen_subcommand_from $__mh_cmds" -a 'install' -d 'Install helpers on this machine'
 complete -c millennium -f -n "not __fish_seen_subcommand_from $__mh_cmds" -a 'uninstall' -d 'Remove helpers installed by millennium install'
 complete -c millennium -f -n "not __fish_seen_subcommand_from $__mh_cmds" -a 'help' -d 'Show help'
+# @@/cli-contract:dispatcher.commands@@
 
 # diag
 # @@cli-contract:commands.diag.subcommands@@

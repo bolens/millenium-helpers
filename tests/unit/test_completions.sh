@@ -117,6 +117,7 @@ if command -v fish >/dev/null 2>&1; then
   assert_contains "$fish_dispatch" "diag" "fish complete -C millennium offers diag"
   assert_contains "$fish_dispatch" "schedule" "fish complete -C millennium offers schedule"
   assert_contains "$fish_dispatch" "doctor" "fish complete -C millennium offers doctor"
+  assert_contains "$fish_dispatch" "config" "fish complete -C millennium offers config"
 
   fish_cron=$(
     fish -c "

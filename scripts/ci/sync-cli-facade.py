@@ -346,7 +346,19 @@ def render_key(contract: dict, key: str, path: Path) -> str:
             lines.append("  )")
             return "\n".join(lines) + "\n"
         if name == "millennium.fish":
-            return f"set -l __mh_cmds {' '.join(cmds)}\n"
+            lines = [f"set -l __mh_cmds {' '.join(cmds)}"]
+            for cmd in cmds:
+                meta = commands.get(cmd) or {}
+                short = meta.get("short") if isinstance(meta, dict) else None
+                if not short:
+                    fail(f"commands.{cmd}.short is required for fish façade sync")
+                desc = str(short).replace("'", "\\'")
+                lines.append(
+                    "complete -c millennium -f "
+                    f"-n \"not __fish_seen_subcommand_from $__mh_cmds\" -a '{cmd}' "
+                    f"-d '{desc}'"
+                )
+            return "\n".join(lines) + "\n"
         if name == "millennium-helpers.nu":
             inner = ", ".join(f'"{c}"' for c in cmds)
             return f"  [ {inner} ]\n"
