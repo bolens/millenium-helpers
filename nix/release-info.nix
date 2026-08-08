@@ -1,7 +1,7 @@
 # Pinned release metadata for Nix packages.
 # Updated by scripts/ci/update-packaging-versions.sh on each release.
 {
-  version = "3.2.0";
+  version = "3.2.1";
   # SRI hash of millennium-helpers-v*-linux-amd64.tar.gz (release asset / -bin)
   srcAssetHash = "sha256-KBndrZQyOEIee/+xWFlQtv4yL8iOh00ZpGBJZUBmHS8=";
   # Legacy alias used by older flakes
